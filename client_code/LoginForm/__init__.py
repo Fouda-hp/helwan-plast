@@ -15,6 +15,7 @@ class LoginForm(LoginFormTemplate):
         anvil.js.window.loginUser = self.login_user
         anvil.js.window.registerUser = self.register_user
         anvil.js.window.setupAdmin = self.setup_admin
+        anvil.js.window.checkAdminExists = self.check_admin_exists
 
         # Check route on load
         self.check_route()
@@ -61,3 +62,11 @@ class LoginForm(LoginFormTemplate):
             return result
         except Exception as e:
             return {'success': False, 'message': f'Error: {str(e)}'}
+
+    def check_admin_exists(self):
+        """Check if admin exists - called from JavaScript"""
+        try:
+            result = anvil.server.call('check_admin_exists')
+            return result
+        except Exception as e:
+            return {'exists': True}  # Default to true for safety

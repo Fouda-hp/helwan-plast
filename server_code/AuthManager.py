@@ -526,7 +526,20 @@ def change_own_password(token, old_password, new_password):
 
 
 # =========================================================
-# SETUP ADMIN (Run once)
+# CHECK IF ADMIN EXISTS (For showing/hiding setup link)
+# =========================================================
+@anvil.server.callable
+def check_admin_exists():
+    """Check if any admin account exists"""
+    try:
+        existing_admin = app_tables.users.get(role='admin')
+        return {'exists': existing_admin is not None}
+    except:
+        return {'exists': False}
+
+
+# =========================================================
+# SETUP ADMIN (Run once - Only works if NO admins exist)
 # =========================================================
 @anvil.server.callable
 def setup_initial_admin(email, password, full_name):

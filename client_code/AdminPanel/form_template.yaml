@@ -6,17 +6,23 @@ container:
         * {
           box-sizing: border-box;
           font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+          margin: 0;
+          padding: 0;
         }
 
-        body {
+        html, body {
           margin: 0;
+          padding: 0;
           background: #f5f7fa;
+          height: 100%;
+          overflow: hidden;
         }
 
         /* ================= LAYOUT ================= */
         .admin-container {
           display: flex;
-          min-height: 100vh;
+          height: 100vh;
+          overflow: hidden;
         }
 
         /* ================= SIDEBAR ================= */
@@ -166,7 +172,8 @@ container:
           flex: 1;
           margin-left: 260px;
           padding: 30px;
-          min-height: 100vh;
+          height: 100vh;
+          overflow-y: auto;
         }
 
         .page-header {
@@ -902,13 +909,22 @@ container:
           var searchTimeout = null;
 
           // ============================================
-          // INIT
+          // INIT - Run immediately since DOM is already loaded
           // ============================================
-          document.addEventListener('DOMContentLoaded', function() {
+          function init() {
+            console.log('Initializing Admin Panel...');
             initUser();
             initNavigation();
-            loadDashboard();
-          });
+            // Wait a bit for Python bridge functions
+            setTimeout(loadDashboard, 300);
+          }
+
+          // Run init now or when DOM ready
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+          } else {
+            init();
+          }
 
           function initUser() {
             var name = sessionStorage.getItem('user_name') || 'Admin';
@@ -923,18 +939,30 @@ container:
           // NAVIGATION
           // ============================================
           function initNavigation() {
-            document.querySelectorAll('.nav-item[data-panel]').forEach(function(item) {
-              item.addEventListener('click', function(e) {
+            console.log('Setting up navigation...');
+            var navItems = document.querySelectorAll('.nav-item[data-panel]');
+            console.log('Found nav items:', navItems.length);
+
+            navItems.forEach(function(item) {
+              item.style.cursor = 'pointer';
+              item.onclick = function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 var panel = item.dataset.panel;
+                console.log('Nav clicked:', panel);
                 if (!panel) return;
 
+                // Update active state
                 document.querySelectorAll('.nav-item').forEach(function(i) { i.classList.remove('active'); });
                 item.classList.add('active');
 
+                // Show panel
                 document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
                 var panelEl = document.getElementById(panel + '-panel');
-                if (panelEl) panelEl.classList.add('active');
+                if (panelEl) {
+                  panelEl.classList.add('active');
+                  console.log('Activated panel:', panel + '-panel');
+                }
 
                 currentPanel = panel;
 
@@ -945,25 +973,33 @@ container:
                 else if (panel === 'clients') loadClients();
                 else if (panel === 'quotations') loadQuotations();
                 else if (panel === 'audit') loadAuditLogs();
-              });
+              };
             });
 
             // Go to Launcher
             var launcherBtn = document.getElementById('goToLauncher');
             if (launcherBtn) {
-              launcherBtn.addEventListener('click', function() {
-                location.hash = '#launcher';
-              });
+              console.log('Setting up Launcher button');
+              launcherBtn.style.cursor = 'pointer';
+              launcherBtn.onclick = function(e) {
+                e.preventDefault();
+                console.log('Going to Launcher');
+                window.location.hash = '#launcher';
+              };
             }
 
             // Logout
-            document.getElementById('logoutBtn').onclick = async function() {
-              if (window.logoutUser) {
-                await window.logoutUser();
-              }
-              sessionStorage.clear();
-              location.hash = '#login';
-            };
+            var logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+              logoutBtn.onclick = async function() {
+                console.log('Logging out...');
+                if (window.logoutUser) {
+                  await window.logoutUser();
+                }
+                sessionStorage.clear();
+                window.location.hash = '#login';
+              };
+            }
           }
 
           // ============================================

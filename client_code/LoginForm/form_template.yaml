@@ -494,6 +494,34 @@ container:
         (function() {
 
           // ============================================
+          // CHECK IF ADMIN EXISTS (Hide setup link if admin exists)
+          // ============================================
+          async function checkAndHideSetupLink() {
+            // Wait for bridge function
+            if (!window.checkAdminExists) {
+              setTimeout(checkAndHideSetupLink, 300);
+              return;
+            }
+
+            try {
+              var result = await window.checkAdminExists();
+              if (result && result.exists) {
+                // Hide setup admin link
+                var setupLink = document.getElementById('setupLink');
+                if (setupLink) setupLink.style.display = 'none';
+              }
+            } catch (e) {
+              console.log('Error checking admin:', e);
+              // Hide for safety
+              var setupLink = document.getElementById('setupLink');
+              if (setupLink) setupLink.style.display = 'none';
+            }
+          }
+
+          // Run check after a short delay
+          setTimeout(checkAndHideSetupLink, 500);
+
+          // ============================================
           // TAB SWITCHING
           // ============================================
           var tabs = document.querySelectorAll('.auth-tab');
@@ -521,18 +549,24 @@ container:
           });
 
           // Setup admin link
-          document.getElementById('setupAdminLink').onclick = function() {
-            loginForm.classList.remove('active');
-            registerForm.classList.remove('active');
-            setupForm.classList.add('active');
-            document.querySelector('.auth-tabs').style.display = 'none';
-          };
+          var setupAdminLink = document.getElementById('setupAdminLink');
+          if (setupAdminLink) {
+            setupAdminLink.onclick = function() {
+              loginForm.classList.remove('active');
+              registerForm.classList.remove('active');
+              setupForm.classList.add('active');
+              document.querySelector('.auth-tabs').style.display = 'none';
+            };
+          }
 
-          document.getElementById('backToLogin').onclick = function() {
-            setupForm.classList.remove('active');
-            loginForm.classList.add('active');
-            document.querySelector('.auth-tabs').style.display = 'flex';
-          };
+          var backToLogin = document.getElementById('backToLogin');
+          if (backToLogin) {
+            backToLogin.onclick = function() {
+              setupForm.classList.remove('active');
+              loginForm.classList.add('active');
+              document.querySelector('.auth-tabs').style.display = 'flex';
+            };
+          }
 
           // ============================================
           // MESSAGE HELPERS

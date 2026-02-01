@@ -262,7 +262,7 @@ db_schema:
     title: quotations
 dependencies: []
 metadata: {logo_img: 'asset:helwan_logo-logo.png', title: Printer Sestem}
-name: Clone of Clone of 60% Done
+name: 60% Backup
 package_name: Helwan_Plast
 runtime_options:
   client_version: '3'

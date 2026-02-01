@@ -408,9 +408,7 @@ container:
               <div class="btn-loader"></div>
             </button>
 
-            <div class="setup-link" id="setupLink">
-              <a id="setupAdminLink">First time? Setup Admin Account</a>
-            </div>
+
           </div>
 
           <!-- Register Form -->

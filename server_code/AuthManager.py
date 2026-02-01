@@ -533,37 +533,45 @@ def setup_initial_admin(email, password, full_name):
     """
     Create initial admin account (only works if no admins exist)
     """
+    try:
+        # Check if any admin exists
+        existing_admin = app_tables.users.get(role='admin')
 
-    # Check if any admin exists
-    existing_admin = app_tables.users.get(role='admin')
+        if existing_admin:
+            return {'success': False, 'message': 'Admin account already exists'}
 
-    if existing_admin:
-        return {'success': False, 'message': 'Admin account already exists'}
+        email = str(email or '').strip().lower()
 
-    email = str(email or '').strip().lower()
+        if not email or '@' not in email:
+            return {'success': False, 'message': 'Invalid email'}
 
-    if not email or '@' not in email:
-        return {'success': False, 'message': 'Invalid email'}
+        if not password or len(password) < 6:
+            return {'success': False, 'message': 'Password must be at least 6 characters'}
 
-    if not password or len(password) < 6:
-        return {'success': False, 'message': 'Password must be at least 6 characters'}
+        user_id = str(uuid.uuid4())
 
-    user_id = str(uuid.uuid4())
+        app_tables.users.add_row(
+            user_id=user_id,
+            email=email,
+            password_hash=hash_password(password),
+            full_name=full_name or 'Administrator',
+            role='admin',
+            is_approved=True,
+            is_active=True,
+            created_at=datetime.now(),
+            login_attempts=0
+        )
 
-    app_tables.users.add_row(
-        user_id=user_id,
-        email=email,
-        password_hash=hash_password(password),
-        full_name=full_name or 'Administrator',
-        role='admin',
-        is_approved=True,
-        is_active=True,
-        created_at=datetime.now()
-    )
+        # Try to log audit (ignore if fails)
+        try:
+            log_audit('SETUP_ADMIN', 'users', user_id, None, {'email': email})
+        except:
+            pass
 
-    log_audit('SETUP_ADMIN', 'users', user_id, None, {'email': email})
+        return {'success': True, 'message': 'Admin account created successfully'}
 
-    return {'success': True, 'message': 'Admin account created successfully'}
+    except Exception as e:
+        return {'success': False, 'message': f'Error: {str(e)}'}
 
 
 # =========================================================

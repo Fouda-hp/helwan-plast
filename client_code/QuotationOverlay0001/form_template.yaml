@@ -1,0 +1,159 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        :root {
+          --bg: #f5f6f8;
+          --card: #ffffff;
+          --border: #d6d9de;
+          --text: #1f2937;
+          --muted: #6b7280;
+        }
+
+        /* OVERLAY */
+        #quotationOverlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,.45);
+          display: flex;              /* 👈 باين */
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+        }
+
+        /* MODAL */
+        .modal {
+          background: var(--card);
+          width: 720px;
+          max-width: 92vw;
+          max-height: 85vh;
+          border-radius: 12px;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 25px 70px rgba(0,0,0,.35);
+        }
+
+        .modal-header {
+          padding: 14px 18px;
+          border-bottom: 1px solid var(--border);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .modal-header h2 {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 600;
+          color: var(--text);
+        }
+
+        .close-btn {
+          cursor: pointer;
+          font-size: 22px;
+          color: var(--muted);
+        }
+
+        .modal-body {
+          padding: 14px;
+          overflow-y: auto;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 13px;
+        }
+
+        th, td {
+          border: 1px solid var(--border);
+          padding: 8px 10px;
+        }
+
+        th {
+          background: #f3f4f6;
+          font-weight: 600;
+        }
+
+        tbody tr:hover {
+          background: #eef4ff;
+          cursor: pointer;
+        }
+
+        .hint {
+          font-size: 12px;
+          color: var(--muted);
+          margin-bottom: 8px;
+        }
+      </style>
+
+      <div id="quotationOverlay">
+        <div class="modal">
+
+          <div class="modal-header">
+            <h2>Select Quotation</h2>
+            <div class="close-btn" id="btnCloseOverlay">&times;</div>
+          </div>
+
+          <div class="modal-body">
+            <div class="hint">
+              Double-click any quotation to load its data
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Client Name</th>
+                  <th>Quotation #</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <!-- rows placeholder -->
+                <tr>
+                  <td>Test Client</td>
+                  <td>Q-001</td>
+                  <td>2026-01-01</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+      <script>
+        (function () {
+
+          const overlay = document.getElementById("quotationOverlay");
+          const closeBtn = document.getElementById("btnCloseOverlay");
+
+          // أمان
+          if (!overlay) return;
+
+          function showQuotationOverlay() {
+            overlay.style.display = "flex";
+          }
+
+          function hideQuotationOverlay() {
+            overlay.style.display = "none";
+          }
+
+          // خليهم Global لو حابب تناديهم من أي حتة
+          window.showQuotationOverlay = showQuotationOverlay;
+          window.hideQuotationOverlay = hideQuotationOverlay;
+
+          // زر الإغلاق
+          if (closeBtn) {
+            closeBtn.addEventListener("click", hideQuotationOverlay);
+          }
+
+          // نخفيه بعد ما Designer يعرضه
+          setTimeout(hideQuotationOverlay, 50);
+
+        })();
+      </script>
+  type: HtmlTemplate
+is_package: true

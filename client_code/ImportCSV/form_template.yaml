@@ -1,0 +1,13 @@
+components:
+- event_bindings: {}
+  layout_properties: {grid_position: 'EOBRCN,ZOOSTN'}
+  name: file_loader_1
+  properties: {}
+  type: FileLoader
+- event_bindings: {}
+  layout_properties: {grid_position: 'ZZKYJY,SZRPMZ'}
+  name: import_btn
+  properties: {text: Import CSV}
+  type: Button
+container: {type: ColumnPanel}
+is_package: true

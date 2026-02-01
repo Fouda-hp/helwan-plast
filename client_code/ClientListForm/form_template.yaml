@@ -1,0 +1,18 @@
+components:
+- layout_properties: {slot: default}
+  name: repeating_panel_clients
+  properties: {item_template: ClientListForm.ItemTemplate2}
+  type: RepeatingPanel
+container:
+  properties:
+    html: |
+      <div style="padding:20px">
+        <h2>Client List</h2>
+
+        <anvil-repeating-panel
+          id="repeating_panel_clients"
+          item-template="ClientRow">
+        </anvil-repeating-panel>
+      </div>
+  type: HtmlTemplate
+is_package: true

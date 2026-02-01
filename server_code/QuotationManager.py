@@ -602,8 +602,8 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False):
                 filtered.append(r)
         all_rows = filtered
 
-    # Sort by date desc
-    all_rows.sort(key=lambda x: x.get('Date') or datetime.min.date(), reverse=True)
+    # Sort by quotation number ascending
+    all_rows.sort(key=lambda x: x.get('Quotation#') or 0, reverse=False)
 
     total = len(all_rows)
     total_pages = (total + per_page - 1) // per_page

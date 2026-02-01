@@ -302,19 +302,37 @@ def check_permission(token, action):
 @anvil.server.callable
 def is_admin(token):
     """Check if user is admin"""
-
+    # First try session
     session = validate_session(token)
-    return session and session.get('role') == 'admin'
+    if session and session.get('role') == 'admin':
+        return True
+
+    # If no valid session, check if token is actually an email
+    # (for when server restarts and loses sessions)
+    if token and '@' in str(token):
+        user = app_tables.users.get(email=token.lower())
+        return user and user['role'] == 'admin'
+
+    return False
+
+
+def is_admin_by_email(email):
+    """Check if user is admin by email"""
+    if not email:
+        return False
+    user = app_tables.users.get(email=email.lower())
+    return user and user['role'] == 'admin'
 
 
 # =========================================================
 # ADMIN FUNCTIONS
 # =========================================================
 @anvil.server.callable
-def get_pending_users(token):
+def get_pending_users(token_or_email):
     """Get users pending approval (admin only)"""
 
-    if not is_admin(token):
+    # Check admin by token or email
+    if not is_admin(token_or_email) and not is_admin_by_email(token_or_email):
         return {'success': False, 'message': 'Admin access required'}
 
     users = []

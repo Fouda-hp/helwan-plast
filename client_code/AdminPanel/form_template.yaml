@@ -909,21 +909,18 @@ container:
           var searchTimeout = null;
 
           // ============================================
-          // INIT - Run immediately since DOM is already loaded
+          // INIT - Will be called at the end of script
           // ============================================
           function init() {
             console.log('Initializing Admin Panel...');
             initUser();
             initNavigation();
-            // Wait a bit for Python bridge functions
-            setTimeout(loadDashboard, 300);
-          }
-
-          // Run init now or when DOM ready
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
-          } else {
-            init();
+            // Wait a bit for Python bridge functions then load dashboard
+            setTimeout(function() {
+              if (window.loadDashboard) {
+                window.loadDashboard();
+              }
+            }, 500);
           }
 
           function initUser() {
@@ -1429,6 +1426,16 @@ container:
             link.href = URL.createObjectURL(blob);
             link.download = filename;
             link.click();
+          }
+
+          // ============================================
+          // RUN INIT at the end after all functions are defined
+          // ============================================
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+          } else {
+            // Small delay to ensure everything is ready
+            setTimeout(init, 100);
           }
 
         })();

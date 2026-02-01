@@ -5,12 +5,13 @@ container:
       <style>
         * {
           box-sizing: border-box;
-          font-family: Arial, Helvetica, sans-serif;
+          font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
         }
 
         body {
           margin: 0;
-          background: radial-gradient(circle at top, #eef3f9, #dfe7f2);
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
         }
 
         /* ================= WRAPPER ================= */
@@ -21,25 +22,27 @@ container:
           align-items: center;
           justify-content: center;
           padding: 30px;
+          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
         }
 
         /* ================= BOX ================= */
         .login-box {
           width: 100%;
-          max-width: 540px;              /* ⬅️ أكبر على الكمبيوتر */
-          background: #ffffff;
-          border-radius: 16px;
-          padding: 55px 60px 50px;
+          max-width: 440px;
+          background: rgba(255, 255, 255, 0.95);
+          border-radius: 20px;
+          padding: 50px 45px;
           box-shadow:
-            0 25px 60px rgba(0,0,0,0.18),
-            0 0 0 1px rgba(0,0,0,0.03);
-          animation: cardIn 0.9s cubic-bezier(.2,.8,.2,1);
+            0 25px 50px rgba(0,0,0,0.3),
+            0 0 0 1px rgba(255,255,255,0.1);
+          animation: cardIn 0.8s cubic-bezier(.2,.8,.2,1);
+          backdrop-filter: blur(10px);
         }
 
         @keyframes cardIn {
           from {
             opacity: 0;
-            transform: translateY(30px) scale(0.96);
+            transform: translateY(40px) scale(0.95);
           }
           to {
             opacity: 1;
@@ -55,139 +58,301 @@ container:
         }
 
         @keyframes logoDrop {
-          from { opacity: 0; transform: translateY(-15px); }
+          from { opacity: 0; transform: translateY(-20px); }
           to   { opacity: 1; transform: translateY(0); }
         }
 
         .logo img {
-          height: 110px;                 /* ⬅️ أكبر */
-          margin-bottom: 14px;
+          height: 90px;
+          margin-bottom: 15px;
+          filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
         }
 
         .logo h2 {
           margin: 0;
-          color: #0057a3;
-          font-size: 28px;
+          color: #1a1a2e;
+          font-size: 26px;
+          font-weight: 700;
           letter-spacing: 0.5px;
         }
 
         .logo p {
           margin: 8px 0 0;
-          font-size: 15px;
+          font-size: 14px;
           color: #666;
+        }
+
+        /* ================= TABS ================= */
+        .auth-tabs {
+          display: flex;
+          margin-bottom: 30px;
+          background: #f0f2f5;
+          border-radius: 12px;
+          padding: 4px;
+        }
+
+        .auth-tab {
+          flex: 1;
+          padding: 12px;
+          text-align: center;
+          border: none;
+          background: transparent;
+          color: #666;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          border-radius: 10px;
+          transition: all 0.3s ease;
+        }
+
+        .auth-tab.active {
+          background: #fff;
+          color: #1a1a2e;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .auth-tab:hover:not(.active) {
+          color: #1a1a2e;
+        }
+
+        /* ================= FORMS ================= */
+        .auth-form {
+          display: none;
+        }
+
+        .auth-form.active {
+          display: block;
+          animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         /* ================= FIELDS ================= */
         .field {
-          margin-top: 26px;
-          animation: fieldIn 0.6s ease both;
-        }
-
-        .field:nth-of-type(1) { animation-delay: 0.45s; }
-        .field:nth-of-type(2) { animation-delay: 0.6s; }
-
-        @keyframes fieldIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0); }
+          margin-bottom: 20px;
         }
 
         .field label {
           display: block;
-          font-size: 15px;
+          font-size: 13px;
           margin-bottom: 6px;
-          color: #333;
-          font-weight: bold;
+          color: #444;
+          font-weight: 600;
         }
 
         .field input {
           width: 100%;
-          height: 50px;                 /* ⬅️ أطول */
-          padding: 0 14px;
-          border: 1px solid #cfd6e0;
-          border-radius: 8px;
-          font-size: 16px;
-          transition: border 0.2s ease, box-shadow 0.2s ease;
+          height: 48px;
+          padding: 0 16px;
+          border: 2px solid #e0e0e0;
+          border-radius: 10px;
+          font-size: 15px;
+          transition: all 0.3s ease;
+          background: #fafafa;
         }
 
         .field input:focus {
           outline: none;
-          border-color: #0078d7;
-          box-shadow: 0 0 0 3px rgba(0,120,215,0.18);
+          border-color: #667eea;
+          background: #fff;
+          box-shadow: 0 0 0 4px rgba(102,126,234,0.15);
+        }
+
+        .field input::placeholder {
+          color: #aaa;
         }
 
         /* ================= BUTTON ================= */
-        .login-btn {
-          margin-top: 36px;
+        .auth-btn {
           width: 100%;
-          height: 56px;                 /* ⬅️ أكبر */
+          height: 52px;
           border: none;
-          border-radius: 8px;
-          background: linear-gradient(135deg, #0078d7, #005fa3);
+          border-radius: 12px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           color: #fff;
-          font-size: 18px;
-          font-weight: bold;
+          font-size: 16px;
+          font-weight: 600;
           cursor: pointer;
-          animation: buttonIn 0.6s ease 0.8s both;
-          transition:
-            transform 0.15s ease,
-            box-shadow 0.15s ease,
-            filter 0.15s ease;
+          transition: all 0.3s ease;
+          margin-top: 10px;
+          position: relative;
+          overflow: hidden;
         }
 
-        @keyframes buttonIn {
-          from { opacity: 0; transform: translateY(15px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-
-        .login-btn:hover {
+        .auth-btn:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 10px 25px rgba(0,0,0,0.25);
-          filter: brightness(1.05);
+          box-shadow: 0 10px 30px rgba(102,126,234,0.4);
         }
 
-        .login-btn:active {
+        .auth-btn:active:not(:disabled) {
           transform: translateY(0);
-          box-shadow: 0 5px 12px rgba(0,0,0,0.2);
         }
 
-        /* ================= ERROR ================= */
-        .error {
-          margin-top: 22px;
-          background: #fdecea;
-          color: #b00020;
+        .auth-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
+        .auth-btn .btn-text {
+          transition: opacity 0.3s ease;
+        }
+
+        .auth-btn.loading .btn-text {
+          opacity: 0;
+        }
+
+        .auth-btn .btn-loader {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 24px;
+          height: 24px;
+          border: 3px solid rgba(255,255,255,0.3);
+          border-top-color: #fff;
+          border-radius: 50%;
+          opacity: 0;
+          animation: none;
+        }
+
+        .auth-btn.loading .btn-loader {
+          opacity: 1;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* ================= MESSAGES ================= */
+        .message {
+          padding: 14px 16px;
+          border-radius: 10px;
           font-size: 14px;
-          padding: 12px;
-          border-radius: 6px;
+          margin-bottom: 20px;
           display: none;
-          text-align: center;
           animation: shake 0.4s ease;
         }
 
-        @keyframes shake {
-          0% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          50% { transform: translateX(5px); }
-          75% { transform: translateX(-4px); }
-          100% { transform: translateX(0); }
+        .message.error {
+          background: #fdecea;
+          color: #d32f2f;
+          border: 1px solid #f5c6cb;
         }
+
+        .message.success {
+          background: #e8f5e9;
+          color: #2e7d32;
+          border: 1px solid #c8e6c9;
+        }
+
+        .message.info {
+          background: #e3f2fd;
+          color: #1565c0;
+          border: 1px solid #bbdefb;
+        }
+
+        .message.show {
+          display: block;
+        }
+
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+
+        /* ================= PASSWORD STRENGTH ================= */
+        .password-strength {
+          margin-top: 8px;
+          height: 4px;
+          background: #e0e0e0;
+          border-radius: 2px;
+          overflow: hidden;
+        }
+
+        .password-strength-bar {
+          height: 100%;
+          width: 0;
+          transition: all 0.3s ease;
+          border-radius: 2px;
+        }
+
+        .password-strength-bar.weak { width: 33%; background: #f44336; }
+        .password-strength-bar.medium { width: 66%; background: #ff9800; }
+        .password-strength-bar.strong { width: 100%; background: #4caf50; }
 
         /* ================= FOOTER ================= */
         .footer {
-          margin-top: 28px;
+          margin-top: 30px;
           font-size: 12px;
-          color: #777;
+          color: #888;
           text-align: center;
-          animation: fadeIn 0.6s ease 1s both;
         }
 
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
+        .footer a {
+          color: #667eea;
+          text-decoration: none;
+        }
+
+        /* ================= SETUP ADMIN LINK ================= */
+        .setup-link {
+          text-align: center;
+          margin-top: 20px;
+          font-size: 13px;
+        }
+
+        .setup-link a {
+          color: #667eea;
+          text-decoration: none;
+          cursor: pointer;
+        }
+
+        .setup-link a:hover {
+          text-decoration: underline;
+        }
+
+        /* ================= LOADING OVERLAY ================= */
+        .loading-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(26,26,46,0.9);
+          backdrop-filter: blur(8px);
+          display: none;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+        }
+
+        .loading-overlay.show {
+          display: flex;
+        }
+
+        .loader-box {
+          text-align: center;
+          color: #fff;
+        }
+
+        .loader-spinner {
+          width: 50px;
+          height: 50px;
+          border: 4px solid rgba(255,255,255,0.2);
+          border-top-color: #667eea;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+          margin: 0 auto 16px;
+        }
+
+        .loader-text {
+          font-size: 15px;
+          font-weight: 500;
         }
 
         /* ================= MOBILE ================= */
         @media (max-width: 600px) {
-
           .login-wrapper {
             padding: 0;
           }
@@ -195,154 +360,385 @@ container:
           .login-box {
             min-height: 100vh;
             border-radius: 0;
-            padding: 40px 26px;
+            padding: 40px 25px;
             max-width: none;
-            box-shadow: none;
           }
 
           .logo img {
-            height: 90px;
+            height: 75px;
           }
 
           .logo h2 {
-            font-size: 24px;
+            font-size: 22px;
           }
-
-          .field input {
-            height: 48px;
-            font-size: 16px;
-          }
-
-          .login-btn {
-            height: 52px;
-            font-size: 17px;
-          }
-          /* ================= LOADING ================= */
-          .loading-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(255,255,255,0.85);
-            backdrop-filter: blur(4px);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-          }
-
-          .loader-box {
-            text-align: center;
-            animation: fadeIn 0.3s ease;
-          }
-
-          .spinner {
-            width: 52px;
-            height: 52px;
-            border: 4px solid #cfd6e0;
-            border-top: 4px solid #0078d7;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 14px;
-          }
-
-          .loading-text {
-            font-size: 15px;
-            font-weight: bold;
-            color: #0057a3;
-            letter-spacing: 0.4px;
-          }
-
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-
         }
       </style>
 
-      <div class="login-wrapper" anvil-slot="default">
+      <div class="login-wrapper">
         <div class="login-box">
 
           <div class="logo">
-            <img src="_/theme/helwan_logo.png">
+            <img src="_/theme/helwan_logo.png" alt="Helwan Plast">
             <h2>Helwan Plast</h2>
-            <p>Secure Login</p>
+            <p>Secure Authentication</p>
           </div>
 
-          <div class="field">
-            <label>Username</label>
-            <input type="text" id="username">
+          <!-- Auth Tabs -->
+          <div class="auth-tabs">
+            <button class="auth-tab active" data-tab="login">Login</button>
+            <button class="auth-tab" data-tab="register">Register</button>
           </div>
 
-          <div class="field">
-            <label>Password</label>
-            <input type="password" id="password">
-          </div>
+          <!-- Login Form -->
+          <div id="loginForm" class="auth-form active">
+            <div id="loginMessage" class="message"></div>
 
-          <button class="login-btn" id="loginBtn">LOGIN</button>
+            <div class="field">
+              <label>Email Address</label>
+              <input type="email" id="loginEmail" placeholder="Enter your email">
+            </div>
 
-          <div class="error" id="errorBox"></div>
+            <div class="field">
+              <label>Password</label>
+              <input type="password" id="loginPassword" placeholder="Enter your password">
+            </div>
 
-          <div class="footer">
-            © Helwan Plast
-          </div>
-          <!-- LOADING OVERLAY -->
-          <div class="loading-overlay" id="loading">
-            <div class="loader-box">
-              <div class="spinner"></div>
+            <button class="auth-btn" id="loginBtn">
+              <span class="btn-text">LOGIN</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link" id="setupLink">
+              <a id="setupAdminLink">First time? Setup Admin Account</a>
             </div>
           </div>
 
+          <!-- Register Form -->
+          <div id="registerForm" class="auth-form">
+            <div id="registerMessage" class="message"></div>
+
+            <div class="field">
+              <label>Full Name</label>
+              <input type="text" id="regName" placeholder="Enter your full name">
+            </div>
+
+            <div class="field">
+              <label>Email Address</label>
+              <input type="email" id="regEmail" placeholder="Enter your email">
+            </div>
+
+            <div class="field">
+              <label>Password</label>
+              <input type="password" id="regPassword" placeholder="Min 6 characters">
+              <div class="password-strength">
+                <div class="password-strength-bar" id="strengthBar"></div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Confirm Password</label>
+              <input type="password" id="regConfirm" placeholder="Confirm your password">
+            </div>
+
+            <button class="auth-btn" id="registerBtn">
+              <span class="btn-text">CREATE ACCOUNT</span>
+              <div class="btn-loader"></div>
+            </button>
+          </div>
+
+          <!-- Setup Admin Form (Hidden) -->
+          <div id="setupForm" class="auth-form">
+            <div id="setupMessage" class="message"></div>
+
+            <div class="field">
+              <label>Admin Full Name</label>
+              <input type="text" id="adminName" placeholder="Administrator name">
+            </div>
+
+            <div class="field">
+              <label>Admin Email</label>
+              <input type="email" id="adminEmail" placeholder="admin@company.com">
+            </div>
+
+            <div class="field">
+              <label>Admin Password</label>
+              <input type="password" id="adminPassword" placeholder="Strong password (min 6 chars)">
+            </div>
+
+            <button class="auth-btn" id="setupBtn">
+              <span class="btn-text">CREATE ADMIN ACCOUNT</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="backToLogin">Back to Login</a>
+            </div>
+          </div>
+
+          <div class="footer">
+            Helwan Plast Printer System
+          </div>
+
         </div>
+      </div>
+
+      <!-- Loading Overlay -->
+      <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader-box">
+          <div class="loader-spinner"></div>
+          <div class="loader-text">Please wait...</div>
+        </div>
+      </div>
 
       <script>
-        (function () {
+        (function() {
 
-          var USERS = ["admin", "ahmed", "barsoum"];
-          var PASSWORD = "1234";
-          var attempts = 0;
-          var maxAttempts = 3;
+          // ============================================
+          // TAB SWITCHING
+          // ============================================
+          var tabs = document.querySelectorAll('.auth-tab');
+          var loginForm = document.getElementById('loginForm');
+          var registerForm = document.getElementById('registerForm');
+          var setupForm = document.getElementById('setupForm');
 
-          var userInput = document.getElementById("username");
-          var passInput = document.getElementById("password");
-          var errorBox  = document.getElementById("errorBox");
-          var loginBtn  = document.getElementById("loginBtn");
+          tabs.forEach(function(tab) {
+            tab.onclick = function() {
+              tabs.forEach(function(t) { t.classList.remove('active'); });
+              tab.classList.add('active');
 
-          loginBtn.onclick = function () {
-            var user = userInput.value.trim().toLowerCase();
-            var pass = passInput.value;
+              loginForm.classList.remove('active');
+              registerForm.classList.remove('active');
+              setupForm.classList.remove('active');
 
-            if (!user || !pass) {
-              showError("Please enter username and password");
-              return;
-            }
-
-            if (USERS.indexOf(user) === -1 || pass !== PASSWORD) {
-              attempts++;
-              if (attempts >= maxAttempts) {
-                showError("Maximum login attempts reached");
-                loginBtn.disabled = true;
+              if (tab.dataset.tab === 'login') {
+                loginForm.classList.add('active');
               } else {
-                showError("Invalid username or password (" + (maxAttempts - attempts) + " attempts left)");
+                registerForm.classList.add('active');
               }
+
+              clearMessages();
+            };
+          });
+
+          // Setup admin link
+          document.getElementById('setupAdminLink').onclick = function() {
+            loginForm.classList.remove('active');
+            registerForm.classList.remove('active');
+            setupForm.classList.add('active');
+            document.querySelector('.auth-tabs').style.display = 'none';
+          };
+
+          document.getElementById('backToLogin').onclick = function() {
+            setupForm.classList.remove('active');
+            loginForm.classList.add('active');
+            document.querySelector('.auth-tabs').style.display = 'flex';
+          };
+
+          // ============================================
+          // MESSAGE HELPERS
+          // ============================================
+          function showMessage(id, type, text) {
+            var el = document.getElementById(id);
+            el.className = 'message ' + type + ' show';
+            el.textContent = text;
+          }
+
+          function clearMessages() {
+            document.querySelectorAll('.message').forEach(function(m) {
+              m.classList.remove('show');
+            });
+          }
+
+          function setLoading(btn, loading) {
+            if (loading) {
+              btn.classList.add('loading');
+              btn.disabled = true;
+            } else {
+              btn.classList.remove('loading');
+              btn.disabled = false;
+            }
+          }
+
+          // ============================================
+          // PASSWORD STRENGTH
+          // ============================================
+          var regPassword = document.getElementById('regPassword');
+          var strengthBar = document.getElementById('strengthBar');
+
+          regPassword.oninput = function() {
+            var pass = regPassword.value;
+            strengthBar.className = 'password-strength-bar';
+
+            if (pass.length < 6) {
+              strengthBar.classList.add('weak');
+            } else if (pass.length < 10 || !/[A-Z]/.test(pass) || !/[0-9]/.test(pass)) {
+              strengthBar.classList.add('medium');
+            } else {
+              strengthBar.classList.add('strong');
+            }
+          };
+
+          // ============================================
+          // LOGIN
+          // ============================================
+          var loginBtn = document.getElementById('loginBtn');
+          var loginEmail = document.getElementById('loginEmail');
+          var loginPassword = document.getElementById('loginPassword');
+
+          loginBtn.onclick = async function() {
+            clearMessages();
+
+            var email = loginEmail.value.trim();
+            var password = loginPassword.value;
+
+            if (!email || !password) {
+              showMessage('loginMessage', 'error', 'Please enter email and password');
               return;
             }
 
-            showLoading();
+            setLoading(loginBtn, true);
 
-            setTimeout(function () {
-              location.hash = "#launcher";
-            }, 600);
+            try {
+              var result = await window.anvil.server.call('login_user', email, password);
 
+              if (result.success) {
+                // Store session
+                sessionStorage.setItem('auth_token', result.token);
+                sessionStorage.setItem('user_email', result.user.email);
+                sessionStorage.setItem('user_name', result.user.full_name);
+                sessionStorage.setItem('user_role', result.user.role);
+
+                showMessage('loginMessage', 'success', 'Login successful! Redirecting...');
+
+                setTimeout(function() {
+                  if (result.user.role === 'admin') {
+                    location.hash = '#admin';
+                  } else {
+                    location.hash = '#launcher';
+                  }
+                }, 800);
+
+              } else {
+                showMessage('loginMessage', 'error', result.message);
+                setLoading(loginBtn, false);
+              }
+
+            } catch (e) {
+              showMessage('loginMessage', 'error', 'Connection error. Please try again.');
+              setLoading(loginBtn, false);
+            }
           };
-          var loading = document.getElementById("loading");
 
-          function showLoading() {
-            loading.style.display = "flex";
-          }
+          // Enter key for login
+          loginPassword.onkeypress = function(e) {
+            if (e.key === 'Enter') loginBtn.click();
+          };
 
-          function showError(msg) {
-            errorBox.style.display = "block";
-            errorBox.textContent = msg;
-          }
+          // ============================================
+          // REGISTER
+          // ============================================
+          var registerBtn = document.getElementById('registerBtn');
+          var regName = document.getElementById('regName');
+          var regEmail = document.getElementById('regEmail');
+          var regConfirm = document.getElementById('regConfirm');
+
+          registerBtn.onclick = async function() {
+            clearMessages();
+
+            var name = regName.value.trim();
+            var email = regEmail.value.trim();
+            var password = regPassword.value;
+            var confirm = regConfirm.value;
+
+            if (!name || !email || !password || !confirm) {
+              showMessage('registerMessage', 'error', 'Please fill all fields');
+              return;
+            }
+
+            if (password !== confirm) {
+              showMessage('registerMessage', 'error', 'Passwords do not match');
+              return;
+            }
+
+            if (password.length < 6) {
+              showMessage('registerMessage', 'error', 'Password must be at least 6 characters');
+              return;
+            }
+
+            setLoading(registerBtn, true);
+
+            try {
+              var result = await window.anvil.server.call('register_user', email, password, name);
+
+              if (result.success) {
+                showMessage('registerMessage', 'success', result.message);
+                regName.value = '';
+                regEmail.value = '';
+                regPassword.value = '';
+                regConfirm.value = '';
+                strengthBar.className = 'password-strength-bar';
+              } else {
+                showMessage('registerMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              showMessage('registerMessage', 'error', 'Connection error. Please try again.');
+            }
+
+            setLoading(registerBtn, false);
+          };
+
+          // ============================================
+          // SETUP ADMIN
+          // ============================================
+          var setupBtn = document.getElementById('setupBtn');
+          var adminName = document.getElementById('adminName');
+          var adminEmail = document.getElementById('adminEmail');
+          var adminPassword = document.getElementById('adminPassword');
+
+          setupBtn.onclick = async function() {
+            clearMessages();
+
+            var name = adminName.value.trim();
+            var email = adminEmail.value.trim();
+            var password = adminPassword.value;
+
+            if (!name || !email || !password) {
+              showMessage('setupMessage', 'error', 'Please fill all fields');
+              return;
+            }
+
+            if (password.length < 6) {
+              showMessage('setupMessage', 'error', 'Password must be at least 6 characters');
+              return;
+            }
+
+            setLoading(setupBtn, true);
+
+            try {
+              var result = await window.anvil.server.call('setup_initial_admin', email, password, name);
+
+              if (result.success) {
+                showMessage('setupMessage', 'success', result.message + ' You can now login.');
+
+                setTimeout(function() {
+                  setupForm.classList.remove('active');
+                  loginForm.classList.add('active');
+                  document.querySelector('.auth-tabs').style.display = 'flex';
+                  document.getElementById('setupLink').style.display = 'none';
+                  loginEmail.value = email;
+                }, 2000);
+
+              } else {
+                showMessage('setupMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              showMessage('setupMessage', 'error', 'Connection error. Please try again.');
+            }
+
+            setLoading(setupBtn, false);
+          };
 
         })();
       </script>

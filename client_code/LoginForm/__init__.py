@@ -6,21 +6,26 @@ import anvil.tables.query as q
 from anvil.tables import app_tables
 import anvil.js
 
+
 class LoginForm(LoginFormTemplate):
-  def __init__(self, **properties):
-    self.init_components(**properties)
+    def __init__(self, **properties):
+        self.init_components(**properties)
 
-    # افحص الهـاش أول ما الفورم يفتح
-    self.check_route()
+        # Check route on load
+        self.check_route()
 
-    # اسمع أي تغيير في الـ URL
-    anvil.js.window.addEventListener("hashchange", self.on_hash_change)
+        # Listen for hash changes
+        anvil.js.window.addEventListener("hashchange", self.on_hash_change)
 
-  def on_hash_change(self, event):
-    self.check_route()
+    def on_hash_change(self, event):
+        self.check_route()
 
-  def check_route(self):
-    hash_val = anvil.js.window.location.hash
+    def check_route(self):
+        hash_val = anvil.js.window.location.hash
 
-    if hash_val == "#launcher":
-      open_form('LauncherForm')
+        if hash_val == "#launcher":
+            open_form('LauncherForm')
+        elif hash_val == "#calculator":
+            open_form('CalculatorForm')
+        elif hash_val == "#admin":
+            open_form('AdminPanel')

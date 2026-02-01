@@ -1,5 +1,5 @@
 // ========================================
-// quotations.js
+// quotations.js - WITH SEARCH, PAGINATION & LOADING
 // ========================================
 
 (function () {
@@ -10,33 +10,38 @@
   window.LOADING_FROM_QUOTATION = false;
   window.QUOTATION_LOCKED = false;
 
+  // Pagination state
+  var currentPage = 1;
+  var totalPages = 1;
+  var searchQuery = '';
+  var allQuotations = [];
+
   // ----------------------------------------
   // Helpers
   // ----------------------------------------
-
   function byId(id) {
     return document.getElementById(id);
   }
 
   function getField(record, names) {
-    for (let n of names) {
-      if (record[n] !== undefined && record[n] !== null) {
-        return record[n];
+    for (var i = 0; i < names.length; i++) {
+      if (record[names[i]] !== undefined && record[names[i]] !== null) {
+        return record[names[i]];
       }
     }
     return "";
   }
 
   function getCylinderValue(record, base, i) {
-    const keys = [
-      `${base}${i}`,
-      `${base} ${i}`,
-      `${base}_${i}`,
-      `${base}-${i}`,
-      `${base} (${i})`
+    var keys = [
+      base + i,
+      base + " " + i,
+      base + "_" + i,
+      base + "-" + i,
+      base + " (" + i + ")"
     ];
-    for (let k of keys) {
-      const v = record[k];
+    for (var j = 0; j < keys.length; j++) {
+      var v = record[keys[j]];
       if (v !== undefined && v !== null && v !== "") {
         return v;
       }
@@ -45,14 +50,14 @@
   }
 
   function setValue(id, value) {
-    const el = byId(id);
+    var el = byId(id);
     if (el) el.value = value ?? "";
   }
 
   function setCheckbox(id, value) {
-    const el = byId(id);
+    var el = byId(id);
     if (!el) return;
-    const v = String(value || "").trim().toUpperCase();
+    var v = String(value || "").trim().toUpperCase();
     el.checked = (v === "YES" || v === "TRUE");
   }
 
@@ -61,22 +66,106 @@
     if (window.updateCustomSelect) {
       window.updateCustomSelect(id, value);
     } else {
-      const el = byId(id);
+      var el = byId(id);
       if (el) el.value = value;
     }
   }
 
   // ----------------------------------------
+  // Loading indicator
+  // ----------------------------------------
+  function showLoading(container) {
+    container.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:40px;"><div style="display:inline-block;width:30px;height:30px;border:3px solid #e0e0e0;border-top-color:#667eea;border-radius:50%;animation:spin 0.8s linear infinite;"></div><p style="margin-top:10px;color:#666;">Loading...</p></td></tr>';
+  }
+
+  // ----------------------------------------
+  // Search & Filter
+  // ----------------------------------------
+  function filterQuotations(data, query) {
+    if (!query) return data;
+    query = query.toLowerCase();
+    return data.filter(function(r) {
+      var name = (r["Client Name"] || "").toLowerCase();
+      var company = (r["Company"] || "").toLowerCase();
+      var qNum = String(r["Quotation#"] || "");
+      var model = (r["Model"] || "").toLowerCase();
+      return name.indexOf(query) !== -1 ||
+             company.indexOf(query) !== -1 ||
+             qNum.indexOf(query) !== -1 ||
+             model.indexOf(query) !== -1;
+    });
+  }
+
+  function renderQuotationList(data, list, page) {
+    var perPage = 10;
+    var filtered = filterQuotations(data, searchQuery);
+    totalPages = Math.ceil(filtered.length / perPage) || 1;
+    currentPage = Math.min(page, totalPages);
+
+    var start = (currentPage - 1) * perPage;
+    var pageData = filtered.slice(start, start + perPage);
+
+    list.innerHTML = "";
+
+    if (pageData.length === 0) {
+      list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
+      return;
+    }
+
+    pageData.forEach(function(r) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td>' + (r["Client Name"] || "") + '</td>' +
+        '<td>' + (r["Quotation#"] || "") + '</td>' +
+        '<td>' + (r["Date"] || "") + '</td>';
+      tr.style.cursor = "pointer";
+      tr.ondblclick = function() {
+        window.loadQuotationFromOverlay(r);
+        hideOverlay();
+      };
+      list.appendChild(tr);
+    });
+
+    updatePagination();
+  }
+
+  function updatePagination() {
+    var pagination = byId("quotationPagination");
+    if (!pagination) return;
+
+    pagination.innerHTML =
+      '<button ' + (currentPage <= 1 ? 'disabled' : '') + ' onclick="window.quotationPrevPage()">Prev</button>' +
+      '<span style="padding:0 15px;">Page ' + currentPage + ' of ' + totalPages + '</span>' +
+      '<button ' + (currentPage >= totalPages ? 'disabled' : '') + ' onclick="window.quotationNextPage()">Next</button>';
+  }
+
+  window.quotationPrevPage = function() {
+    if (currentPage > 1) {
+      renderQuotationList(allQuotations, byId("quotationList"), currentPage - 1);
+    }
+  };
+
+  window.quotationNextPage = function() {
+    if (currentPage < totalPages) {
+      renderQuotationList(allQuotations, byId("quotationList"), currentPage + 1);
+    }
+  };
+
+  window.searchQuotationsOverlay = function(query) {
+    searchQuery = query;
+    renderQuotationList(allQuotations, byId("quotationList"), 1);
+  };
+
+  // ----------------------------------------
   // Load quotation into form
   // ----------------------------------------
-
   window.loadQuotationFromOverlay = function (record) {
     if (!record) return;
 
     window.LOADING_FROM_QUOTATION = true;
     window.cylindersInitialized = false;
 
-    // -------- Client data
+    // Client data
     setValue("client_code", record["Client Code"]);
     setValue("Quotation#", record["Quotation#"]);
     setValue("Date", record["Date"]);
@@ -92,8 +181,8 @@
     setValue("Agreed Price", record["Agreed Price"]);
     setValue("Notes", record["Notes"]);
 
-    // -------- Machine selects
-    const machineTypeValue =
+    // Machine selects
+    var machineTypeValue =
       record["machine type"] ??
       record["Machine type"] ??
       record["machine_type"] ??
@@ -105,7 +194,7 @@
     setSelect("Material", record["Material"]);
     setSelect("Winder", window.mapWinder?.(record["Winder"]) || record["Winder"]);
 
-    // -------- Options
+    // Options
     [
       "Video inspection",
       "PLC",
@@ -114,21 +203,21 @@
       "Hydraulic Station Unwind",
       "Pneumatic Rewind",
       "Surface Rewind"
-    ].forEach(id => setCheckbox(id, record[id]));
+    ].forEach(function(id) { setCheckbox(id, record[id]); });
 
-    // -------- Clear cylinders first
-    for (let i = 1; i <= 12; i++) {
-      setValue(`Size in CM${i}`, "");
-      setValue(`Count${i}`, "");
+    // Clear cylinders first
+    for (var i = 1; i <= 12; i++) {
+      setValue("Size in CM" + i, "");
+      setValue("Count" + i, "");
     }
 
-    // -------- Fill cylinders (delayed to avoid race with calculator)
-    setTimeout(() => {
-      for (let i = 1; i <= 12; i++) {
-        const size  = getCylinderValue(record, "Size in CM", i);
-        const count = getCylinderValue(record, "Count", i);
-        if (size) setValue(`Size in CM${i}`, size);
-        if (count) setValue(`Count${i}`, count);
+    // Fill cylinders (delayed)
+    setTimeout(function() {
+      for (var i = 1; i <= 12; i++) {
+        var size = getCylinderValue(record, "Size in CM", i);
+        var count = getCylinderValue(record, "Count", i);
+        if (size) setValue("Size in CM" + i, size);
+        if (count) setValue("Count" + i, count);
       }
 
       window.cylindersInitialized = true;
@@ -140,61 +229,83 @@
   };
 
   // ----------------------------------------
+  // Overlay control
+  // ----------------------------------------
+  function hideOverlay() {
+    var overlay = byId("quotationOverlay");
+    if (overlay) overlay.style.display = "none";
+  }
+
+  // ----------------------------------------
   // Quotation overlay (search)
   // ----------------------------------------
-
   (function initQuotationOverlay() {
 
     function tryInit() {
-      const overlay  = byId("quotationOverlay");
-      const closeBtn = byId("btnCloseOverlay");
-      const list     = byId("quotationList");
-      const openBtn  = byId("btn_search_quotation");
+      var overlay = byId("quotationOverlay");
+      var closeBtn = byId("btnCloseOverlay");
+      var list = byId("quotationList");
+      var openBtn = byId("btn_search_quotation");
+      var searchInput = byId("quotationSearchInput");
 
       if (!overlay || !list || !openBtn) {
         setTimeout(tryInit, 100);
         return;
       }
 
+      // Add search input if not exists
+      if (!searchInput) {
+        var header = overlay.querySelector(".overlay-header") || overlay.querySelector("h3")?.parentNode;
+        if (header) {
+          var searchDiv = document.createElement("div");
+          searchDiv.style.cssText = "margin:15px 0;";
+          searchDiv.innerHTML = '<input type="text" id="quotationSearchInput" placeholder="Search quotations..." style="width:100%;padding:10px 15px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;">';
+          header.appendChild(searchDiv);
+
+          // Add pagination container
+          var paginationDiv = document.createElement("div");
+          paginationDiv.id = "quotationPagination";
+          paginationDiv.style.cssText = "text-align:center;padding:15px;border-top:1px solid #eee;";
+          overlay.querySelector(".overlay-content")?.appendChild(paginationDiv) ||
+            overlay.appendChild(paginationDiv);
+        }
+      }
+
+      // Search input event
+      var newSearchInput = byId("quotationSearchInput");
+      if (newSearchInput) {
+        newSearchInput.oninput = function() {
+          window.searchQuotationsOverlay(this.value);
+        };
+      }
+
       function show() {
         overlay.style.display = "flex";
       }
 
-      function hide() {
-        overlay.style.display = "none";
-      }
+      if (closeBtn) closeBtn.onclick = hideOverlay;
 
-      if (closeBtn) closeBtn.onclick = hide;
-
-      openBtn.onclick = async () => {
-        list.innerHTML = "";
-
-        const data = await window.getQuotationsForOverlay?.();
-        if (!data || !data.length) {
-          showAlert(
-            "error",
-            "Validation Error",
-            "Missing required data. Please check inputs."
-          );
-
-          return;
-        }
-
-        data.forEach(r => {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${r["Client Name"] || ""}</td>
-            <td>${r["Quotation#"] || ""}</td>
-            <td>${r["Date"] || ""}</td>
-          `;
-          tr.ondblclick = () => {
-            window.loadQuotationFromOverlay(r);
-            hide();
-          };
-          list.appendChild(tr);
-        });
-
+      openBtn.onclick = async function() {
         show();
+        showLoading(list);
+        searchQuery = '';
+        if (newSearchInput) newSearchInput.value = '';
+
+        try {
+          var result = await window.getQuotationsForOverlay?.();
+
+          if (!result || (result.data && result.data.length === 0) || (Array.isArray(result) && result.length === 0)) {
+            list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
+            return;
+          }
+
+          // Handle both old format (array) and new format (object with data)
+          allQuotations = result.data || result;
+          renderQuotationList(allQuotations, list, 1);
+        } catch (e) {
+          console.error("Error loading quotations:", e);
+          list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#c62828;">Error loading quotations</td></tr>';
+        }
       };
     }
 

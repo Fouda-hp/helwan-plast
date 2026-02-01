@@ -1,268 +1,366 @@
 allow_embedding: false
 correct_dependency_ids: {}
 db_schema:
+  users:
+    client: none
+    server: full
+    title: USERS
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: user_id
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: email
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: password_hash
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: full_name
+      type: string
+    - admin_ui: {order: 4, width: 200}
+      name: role
+      type: string
+    - admin_ui: {order: 5, width: 200}
+      name: is_approved
+      type: bool
+    - admin_ui: {order: 6, width: 200}
+      name: is_active
+      type: bool
+    - admin_ui: {order: 7, width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {order: 8, width: 200}
+      name: approved_by
+      type: string
+    - admin_ui: {order: 9, width: 200}
+      name: approved_at
+      type: datetime
+    - admin_ui: {order: 10, width: 200}
+      name: last_login
+      type: datetime
+    - admin_ui: {order: 11, width: 200}
+      name: login_attempts
+      type: number
+    - admin_ui: {order: 12, width: 200}
+      name: locked_until
+      type: datetime
+
+  audit_log:
+    client: none
+    server: full
+    title: AUDIT_LOG
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: log_id
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: timestamp
+      type: datetime
+    - admin_ui: {order: 2, width: 200}
+      name: user_email
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: action
+      type: string
+    - admin_ui: {order: 4, width: 200}
+      name: table_name
+      type: string
+    - admin_ui: {order: 5, width: 200}
+      name: record_id
+      type: string
+    - admin_ui: {order: 6, width: 200}
+      name: old_data
+      type: string
+    - admin_ui: {order: 7, width: 200}
+      name: new_data
+      type: string
+    - admin_ui: {order: 8, width: 200}
+      name: ip_address
+      type: string
+
   clients:
     client: none
     columns:
-    - admin_ui: {order: 0, width: 200}
-      name: Source
+    - admin_ui: {order: -9, width: 200}
+      name: Client Code
       type: string
-    - admin_ui: {order: -1, width: 200}
-      name: Sales Rep
-      type: string
-    - admin_ui: {order: -2, width: 200}
-      name: Email
-      type: string
-    - admin_ui: {order: -3, width: 200}
-      name: Address
-      type: string
-    - admin_ui: {order: -4, width: 200}
-      name: Country
-      type: string
-    - admin_ui: {order: -5, width: 200}
-      name: Phone
+    - admin_ui: {order: -8, width: 200}
+      name: Date
+      type: date
+    - admin_ui: {order: -7, width: 200}
+      name: Client Name
       type: string
     - admin_ui: {order: -6, width: 200}
       name: Company
       type: string
-    - admin_ui: {order: -7, width: 200}
-      name: Client Name
+    - admin_ui: {order: -5, width: 200}
+      name: Phone
       type: string
-    - admin_ui: {order: -8, width: 200}
-      name: Date
+    - admin_ui: {order: -4, width: 200}
+      name: Country
       type: string
-    - admin_ui: {order: -9, width: 200}
-      name: Client Code
+    - admin_ui: {order: -3, width: 200}
+      name: Address
       type: string
+    - admin_ui: {order: -2, width: 200}
+      name: Email
+      type: string
+    - admin_ui: {order: -1, width: 200}
+      name: Sales Rep
+      type: string
+    - admin_ui: {order: 0, width: 200}
+      name: Source
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: is_deleted
+      type: bool
+    - admin_ui: {order: 2, width: 200}
+      name: deleted_at
+      type: datetime
+    - admin_ui: {order: 3, width: 200}
+      name: deleted_by
+      type: string
+    - admin_ui: {order: 4, width: 200}
+      name: created_by
+      type: string
+    - admin_ui: {order: 5, width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {order: 6, width: 200}
+      name: updated_by
+      type: string
+    - admin_ui: {order: 7, width: 200}
+      name: updated_at
+      type: datetime
     server: full
     title: CLIENTS
+
   quotations:
-    client: full
+    client: none
     columns:
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 0, width: 200}
       name: Client Code
-      type: number
+      type: string
     - admin_ui: {order: 1, width: 200}
       name: Quotation#
       type: number
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 2, width: 200}
       name: Date
       type: date
-    - admin_ui: {width: 200}
-      name: Client Name
-      type: string
-    - admin_ui: {width: 200}
-      name: Company
-      type: string
-    - admin_ui: {width: 200}
-      name: Phone
-      type: string
-    - admin_ui: {width: 200}
-      name: Country
-      type: string
-    - admin_ui: {order: 7, width: 200}
-      name: Address
-      type: string
-    - admin_ui: {width: 200}
-      name: Email
-      type: string
-    - admin_ui: {width: 200}
-      name: Sales Rep
-      type: string
-    - admin_ui: {width: 200}
-      name: Source
-      type: string
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 3, width: 200}
       name: Given Price
       type: number
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 4, width: 200}
       name: Agreed Price
       type: number
-    - admin_ui: {order: 14, width: 200}
+    - admin_ui: {order: 5, width: 200}
       name: Model
       type: string
-    - admin_ui: {order: 15, width: 200}
+    - admin_ui: {order: 6, width: 200}
       name: Machine type
       type: string
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 7, width: 200}
       name: Number of colors
       type: number
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 8, width: 200}
       name: Machine width
       type: number
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 9, width: 200}
       name: Material
       type: string
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 10, width: 200}
       name: Winder
       type: string
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 11, width: 200}
       name: Video inspection
       type: string
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 12, width: 200}
       name: PLC
       type: string
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 13, width: 200}
       name: Pneumatic Unwind
       type: string
-    - admin_ui: {width: 200}
-      name: Pneumatic Rewind
-      type: string
-    - admin_ui: {width: 200}
-      name: Surface Rewind
-      type: string
-    - admin_ui: {width: 200}
-      name: Slitter
-      type: string
-    - admin_ui: {width: 200}
-      name: Standard Machine FOB cost
-      type: string
-    - admin_ui: {order: 26.125, width: 200}
-      name: Machine FOB cost With Cylinders
-      type: string
-    - admin_ui: {width: 200}
-      name: FOB price for over seas clients
-      type: number
-    - admin_ui: {width: 200}
-      name: Exchange Rate
-      type: number
-    - admin_ui: {order: 30, width: 200}
-      name: In Stock
-      type: number
-    - admin_ui: {order: 31, width: 200}
-      name: New Order
-      type: number
-    - admin_ui: {order: 64.25, width: 200}
-      name: Overseas clients
-      type: string
-    - admin_ui: {order: 65, width: 200}
+    - admin_ui: {order: 14, width: 200}
       name: Hydraulic Station Unwind
       type: string
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 15, width: 200}
+      name: Pneumatic Rewind
+      type: string
+    - admin_ui: {order: 16, width: 200}
+      name: Surface Rewind
+      type: string
+    - admin_ui: {order: 17, width: 200}
+      name: Slitter
+      type: string
+    - admin_ui: {order: 18, width: 200}
+      name: Standard Machine FOB cost
+      type: string
+    - admin_ui: {order: 19, width: 200}
+      name: Machine FOB cost With Cylinders
+      type: string
+    - admin_ui: {order: 20, width: 200}
+      name: FOB price for over seas clients
+      type: number
+    - admin_ui: {order: 21, width: 200}
+      name: Exchange Rate
+      type: number
+    - admin_ui: {order: 22, width: 200}
+      name: In Stock
+      type: number
+    - admin_ui: {order: 23, width: 200}
+      name: New Order
+      type: number
+    - admin_ui: {order: 24, width: 200}
+      name: Overseas clients
+      type: string
+    - admin_ui: {order: 25, width: 200}
       name: Contract
       type: string
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 26, width: 200}
       name: Expected delivery time
       type: date
-    - admin_ui: {order: 33.078125, width: 200}
-      name: Size in CM1
-      type: string
-    - admin_ui: {order: 35.15625, width: 200}
-      name: Count1
-      type: string
-    - admin_ui: {order: 47.625, width: 200}
-      name: Cost1
-      type: string
-    - admin_ui: {order: 55.9375, width: 200}
-      name: Size in CM2
-      type: string
-    - admin_ui: {order: 60.09375, width: 200}
-      name: Count2
-      type: string
-    - admin_ui: {order: 62.171875, width: 200}
-      name: Cost2
-      type: string
-    - admin_ui: {order: 63.2109375, width: 200}
-      name: Size in CM3
-      type: string
-    - admin_ui: {order: 63.73046875, width: 200}
-      name: Count3
-      type: string
-    - admin_ui: {order: 63.990234375, width: 200}
-      name: Cost3
-      type: string
-    - admin_ui: {order: 64.1201171875, width: 200}
-      name: Size in CM4
-      type: string
-    - admin_ui: {order: 64.18505859375, width: 200}
-      name: Count4
-      type: string
-    - admin_ui: {order: 64.217529296875, width: 200}
-      name: Cost4
-      type: string
-    - admin_ui: {order: 64.2337646484375, width: 200}
-      name: Size in CM5
-      type: string
-    - admin_ui: {order: 64.24188232421875, width: 200}
-      name: Count5
-      type: string
-    - admin_ui: {order: 64.24594116210938, width: 200}
-      name: Cost5
-      type: string
-    - admin_ui: {order: 64.24797058105469, width: 200}
-      name: Size in CM6
-      type: string
-    - admin_ui: {order: 64.24898529052734, width: 200}
-      name: Count6
-      type: string
-    - admin_ui: {order: 64.24949264526367, width: 200}
-      name: Cost6
-      type: string
-    - admin_ui: {order: 64.24974632263184, width: 200}
-      name: Size in CM7
-      type: string
-    - admin_ui: {order: 64.24987316131592, width: 200}
-      name: Count7
-      type: string
-    - admin_ui: {order: 64.24993658065796, width: 200}
-      name: Cost7
-      type: string
-    - admin_ui: {order: 64.24996829032898, width: 200}
-      name: Size in CM8
-      type: string
-    - admin_ui: {order: 64.24998414516449, width: 200}
-      name: Count8
-      type: string
-    - admin_ui: {order: 64.24999207258224, width: 200}
-      name: Cost8
-      type: string
-    - admin_ui: {order: 64.24999603629112, width: 200}
-      name: Size in CM9
-      type: string
-    - admin_ui: {order: 64.24999801814556, width: 200}
-      name: Count9
-      type: string
-    - admin_ui: {order: 64.24999900907278, width: 200}
-      name: Cost9
-      type: string
-    - admin_ui: {order: 64.24999950453639, width: 200}
-      name: Size in CM10
-      type: string
-    - admin_ui: {order: 64.2499997522682, width: 200}
-      name: Count10
-      type: string
-    - admin_ui: {order: 64.2499998761341, width: 200}
-      name: Cost10
-      type: string
-    - admin_ui: {order: 64.24999993806705, width: 200}
-      name: Size in CM11
-      type: string
-    - admin_ui: {order: 64.24999996903352, width: 200}
-      name: Count11
-      type: string
-    - admin_ui: {order: 64.24999998451676, width: 200}
-      name: Cost11
-      type: string
-    - admin_ui: {order: 64.24999999225838, width: 200}
-      name: Size in CM12
-      type: string
-    - admin_ui: {order: 64.24999999612919, width: 200}
-      name: Count12
-      type: string
-    - admin_ui: {order: 64.2499999980646, width: 200}
-      name: Cost12
-      type: string
-    - admin_ui: {order: 13.5, width: 200}
+    - admin_ui: {order: 27, width: 200}
       name: Notes
       type: string
-    - admin_ui: {order: 68.5, width: 200}
+    - admin_ui: {order: 28, width: 200}
       name: Pricing Mode
       type: string
+    - admin_ui: {order: 29, width: 200}
+      name: Size in CM1
+      type: string
+    - admin_ui: {order: 30, width: 200}
+      name: Count1
+      type: string
+    - admin_ui: {order: 31, width: 200}
+      name: Cost1
+      type: string
+    - admin_ui: {order: 32, width: 200}
+      name: Size in CM2
+      type: string
+    - admin_ui: {order: 33, width: 200}
+      name: Count2
+      type: string
+    - admin_ui: {order: 34, width: 200}
+      name: Cost2
+      type: string
+    - admin_ui: {order: 35, width: 200}
+      name: Size in CM3
+      type: string
+    - admin_ui: {order: 36, width: 200}
+      name: Count3
+      type: string
+    - admin_ui: {order: 37, width: 200}
+      name: Cost3
+      type: string
+    - admin_ui: {order: 38, width: 200}
+      name: Size in CM4
+      type: string
+    - admin_ui: {order: 39, width: 200}
+      name: Count4
+      type: string
+    - admin_ui: {order: 40, width: 200}
+      name: Cost4
+      type: string
+    - admin_ui: {order: 41, width: 200}
+      name: Size in CM5
+      type: string
+    - admin_ui: {order: 42, width: 200}
+      name: Count5
+      type: string
+    - admin_ui: {order: 43, width: 200}
+      name: Cost5
+      type: string
+    - admin_ui: {order: 44, width: 200}
+      name: Size in CM6
+      type: string
+    - admin_ui: {order: 45, width: 200}
+      name: Count6
+      type: string
+    - admin_ui: {order: 46, width: 200}
+      name: Cost6
+      type: string
+    - admin_ui: {order: 47, width: 200}
+      name: Size in CM7
+      type: string
+    - admin_ui: {order: 48, width: 200}
+      name: Count7
+      type: string
+    - admin_ui: {order: 49, width: 200}
+      name: Cost7
+      type: string
+    - admin_ui: {order: 50, width: 200}
+      name: Size in CM8
+      type: string
+    - admin_ui: {order: 51, width: 200}
+      name: Count8
+      type: string
+    - admin_ui: {order: 52, width: 200}
+      name: Cost8
+      type: string
+    - admin_ui: {order: 53, width: 200}
+      name: Size in CM9
+      type: string
+    - admin_ui: {order: 54, width: 200}
+      name: Count9
+      type: string
+    - admin_ui: {order: 55, width: 200}
+      name: Cost9
+      type: string
+    - admin_ui: {order: 56, width: 200}
+      name: Size in CM10
+      type: string
+    - admin_ui: {order: 57, width: 200}
+      name: Count10
+      type: string
+    - admin_ui: {order: 58, width: 200}
+      name: Cost10
+      type: string
+    - admin_ui: {order: 59, width: 200}
+      name: Size in CM11
+      type: string
+    - admin_ui: {order: 60, width: 200}
+      name: Count11
+      type: string
+    - admin_ui: {order: 61, width: 200}
+      name: Cost11
+      type: string
+    - admin_ui: {order: 62, width: 200}
+      name: Size in CM12
+      type: string
+    - admin_ui: {order: 63, width: 200}
+      name: Count12
+      type: string
+    - admin_ui: {order: 64, width: 200}
+      name: Cost12
+      type: string
+    - admin_ui: {order: 65, width: 200}
+      name: is_deleted
+      type: bool
+    - admin_ui: {order: 66, width: 200}
+      name: deleted_at
+      type: datetime
+    - admin_ui: {order: 67, width: 200}
+      name: deleted_by
+      type: string
+    - admin_ui: {order: 68, width: 200}
+      name: created_by
+      type: string
+    - admin_ui: {order: 69, width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {order: 70, width: 200}
+      name: updated_by
+      type: string
+    - admin_ui: {order: 71, width: 200}
+      name: updated_at
+      type: datetime
     server: full
-    title: quotations
+    title: QUOTATIONS
+
 dependencies: []
-metadata: {logo_img: 'asset:helwan_logo-logo.png', title: Printer Sestem}
-name: 60% Backup
+metadata: {logo_img: 'asset:helwan_logo-logo.png', title: Helwan Plast - Printer System}
+name: Helwan Plast System
 package_name: Helwan_Plast
 runtime_options:
   client_version: '3'

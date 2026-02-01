@@ -229,10 +229,6 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
           checkDuplicateSizes();
           triggerFullRecalculation();
         });
-        sizeInput.addEventListener("input", () => {
-          checkDuplicateSizes();
-          triggerFullRecalculation();
-        });
 
 
         sizeInput.addEventListener("blur", () => {

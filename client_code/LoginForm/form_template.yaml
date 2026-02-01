@@ -599,7 +599,7 @@ container:
             setLoading(loginBtn, true);
 
             try {
-              var result = await window.anvil.server.call('login_user', email, password);
+              var result = await window.loginUser(email, password);
 
               if (result.success) {
                 // Store session
@@ -670,7 +670,7 @@ container:
             setLoading(registerBtn, true);
 
             try {
-              var result = await window.anvil.server.call('register_user', email, password, name);
+              var result = await window.registerUser(email, password, name);
 
               if (result.success) {
                 showMessage('registerMessage', 'success', result.message);
@@ -720,7 +720,7 @@ container:
             setLoading(setupBtn, true);
 
             try {
-              var result = await window.anvil.server.call('setup_initial_admin', email, password, name);
+              var result = await window.setupAdmin(email, password, name);
 
               if (result.success) {
                 showMessage('setupMessage', 'success', result.message + ' You can now login.');

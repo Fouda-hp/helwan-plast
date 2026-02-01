@@ -11,6 +11,11 @@ class LoginForm(LoginFormTemplate):
     def __init__(self, **properties):
         self.init_components(**properties)
 
+        # Expose Python functions to JavaScript
+        anvil.js.window.loginUser = self.login_user
+        anvil.js.window.registerUser = self.register_user
+        anvil.js.window.setupAdmin = self.setup_admin
+
         # Check route on load
         self.check_route()
 
@@ -29,3 +34,30 @@ class LoginForm(LoginFormTemplate):
             open_form('CalculatorForm')
         elif hash_val == "#admin":
             open_form('AdminPanel')
+
+    # =========================================
+    # Bridge functions for JavaScript
+    # =========================================
+    def login_user(self, email, password):
+        """Login user - called from JavaScript"""
+        try:
+            result = anvil.server.call('login_user', email, password)
+            return result
+        except Exception as e:
+            return {'success': False, 'message': f'Error: {str(e)}'}
+
+    def register_user(self, email, password, full_name):
+        """Register user - called from JavaScript"""
+        try:
+            result = anvil.server.call('register_user', email, password, full_name)
+            return result
+        except Exception as e:
+            return {'success': False, 'message': f'Error: {str(e)}'}
+
+    def setup_admin(self, email, password, full_name):
+        """Setup initial admin - called from JavaScript"""
+        try:
+            result = anvil.server.call('setup_initial_admin', email, password, full_name)
+            return result
+        except Exception as e:
+            return {'success': False, 'message': f'Error: {str(e)}'}

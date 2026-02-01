@@ -348,12 +348,10 @@ def get_pending_users(token_or_email):
 
 
 @anvil.server.callable
-def approve_user(token, user_id, role='sales'):
+def approve_user(token_or_email, user_id, role='sales'):
     """Approve user registration (admin only)"""
 
-    session = validate_session(token)
-
-    if not session or session.get('role') != 'admin':
+    if not is_admin(token_or_email) and not is_admin_by_email(token_or_email):
         return {'success': False, 'message': 'Admin access required'}
 
     user = app_tables.users.get(user_id=user_id)
@@ -361,29 +359,30 @@ def approve_user(token, user_id, role='sales'):
     if not user:
         return {'success': False, 'message': 'User not found'}
 
+    # Get admin email
+    admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
+
     user.update(
         is_approved=True,
         role=role,
-        approved_by=session['email'],
+        approved_by=admin_email,
         approved_at=datetime.now()
     )
 
     log_audit('APPROVE_USER', 'users', user_id, None, {
         'email': user['email'],
         'role': role,
-        'approved_by': session['email']
+        'approved_by': admin_email
     })
 
     return {'success': True, 'message': 'User approved successfully'}
 
 
 @anvil.server.callable
-def reject_user(token, user_id):
+def reject_user(token_or_email, user_id):
     """Reject user registration (admin only)"""
 
-    session = validate_session(token)
-
-    if not session or session.get('role') != 'admin':
+    if not is_admin(token_or_email) and not is_admin_by_email(token_or_email):
         return {'success': False, 'message': 'Admin access required'}
 
     user = app_tables.users.get(user_id=user_id)
@@ -394,19 +393,20 @@ def reject_user(token, user_id):
     email = user['email']
     user.delete()
 
+    admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
     log_audit('REJECT_USER', 'users', user_id, None, {
         'email': email,
-        'rejected_by': session['email']
+        'rejected_by': admin_email
     })
 
     return {'success': True, 'message': 'User rejected'}
 
 
 @anvil.server.callable
-def get_all_users(token):
+def get_all_users(token_or_email):
     """Get all users (admin only)"""
 
-    if not is_admin(token):
+    if not is_admin(token_or_email) and not is_admin_by_email(token_or_email):
         return {'success': False, 'message': 'Admin access required'}
 
     users = []
@@ -426,12 +426,10 @@ def get_all_users(token):
 
 
 @anvil.server.callable
-def update_user_role(token, user_id, new_role):
+def update_user_role(token_or_email, user_id, new_role):
     """Update user role (admin only)"""
 
-    session = validate_session(token)
-
-    if not session or session.get('role') != 'admin':
+    if not is_admin(token_or_email) and not is_admin_by_email(token_or_email):
         return {'success': False, 'message': 'Admin access required'}
 
     if new_role not in ROLES:
@@ -442,23 +440,22 @@ def update_user_role(token, user_id, new_role):
     if not user:
         return {'success': False, 'message': 'User not found'}
 
+    admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
     old_role = user['role']
     user.update(role=new_role)
 
     log_audit('UPDATE_ROLE', 'users', user_id,
               {'role': old_role},
-              {'role': new_role, 'updated_by': session['email']})
+              {'role': new_role, 'updated_by': admin_email})
 
     return {'success': True, 'message': 'Role updated successfully'}
 
 
 @anvil.server.callable
-def toggle_user_active(token, user_id):
+def toggle_user_active(token_or_email, user_id):
     """Activate/Deactivate user (admin only)"""
 
-    session = validate_session(token)
-
-    if not session or session.get('role') != 'admin':
+    if not is_admin(token_or_email) and not is_admin_by_email(token_or_email):
         return {'success': False, 'message': 'Admin access required'}
 
     user = app_tables.users.get(user_id=user_id)
@@ -466,8 +463,10 @@ def toggle_user_active(token, user_id):
     if not user:
         return {'success': False, 'message': 'User not found'}
 
+    admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
+
     # Prevent self-deactivation
-    if user['email'] == session['email']:
+    if user['email'] == admin_email:
         return {'success': False, 'message': 'Cannot deactivate your own account'}
 
     new_status = not user['is_active']
@@ -476,7 +475,7 @@ def toggle_user_active(token, user_id):
     action = 'ACTIVATE_USER' if new_status else 'DEACTIVATE_USER'
     log_audit(action, 'users', user_id, None, {
         'email': user['email'],
-        'by': session['email']
+        'by': admin_email
     })
 
     return {
@@ -486,12 +485,10 @@ def toggle_user_active(token, user_id):
 
 
 @anvil.server.callable
-def reset_user_password(token, user_id, new_password):
+def reset_user_password(token_or_email, user_id, new_password):
     """Reset user password (admin only)"""
 
-    session = validate_session(token)
-
-    if not session or session.get('role') != 'admin':
+    if not is_admin(token_or_email) and not is_admin_by_email(token_or_email):
         return {'success': False, 'message': 'Admin access required'}
 
     if not new_password or len(new_password) < 6:
@@ -627,10 +624,10 @@ def log_audit(action, table_name, record_id, old_data, new_data, user_email=None
 
 
 @anvil.server.callable
-def get_audit_logs(token, limit=100, offset=0, filters=None):
+def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
     """Get audit logs (admin only)"""
 
-    if not is_admin(token):
+    if not is_admin(token_or_email) and not is_admin_by_email(token_or_email):
         return {'success': False, 'message': 'Admin access required'}
 
     logs = []

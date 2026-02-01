@@ -614,14 +614,26 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False):
 
     rows = []
     for r in page_rows:
-        # Get client data
-        client = app_tables.clients.get(**{"Client Code": str(r['Client Code'])})
+        # Get client data - try multiple ways
+        client = None
+        client_code = r.get('Client Code') or r.get('client_code') or ''
+
+        if client_code:
+            try:
+                client = app_tables.clients.get(**{"Client Code": str(client_code)})
+            except:
+                client = None
+
+        # Also try to get Client Name directly from quotation if stored there
+        client_name = r.get('Client Name') or r.get('client_name') or ''
+        if not client_name and client:
+            client_name = client.get('Client Name', '')
 
         row_data = {
-            "Client Code": r["Client Code"],
+            "Client Code": client_code,
             "Quotation#": r["Quotation#"],
             "Date": r["Date"].isoformat() if r["Date"] else "",
-            "Client Name": client["Client Name"] if client else "",
+            "Client Name": client_name if client_name else (client["Client Name"] if client else ""),
             "Company": client["Company"] if client else "",
             "Phone": client["Phone"] if client else "",
             "Country": client["Country"] if client else "",

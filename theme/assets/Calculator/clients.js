@@ -234,6 +234,14 @@
 
           // Handle both old format (array) and new format (object with data)
           allClients = result.data || result;
+
+          // Sort by Client Code ascending
+          allClients.sort(function(a, b) {
+            var codeA = parseInt(a["Client Code"]) || 0;
+            var codeB = parseInt(b["Client Code"]) || 0;
+            return codeA - codeB;
+          });
+
           renderClientList(allClients, list, 1);
         } catch (e) {
           console.error("Error loading clients:", e);

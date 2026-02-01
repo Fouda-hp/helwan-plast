@@ -75,7 +75,7 @@
   // Loading indicator
   // ----------------------------------------
   function showLoading(container) {
-    container.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:40px;"><div style="display:inline-block;width:30px;height:30px;border:3px solid #e0e0e0;border-top-color:#667eea;border-radius:50%;animation:spin 0.8s linear infinite;"></div><p style="margin-top:10px;color:#666;">Loading...</p></td></tr>';
+    container.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;"><div style="display:inline-block;width:30px;height:30px;border:3px solid #e0e0e0;border-top-color:#667eea;border-radius:50%;animation:spin 0.8s linear infinite;"></div><p style="margin-top:10px;color:#666;">Loading...</p></td></tr>';
   }
 
   // ----------------------------------------
@@ -85,14 +85,16 @@
     if (!query) return data;
     query = query.toLowerCase();
     return data.filter(function(r) {
-      var name = (r["Client Name"] || "").toLowerCase();
+      var name = (r["Client Name"] || r["client_name"] || "").toLowerCase();
       var company = (r["Company"] || "").toLowerCase();
-      var qNum = String(r["Quotation#"] || "");
+      var qNum = String(r["Quotation#"] || "").toLowerCase();
       var model = (r["Model"] || "").toLowerCase();
+      var clientCode = String(r["Client Code"] || r["client_code"] || "").toLowerCase();
       return name.indexOf(query) !== -1 ||
              company.indexOf(query) !== -1 ||
              qNum.indexOf(query) !== -1 ||
-             model.indexOf(query) !== -1;
+             model.indexOf(query) !== -1 ||
+             clientCode.indexOf(query) !== -1;
     });
   }
 
@@ -108,15 +110,19 @@
     list.innerHTML = "";
 
     if (pageData.length === 0) {
-      list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
+      list.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
       return;
     }
 
     pageData.forEach(function(r) {
       var tr = document.createElement("tr");
+      // Get client name from multiple possible fields
+      var clientName = r["Client Name"] || r["client_name"] || "";
+      var clientCode = r["Client Code"] || r["client_code"] || "";
       tr.innerHTML =
-        '<td>' + (r["Client Name"] || "") + '</td>' +
         '<td>' + (r["Quotation#"] || "") + '</td>' +
+        '<td>' + clientCode + '</td>' +
+        '<td>' + clientName + '</td>' +
         '<td>' + (r["Date"] || "") + '</td>';
       tr.style.cursor = "pointer";
       tr.ondblclick = function() {
@@ -295,16 +301,24 @@
           var result = await window.getQuotationsForOverlay?.();
 
           if (!result || (result.data && result.data.length === 0) || (Array.isArray(result) && result.length === 0)) {
-            list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
+            list.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
             return;
           }
 
           // Handle both old format (array) and new format (object with data)
           allQuotations = result.data || result;
+
+          // Sort by Quotation# ascending
+          allQuotations.sort(function(a, b) {
+            var numA = parseInt(a["Quotation#"]) || 0;
+            var numB = parseInt(b["Quotation#"]) || 0;
+            return numA - numB;
+          });
+
           renderQuotationList(allQuotations, list, 1);
         } catch (e) {
           console.error("Error loading quotations:", e);
-          list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#c62828;">Error loading quotations</td></tr>';
+          list.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#c62828;">Error loading quotations</td></tr>';
         }
       };
     }

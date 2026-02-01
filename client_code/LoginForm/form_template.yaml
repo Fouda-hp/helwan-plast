@@ -624,7 +624,9 @@ container:
               }
 
             } catch (e) {
-              showMessage('loginMessage', 'error', 'Connection error. Please try again.');
+              console.error('Login error:', e);
+              var errorMsg = e.message || e.toString() || 'Connection error';
+              showMessage('loginMessage', 'error', 'Error: ' + errorMsg);
               setLoading(loginBtn, false);
             }
           };
@@ -682,7 +684,9 @@ container:
               }
 
             } catch (e) {
-              showMessage('registerMessage', 'error', 'Connection error. Please try again.');
+              console.error('Register error:', e);
+              var errorMsg = e.message || e.toString() || 'Connection error';
+              showMessage('registerMessage', 'error', 'Error: ' + errorMsg);
             }
 
             setLoading(registerBtn, false);
@@ -734,7 +738,9 @@ container:
               }
 
             } catch (e) {
-              showMessage('setupMessage', 'error', 'Connection error. Please try again.');
+              console.error('Setup admin error:', e);
+              var errorMsg = e.message || e.toString() || 'Connection error';
+              showMessage('setupMessage', 'error', 'Error: ' + errorMsg);
             }
 
             setLoading(setupBtn, false);

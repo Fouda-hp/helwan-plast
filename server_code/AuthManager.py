@@ -43,6 +43,56 @@ except ImportError:
   EMAIL_SERVICE_AVAILABLE = False
 
 # =========================================================
+# Gmail SMTP Configuration
+# =========================================================
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_EMAIL = "mohamedadelfouda@gmail.com"
+SMTP_PASSWORD = "mcum qlob fscc fctb"
+
+def get_smtp_credentials():
+  """الحصول على بيانات SMTP"""
+  return SMTP_EMAIL, SMTP_PASSWORD
+
+def send_email_smtp(to_email, subject, html_body):
+  """
+  إرسال إيميل عبر Gmail SMTP
+  """
+  smtp_email, smtp_password = get_smtp_credentials()
+
+  if not smtp_email or not smtp_password:
+    logger.error("SMTP credentials not configured")
+    return False
+
+  try:
+    # إنشاء الرسالة
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = f"Helwan Plast System <{smtp_email}>"
+    msg['To'] = to_email
+
+    # إضافة HTML body
+    html_part = MIMEText(html_body, 'html', 'utf-8')
+    msg.attach(html_part)
+
+    # الاتصال بـ SMTP server وإرسال الإيميل
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+      server.starttls()
+      server.login(smtp_email, smtp_password)
+      server.sendmail(smtp_email, to_email, msg.as_string())
+
+    logger.info(f"Email sent successfully via SMTP to {to_email}")
+    return True
+
+  except Exception as e:
+    logger.error(f"Failed to send email via SMTP to {to_email}: {e}")
+    return False
+
+# =========================================================
 # إعداد نظام التسجيل (Logging)
 # =========================================================
 logging.basicConfig(level=logging.INFO)
@@ -202,14 +252,15 @@ def send_approval_email(user_email, user_name, role, approved=True):
             </div>
             """
 
-    anvil.email.send(
-      to=user_email,
-      subject=subject,
-      html=html_body
-    )
+    # استخدام SMTP بدلاً من Anvil Email
+    result = send_email_smtp(user_email, subject, html_body)
 
-    logger.info(f"Email sent to {user_email}: {'Approval' if approved else 'Rejection'}")
-    return True
+    if result:
+      logger.info(f"Email sent to {user_email}: {'Approval' if approved else 'Rejection'}")
+      return True
+    else:
+      logger.error(f"Failed to send email to {user_email}")
+      return False
 
   except Exception as e:
     logger.error(f"Failed to send email to {user_email}: {e}")
@@ -291,14 +342,15 @@ def send_otp_email(user_email, user_name, otp, purpose='verification'):
         </div>
         """
 
-    anvil.email.send(
-      to=user_email,
-      subject=p['subject'],
-      html=html_body
-    )
+    # استخدام SMTP بدلاً من Anvil Email
+    result = send_email_smtp(user_email, p['subject'], html_body)
 
-    logger.info(f"OTP email sent to {user_email} for {purpose}")
-    return True
+    if result:
+      logger.info(f"OTP email sent to {user_email} for {purpose}")
+      return True
+    else:
+      logger.error(f"Failed to send OTP email to {user_email}")
+      return False
 
   except Exception as e:
     logger.error(f"Failed to send OTP email to {user_email}: {e}")
@@ -416,14 +468,15 @@ def send_admin_notification_email(new_user_email, new_user_name, new_user_phone)
         </div>
         """
 
-    anvil.email.send(
-      to=ADMIN_NOTIFICATION_EMAIL,
-      subject=subject,
-      html=html_body
-    )
+    # استخدام SMTP بدلاً من Anvil Email
+    result = send_email_smtp(ADMIN_NOTIFICATION_EMAIL, subject, html_body)
 
-    logger.info(f"Admin notification email sent for new user: {new_user_email}")
-    return True
+    if result:
+      logger.info(f"Admin notification email sent for new user: {new_user_email}")
+      return True
+    else:
+      logger.error(f"Failed to send admin notification email")
+      return False
 
   except Exception as e:
     logger.error(f"Failed to send admin notification email: {e}")

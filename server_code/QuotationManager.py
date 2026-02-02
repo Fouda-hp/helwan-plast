@@ -987,7 +987,7 @@ def import_clients_data(data_list, token_or_email):
     """
     استيراد بيانات العملاء من CSV/Excel
     يتطلب صلاحية الأدمن
-    يدعم أسماء الأعمدة القديمة والجديدة
+    يستورد كل الأعمدة الموجودة ديناميكياً
     """
     # التحقق من صلاحية الأدمن باستخدام require_admin الموحدة
     is_authorized, error = AuthManager.require_admin(token_or_email)
@@ -999,6 +999,12 @@ def import_clients_data(data_list, token_or_email):
 
     imported = 0
     errors = []
+
+    # الحصول على أسماء الأعمدة الموجودة في جدول clients
+    try:
+        table_columns = [col.name for col in app_tables.clients.list_columns()]
+    except:
+        table_columns = []
 
     for i, original_row in enumerate(data_list):
         try:
@@ -1023,25 +1029,31 @@ def import_clients_data(data_list, token_or_email):
                     errors.append(f"Row {i+1}: Phone {phone} already exists")
                     continue
 
-            app_tables.clients.add_row(
-                **{
-                    'Client Code': str(client_code),
-                    'Client Name': safe_strip(row.get('Client Name')),
-                    'Company': safe_strip(row.get('Company')),
-                    'Phone': phone,
-                    'Country': safe_strip(row.get('Country')),
-                    'Address': safe_strip(row.get('Address')),
-                    'Email': safe_strip(row.get('Email')),
-                    'Sales Rep': safe_strip(row.get('Sales Rep')),
-                    'Source': safe_strip(row.get('Source')),
-                    'Date': datetime.now().date(),
-                    'is_deleted': False,
-                    'created_by': user_email,
-                    'created_at': datetime.now(),
-                    'updated_by': user_email,
-                    'updated_at': datetime.now()
-                }
-            )
+            # بناء البيانات ديناميكياً
+            data = {
+                'Client Code': str(client_code),
+                'Date': datetime.now().date(),
+                'is_deleted': False,
+                'created_by': user_email,
+                'created_at': datetime.now(),
+                'updated_by': user_email,
+                'updated_at': datetime.now()
+            }
+
+            # إضافة كل الأعمدة الموجودة في الـ CSV
+            for col_name, col_value in row.items():
+                # تخطي الأعمدة الخاصة
+                if col_name in ['Client Code', 'Date', 'is_deleted', 'created_by', 'created_at', 'updated_by', 'updated_at']:
+                    continue
+
+                # التحقق من وجود العمود في الجدول
+                if table_columns and col_name not in table_columns:
+                    continue  # تخطي الأعمدة غير الموجودة في الجدول
+
+                # تنظيف القيمة
+                data[col_name] = safe_strip(col_value)
+
+            app_tables.clients.add_row(**data)
             imported += 1
 
         except Exception as e:
@@ -1114,12 +1126,18 @@ def _normalize_row(row):
     return normalized
 
 
+def _is_price_column(col_name):
+    """التحقق إذا كان العمود يحتوي على سعر"""
+    price_keywords = ['price', 'cost', 'fob', 'stock', 'order', 'rate', 'Price', 'Cost', 'FOB', 'Stock', 'Order', 'Rate']
+    return any(keyword in col_name for keyword in price_keywords)
+
+
 @anvil.server.callable
 def import_quotations_data(data_list, token_or_email):
     """
     استيراد بيانات العروض من CSV/Excel
     يتطلب صلاحية الأدمن
-    يدعم أسماء الأعمدة القديمة والجديدة
+    يستورد كل الأعمدة الموجودة ديناميكياً
     """
     # التحقق من صلاحية الأدمن باستخدام require_admin الموحدة
     is_authorized, error = AuthManager.require_admin(token_or_email)
@@ -1131,6 +1149,12 @@ def import_quotations_data(data_list, token_or_email):
 
     imported = 0
     errors = []
+
+    # الحصول على أسماء الأعمدة الموجودة في جدول quotations
+    try:
+        table_columns = [col.name for col in app_tables.quotations.list_columns()]
+    except:
+        table_columns = []
 
     for i, original_row in enumerate(data_list):
         try:
@@ -1147,43 +1171,9 @@ def import_quotations_data(data_list, token_or_email):
                 errors.append(f"Row {i+1}: Quotation# {quotation_number} already exists")
                 continue
 
-            # تنظيف الأسعار
-            given_price = _clean_price(row.get('Given Price'))
-            agreed_price = _clean_price(row.get('Agreed Price'))
-            in_stock = _clean_price(row.get('In Stock'))
-            new_order = _clean_price(row.get('New Order'))
-            fob_cost = _clean_price(row.get('Standard Machine FOB cost'))
-            fob_with_cyl = _clean_price(row.get('Machine FOB cost With Cylinders'))
-            fob_overseas = _clean_price(row.get('FOB price for over seas clients'))
-            exchange_rate = _clean_price(row.get('Exchange Rate'))
-
+            # بناء البيانات ديناميكياً - استيراد كل الأعمدة
             data = {
                 'Quotation#': int(quotation_number),
-                'Client Code': safe_strip(row.get('Client Code')),
-                'Client Name': safe_strip(row.get('Client Name')),
-                'Date': datetime.now().date(),
-                'Model': safe_strip(row.get('Model')),
-                'Machine type': safe_strip(row.get('Machine type')),
-                'Number of colors': safe_int(row.get('Number of colors')),
-                'Machine width': safe_int(row.get('Machine width')),
-                'Material': safe_strip(row.get('Material')),
-                'Winder': safe_strip(row.get('Winder')),
-                'Given Price': given_price,
-                'Agreed Price': agreed_price,
-                'In Stock': in_stock,
-                'New Order': new_order,
-                'Standard Machine FOB cost': fob_cost,
-                'Machine FOB cost With Cylinders': fob_with_cyl,
-                'FOB price for over seas clients': fob_overseas,
-                'Exchange Rate': exchange_rate,
-                'Notes': safe_strip(row.get('Notes')),
-                'Video inspection': safe_strip(row.get('Video inspection')),
-                'PLC': safe_strip(row.get('PLC')),
-                'Slitter': safe_strip(row.get('Slitter')),
-                'Pneumatic Unwind': safe_strip(row.get('Pneumatic Unwind')),
-                'Pneumatic Rewind': safe_strip(row.get('Pneumatic Rewind')),
-                'Surface Rewind': safe_strip(row.get('Surface Rewind')),
-                'Hydraulic Station Unwind': safe_strip(row.get('Hydraulic Station Unwind')),
                 'is_deleted': False,
                 'created_by': user_email,
                 'created_at': datetime.now(),
@@ -1191,17 +1181,30 @@ def import_quotations_data(data_list, token_or_email):
                 'updated_at': datetime.now()
             }
 
-            # إضافة بيانات الأسطوانات
-            for j in range(1, 13):
-                size_key = f'Size in CM{j}' if j > 1 else 'Size in CM1'
-                count_key = f'Count{j}' if j > 1 else 'Count1'
-                cost_key = f'Cost{j}' if j > 1 else 'Cost1'
+            # إضافة كل الأعمدة الموجودة في الـ CSV
+            for col_name, col_value in row.items():
+                # تخطي الأعمدة الخاصة
+                if col_name in ['Quotation#', 'is_deleted', 'created_by', 'created_at', 'updated_by', 'updated_at']:
+                    continue
 
-                data[f'Size in CM{j}'] = safe_strip(row.get(size_key))
-                data[f'Count{j}'] = safe_strip(row.get(count_key))
-                # تنظيف تكلفة الأسطوانة
-                cost_val = _clean_price(row.get(cost_key))
-                data[f'Cost{j}'] = str(cost_val) if cost_val else ''
+                # التحقق من وجود العمود في الجدول
+                if table_columns and col_name not in table_columns:
+                    continue  # تخطي الأعمدة غير الموجودة في الجدول
+
+                # تنظيف القيمة حسب نوعها
+                if _is_price_column(col_name):
+                    # تنظيف الأسعار
+                    cleaned_value = _clean_price(col_value)
+                    data[col_name] = cleaned_value
+                elif col_name == 'Number of colors' or col_name == 'Machine width':
+                    # الأرقام الصحيحة
+                    data[col_name] = safe_int(col_value)
+                elif col_name == 'Date':
+                    # استخدام التاريخ الحالي
+                    data[col_name] = datetime.now().date()
+                else:
+                    # النصوص العادية
+                    data[col_name] = safe_strip(col_value)
 
             app_tables.quotations.add_row(**data)
             imported += 1

@@ -19,6 +19,23 @@ container:
           overflow: hidden;
         }
 
+        /* إخفاء شريط Anvil */
+        .anvil-root-container > .anvil-app-header,
+        .anvil-root-container > header,
+        .structure-header,
+        [class*="anvil-banner"],
+        [class*="anvil-header"],
+        .anvil-role-page-header {
+          display: none !important;
+        }
+
+        .anvil-root-container,
+        .anvil-container,
+        .column-panel {
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
         /* ================= LAYOUT ================= */
         .admin-container {
           display: flex;

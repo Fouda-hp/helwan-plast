@@ -34,6 +34,14 @@ class LauncherForm(LauncherFormTemplate):
 
         if hash_val == "#calculator":
             open_form('CalculatorForm')
+        elif hash_val == "#clients":
+            open_form('ClientListForm')
+        elif hash_val == "#database":
+            open_form('DatabaseForm')
+        elif hash_val == "#admin":
+            open_form('AdminPanel')
+        elif hash_val == "#import":
+            open_form('DataImportForm')
 
     def form_show(self, **event_args):
         """عند عرض النموذج"""

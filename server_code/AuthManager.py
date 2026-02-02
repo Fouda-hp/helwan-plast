@@ -1144,6 +1144,108 @@ def check_admin_exists():
 
 
 @anvil.server.callable
+def diagnose_admin_access(email, token=None):
+    """
+    تشخيص مشكلة صلاحيات الأدمن
+    تُرجع معلومات مفصلة للتصحيح
+    """
+    result = {
+        'email_check': None,
+        'user_found': False,
+        'user_details': None,
+        'session_check': None,
+        'is_admin_check': False,
+        'recommendations': []
+    }
+
+    # التحقق من المستخدم بالبريد
+    if email:
+        user = app_tables.users.get(email=email.lower())
+        if user:
+            result['user_found'] = True
+            result['user_details'] = {
+                'email': user['email'],
+                'role': user['role'],
+                'is_active': user['is_active'],
+                'is_approved': user['is_approved']
+            }
+
+            # التحقق من المشاكل
+            if user['role'] != 'admin':
+                result['recommendations'].append(f"User role is '{user['role']}', not 'admin'")
+            if not user['is_active']:
+                result['recommendations'].append("User is NOT active")
+            if not user['is_approved']:
+                result['recommendations'].append("User is NOT approved")
+
+            # التحقق النهائي
+            result['is_admin_check'] = (
+                user['role'] == 'admin' and
+                user['is_active'] and
+                user['is_approved']
+            )
+        else:
+            result['recommendations'].append(f"No user found with email: {email}")
+
+    # التحقق من الـ token
+    if token:
+        session = validate_session(token)
+        if session:
+            result['session_check'] = {
+                'valid': True,
+                'email': session.get('email'),
+                'role': session.get('role'),
+                'expires': str(session.get('expires'))
+            }
+        else:
+            result['session_check'] = {'valid': False}
+            result['recommendations'].append("Session token is invalid or expired")
+
+    return result
+
+
+@anvil.server.callable
+def fix_admin_user(email, secret_key):
+    """
+    إصلاح حساب الأدمن - تأكيد أنه is_active و is_approved
+    المفتاح: HELWAN_RESET_2024
+    """
+    EMERGENCY_KEY = "HELWAN_RESET_2024"
+
+    if secret_key != EMERGENCY_KEY:
+        return {'success': False, 'message': 'Invalid secret key'}
+
+    email = str(email or '').strip().lower()
+    user = app_tables.users.get(email=email)
+
+    if not user:
+        return {'success': False, 'message': 'User not found'}
+
+    if user['role'] != 'admin':
+        return {'success': False, 'message': 'This user is not an admin'}
+
+    # إصلاح الحساب
+    user.update(
+        is_active=True,
+        is_approved=True,
+        login_attempts=0,
+        locked_until=None
+    )
+
+    logger.info(f"Admin user fixed: {email}")
+    return {
+        'success': True,
+        'message': 'Admin user fixed successfully',
+        'user': {
+            'email': user['email'],
+            'role': user['role'],
+            'is_active': user['is_active'],
+            'is_approved': user['is_approved']
+        }
+    }
+
+
+@anvil.server.callable
 def reset_admin_password_emergency(email, new_password, secret_key):
     """
     إعادة تعيين كلمة مرور الأدمن (للطوارئ فقط)

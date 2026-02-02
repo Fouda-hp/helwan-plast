@@ -531,6 +531,13 @@ runtime_options:
   legacy_features: {__dict__: true, bootstrap3: true, class_names: true, root_container: true}
   server_spec: {base: python310-minimal}
   version: 3
+secrets:
+  new_secret:
+    type: secret
+    value: {O5XPEYEXWJG4ZLHG: hOscFys56bnWbnKlv1Iqk0wHckLCivQoRhe8oBwpjJ+YGHXYnIrLamHRLmrV+rMI2CSfTzmfkM86uyA6MUwsKIPd0NmbjoWcr/a0/xi9iRVon39+5kLjgthKJv7/0018+i0ApHRkY3PI82m170ZCDf4MzPRPhFRNHJARUt8bBV+uO87ZUK3e}
+  new_secret_2:
+    type: secret
+    value: {O5XPEYEXWJG4ZLHG: dV4qUWpb5zwUGS/6Eg7BRXSq2RTV5DmiBmOq8WfTmzHmnH7QpKxBdCG/5O5wv+ExLrV6lV44fa/0xlWtHADJ428lo8vJw8LfkZ6lzqx4q8vtqMTw9HNFRRRcRXUx9adre+nWBHdnzXDTw7rYVBhRY65J0XbOc+sx1NjdUH4V0rba4Q==}
 services:
 - client_config: {enable_v2: true}
   server_config: {auto_create_missing_columns: true}
@@ -538,5 +545,11 @@ services:
 - client_config: {}
   server_config: {custom_smtp: false, test_mode: false}
   source: /runtime/services/anvil/email.yml
+- client_config: {}
+  server_config: {}
+  source: /runtime/services/anvil/secrets.yml
+- client_config: {}
+  server_config: {enc_delegation_refresh_token: 6arN/pmLdyRJmdRiIRX58eVfChBtsDcpTVejD82uGFYclZp3+qYgQIaoz3Ee+yyrAxGeBRhS08d9hX6l90PRb4363yPo2PKdx17+zqfLZQTeBnmkBcxRjZB8+1e5EWcGIVeBsWIDvNGYIbAse6L0oK51voH1iglfOQGRjSYHXcxAwqxgvXbFZeJTpHX15xEwBuY6vLgQ5KYOBGrD9u0y8PUVYNQBKCfHltzqSEr1yORES9aJFZ8RGiLNbYEqQZopYjcFgz16+rZaj+47XVsDxxrH/ImRlj0AQ6cWdj4HDp43WS5hyERIaufMP8FOxg==}
+  source: /runtime/services/google.yml
 startup: {module: LoginForm, type: form}
 startup_form: null

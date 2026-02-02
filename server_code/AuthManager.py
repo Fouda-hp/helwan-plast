@@ -13,13 +13,27 @@ AuthManager.py - نظام المصادقة والتفويض الآمن
 
 import anvil.server
 from anvil.tables import app_tables
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 import secrets
 import json
 import uuid
 import re
 import logging
+
+
+def get_utc_now():
+    """الحصول على الوقت الحالي بـ UTC timezone"""
+    return datetime.now(timezone.utc)
+
+
+def make_aware(dt):
+    """تحويل datetime naive إلى aware (UTC)"""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 # محاولة استيراد خدمة البريد الإلكتروني
 try:
@@ -336,9 +350,14 @@ def verify_otp(user_email, otp, purpose='verification'):
         otp_record = otp_records[0]
 
         # التحقق من انتهاء الصلاحية
-        if otp_record['expires_at'] and datetime.now() > otp_record['expires_at']:
-            otp_record.delete()
-            return False, "Code has expired"
+        expires_at = otp_record['expires_at']
+        if expires_at:
+            # تحويل التواريخ للمقارنة الصحيحة
+            now = get_utc_now()
+            expires_at = make_aware(expires_at)
+            if now > expires_at:
+                otp_record.delete()
+                return False, "Code has expired"
 
         # تحديث كمستخدم
         otp_record.update(is_used=True)

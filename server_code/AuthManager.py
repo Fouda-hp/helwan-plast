@@ -637,6 +637,10 @@ def login_user(email, password):
     # ترقية كلمة المرور من التشفير القديم إلى الجديد (إذا لزم الأمر)
     upgrade_password_hash(user, password)
 
+    # حذف جميع الجلسات القديمة لهذا المستخدم
+    for old_session in app_tables.sessions.search(user_email=email):
+        old_session.delete()
+
     # إنشاء جلسة جديدة
     token = create_session(email, user['role'], ip_address)
 

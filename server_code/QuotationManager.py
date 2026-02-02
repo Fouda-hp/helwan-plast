@@ -1129,9 +1129,21 @@ def _normalize_row(row):
 
 
 def _is_price_column(col_name):
-    """التحقق إذا كان العمود يحتوي على سعر"""
+    """التحقق إذا كان العمود يحتوي على سعر (رقم)"""
+    # هذه الأعمدة تُخزن كنص في الجدول وليس كرقم
+    text_columns = [
+        'Standard Machine FOB cost',
+        'Machine FOB cost With Cylinders',
+    ]
+    if col_name in text_columns:
+        return False
+
+    # أعمدة الـ Cost للأسطوانات أيضاً تُخزن كنص
+    if col_name.startswith('Cost') and any(c.isdigit() for c in col_name):
+        return False
+
     col_lower = col_name.lower()
-    price_keywords = ['price', 'cost', 'fob', 'stock', 'order', 'rate', 'exchange']
+    price_keywords = ['price', 'stock', 'order', 'rate', 'exchange']
     return any(keyword in col_lower for keyword in price_keywords)
 
 

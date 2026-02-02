@@ -322,18 +322,21 @@ def verify_otp(user_email, otp, purpose='verification'):
     التحقق من صحة OTP
     """
     try:
-        otp_record = app_tables.otp_codes.get(
+        # البحث عن OTP باستخدام search بدلاً من get لتجنب أخطاء "More than one row"
+        otp_records = list(app_tables.otp_codes.search(
             user_email=user_email,
             otp_code=otp,
             purpose=purpose,
             is_used=False
-        )
+        ))
 
-        if not otp_record:
+        if not otp_records:
             return False, "Invalid or expired code"
 
+        otp_record = otp_records[0]
+
         # التحقق من انتهاء الصلاحية
-        if datetime.now() > otp_record['expires_at']:
+        if otp_record['expires_at'] and datetime.now() > otp_record['expires_at']:
             otp_record.delete()
             return False, "Code has expired"
 
@@ -344,7 +347,7 @@ def verify_otp(user_email, otp, purpose='verification'):
 
     except Exception as e:
         logger.error(f"OTP verification error: {e}")
-        return False, "Verification failed"
+        return False, f"Verification failed: {str(e)}"
 
 
 def send_admin_notification_email(new_user_email, new_user_name, new_user_phone):

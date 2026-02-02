@@ -368,4 +368,8 @@
     if (el) el.addEventListener("change", buildModelCode);
   });
 
+  // Export mapping functions to window for use in quotations.js
+  window.mapMachineType = mapMachineType;
+  window.mapWinder = mapWinder;
+
 })();

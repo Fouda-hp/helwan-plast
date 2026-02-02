@@ -186,21 +186,30 @@
         return;
       }
 
-      // Add search input if not exists
+      // Add search input and pagination if not exists
       if (!searchInput) {
-        var header = overlay.querySelector(".overlay-header") || overlay.querySelector("h3")?.parentNode;
-        if (header) {
+        var qoBody = overlay.querySelector(".qo-body");
+        if (qoBody) {
+          // Create search div at top
           var searchDiv = document.createElement("div");
-          searchDiv.style.cssText = "margin:15px 0;";
-          searchDiv.innerHTML = '<input type="text" id="clientSearchInput" placeholder="Search clients..." style="width:100%;padding:10px 15px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;">';
-          header.appendChild(searchDiv);
+          searchDiv.style.cssText = "margin-bottom:15px;width:100%;";
+          searchDiv.innerHTML = '<input type="text" id="clientSearchInput" placeholder="Search by client name..." style="width:100%;padding:10px 15px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;">';
+          qoBody.insertBefore(searchDiv, qoBody.firstChild);
 
-          // Add pagination container
+          // Create scrollable table container
+          var tableWrapper = document.createElement("div");
+          tableWrapper.style.cssText = "max-height:45vh;overflow-y:auto;width:100%;";
+          var table = qoBody.querySelector(".qo-table");
+          if (table) {
+            tableWrapper.appendChild(table);
+            qoBody.appendChild(tableWrapper);
+          }
+
+          // Add pagination container at bottom
           var paginationDiv = document.createElement("div");
           paginationDiv.id = "clientPagination";
-          paginationDiv.style.cssText = "text-align:center;padding:15px;border-top:1px solid #eee;";
-          overlay.querySelector(".overlay-content")?.appendChild(paginationDiv) ||
-            overlay.appendChild(paginationDiv);
+          paginationDiv.style.cssText = "text-align:center;padding:15px;border-top:1px solid #eee;margin-top:10px;";
+          qoBody.appendChild(paginationDiv);
         }
       }
 
@@ -222,7 +231,8 @@
         show();
         showLoading(list);
         searchQuery = '';
-        if (newSearchInput) newSearchInput.value = '';
+        var searchInp = byId("clientSearchInput");
+        if (searchInp) searchInp.value = '';
 
         try {
           var result = await window.getClientsForOverlay?.();

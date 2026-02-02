@@ -58,6 +58,4 @@ components:
   properties: {content: '', spacing_above: medium}
   type: RichText
 container: {type: ColumnPanel}
-custom_component: true
 is_package: true
-properties: {title: Data Import}

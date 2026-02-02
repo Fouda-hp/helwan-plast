@@ -447,5 +447,8 @@ services:
 - client_config: {enable_v2: true}
   server_config: {auto_create_missing_columns: true}
   source: /runtime/services/tables.yml
+- client_config: {}
+  server_config: {}
+  source: /runtime/services/anvil/email.yml
 startup: {module: LoginForm, type: form}
 startup_form: null

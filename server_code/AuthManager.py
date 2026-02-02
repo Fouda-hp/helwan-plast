@@ -21,6 +21,13 @@ import uuid
 import re
 import logging
 
+# محاولة استيراد خدمة البريد الإلكتروني
+try:
+    import anvil.email
+    EMAIL_SERVICE_AVAILABLE = True
+except ImportError:
+    EMAIL_SERVICE_AVAILABLE = False
+
 # =========================================================
 # إعداد نظام التسجيل (Logging)
 # =========================================================
@@ -87,6 +94,101 @@ def validate_email(email):
         return False
 
     return True
+
+
+# =========================================================
+# وظائف إرسال البريد الإلكتروني
+# =========================================================
+def send_approval_email(user_email, user_name, role, approved=True):
+    """
+    إرسال بريد إلكتروني للمستخدم عند الموافقة أو الرفض
+    """
+    if not EMAIL_SERVICE_AVAILABLE:
+        logger.warning("Email service not available. Skipping email notification.")
+        return False
+
+    try:
+        if approved:
+            subject = "Account Approved - Helwan Plast System"
+            html_body = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0;">
+                    <h1 style="color: white; margin: 0; text-align: center;">Helwan Plast System</h1>
+                </div>
+
+                <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+                    <h2 style="color: #2e7d32; margin-top: 0;">🎉 Account Approved!</h2>
+
+                    <p style="font-size: 16px; color: #333;">Dear <strong>{user_name}</strong>,</p>
+
+                    <p style="font-size: 16px; color: #333;">
+                        Your account has been approved! You can now log in to the Helwan Plast System.
+                    </p>
+
+                    <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0; font-size: 14px; color: #2e7d32;">
+                            <strong>Your Role:</strong> {role.capitalize()}
+                        </p>
+                    </div>
+
+                    <p style="font-size: 14px; color: #666;">
+                        If you have any questions, please contact the administrator.
+                    </p>
+
+                    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+                    <p style="font-size: 12px; color: #999; text-align: center;">
+                        Best regards,<br>
+                        <strong>Mohamed - Helwan Plast</strong>
+                    </p>
+                </div>
+            </div>
+            """
+        else:
+            subject = "Account Status Update - Helwan Plast System"
+            html_body = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0;">
+                    <h1 style="color: white; margin: 0; text-align: center;">Helwan Plast System</h1>
+                </div>
+
+                <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+                    <h2 style="color: #c62828; margin-top: 0;">Account Registration Status</h2>
+
+                    <p style="font-size: 16px; color: #333;">Dear <strong>{user_name}</strong>,</p>
+
+                    <p style="font-size: 16px; color: #333;">
+                        We regret to inform you that your account registration request has been declined.
+                    </p>
+
+                    <div style="background: #ffebee; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0; font-size: 14px; color: #c62828;">
+                            If you believe this was a mistake, please contact the administrator for more information.
+                        </p>
+                    </div>
+
+                    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+                    <p style="font-size: 12px; color: #999; text-align: center;">
+                        Best regards,<br>
+                        <strong>Mohamed - Helwan Plast</strong>
+                    </p>
+                </div>
+            </div>
+            """
+
+        anvil.email.send(
+            to=user_email,
+            subject=subject,
+            html=html_body
+        )
+
+        logger.info(f"Email sent to {user_email}: {'Approval' if approved else 'Rejection'}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to send email to {user_email}: {e}")
+        return False
 
 
 # =========================================================
@@ -652,16 +754,27 @@ def check_permission(token, action):
 def is_admin(token):
     """
     التحقق من أن المستخدم أدمن
+    يدعم: token الجلسة أو البريد الإلكتروني
     """
-    # أولاً: التحقق من الجلسة
+    if not token:
+        return False
+
+    # أولاً: التحقق من الجلسة في قاعدة البيانات
     session = validate_session(token)
     if session and session.get('role') == 'admin':
         return True
 
-    # ثانياً: إذا كان token هو email (fallback)
-    if token and '@' in str(token):
-        user = app_tables.users.get(email=token.lower())
-        return user and user['role'] == 'admin' and user['is_active'] and user['is_approved']
+    # ثانياً: إذا كان token هو email
+    if '@' in str(token):
+        user = app_tables.users.get(email=str(token).lower())
+        if user and user['role'] == 'admin' and user['is_active'] and user['is_approved']:
+            return True
+
+    # ثالثاً: البحث عن الجلسة بواسطة email من الجلسة
+    if session and session.get('email'):
+        user = app_tables.users.get(email=session['email'].lower())
+        if user and user['role'] == 'admin' and user['is_active'] and user['is_approved']:
+            return True
 
     return False
 
@@ -681,8 +794,37 @@ def require_admin(token_or_email):
     دالة مساعدة للتحقق من صلاحية الأدمن
     تعود tuple: (is_admin, error_response)
     """
-    if is_admin(token_or_email) or is_admin_by_email(token_or_email):
+    logger.info(f"require_admin checking: {token_or_email[:30] if token_or_email else 'None'}...")
+
+    # محاولة التحقق من كونه أدمن
+    if is_admin(token_or_email):
+        logger.info("Admin access granted via is_admin()")
         return True, None
+
+    # إذا كان بريد إلكتروني، تحقق مباشرة
+    if token_or_email and '@' in str(token_or_email):
+        if is_admin_by_email(token_or_email):
+            logger.info(f"Admin access granted via email: {token_or_email}")
+            return True, None
+
+    # محاولة استخراج البريد من الجلسة
+    session = validate_session(token_or_email)
+    if session and session.get('email'):
+        logger.info(f"Found session with email: {session['email']}")
+        if is_admin_by_email(session['email']):
+            logger.info("Admin access granted via session email")
+            return True, None
+
+    # محاولة إيجاد المستخدم بالـ token كـ user_id
+    try:
+        user_by_token = app_tables.users.get(user_id=token_or_email)
+        if user_by_token and user_by_token['role'] == 'admin' and user_by_token['is_active'] and user_by_token['is_approved']:
+            logger.info("Admin access granted via user_id")
+            return True, None
+    except:
+        pass
+
+    logger.warning(f"Admin access denied for: {token_or_email[:20] if token_or_email else 'None'}...")
     return False, {'success': False, 'message': 'Admin access required'}
 
 
@@ -748,6 +890,9 @@ def approve_user(token_or_email, user_id, role='viewer', custom_permissions=None
 
     admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
 
+    user_email = user['email']
+    user_name = user['full_name']
+
     user.update(
         is_approved=True,
         role=role,
@@ -757,15 +902,21 @@ def approve_user(token_or_email, user_id, role='viewer', custom_permissions=None
     )
 
     log_audit('APPROVE_USER', 'users', user_id, None, {
-        'email': user['email'],
+        'email': user_email,
         'role': role,
         'custom_permissions': permissions_json,
         'approved_by': admin_email
     }, admin_email, ip_address)
 
-    logger.info(f"User approved: {user['email']} with role {role}")
+    logger.info(f"User approved: {user_email} with role {role}")
 
-    return {'success': True, 'message': 'User approved successfully'}
+    # إرسال إيميل للمستخدم
+    email_sent = send_approval_email(user_email, user_name, role, approved=True)
+
+    return {
+        'success': True,
+        'message': 'User approved successfully' + (' (email sent)' if email_sent else ' (email notification failed)')
+    }
 
 
 @anvil.server.callable
@@ -783,19 +934,26 @@ def reject_user(token_or_email, user_id):
     if not user:
         return {'success': False, 'message': 'User not found'}
 
-    email = user['email']
+    user_email = user['email']
+    user_name = user['full_name']
     admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
+
+    # إرسال إيميل للمستخدم قبل الحذف
+    email_sent = send_approval_email(user_email, user_name, '', approved=False)
 
     user.delete()
 
     log_audit('REJECT_USER', 'users', user_id, None, {
-        'email': email,
+        'email': user_email,
         'rejected_by': admin_email
     }, admin_email, ip_address)
 
-    logger.info(f"User rejected: {email}")
+    logger.info(f"User rejected: {user_email}")
 
-    return {'success': True, 'message': 'User rejected'}
+    return {
+        'success': True,
+        'message': 'User rejected' + (' (email sent)' if email_sent else ' (email notification failed)')
+    }
 
 
 @anvil.server.callable

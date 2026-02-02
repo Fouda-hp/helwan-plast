@@ -110,7 +110,7 @@
     list.innerHTML = "";
 
     if (pageData.length === 0) {
-      list.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
+      list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
       return;
     }
 
@@ -118,10 +118,9 @@
       var tr = document.createElement("tr");
       // Get client name from multiple possible fields
       var clientName = r["Client Name"] || r["client_name"] || "";
-      var clientCode = r["Client Code"] || r["client_code"] || "";
+      // Hide Client Code, show only Quotation#, Client Name, Date
       tr.innerHTML =
         '<td>' + (r["Quotation#"] || "") + '</td>' +
-        '<td>' + clientCode + '</td>' +
         '<td>' + clientName + '</td>' +
         '<td>' + (r["Date"] || "") + '</td>';
       tr.style.cursor = "pointer";
@@ -259,21 +258,36 @@
         return;
       }
 
-      // Add search input if not exists
+      // Add search input and pagination if not exists
       if (!searchInput) {
-        var header = overlay.querySelector(".overlay-header") || overlay.querySelector("h3")?.parentNode;
-        if (header) {
+        var qoBody = overlay.querySelector(".qo-body");
+        if (qoBody) {
+          // Create search div at top
           var searchDiv = document.createElement("div");
-          searchDiv.style.cssText = "margin:15px 0;";
-          searchDiv.innerHTML = '<input type="text" id="quotationSearchInput" placeholder="Search quotations..." style="width:100%;padding:10px 15px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;">';
-          header.appendChild(searchDiv);
+          searchDiv.style.cssText = "margin-bottom:15px;width:100%;";
+          searchDiv.innerHTML = '<input type="text" id="quotationSearchInput" placeholder="Search by client name..." style="width:100%;padding:10px 15px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;">';
+          qoBody.insertBefore(searchDiv, qoBody.firstChild);
 
-          // Add pagination container
+          // Create scrollable table container
+          var tableWrapper = document.createElement("div");
+          tableWrapper.style.cssText = "max-height:45vh;overflow-y:auto;width:100%;";
+          var table = qoBody.querySelector(".qo-table");
+          if (table) {
+            tableWrapper.appendChild(table);
+            qoBody.appendChild(tableWrapper);
+          }
+
+          // Update table header to hide Client Code
+          var thead = table?.querySelector("thead tr");
+          if (thead) {
+            thead.innerHTML = '<th>Quotation #</th><th>Client Name</th><th>Date</th>';
+          }
+
+          // Add pagination container at bottom
           var paginationDiv = document.createElement("div");
           paginationDiv.id = "quotationPagination";
-          paginationDiv.style.cssText = "text-align:center;padding:15px;border-top:1px solid #eee;";
-          overlay.querySelector(".overlay-content")?.appendChild(paginationDiv) ||
-            overlay.appendChild(paginationDiv);
+          paginationDiv.style.cssText = "text-align:center;padding:15px;border-top:1px solid #eee;margin-top:10px;";
+          qoBody.appendChild(paginationDiv);
         }
       }
 
@@ -295,13 +309,14 @@
         show();
         showLoading(list);
         searchQuery = '';
-        if (newSearchInput) newSearchInput.value = '';
+        var searchInp = byId("quotationSearchInput");
+        if (searchInp) searchInp.value = '';
 
         try {
           var result = await window.getQuotationsForOverlay?.();
 
           if (!result || (result.data && result.data.length === 0) || (Array.isArray(result) && result.length === 0)) {
-            list.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
+            list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
             return;
           }
 
@@ -318,7 +333,7 @@
           renderQuotationList(allQuotations, list, 1);
         } catch (e) {
           console.error("Error loading quotations:", e);
-          list.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#c62828;">Error loading quotations</td></tr>';
+          list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#c62828;">Error loading quotations</td></tr>';
         }
       };
     }

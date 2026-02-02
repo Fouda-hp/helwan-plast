@@ -694,6 +694,90 @@ container:
             overflow-x: auto;
           }
         }
+
+        /* ================= AUTO-FIT FOR LAPTOPS 13"+ ================= */
+        @media (min-width: 1024px) {
+          .main-content {
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+          }
+
+          .panel-body {
+            max-height: calc(100vh - 250px);
+            overflow-y: auto;
+          }
+
+          .stats-grid {
+            flex-shrink: 0;
+          }
+
+          .page-header {
+            flex-shrink: 0;
+          }
+        }
+
+        /* ================= SMALL LAPTOP OPTIMIZATION ================= */
+        @media (min-width: 1024px) and (max-height: 800px) {
+          .page-header {
+            margin-bottom: 15px;
+          }
+
+          .page-header h1 {
+            font-size: 22px;
+          }
+
+          .stats-grid {
+            gap: 12px;
+            margin-bottom: 15px;
+          }
+
+          .stat-card {
+            padding: 16px;
+          }
+
+          .stat-card .value {
+            font-size: 24px;
+          }
+
+          .stat-card .icon {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 10px;
+          }
+
+          .panel-header {
+            padding: 15px 20px;
+          }
+
+          .panel-body {
+            padding: 15px;
+            max-height: calc(100vh - 280px);
+          }
+
+          .data-table th,
+          .data-table td {
+            padding: 10px 12px;
+            font-size: 13px;
+          }
+
+          .sidebar-header {
+            padding: 12px;
+          }
+
+          .sidebar-header img {
+            height: 40px;
+          }
+
+          .nav-item {
+            padding: 10px 15px;
+            font-size: 13px;
+          }
+
+          .sidebar-footer {
+            padding: 10px 12px;
+          }
+        }
       </style>
 
       <div class="admin-container">

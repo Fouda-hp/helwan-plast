@@ -870,7 +870,7 @@ container:
 
         /* ================= LANGUAGE SWITCHER IN SIDEBAR ================= */
         .sidebar-lang-switcher {
-          padding: 10px 15px;
+          padding: 8px 15px;
           border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
@@ -879,19 +879,26 @@ container:
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
-          padding: 10px;
-          background: rgba(102,126,234,0.2);
-          border: 1px solid rgba(102,126,234,0.3);
-          border-radius: 8px;
+          gap: 10px;
+          padding: 12px 16px;
+          background: linear-gradient(135deg, rgba(102,126,234,0.3) 0%, rgba(118,75,162,0.3) 100%);
+          border: 1px solid rgba(255,255,255,0.15);
+          border-radius: 10px;
           color: #fff;
           cursor: pointer;
-          font-size: 13px;
-          transition: all 0.2s ease;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.3s ease;
         }
 
         .lang-toggle-btn:hover {
-          background: rgba(102,126,234,0.4);
+          background: linear-gradient(135deg, rgba(102,126,234,0.5) 0%, rgba(118,75,162,0.5) 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(102,126,234,0.3);
+        }
+
+        .lang-toggle-btn .lang-flag {
+          font-size: 18px;
         }
 
         /* RTL Specific Styles */
@@ -1016,7 +1023,7 @@ container:
           <!-- Language Switcher -->
           <div class="sidebar-lang-switcher">
             <button class="lang-toggle-btn" id="adminLangBtn" onclick="toggleAdminLanguage()">
-              <span>🌐</span>
+              <span class="lang-flag" id="langFlag">🇸🇦</span>
               <span id="adminLangText">العربية</span>
             </button>
           </div>
@@ -1098,8 +1105,8 @@ container:
           <div class="panel active" id="dashboard-panel">
             <div class="page-header">
               <div>
-                <h1>Dashboard</h1>
-                <p>Welcome back! Here's what's happening today.</p>
+                <h1 id="dashboardTitle">Dashboard</h1>
+                <p id="dashboardSubtitle">Welcome back! Here's what's happening today.</p>
               </div>
             </div>
 
@@ -1109,7 +1116,7 @@ container:
                   <svg viewBox="0 0 24 24" fill="#fff"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3z"/></svg>
                 </div>
                 <div class="value" id="statClients">-</div>
-                <div class="label">Total Clients</div>
+                <div class="label" id="lblTotalClients">Total Clients</div>
               </div>
 
               <div class="stat-card">
@@ -1117,7 +1124,7 @@ container:
                   <svg viewBox="0 0 24 24" fill="#fff"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z"/></svg>
                 </div>
                 <div class="value" id="statQuotations">-</div>
-                <div class="label">Total Quotations</div>
+                <div class="label" id="lblTotalQuotations">Total Quotations</div>
               </div>
 
               <div class="stat-card">
@@ -1125,7 +1132,7 @@ container:
                   <svg viewBox="0 0 24 24" fill="#fff"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
                 </div>
                 <div class="value" id="statValue">-</div>
-                <div class="label">Total Value (EGP)</div>
+                <div class="label" id="lblTotalValue">Total Value (EGP)</div>
               </div>
 
               <div class="stat-card">
@@ -1133,7 +1140,7 @@ container:
                   <svg viewBox="0 0 24 24" fill="#fff"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
                 </div>
                 <div class="value" id="statMonthly">-</div>
-                <div class="label">This Month Quotations</div>
+                <div class="label" id="lblThisMonth">This Month Quotations</div>
               </div>
             </div>
           </div>
@@ -1141,8 +1148,8 @@ container:
           <!-- Pending Users Panel -->
           <div class="panel" id="pending-panel">
             <div class="panel-header">
-              <h3>Pending User Approvals</h3>
-              <button class="action-btn" onclick="loadPendingUsers()">Refresh</button>
+              <h3 id="pendingTitle">Pending User Approvals</h3>
+              <button class="action-btn" onclick="loadPendingUsers()" id="btnRefreshPending">Refresh</button>
             </div>
             <div class="panel-body">
               <div id="pendingContent">
@@ -1154,8 +1161,8 @@ container:
           <!-- All Users Panel -->
           <div class="panel" id="users-panel">
             <div class="panel-header">
-              <h3>All Users</h3>
-              <button class="action-btn" onclick="loadAllUsers()">Refresh</button>
+              <h3 id="usersTitle">All Users</h3>
+              <button class="action-btn" onclick="loadAllUsers()" id="btnRefreshUsers">Refresh</button>
             </div>
             <div class="panel-body">
               <div id="usersContent">
@@ -1167,7 +1174,7 @@ container:
           <!-- Clients Panel -->
           <div class="panel" id="clients-panel">
             <div class="panel-header">
-              <h3>Clients Management</h3>
+              <h3 id="clientsTitle">Clients Management</h3>
             </div>
             <div class="panel-body">
               <div class="toolbar">
@@ -1175,13 +1182,13 @@ container:
                   <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                   <input type="text" id="clientSearch" placeholder="Search clients..." oninput="searchClients()">
                 </div>
-                <label class="checkbox-label">
+                <label class="checkbox-label" id="lblShowDeletedClients">
                   <input type="checkbox" id="showDeletedClients" onchange="loadClients()">
-                  Show Deleted
+                  <span id="txtShowDeleted">Show Deleted</span>
                 </label>
-                <button class="action-btn green" onclick="exportClients()">
+                <button class="action-btn green" onclick="exportClients()" id="btnExportClients">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                  Export Excel
+                  <span id="txtExportExcel">Export Excel</span>
                 </button>
               </div>
               <div id="clientsContent">
@@ -1193,7 +1200,7 @@ container:
           <!-- Quotations Panel -->
           <div class="panel" id="quotations-panel">
             <div class="panel-header">
-              <h3>Quotations Management</h3>
+              <h3 id="quotationsTitle">Quotations Management</h3>
             </div>
             <div class="panel-body">
               <div class="toolbar">
@@ -2159,7 +2166,16 @@ container:
               searchClients: 'Search clients...',
               searchQuotations: 'Search quotations...',
               showDeleted: 'Show Deleted',
-              exportExcel: 'Export Excel'
+              exportExcel: 'Export',
+              // Dashboard Labels
+              lblTotalClients: 'Total Clients',
+              lblTotalQuotations: 'Total Quotations',
+              lblTotalValue: 'Total Value (EGP)',
+              lblThisMonth: 'This Month Quotations',
+              // Buttons
+              btnRefresh: 'Refresh',
+              txtShowDeleted: 'Show Deleted',
+              txtExportExcel: 'Export'
             },
             ar: {
               sidebarTitle: 'لوحة التحكم',
@@ -2211,7 +2227,63 @@ container:
               searchClients: 'البحث في العملاء...',
               searchQuotations: 'البحث في العروض...',
               showDeleted: 'عرض المحذوفين',
-              exportExcel: 'تصدير Excel'
+              exportExcel: 'تصدير',
+              // Dashboard Labels
+              dashboardTitle: 'لوحة المعلومات',
+              dashboardSubtitle: 'مرحباً بعودتك! إليك ما يحدث اليوم.',
+              lblTotalClients: 'إجمالي العملاء',
+              lblTotalQuotations: 'إجمالي العروض',
+              lblTotalValue: 'إجمالي القيمة (ج.م)',
+              lblThisMonth: 'عروض هذا الشهر',
+              // Panel Titles
+              pendingTitle: 'طلبات تسجيل المستخدمين',
+              usersTitle: 'جميع المستخدمين',
+              clientsTitle: 'إدارة العملاء',
+              quotationsTitle: 'إدارة عروض الأسعار',
+              settingsTitle: 'إعدادات النظام',
+              auditTitle: 'سجل العمليات',
+              // Buttons
+              btnRefresh: 'تحديث',
+              txtShowDeleted: 'عرض المحذوفين',
+              txtExportExcel: 'تصدير',
+              // Table Headers
+              thName: 'الاسم',
+              thEmail: 'البريد الإلكتروني',
+              thPhone: 'الهاتف',
+              thRegistered: 'تاريخ التسجيل',
+              thActions: 'الإجراءات',
+              thRole: 'الدور',
+              thStatus: 'الحالة',
+              thLastLogin: 'آخر دخول',
+              thCode: 'الكود',
+              thCompany: 'الشركة',
+              thCountry: 'الدولة',
+              thDate: 'التاريخ',
+              thClient: 'العميل',
+              thModel: 'الموديل',
+              thAgreedPrice: 'السعر المتفق',
+              // Status
+              statusActive: 'نشط',
+              statusInactive: 'غير نشط',
+              statusPending: 'قيد الانتظار',
+              statusDeleted: 'محذوف',
+              // Actions
+              approve: 'موافقة',
+              reject: 'رفض',
+              restore: 'استعادة',
+              disable: 'تعطيل',
+              enable: 'تفعيل',
+              // Empty States
+              noData: 'لا توجد بيانات',
+              noPendingApprovals: 'لا توجد طلبات انتظار',
+              allReviewed: 'تمت مراجعة جميع المستخدمين',
+              noUsersFound: 'لا يوجد مستخدمين',
+              noClientsFound: 'لا يوجد عملاء',
+              noQuotationsFound: 'لا توجد عروض أسعار',
+              // Pagination
+              page: 'صفحة',
+              of: 'من',
+              items: 'عنصر'
             }
           };
 
@@ -2224,22 +2296,51 @@ container:
             if (adminLang === 'ar') {
               document.body.classList.add('rtl');
               document.documentElement.dir = 'rtl';
+              document.documentElement.lang = 'ar';
             } else {
               document.body.classList.remove('rtl');
               document.documentElement.dir = 'ltr';
+              document.documentElement.lang = 'en';
             }
 
-            // Update sidebar text
+            // ALL translatable elements
             var textElements = [
+              // Sidebar
               'sidebarTitle', 'sidebarSubtitle', 'welcomeText', 'adminLangText',
               'navMain', 'navDashboard', 'navUserMgmt', 'navPending', 'navAllUsers',
               'navDataMgmt', 'navClients', 'navQuotations', 'navSystem', 'navSettings',
-              'navAudit', 'navTools'
+              'navAudit', 'navTools',
+              // Dashboard
+              'dashboardTitle', 'dashboardSubtitle',
+              'lblTotalClients', 'lblTotalQuotations', 'lblTotalValue', 'lblThisMonth',
+              // Panel Titles
+              'pendingTitle', 'usersTitle', 'clientsTitle', 'quotationsTitle',
+              // Buttons & Labels
+              'txtShowDeleted', 'txtExportExcel'
             ];
 
             textElements.forEach(function(id) {
               var el = document.getElementById(id);
               if (el) el.textContent = tAdmin(id);
+            });
+
+            // Update language flag
+            var langFlag = document.getElementById('langFlag');
+            if (langFlag) {
+              langFlag.textContent = adminLang === 'ar' ? '🇬🇧' : '🇸🇦';
+            }
+
+            // Update placeholders
+            var clientSearch = document.getElementById('clientSearch');
+            var quotationSearch = document.getElementById('quotationSearch');
+            if (clientSearch) clientSearch.placeholder = tAdmin('searchClients');
+            if (quotationSearch) quotationSearch.placeholder = tAdmin('searchQuotations');
+
+            // Update refresh buttons
+            document.querySelectorAll('.action-btn').forEach(function(btn) {
+              if (btn.textContent.trim() === 'Refresh' || btn.textContent.trim() === 'تحديث') {
+                btn.textContent = tAdmin('btnRefresh');
+              }
             });
           }
 
@@ -2247,8 +2348,14 @@ container:
             adminLang = adminLang === 'en' ? 'ar' : 'en';
             localStorage.setItem('hp_language', adminLang);
             applyAdminTranslations();
-            // Reload current panel to update dynamic content
+            // Reload current panel to update dynamic content with new language
             if (currentPanel === 'dashboard') loadDashboard();
+            else if (currentPanel === 'pending') loadPendingUsers();
+            else if (currentPanel === 'users') loadAllUsers();
+            else if (currentPanel === 'clients') loadClients();
+            else if (currentPanel === 'quotations') loadQuotations();
+            else if (currentPanel === 'settings') loadSettings();
+            else if (currentPanel === 'audit') loadAuditLogs();
           };
 
           // ============================================

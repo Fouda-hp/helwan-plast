@@ -384,26 +384,28 @@ container:
         .lang-btn {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 10px 16px;
-          background: rgba(255,255,255,0.15);
-          border: 1px solid rgba(255,255,255,0.25);
-          border-radius: 10px;
+          gap: 10px;
+          padding: 12px 20px;
+          background: linear-gradient(135deg, rgba(102,126,234,0.8) 0%, rgba(118,75,162,0.8) 100%);
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 12px;
           color: #fff;
           cursor: pointer;
-          font-size: 14px;
-          font-weight: 500;
+          font-size: 15px;
+          font-weight: 600;
           transition: all 0.3s ease;
           backdrop-filter: blur(10px);
+          box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
 
         .lang-btn:hover {
-          background: rgba(255,255,255,0.25);
-          transform: translateY(-2px);
+          background: linear-gradient(135deg, rgba(102,126,234,1) 0%, rgba(118,75,162,1) 100%);
+          transform: translateY(-3px);
+          box-shadow: 0 8px 25px rgba(102,126,234,0.4);
         }
 
-        .lang-btn .lang-icon {
-          font-size: 18px;
+        .lang-btn .lang-flag {
+          font-size: 20px;
         }
 
         /* ================= RTL SUPPORT ================= */
@@ -441,7 +443,7 @@ container:
         <!-- Language Switcher -->
         <div class="login-lang-switcher">
           <button class="lang-btn" id="langSwitchBtn" onclick="toggleLanguage()">
-            <span class="lang-icon">🌐</span>
+            <span class="lang-flag" id="loginLangFlag">🇸🇦</span>
             <span id="langBtnText">العربية</span>
           </button>
         </div>

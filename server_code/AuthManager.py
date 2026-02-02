@@ -1774,6 +1774,149 @@ def change_own_password(token, old_password, new_password):
 
 
 # =========================================================
+# إعادة تعيين كلمة المرور (Forgot Password)
+# =========================================================
+@anvil.server.callable
+def request_password_reset(email):
+    """
+    طلب إعادة تعيين كلمة المرور - إرسال OTP للمستخدم
+    """
+    ip_address = get_client_ip()
+
+    # التحقق من Rate Limit
+    if not check_rate_limit(ip_address, 'password_reset'):
+        return {'success': False, 'message': 'Too many requests. Please try again later.'}
+
+    email = str(email or '').strip().lower()
+
+    if not validate_email(email):
+        return {'success': False, 'message': 'Invalid email address'}
+
+    # البحث عن المستخدم
+    user = app_tables.users.get(email=email)
+
+    if not user:
+        # لا نكشف أن البريد غير موجود (للأمان)
+        return {'success': False, 'message': 'If this email exists, a verification code will be sent.'}
+
+    # التحقق من أن الحساب نشط
+    if not user['is_active']:
+        return {'success': False, 'message': 'Account is deactivated. Contact admin.'}
+
+    # إرسال OTP للمستخدم
+    otp = generate_otp()
+    store_otp(email, otp, 'password_reset')
+    email_sent = send_otp_email(email, user['full_name'], otp, 'password_reset')
+
+    if email_sent:
+        logger.info(f"Password reset OTP sent to: {email}")
+        return {
+            'success': True,
+            'message': 'Verification code sent to your email'
+        }
+    else:
+        return {
+            'success': False,
+            'message': 'Failed to send verification code. Please try again.'
+        }
+
+
+@anvil.server.callable
+def verify_password_reset_otp(email, otp):
+    """
+    التحقق من OTP لإعادة تعيين كلمة المرور
+    """
+    email = str(email or '').strip().lower()
+
+    # التحقق من OTP
+    is_valid, message = verify_otp(email, otp, 'password_reset')
+
+    if not is_valid:
+        return {'success': False, 'message': message}
+
+    # OTP صحيح - السماح بتعيين كلمة مرور جديدة
+    # نحفظ علامة تسمح بإعادة تعيين كلمة المرور
+    store_otp(email, 'VERIFIED_RESET', 'password_reset_verified')
+
+    return {
+        'success': True,
+        'message': 'Code verified successfully'
+    }
+
+
+@anvil.server.callable
+def complete_password_reset(email, new_password):
+    """
+    إتمام إعادة تعيين كلمة المرور بعد التحقق من OTP
+    """
+    ip_address = get_client_ip()
+    email = str(email or '').strip().lower()
+
+    # التحقق من أن المستخدم تحقق من OTP
+    verified_records = list(app_tables.otp_codes.search(
+        user_email=email,
+        purpose='password_reset_verified',
+        is_used=False
+    ))
+
+    if not verified_records:
+        return {'success': False, 'message': 'Please verify your email first'}
+
+    # حذف سجل التحقق
+    for record in verified_records:
+        record.delete()
+
+    # التحقق من كلمة المرور الجديدة
+    if not new_password or len(new_password) < 8:
+        return {'success': False, 'message': 'Password must be at least 8 characters'}
+
+    # التحقق من قوة كلمة المرور
+    if not re.search(r'[A-Z]', new_password):
+        return {'success': False, 'message': 'Password must contain at least one uppercase letter'}
+
+    if not re.search(r'[a-z]', new_password):
+        return {'success': False, 'message': 'Password must contain at least one lowercase letter'}
+
+    if not re.search(r'\d', new_password):
+        return {'success': False, 'message': 'Password must contain at least one number'}
+
+    # البحث عن المستخدم
+    user = app_tables.users.get(email=email)
+    if not user:
+        return {'success': False, 'message': 'User not found'}
+
+    # التحقق من سجل كلمات المرور
+    is_valid, message = check_password_history(email, new_password)
+    if not is_valid:
+        return {'success': False, 'message': message}
+
+    # تحديث كلمة المرور
+    new_hash = hash_password(new_password)
+    user.update(
+        password_hash=new_hash,
+        login_attempts=0,
+        locked_until=None
+    )
+
+    # إضافة إلى سجل كلمات المرور
+    add_to_password_history(email, new_hash)
+
+    # إنهاء جميع الجلسات القديمة
+    for session in app_tables.sessions.search(user_email=email):
+        session.update(is_active=False)
+
+    log_audit('PASSWORD_RESET', 'users', user['user_id'], None,
+              {'email': email}, email, ip_address)
+
+    logger.info(f"Password reset completed for: {email}")
+
+    return {
+        'success': True,
+        'message': 'Password reset successfully! Please login with your new password.'
+    }
+
+
+# =========================================================
 # إعداد الأدمن الأول
 # =========================================================
 @anvil.server.callable

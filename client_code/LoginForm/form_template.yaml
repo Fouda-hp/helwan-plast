@@ -481,6 +481,10 @@ container:
               <div class="btn-loader"></div>
             </button>
 
+            <div class="setup-link">
+              <a id="forgotPasswordLink">Forgot Password?</a>
+            </div>
+
             <div class="setup-link" id="setupLink">
               <a id="setupAdminLink">First time? Setup Admin Account</a>
             </div>
@@ -614,6 +618,93 @@ container:
 
             <div class="setup-link">
               <a id="backToLogin">Back to Login</a>
+            </div>
+          </div>
+
+          <!-- Forgot Password Form (Step 1 - Enter Email) -->
+          <div id="forgotPasswordForm" class="auth-form">
+            <div id="forgotMessage" class="message"></div>
+
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="font-size:48px;margin-bottom:10px;">🔑</div>
+              <h3 style="color:#1976d2;margin:0 0 8px;" id="forgotTitle">Reset Password</h3>
+              <p style="color:#666;font-size:14px;" id="forgotSubtitle">Enter your email to receive a verification code</p>
+            </div>
+
+            <div class="field">
+              <label id="lblForgotEmail">Email Address</label>
+              <input type="email" id="forgotEmail" placeholder="Enter your email">
+            </div>
+
+            <button class="auth-btn" id="sendResetCodeBtn">
+              <span class="btn-text" id="btnSendResetCode">SEND VERIFICATION CODE</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="backFromForgot">← Back to Login</a>
+            </div>
+          </div>
+
+          <!-- Forgot Password OTP Form (Step 2 - Enter OTP) -->
+          <div id="forgotOtpForm" class="auth-form">
+            <div id="forgotOtpMessage" class="message"></div>
+
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="font-size:48px;margin-bottom:10px;">🔐</div>
+              <h3 style="color:#1976d2;margin:0 0 8px;" id="forgotOtpTitle">Enter Verification Code</h3>
+              <p style="color:#666;font-size:14px;" id="forgotOtpSubtitle">Enter the code sent to your email</p>
+            </div>
+
+            <div class="field">
+              <label id="lblForgotOtp">Verification Code</label>
+              <input type="text" id="forgotOtpCode" placeholder="000000" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:8px;font-weight:bold;">
+            </div>
+
+            <button class="auth-btn" id="verifyForgotOtpBtn">
+              <span class="btn-text" id="btnVerifyForgotOtp">VERIFY CODE</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="resendForgotOtp">Didn't receive code? Resend</a>
+            </div>
+
+            <div class="setup-link" style="margin-top:10px;">
+              <a id="backFromForgotOtp">← Back</a>
+            </div>
+          </div>
+
+          <!-- Set New Password Form (Step 3) -->
+          <div id="newPasswordForm" class="auth-form">
+            <div id="newPasswordMessage" class="message"></div>
+
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="font-size:48px;margin-bottom:10px;">🔒</div>
+              <h3 style="color:#1976d2;margin:0 0 8px;" id="newPasswordTitle">Set New Password</h3>
+              <p style="color:#666;font-size:14px;" id="newPasswordSubtitle">Enter your new password</p>
+            </div>
+
+            <div class="field">
+              <label id="lblNewPassword">New Password</label>
+              <input type="password" id="newPassword" placeholder="Min 8 characters">
+              <div class="password-strength">
+                <div class="password-strength-bar" id="newPasswordStrengthBar"></div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label id="lblConfirmNewPassword">Confirm New Password</label>
+              <input type="password" id="confirmNewPassword" placeholder="Confirm your password">
+            </div>
+
+            <button class="auth-btn" id="setNewPasswordBtn" style="background:linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);">
+              <span class="btn-text" id="btnSetNewPassword">SET NEW PASSWORD</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="backFromNewPassword">← Back to Login</a>
             </div>
           </div>
 
@@ -1239,6 +1330,217 @@ container:
             }
 
             setLoading(setupBtn, false);
+          };
+
+          // ============================================
+          // FORGOT PASSWORD (User Password Reset)
+          // ============================================
+          var forgotPasswordLink = document.getElementById('forgotPasswordLink');
+          var forgotPasswordForm = document.getElementById('forgotPasswordForm');
+          var forgotOtpForm = document.getElementById('forgotOtpForm');
+          var newPasswordForm = document.getElementById('newPasswordForm');
+          var pendingResetEmail = ''; // Store email for password reset
+
+          // Show forgot password form
+          if (forgotPasswordLink) {
+            forgotPasswordLink.onclick = function() {
+              loginForm.classList.remove('active');
+              registerForm.classList.remove('active');
+              setupForm.classList.remove('active');
+              forgotPasswordForm.classList.add('active');
+              document.querySelector('.auth-tabs').style.display = 'none';
+              clearMessages();
+            };
+          }
+
+          // Back from forgot password
+          document.getElementById('backFromForgot').onclick = function() {
+            forgotPasswordForm.classList.remove('active');
+            loginForm.classList.add('active');
+            document.querySelector('.auth-tabs').style.display = 'flex';
+            clearMessages();
+          };
+
+          // Send reset code
+          var sendResetCodeBtn = document.getElementById('sendResetCodeBtn');
+          var forgotEmailInput = document.getElementById('forgotEmail');
+
+          sendResetCodeBtn.onclick = async function() {
+            clearMessages();
+            var email = forgotEmailInput.value.trim();
+
+            if (!email) {
+              showMessage('forgotMessage', 'error', 'Please enter your email address');
+              return;
+            }
+
+            setLoading(sendResetCodeBtn, true);
+
+            try {
+              var result = await window.requestPasswordReset(email);
+
+              if (result.success) {
+                pendingResetEmail = email;
+                forgotPasswordForm.classList.remove('active');
+                forgotOtpForm.classList.add('active');
+                showMessage('forgotOtpMessage', 'success', result.message);
+                document.getElementById('forgotOtpCode').focus();
+              } else {
+                showMessage('forgotMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              console.error('Password reset error:', e);
+              showMessage('forgotMessage', 'error', 'Error: ' + (e.message || 'Connection error'));
+            }
+
+            setLoading(sendResetCodeBtn, false);
+          };
+
+          // Enter key for forgot password email
+          forgotEmailInput.onkeypress = function(e) {
+            if (e.key === 'Enter') sendResetCodeBtn.click();
+          };
+
+          // Verify forgot password OTP
+          var verifyForgotOtpBtn = document.getElementById('verifyForgotOtpBtn');
+          var forgotOtpCode = document.getElementById('forgotOtpCode');
+
+          verifyForgotOtpBtn.onclick = async function() {
+            clearMessages();
+            var otp = forgotOtpCode.value.trim();
+
+            if (!otp || otp.length !== 6) {
+              showMessage('forgotOtpMessage', 'error', 'Please enter the 6-digit code');
+              return;
+            }
+
+            setLoading(verifyForgotOtpBtn, true);
+
+            try {
+              var result = await window.verifyPasswordResetOtp(pendingResetEmail, otp);
+
+              if (result.success) {
+                forgotOtpForm.classList.remove('active');
+                newPasswordForm.classList.add('active');
+                showMessage('newPasswordMessage', 'success', 'Code verified! Enter your new password.');
+                document.getElementById('newPassword').focus();
+              } else {
+                showMessage('forgotOtpMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              console.error('OTP verify error:', e);
+              showMessage('forgotOtpMessage', 'error', 'Verification failed');
+            }
+
+            setLoading(verifyForgotOtpBtn, false);
+          };
+
+          // Enter key for forgot OTP
+          forgotOtpCode.onkeypress = function(e) {
+            if (e.key === 'Enter') verifyForgotOtpBtn.click();
+          };
+
+          // Resend forgot password OTP
+          document.getElementById('resendForgotOtp').onclick = async function() {
+            try {
+              var result = await window.requestPasswordReset(pendingResetEmail);
+              showMessage('forgotOtpMessage', result.success ? 'success' : 'error', result.message);
+            } catch (e) {
+              showMessage('forgotOtpMessage', 'error', 'Failed to resend code');
+            }
+          };
+
+          // Back from forgot OTP
+          document.getElementById('backFromForgotOtp').onclick = function() {
+            forgotOtpForm.classList.remove('active');
+            forgotPasswordForm.classList.add('active');
+            forgotOtpCode.value = '';
+            clearMessages();
+          };
+
+          // Set new password
+          var setNewPasswordBtn = document.getElementById('setNewPasswordBtn');
+          var newPasswordInput = document.getElementById('newPassword');
+          var confirmNewPasswordInput = document.getElementById('confirmNewPassword');
+          var newPasswordStrengthBar = document.getElementById('newPasswordStrengthBar');
+
+          // Password strength for new password
+          newPasswordInput.oninput = function() {
+            var pass = newPasswordInput.value;
+            newPasswordStrengthBar.className = 'password-strength-bar';
+
+            if (pass.length < 6) {
+              newPasswordStrengthBar.classList.add('weak');
+            } else if (pass.length < 10 || !/[A-Z]/.test(pass) || !/[0-9]/.test(pass)) {
+              newPasswordStrengthBar.classList.add('medium');
+            } else {
+              newPasswordStrengthBar.classList.add('strong');
+            }
+          };
+
+          setNewPasswordBtn.onclick = async function() {
+            clearMessages();
+            var newPass = newPasswordInput.value;
+            var confirmPass = confirmNewPasswordInput.value;
+
+            if (!newPass || newPass.length < 8) {
+              showMessage('newPasswordMessage', 'error', 'Password must be at least 8 characters');
+              return;
+            }
+
+            if (newPass !== confirmPass) {
+              showMessage('newPasswordMessage', 'error', 'Passwords do not match');
+              return;
+            }
+
+            setLoading(setNewPasswordBtn, true);
+
+            try {
+              var result = await window.completePasswordReset(pendingResetEmail, newPass);
+
+              if (result.success) {
+                showMessage('newPasswordMessage', 'success', result.message);
+
+                setTimeout(function() {
+                  newPasswordForm.classList.remove('active');
+                  loginForm.classList.add('active');
+                  document.querySelector('.auth-tabs').style.display = 'flex';
+                  loginEmail.value = pendingResetEmail;
+                  newPasswordInput.value = '';
+                  confirmNewPasswordInput.value = '';
+                  forgotOtpCode.value = '';
+                  forgotEmailInput.value = '';
+                  newPasswordStrengthBar.className = 'password-strength-bar';
+                  showMessage('loginMessage', 'success', 'Password reset successfully! Please login.');
+                }, 2000);
+              } else {
+                showMessage('newPasswordMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              console.error('Password reset error:', e);
+              showMessage('newPasswordMessage', 'error', 'Error: ' + (e.message || 'Connection error'));
+            }
+
+            setLoading(setNewPasswordBtn, false);
+          };
+
+          // Enter key for new password
+          confirmNewPasswordInput.onkeypress = function(e) {
+            if (e.key === 'Enter') setNewPasswordBtn.click();
+          };
+
+          // Back from new password
+          document.getElementById('backFromNewPassword').onclick = function() {
+            newPasswordForm.classList.remove('active');
+            loginForm.classList.add('active');
+            document.querySelector('.auth-tabs').style.display = 'flex';
+            newPasswordInput.value = '';
+            confirmNewPasswordInput.value = '';
+            newPasswordStrengthBar.className = 'password-strength-bar';
+            clearMessages();
           };
 
           // ============================================

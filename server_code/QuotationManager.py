@@ -438,7 +438,7 @@ def save_client_data(client_code, form_data, is_new, user_email='system', ip_add
         'Country': safe_strip(form_data.get('Country')),
         'Address': safe_strip(form_data.get('Address')),
         'Email': safe_strip(form_data.get('Email')),
-        'Sales Rep': safe_strip(form_data.get('Sales Rep')),
+        'Sales Rep': safe_strip(form_data.get('sales_rep') or form_data.get('Sales Rep')),
         'Source': safe_strip(form_data.get('Source')),
         'is_deleted': False,
         'updated_by': user_email,
@@ -454,7 +454,14 @@ def save_client_data(client_code, form_data, is_new, user_email='system', ip_add
 
     row = app_tables.clients.get(**{"Client Code": str(client_code)})
     if row:
-        old_data = {k: row[k] for k in data.keys() if k in [c.name for c in app_tables.clients.list_columns()]}
+        # Get column names safely (handle both dict and object formats)
+        try:
+            columns = app_tables.clients.list_columns()
+            column_names = [c['name'] if isinstance(c, dict) else c.name for c in columns]
+        except:
+            column_names = list(data.keys())
+
+        old_data = {k: row[k] for k in data.keys() if k in column_names}
         row.update(**data)
         log_audit('UPDATE', 'clients', client_code, old_data, data, user_email, ip_address)
     return "Updated Client"

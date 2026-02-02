@@ -20,7 +20,9 @@
       "Bash(py -3:*)",
       "Bash(C:/Users/Fouda/AppData/Local/Programs/Python/Python312/python.exe:*)",
       "Bash(C:/Python312/python.exe:*)",
-      "Bash(C:/Python311/python.exe:*)"
+      "Bash(C:/Python311/python.exe:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell:*)"
     ]
   }
 }

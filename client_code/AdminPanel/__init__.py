@@ -71,6 +71,7 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.toggleUserActive = self.toggle_user_active
         anvil.js.window.resetUserPassword = self.reset_user_password
         anvil.js.window.getAvailablePermissions = self.get_available_permissions
+        anvil.js.window.deleteUser = self.delete_user
 
         # Audit Logs
         anvil.js.window.getAuditLogs = self.get_audit_logs
@@ -193,6 +194,10 @@ class AdminPanel(AdminPanelTemplate):
 
     def reset_user_password(self, user_id, new_password):
         return anvil.server.call('reset_user_password', self.get_auth(), user_id, new_password)
+
+    def delete_user(self, user_id):
+        """حذف مستخدم نهائياً"""
+        return anvil.server.call('delete_user_permanently', self.get_auth(), user_id)
 
     # =========================================================
     # Audit Logs

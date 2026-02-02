@@ -2502,6 +2502,58 @@ def delete_user_permanently(token_or_email, user_id):
 
 
 # =========================================================
+# Audit Log Cleanup (Auto-delete logs older than 15 days)
+# =========================================================
+@anvil.server.callable
+def cleanup_old_audit_logs(days=15):
+    """
+    حذف سجلات التدقيق القديمة (أكثر من 15 يوم)
+    يمكن استدعاؤها يدوياً أو عبر scheduled task
+    """
+    try:
+        cutoff_date = get_utc_now() - timedelta(days=days)
+        deleted_count = 0
+
+        for log in app_tables.audit_log.search():
+            log_timestamp = log['timestamp']
+            if log_timestamp:
+                # تحويل للمقارنة
+                if log_timestamp.tzinfo is None:
+                    log_timestamp = log_timestamp.replace(tzinfo=timezone.utc)
+                if log_timestamp < cutoff_date:
+                    log.delete()
+                    deleted_count += 1
+
+        logger.info(f"Audit log cleanup: deleted {deleted_count} records older than {days} days")
+        return {
+            'success': True,
+            'deleted_count': deleted_count,
+            'message': f'Deleted {deleted_count} old audit log records'
+        }
+
+    except Exception as e:
+        logger.error(f"Error cleaning up audit logs: {e}")
+        return {'success': False, 'message': f'Error: {str(e)}'}
+
+
+def auto_cleanup_audit_logs():
+    """
+    تنظيف تلقائي للـ Audit Log - يُستدعى عند بدء التطبيق
+    """
+    try:
+        cleanup_old_audit_logs(15)
+    except Exception as e:
+        logger.error(f"Auto cleanup error: {e}")
+
+
+# تشغيل التنظيف التلقائي عند تحميل الموديول
+try:
+    auto_cleanup_audit_logs()
+except:
+    pass
+
+
+# =========================================================
 # Session Activity Check (for auto-logout)
 # =========================================================
 @anvil.server.callable

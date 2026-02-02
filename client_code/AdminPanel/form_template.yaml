@@ -1684,6 +1684,7 @@ container:
                 if (u.is_approved) {
                   html += '<button class="btn-sm ' + (u.is_active ? 'reject' : 'approve') + '" onclick="toggleActive(\'' + u.user_id + '\')">' + (u.is_active ? 'Disable' : 'Enable') + '</button>';
                 }
+                html += '<button class="btn-sm reject" onclick="confirmDeleteUser(\'' + u.user_id + '\', \'' + u.full_name + '\')">Delete</button>';
                 html += '</td></tr>';
               });
               html += '</tbody></table>';
@@ -1741,6 +1742,27 @@ container:
               loadAllUsers();
             } else {
               alert(result.message);
+            }
+          };
+
+          window.confirmDeleteUser = function(userId, userName) {
+            if (confirm('⚠️ Are you sure you want to DELETE user "' + userName + '"?\n\nThis will permanently remove the user and all their data. This action cannot be undone!')) {
+              deleteUserPermanently(userId);
+            }
+          };
+
+          window.deleteUserPermanently = async function(userId) {
+            try {
+              var result = await window.deleteUser(userId);
+              if (result.success) {
+                showNotification('success', 'User Deleted', 'User has been permanently deleted');
+                loadAllUsers();
+                loadDashboard();
+              } else {
+                alert(result.message);
+              }
+            } catch (e) {
+              alert('Error deleting user: ' + e.message);
             }
           };
 

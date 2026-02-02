@@ -485,9 +485,7 @@ container:
               <a id="forgotPasswordLink">Forgot Password?</a>
             </div>
 
-            <div class="setup-link" id="setupLink">
-              <a id="setupAdminLink">First time? Setup Admin Account</a>
-            </div>
+
 
           </div>
 

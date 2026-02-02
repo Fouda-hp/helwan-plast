@@ -23,24 +23,24 @@ import logging
 
 
 def get_utc_now():
-    """الحصول على الوقت الحالي بـ UTC timezone"""
-    return datetime.now(timezone.utc)
+  """الحصول على الوقت الحالي بـ UTC timezone"""
+  return datetime.now(timezone.utc)
 
 
 def make_aware(dt):
-    """تحويل datetime naive إلى aware (UTC)"""
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt
+  """تحويل datetime naive إلى aware (UTC)"""
+  if dt is None:
+    return None
+  if dt.tzinfo is None:
+    return dt.replace(tzinfo=timezone.utc)
+  return dt
 
 # محاولة استيراد خدمة البريد الإلكتروني
 try:
-    import anvil.email
-    EMAIL_SERVICE_AVAILABLE = True
+  import anvil.email
+  EMAIL_SERVICE_AVAILABLE = True
 except ImportError:
-    EMAIL_SERVICE_AVAILABLE = False
+  EMAIL_SERVICE_AVAILABLE = False
 
 # =========================================================
 # إعداد نظام التسجيل (Logging)
@@ -63,34 +63,34 @@ OTP_EXPIRY_MINUTES = 10          # مدة صلاحية OTP
 
 # Admin Email for Notifications - يُقرأ من Environment Variables
 try:
-    import anvil.secrets
-    ADMIN_NOTIFICATION_EMAIL = anvil.secrets.get_secret('ADMIN_EMAIL') or "mohamedadelfouda@helwanplast.com"
-    EMERGENCY_SECRET_KEY = anvil.secrets.get_secret('EMERGENCY_KEY') or "HELWAN_RESET_2024"
+  import anvil.secrets
+  ADMIN_NOTIFICATION_EMAIL = anvil.secrets.get_secret('ADMIN_EMAIL') or "mohamedadelfouda@helwanplast.com"
+  EMERGENCY_SECRET_KEY = anvil.secrets.get_secret('EMERGENCY_KEY') or "HELWAN_RESET_2024"
 except:
-    ADMIN_NOTIFICATION_EMAIL = "mohamedadelfouda@helwanplast.com"
-    EMERGENCY_SECRET_KEY = "HELWAN_RESET_2024"
+  ADMIN_NOTIFICATION_EMAIL = "mohamedadelfouda@helwanplast.com"
+  EMERGENCY_SECRET_KEY = "HELWAN_RESET_2024"
 
 # صلاحيات الأدوار
 ROLES = {
-    'admin': ['all'],
-    'manager': ['view', 'create', 'edit', 'export', 'delete_own'],
-    'sales': ['view', 'create', 'edit_own'],
-    'viewer': ['view']
+  'admin': ['all'],
+  'manager': ['view', 'create', 'edit', 'export', 'delete_own'],
+  'sales': ['view', 'create', 'edit_own'],
+  'viewer': ['view']
 }
 
 # الصلاحيات المتاحة للتخصيص
 AVAILABLE_PERMISSIONS = [
-    'view',           # عرض البيانات
-    'create',         # إنشاء بيانات جديدة
-    'edit',           # تعديل أي بيانات
-    'edit_own',       # تعديل بياناته فقط
-    'delete',         # حذف أي بيانات
-    'delete_own',     # حذف بياناته فقط
-    'export',         # تصدير البيانات
-    'import',         # استيراد البيانات
-    'manage_users',   # إدارة المستخدمين
-    'view_audit',     # عرض سجل التدقيق
-    'manage_settings' # إدارة الإعدادات
+  'view',           # عرض البيانات
+  'create',         # إنشاء بيانات جديدة
+  'edit',           # تعديل أي بيانات
+  'edit_own',       # تعديل بياناته فقط
+  'delete',         # حذف أي بيانات
+  'delete_own',     # حذف بياناته فقط
+  'export',         # تصدير البيانات
+  'import',         # استيراد البيانات
+  'manage_users',   # إدارة المستخدمين
+  'view_audit',     # عرض سجل التدقيق
+  'manage_settings' # إدارة الإعدادات
 ]
 
 
@@ -98,44 +98,44 @@ AVAILABLE_PERMISSIONS = [
 # التحقق من صحة البريد الإلكتروني (محسّن)
 # =========================================================
 def validate_email(email):
-    """
+  """
     التحقق من صحة البريد الإلكتروني باستخدام regex متقدم
     """
-    if not email:
-        return False
+  if not email:
+    return False
 
     # نمط regex للتحقق من صحة البريد الإلكتروني
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+  pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
 
-    if not re.match(pattern, email):
-        return False
+  if not re.match(pattern, email):
+    return False
 
     # التحقق من الطول
-    if len(email) > 254:
-        return False
+  if len(email) > 254:
+    return False
 
     # التحقق من عدم وجود نقطتين متتاليتين
-    if '..' in email:
-        return False
+  if '..' in email:
+    return False
 
-    return True
+  return True
 
 
 # =========================================================
 # وظائف إرسال البريد الإلكتروني
 # =========================================================
 def send_approval_email(user_email, user_name, role, approved=True):
-    """
+  """
     إرسال بريد إلكتروني للمستخدم عند الموافقة أو الرفض
     """
-    if not EMAIL_SERVICE_AVAILABLE:
-        logger.warning("Email service not available. Skipping email notification.")
-        return False
+  if not EMAIL_SERVICE_AVAILABLE:
+    logger.warning("Email service not available. Skipping email notification.")
+    return False
 
-    try:
-        if approved:
-            subject = "Account Approved - Helwan Plast System"
-            html_body = f"""
+  try:
+    if approved:
+      subject = "Account Approved - Helwan Plast System"
+      html_body = f"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0;">
                     <h1 style="color: white; margin: 0; text-align: center;">Helwan Plast System</h1>
@@ -164,14 +164,14 @@ def send_approval_email(user_email, user_name, role, approved=True):
 
                     <p style="font-size: 12px; color: #999; text-align: center;">
                         Best regards,<br>
-                        <strong>Mohamed - Helwan Plast</strong>
+                        <strong>Mohamed Adel - Helwan Plast</strong>
                     </p>
                 </div>
             </div>
             """
-        else:
-            subject = "Account Status Update - Helwan Plast System"
-            html_body = f"""
+    else:
+      subject = "Account Status Update - Helwan Plast System"
+      html_body = f"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0;">
                     <h1 style="color: white; margin: 0; text-align: center;">Helwan Plast System</h1>
@@ -196,65 +196,65 @@ def send_approval_email(user_email, user_name, role, approved=True):
 
                     <p style="font-size: 12px; color: #999; text-align: center;">
                         Best regards,<br>
-                        <strong>Mohamed - Helwan Plast</strong>
+                        <strong>Mohamed Adel - Helwan Plast</strong>
                     </p>
                 </div>
             </div>
             """
 
-        anvil.email.send(
-            to=user_email,
-            subject=subject,
-            html=html_body
-        )
+    anvil.email.send(
+      to=user_email,
+      subject=subject,
+      html=html_body
+    )
 
-        logger.info(f"Email sent to {user_email}: {'Approval' if approved else 'Rejection'}")
-        return True
+    logger.info(f"Email sent to {user_email}: {'Approval' if approved else 'Rejection'}")
+    return True
 
-    except Exception as e:
-        logger.error(f"Failed to send email to {user_email}: {e}")
-        return False
+  except Exception as e:
+    logger.error(f"Failed to send email to {user_email}: {e}")
+    return False
 
 
 # =========================================================
 # OTP Generation and Verification
 # =========================================================
 def generate_otp():
-    """توليد رمز OTP من 6 أرقام"""
-    return ''.join([str(secrets.randbelow(10)) for _ in range(6)])
+  """توليد رمز OTP من 6 أرقام"""
+  return ''.join([str(secrets.randbelow(10)) for _ in range(6)])
 
 
 def send_otp_email(user_email, user_name, otp, purpose='verification'):
-    """
+  """
     إرسال OTP عبر البريد الإلكتروني
     purpose: 'verification' | '2fa' | 'password_reset'
     """
-    if not EMAIL_SERVICE_AVAILABLE:
-        logger.warning("Email service not available. Skipping OTP email.")
-        return False
+  if not EMAIL_SERVICE_AVAILABLE:
+    logger.warning("Email service not available. Skipping OTP email.")
+    return False
 
-    try:
-        purposes = {
-            'verification': {
-                'subject': '🔐 Email Verification - Helwan Plast',
-                'title': 'Email Verification',
-                'message': 'Please use the following code to verify your email address:'
-            },
-            '2fa': {
-                'subject': '🔐 Login Verification - Helwan Plast',
-                'title': 'Two-Factor Authentication',
-                'message': 'Please use the following code to complete your login:'
-            },
-            'password_reset': {
-                'subject': '🔐 Password Reset - Helwan Plast',
-                'title': 'Password Reset Request',
-                'message': 'Please use the following code to reset your password:'
-            }
-        }
+  try:
+    purposes = {
+      'verification': {
+        'subject': '🔐 Email Verification - Helwan Plast',
+        'title': 'Email Verification',
+        'message': 'Please use the following code to verify your email address:'
+      },
+      '2fa': {
+        'subject': '🔐 Login Verification - Helwan Plast',
+        'title': 'Two-Factor Authentication',
+        'message': 'Please use the following code to complete your login:'
+      },
+      'password_reset': {
+        'subject': '🔐 Password Reset - Helwan Plast',
+        'title': 'Password Reset Request',
+        'message': 'Please use the following code to reset your password:'
+      }
+    }
 
-        p = purposes.get(purpose, purposes['verification'])
+    p = purposes.get(purpose, purposes['verification'])
 
-        html_body = f"""
+    html_body = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0;">
                 <h1 style="color: white; margin: 0; text-align: center;">Helwan Plast System</h1>
@@ -285,101 +285,101 @@ def send_otp_email(user_email, user_name, otp, purpose='verification'):
 
                 <p style="font-size: 12px; color: #999; text-align: center;">
                     Best regards,<br>
-                    <strong>Helwan Plast System</strong>
+                    <strong>Mohamed Adel - Helwan Plast System</strong>
                 </p>
             </div>
         </div>
         """
 
-        anvil.email.send(
-            to=user_email,
-            subject=p['subject'],
-            html=html_body
-        )
+    anvil.email.send(
+      to=user_email,
+      subject=p['subject'],
+      html=html_body
+    )
 
-        logger.info(f"OTP email sent to {user_email} for {purpose}")
-        return True
+    logger.info(f"OTP email sent to {user_email} for {purpose}")
+    return True
 
-    except Exception as e:
-        logger.error(f"Failed to send OTP email to {user_email}: {e}")
-        return False
+  except Exception as e:
+    logger.error(f"Failed to send OTP email to {user_email}: {e}")
+    return False
 
 
 def store_otp(user_email, otp, purpose='verification'):
-    """
+  """
     حفظ OTP في قاعدة البيانات
     """
-    try:
-        # حذف أي OTP قديم لنفس المستخدم والغرض
-        old_otps = list(app_tables.otp_codes.search(user_email=user_email, purpose=purpose))
-        for old in old_otps:
-            old.delete()
+  try:
+    # حذف أي OTP قديم لنفس المستخدم والغرض
+    old_otps = list(app_tables.otp_codes.search(user_email=user_email, purpose=purpose))
+    for old in old_otps:
+      old.delete()
 
-        # إضافة OTP جديد
-        app_tables.otp_codes.add_row(
-            otp_id=str(uuid.uuid4()),
-            user_email=user_email,
-            otp_code=otp,
-            purpose=purpose,
-            created_at=datetime.now(),
-            expires_at=datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
-            is_used=False
-        )
-        return True
-    except Exception as e:
-        logger.error(f"Failed to store OTP: {e}")
-        return False
+      # إضافة OTP جديد
+    app_tables.otp_codes.add_row(
+      otp_id=str(uuid.uuid4()),
+      user_email=user_email,
+      otp_code=otp,
+      purpose=purpose,
+      created_at=datetime.now(),
+      expires_at=datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
+      is_used=False
+    )
+    return True
+  except Exception as e:
+    logger.error(f"Failed to store OTP: {e}")
+    return False
 
 
 def verify_otp(user_email, otp, purpose='verification'):
-    """
+  """
     التحقق من صحة OTP
     """
-    try:
-        # البحث عن OTP باستخدام search بدلاً من get لتجنب أخطاء "More than one row"
-        otp_records = list(app_tables.otp_codes.search(
-            user_email=user_email,
-            otp_code=otp,
-            purpose=purpose,
-            is_used=False
-        ))
+  try:
+    # البحث عن OTP باستخدام search بدلاً من get لتجنب أخطاء "More than one row"
+    otp_records = list(app_tables.otp_codes.search(
+      user_email=user_email,
+      otp_code=otp,
+      purpose=purpose,
+      is_used=False
+    ))
 
-        if not otp_records:
-            return False, "Invalid or expired code"
+    if not otp_records:
+      return False, "Invalid or expired code"
 
-        otp_record = otp_records[0]
+    otp_record = otp_records[0]
 
-        # التحقق من انتهاء الصلاحية
-        expires_at = otp_record['expires_at']
-        if expires_at:
-            # تحويل التواريخ للمقارنة الصحيحة
-            now = get_utc_now()
-            expires_at = make_aware(expires_at)
-            if now > expires_at:
-                otp_record.delete()
-                return False, "Code has expired"
+    # التحقق من انتهاء الصلاحية
+    expires_at = otp_record['expires_at']
+    if expires_at:
+      # تحويل التواريخ للمقارنة الصحيحة
+      now = get_utc_now()
+      expires_at = make_aware(expires_at)
+      if now > expires_at:
+        otp_record.delete()
+        return False, "Code has expired"
 
         # تحديث كمستخدم
-        otp_record.update(is_used=True)
+    otp_record.update(is_used=True)
 
-        return True, "Code verified successfully"
+    return True, "Code verified successfully"
 
-    except Exception as e:
-        logger.error(f"OTP verification error: {e}")
-        return False, f"Verification failed: {str(e)}"
+  except Exception as e:
+    logger.error(f"OTP verification error: {e}")
+    return False, f"Verification failed: {str(e)}"
 
 
 def send_admin_notification_email(new_user_email, new_user_name, new_user_phone):
-    """
+  """
     إرسال إيميل للأدمن عند تسجيل مستخدم جديد
     """
-    if not EMAIL_SERVICE_AVAILABLE:
-        logger.warning("Email service not available. Skipping admin notification.")
-        return False
+  if not EMAIL_SERVICE_AVAILABLE:
+    logger.warning("Email service not available. Skipping admin notification.")
+    return False
 
-    try:
-        subject = "🔔 New User Registration - Helwan Plast System"
-        html_body = f"""
+  try:
+    subject = "🔔 New User Registration - Helwan Plast System"
+    html_body = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); padding: 20px; border-radius: 10px 10px 0 0;">
                 <h1 style="color: white; margin: 0; text-align: center;">🔔 New Registration Request</h1>
@@ -416,371 +416,371 @@ def send_admin_notification_email(new_user_email, new_user_name, new_user_phone)
         </div>
         """
 
-        anvil.email.send(
-            to=ADMIN_NOTIFICATION_EMAIL,
-            subject=subject,
-            html=html_body
-        )
+    anvil.email.send(
+      to=ADMIN_NOTIFICATION_EMAIL,
+      subject=subject,
+      html=html_body
+    )
 
-        logger.info(f"Admin notification email sent for new user: {new_user_email}")
-        return True
+    logger.info(f"Admin notification email sent for new user: {new_user_email}")
+    return True
 
-    except Exception as e:
-        logger.error(f"Failed to send admin notification email: {e}")
-        return False
+  except Exception as e:
+    logger.error(f"Failed to send admin notification email: {e}")
+    return False
 
 
 # =========================================================
 # تشفير كلمات المرور (PBKDF2 - أكثر أماناً من SHA-256)
 # =========================================================
 def hash_password(password):
-    """
+  """
     تشفير كلمة المرور باستخدام PBKDF2
     أكثر أماناً من SHA-256 العادي
     """
-    # توليد ملح عشوائي 32 بايت
-    salt = secrets.token_hex(32)
+  # توليد ملح عشوائي 32 بايت
+  salt = secrets.token_hex(32)
 
-    # استخدام PBKDF2 مع SHA-256
-    key = hashlib.pbkdf2_hmac(
+  # استخدام PBKDF2 مع SHA-256
+  key = hashlib.pbkdf2_hmac(
+    'sha256',
+    password.encode('utf-8'),
+    salt.encode('utf-8'),
+    PBKDF2_ITERATIONS
+  )
+
+  # تحويل المفتاح إلى hex
+  hash_value = key.hex()
+
+  # إرجاع الملح والهاش معاً
+  return f"{salt}:{hash_value}"
+
+
+def verify_password(password, stored_hash):
+  """
+    التحقق من كلمة المرور
+    يدعم كلمات المرور القديمة (SHA-256) والجديدة (PBKDF2)
+    """
+  if not stored_hash:
+    return False
+
+  try:
+    # التحقق من نوع التشفير
+    if ':' in stored_hash:
+      # تشفير PBKDF2 الجديد (salt:hash)
+      salt, hash_value = stored_hash.split(':', 1)
+
+      # إعادة حساب الهاش
+      key = hashlib.pbkdf2_hmac(
         'sha256',
         password.encode('utf-8'),
         salt.encode('utf-8'),
         PBKDF2_ITERATIONS
-    )
+      )
 
-    # تحويل المفتاح إلى hex
-    hash_value = key.hex()
+      check_hash = key.hex()
 
-    # إرجاع الملح والهاش معاً
-    return f"{salt}:{hash_value}"
+      # مقارنة آمنة (ثابتة الوقت)
+      return secrets.compare_digest(check_hash, hash_value)
+    else:
+      # تشفير SHA-256 القديم (للتوافق مع كلمات المرور السابقة)
+      old_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+      return secrets.compare_digest(old_hash, stored_hash)
 
-
-def verify_password(password, stored_hash):
-    """
-    التحقق من كلمة المرور
-    يدعم كلمات المرور القديمة (SHA-256) والجديدة (PBKDF2)
-    """
-    if not stored_hash:
-        return False
-
-    try:
-        # التحقق من نوع التشفير
-        if ':' in stored_hash:
-            # تشفير PBKDF2 الجديد (salt:hash)
-            salt, hash_value = stored_hash.split(':', 1)
-
-            # إعادة حساب الهاش
-            key = hashlib.pbkdf2_hmac(
-                'sha256',
-                password.encode('utf-8'),
-                salt.encode('utf-8'),
-                PBKDF2_ITERATIONS
-            )
-
-            check_hash = key.hex()
-
-            # مقارنة آمنة (ثابتة الوقت)
-            return secrets.compare_digest(check_hash, hash_value)
-        else:
-            # تشفير SHA-256 القديم (للتوافق مع كلمات المرور السابقة)
-            old_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
-            return secrets.compare_digest(old_hash, stored_hash)
-
-    except Exception as e:
-        logger.error(f"Password verification error: {e}")
-        return False
+  except Exception as e:
+    logger.error(f"Password verification error: {e}")
+    return False
 
 
 def upgrade_password_hash(user, password):
-    """
+  """
     ترقية كلمة المرور من SHA-256 القديم إلى PBKDF2 الجديد
     يتم استدعاؤها تلقائياً عند تسجيل الدخول الناجح
     """
-    try:
-        stored_hash = user['password_hash']
+  try:
+    stored_hash = user['password_hash']
 
-        # إذا كانت كلمة المرور بالتشفير القديم (بدون :)
-        if stored_hash and ':' not in stored_hash:
-            # إعادة تشفير كلمة المرور بالطريقة الجديدة
-            new_hash = hash_password(password)
-            user.update(password_hash=new_hash)
-            logger.info(f"Password hash upgraded for user: {user['email']}")
-            return True
-    except Exception as e:
-        logger.error(f"Error upgrading password hash: {e}")
+    # إذا كانت كلمة المرور بالتشفير القديم (بدون :)
+    if stored_hash and ':' not in stored_hash:
+      # إعادة تشفير كلمة المرور بالطريقة الجديدة
+      new_hash = hash_password(password)
+      user.update(password_hash=new_hash)
+      logger.info(f"Password hash upgraded for user: {user['email']}")
+      return True
+  except Exception as e:
+    logger.error(f"Error upgrading password hash: {e}")
 
-    return False
+  return False
 
 
 # =========================================================
 # Password History (منع تكرار كلمات المرور)
 # =========================================================
 def add_to_password_history(user_email, password_hash):
-    """
+  """
     إضافة كلمة المرور إلى سجل كلمات المرور السابقة
     """
-    try:
-        app_tables.password_history.add_row(
-            history_id=str(uuid.uuid4()),
-            user_email=user_email,
-            password_hash=password_hash,
-            created_at=datetime.now()
-        )
+  try:
+    app_tables.password_history.add_row(
+      history_id=str(uuid.uuid4()),
+      user_email=user_email,
+      password_hash=password_hash,
+      created_at=datetime.now()
+    )
 
-        # حذف كلمات المرور القديمة إذا تجاوزت الحد
-        history = list(app_tables.password_history.search(user_email=user_email))
-        history.sort(key=lambda x: x['created_at'], reverse=True)
+    # حذف كلمات المرور القديمة إذا تجاوزت الحد
+    history = list(app_tables.password_history.search(user_email=user_email))
+    history.sort(key=lambda x: x['created_at'], reverse=True)
 
-        if len(history) > PASSWORD_HISTORY_COUNT:
-            for old in history[PASSWORD_HISTORY_COUNT:]:
-                old.delete()
+    if len(history) > PASSWORD_HISTORY_COUNT:
+      for old in history[PASSWORD_HISTORY_COUNT:]:
+        old.delete()
 
-        return True
-    except Exception as e:
-        logger.error(f"Failed to add password to history: {e}")
-        return False
+    return True
+  except Exception as e:
+    logger.error(f"Failed to add password to history: {e}")
+    return False
 
 
 def check_password_history(user_email, new_password):
-    """
+  """
     التحقق من أن كلمة المرور الجديدة ليست مستخدمة سابقاً
     Returns: (is_valid, message)
     """
-    try:
-        history = list(app_tables.password_history.search(user_email=user_email))
+  try:
+    history = list(app_tables.password_history.search(user_email=user_email))
 
-        for record in history:
-            if verify_password(new_password, record['password_hash']):
-                return False, f"Cannot reuse any of your last {PASSWORD_HISTORY_COUNT} passwords"
+    for record in history:
+      if verify_password(new_password, record['password_hash']):
+        return False, f"Cannot reuse any of your last {PASSWORD_HISTORY_COUNT} passwords"
 
-        return True, "Password is valid"
-    except Exception as e:
-        logger.error(f"Password history check error: {e}")
-        return True, "Check passed"  # السماح في حالة الخطأ
+    return True, "Password is valid"
+  except Exception as e:
+    logger.error(f"Password history check error: {e}")
+    return True, "Check passed"  # السماح في حالة الخطأ
 
 
 # =========================================================
 # إدارة الجلسات (في قاعدة البيانات)
 # =========================================================
 def generate_session_token():
-    """توليد رمز جلسة آمن"""
-    return secrets.token_urlsafe(64)
+  """توليد رمز جلسة آمن"""
+  return secrets.token_urlsafe(64)
 
 
 def create_session(user_email, role, ip_address=None, user_agent=None):
-    """
+  """
     إنشاء جلسة جديدة في قاعدة البيانات
     """
-    token = generate_session_token()
-    expires = datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES)
+  token = generate_session_token()
+  expires = datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES)
 
-    try:
-        app_tables.sessions.add_row(
-            session_token=token,
-            user_email=user_email,
-            user_role=role,
-            created_at=datetime.now(),
-            expires_at=expires,
-            ip_address=ip_address or 'unknown',
-            user_agent=user_agent or 'unknown',
-            is_active=True
-        )
+  try:
+    app_tables.sessions.add_row(
+      session_token=token,
+      user_email=user_email,
+      user_role=role,
+      created_at=datetime.now(),
+      expires_at=expires,
+      ip_address=ip_address or 'unknown',
+      user_agent=user_agent or 'unknown',
+      is_active=True
+    )
 
-        logger.info(f"Session created for {user_email}")
-        return token
-    except Exception as e:
-        logger.error(f"Session creation error: {e}")
-        return None
+    logger.info(f"Session created for {user_email}")
+    return token
+  except Exception as e:
+    logger.error(f"Session creation error: {e}")
+    return None
 
 
 def validate_session(token):
-    """
+  """
     التحقق من صحة الجلسة
     """
-    if not token:
-        return None
+  if not token:
+    return None
 
-    try:
-        # البحث عن الجلسة في قاعدة البيانات
-        session = app_tables.sessions.get(
-            session_token=token,
-            is_active=True
-        )
+  try:
+    # البحث عن الجلسة في قاعدة البيانات
+    session = app_tables.sessions.get(
+      session_token=token,
+      is_active=True
+    )
 
-        if not session:
-            return None
+    if not session:
+      return None
 
-        # التحقق من انتهاء الصلاحية
-        if datetime.now() > session['expires_at']:
-            # حذف الجلسة المنتهية
-            session.update(is_active=False)
-            return None
+      # التحقق من انتهاء الصلاحية
+    if datetime.now() > session['expires_at']:
+      # حذف الجلسة المنتهية
+      session.update(is_active=False)
+      return None
 
-        # جلب المستخدم الحالي من جدول users
-        # هذا يضمن أن أي تغيير في الـ role أو الحالة يُطبق فوراً
-        user = app_tables.users.get(email=session['user_email'])
+      # جلب المستخدم الحالي من جدول users
+      # هذا يضمن أن أي تغيير في الـ role أو الحالة يُطبق فوراً
+    user = app_tables.users.get(email=session['user_email'])
 
-        if not user:
-            # المستخدم تم حذفه - إبطال الجلسة
-            session.update(is_active=False)
-            return None
+    if not user:
+      # المستخدم تم حذفه - إبطال الجلسة
+      session.update(is_active=False)
+      return None
 
-        # التحقق من أن المستخدم مفعل ومعتمد
-        if not user['is_active'] or not user['is_approved']:
-            # المستخدم غير مفعل أو غير معتمد - إبطال الجلسة
-            session.update(is_active=False)
-            return None
+      # التحقق من أن المستخدم مفعل ومعتمد
+    if not user['is_active'] or not user['is_approved']:
+      # المستخدم غير مفعل أو غير معتمد - إبطال الجلسة
+      session.update(is_active=False)
+      return None
 
-        return {
-            'email': session['user_email'],
-            'role': user['role'],  # استخدام الـ role الحالي من users table
-            'is_active': user['is_active'],
-            'is_approved': user['is_approved'],
-            'created': session['created_at'],
-            'expires': session['expires_at']
-        }
-    except Exception as e:
-        logger.error(f"Session validation error: {e}")
-        return None
+    return {
+      'email': session['user_email'],
+      'role': user['role'],  # استخدام الـ role الحالي من users table
+      'is_active': user['is_active'],
+      'is_approved': user['is_approved'],
+      'created': session['created_at'],
+      'expires': session['expires_at']
+    }
+  except Exception as e:
+    logger.error(f"Session validation error: {e}")
+    return None
 
 
 def destroy_session(token):
-    """
+  """
     إنهاء الجلسة (تسجيل الخروج)
     """
-    if not token:
-        return False
+  if not token:
+    return False
 
-    try:
-        session = app_tables.sessions.get(session_token=token)
-        if session:
-            session.update(is_active=False)
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"Session destruction error: {e}")
-        return False
+  try:
+    session = app_tables.sessions.get(session_token=token)
+    if session:
+      session.update(is_active=False)
+      return True
+    return False
+  except Exception as e:
+    logger.error(f"Session destruction error: {e}")
+    return False
 
 
 def cleanup_expired_sessions():
-    """
+  """
     تنظيف الجلسات المنتهية (يُستدعى دورياً)
     """
-    try:
-        expired = list(app_tables.sessions.search(is_active=True))
-        count = 0
-        for session in expired:
-            if session['expires_at'] and datetime.now() > session['expires_at']:
-                session.update(is_active=False)
-                count += 1
+  try:
+    expired = list(app_tables.sessions.search(is_active=True))
+    count = 0
+    for session in expired:
+      if session['expires_at'] and datetime.now() > session['expires_at']:
+        session.update(is_active=False)
+        count += 1
 
-        if count > 0:
-            logger.info(f"Cleaned up {count} expired sessions")
-    except Exception as e:
-        logger.error(f"Session cleanup error: {e}")
+    if count > 0:
+      logger.info(f"Cleaned up {count} expired sessions")
+  except Exception as e:
+    logger.error(f"Session cleanup error: {e}")
 
 
 # =========================================================
 # Rate Limiting (حماية من الهجمات)
 # =========================================================
 def check_rate_limit(ip_address, endpoint='general'):
-    """
+  """
     التحقق من Rate Limit
     يعود True إذا كان الطلب مسموح، False إذا كان محظور
     """
-    if not ip_address:
-        ip_address = 'unknown'
+  if not ip_address:
+    ip_address = 'unknown'
 
-    try:
-        now = datetime.now()
-        window_start = now - timedelta(minutes=RATE_LIMIT_WINDOW_MINUTES)
+  try:
+    now = datetime.now()
+    window_start = now - timedelta(minutes=RATE_LIMIT_WINDOW_MINUTES)
 
-        # البحث عن سجل Rate Limit
-        record = app_tables.rate_limits.get(
-            ip_address=ip_address,
-            endpoint=endpoint
+    # البحث عن سجل Rate Limit
+    record = app_tables.rate_limits.get(
+      ip_address=ip_address,
+      endpoint=endpoint
+    )
+
+    if record:
+      # التحقق من الحظر
+      if record['blocked_until'] and now < record['blocked_until']:
+        return False
+
+        # التحقق من النافذة الزمنية
+      if record['window_start'] and record['window_start'] > window_start:
+        # داخل النافذة - زيادة العداد
+        new_count = (record['request_count'] or 0) + 1
+
+        if new_count > RATE_LIMIT_MAX_REQUESTS:
+          # حظر لمدة ساعة
+          record.update(
+            request_count=new_count,
+            blocked_until=now + timedelta(hours=1)
+          )
+          logger.warning(f"Rate limit exceeded for IP: {ip_address}")
+          return False
+
+        record.update(request_count=new_count)
+      else:
+        # بداية نافذة جديدة
+        record.update(
+          request_count=1,
+          window_start=now,
+          blocked_until=None
         )
+    else:
+      # إنشاء سجل جديد
+      app_tables.rate_limits.add_row(
+        ip_address=ip_address,
+        endpoint=endpoint,
+        request_count=1,
+        window_start=now,
+        blocked_until=None
+      )
 
-        if record:
-            # التحقق من الحظر
-            if record['blocked_until'] and now < record['blocked_until']:
-                return False
-
-            # التحقق من النافذة الزمنية
-            if record['window_start'] and record['window_start'] > window_start:
-                # داخل النافذة - زيادة العداد
-                new_count = (record['request_count'] or 0) + 1
-
-                if new_count > RATE_LIMIT_MAX_REQUESTS:
-                    # حظر لمدة ساعة
-                    record.update(
-                        request_count=new_count,
-                        blocked_until=now + timedelta(hours=1)
-                    )
-                    logger.warning(f"Rate limit exceeded for IP: {ip_address}")
-                    return False
-
-                record.update(request_count=new_count)
-            else:
-                # بداية نافذة جديدة
-                record.update(
-                    request_count=1,
-                    window_start=now,
-                    blocked_until=None
-                )
-        else:
-            # إنشاء سجل جديد
-            app_tables.rate_limits.add_row(
-                ip_address=ip_address,
-                endpoint=endpoint,
-                request_count=1,
-                window_start=now,
-                blocked_until=None
-            )
-
-        return True
-    except Exception as e:
-        logger.error(f"Rate limit check error: {e}")
-        return True  # السماح في حالة الخطأ
+    return True
+  except Exception as e:
+    logger.error(f"Rate limit check error: {e}")
+    return True  # السماح في حالة الخطأ
 
 
 # =========================================================
 # تسجيل التدقيق (مع IP Address)
 # =========================================================
 def log_audit(action, table_name, record_id, old_data, new_data, user_email=None, ip_address=None):
-    """
+  """
     تسجيل العملية في سجل التدقيق
     """
-    try:
-        app_tables.audit_log.add_row(
-            log_id=str(uuid.uuid4()),
-            timestamp=datetime.now(),
-            user_email=user_email or 'system',
-            action=action,
-            table_name=table_name,
-            record_id=str(record_id) if record_id else None,
-            old_data=json.dumps(old_data, default=str) if old_data else None,
-            new_data=json.dumps(new_data, default=str) if new_data else None,
-            ip_address=ip_address or 'unknown'
-        )
-    except Exception as e:
-        logger.error(f"Audit log error: {e}")
+  try:
+    app_tables.audit_log.add_row(
+      log_id=str(uuid.uuid4()),
+      timestamp=datetime.now(),
+      user_email=user_email or 'system',
+      action=action,
+      table_name=table_name,
+      record_id=str(record_id) if record_id else None,
+      old_data=json.dumps(old_data, default=str) if old_data else None,
+      new_data=json.dumps(new_data, default=str) if new_data else None,
+      ip_address=ip_address or 'unknown'
+    )
+  except Exception as e:
+    logger.error(f"Audit log error: {e}")
 
 
 # =========================================================
 # الحصول على IP Address
 # =========================================================
 def get_client_ip():
-    """
+  """
     الحصول على IP Address للعميل
     """
-    try:
-        # في Anvil، يمكن الحصول على IP من headers
-        import anvil.server
-        return anvil.server.request.remote_addr or 'unknown'
-    except:
-        return 'unknown'
+  try:
+    # في Anvil، يمكن الحصول على IP من headers
+    import anvil.server
+    return anvil.server.request.remote_addr or 'unknown'
+  except:
+    return 'unknown'
 
 
 # =========================================================
@@ -788,41 +788,41 @@ def get_client_ip():
 # =========================================================
 @anvil.server.callable
 def register_user(email, password, full_name, phone=None):
-    """
+  """
     تسجيل مستخدم جديد - الخطوة الأولى (إرسال OTP للتحقق من البريد)
     """
-    ip_address = get_client_ip()
+  ip_address = get_client_ip()
 
-    # التحقق من Rate Limit
-    if not check_rate_limit(ip_address, 'register'):
-        return {'success': False, 'message': 'Too many requests. Please try again later.'}
+  # التحقق من Rate Limit
+  if not check_rate_limit(ip_address, 'register'):
+    return {'success': False, 'message': 'Too many requests. Please try again later.'}
 
     # تنظيف المدخلات
-    email = str(email or '').strip().lower()
-    full_name = str(full_name or '').strip()
-    phone = str(phone or '').strip() if phone else None
+  email = str(email or '').strip().lower()
+  full_name = str(full_name or '').strip()
+  phone = str(phone or '').strip() if phone else None
 
-    # التحقق من صحة البريد الإلكتروني
-    if not validate_email(email):
-        return {'success': False, 'message': 'Invalid email address format'}
+  # التحقق من صحة البريد الإلكتروني
+  if not validate_email(email):
+    return {'success': False, 'message': 'Invalid email address format'}
 
     # التحقق من كلمة المرور
-    if not password or len(password) < 8:
-        return {'success': False, 'message': 'Password must be at least 8 characters'}
+  if not password or len(password) < 8:
+    return {'success': False, 'message': 'Password must be at least 8 characters'}
 
     # التحقق من قوة كلمة المرور
-    if not re.search(r'[A-Z]', password):
-        return {'success': False, 'message': 'Password must contain at least one uppercase letter'}
+  if not re.search(r'[A-Z]', password):
+    return {'success': False, 'message': 'Password must contain at least one uppercase letter'}
 
-    if not re.search(r'[a-z]', password):
-        return {'success': False, 'message': 'Password must contain at least one lowercase letter'}
+  if not re.search(r'[a-z]', password):
+    return {'success': False, 'message': 'Password must contain at least one lowercase letter'}
 
-    if not re.search(r'\d', password):
-        return {'success': False, 'message': 'Password must contain at least one number'}
+  if not re.search(r'\d', password):
+    return {'success': False, 'message': 'Password must contain at least one number'}
 
     # التحقق من الاسم
-    if not full_name or len(full_name) < 2:
-        return {'success': False, 'message': 'Full name is required (at least 2 characters)'}
+  if not full_name or len(full_name) < 2:
+    return {'success': False, 'message': 'Full name is required (at least 2 characters)'}
 
     # التحقق من عدم وجود البريد مسبقاً
     existing = app_tables.users.get(email=email)

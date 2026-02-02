@@ -45,6 +45,9 @@ RATE_LIMIT_WINDOW_MINUTES = 15   # نافذة Rate Limiting
 RATE_LIMIT_MAX_REQUESTS = 100    # الحد الأقصى للطلبات في النافذة
 PBKDF2_ITERATIONS = 100000       # عدد التكرارات للتشفير (أكثر أماناً)
 
+# Admin Email for Notifications
+ADMIN_NOTIFICATION_EMAIL = "mohamed@helwanplast.com"  # Change to your admin email
+
 # صلاحيات الأدوار
 ROLES = {
     'admin': ['all'],
@@ -188,6 +191,67 @@ def send_approval_email(user_email, user_name, role, approved=True):
 
     except Exception as e:
         logger.error(f"Failed to send email to {user_email}: {e}")
+        return False
+
+
+def send_admin_notification_email(new_user_email, new_user_name, new_user_phone):
+    """
+    إرسال إيميل للأدمن عند تسجيل مستخدم جديد
+    """
+    if not EMAIL_SERVICE_AVAILABLE:
+        logger.warning("Email service not available. Skipping admin notification.")
+        return False
+
+    try:
+        subject = "🔔 New User Registration - Helwan Plast System"
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); padding: 20px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; text-align: center;">🔔 New Registration Request</h1>
+            </div>
+
+            <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #1976d2; margin-top: 0;">A new user is waiting for approval</h2>
+
+                <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1976d2;">
+                    <p style="margin: 10px 0; font-size: 15px;"><strong>Name:</strong> {new_user_name}</p>
+                    <p style="margin: 10px 0; font-size: 15px;"><strong>Email:</strong> {new_user_email}</p>
+                    <p style="margin: 10px 0; font-size: 15px;"><strong>Phone:</strong> {new_user_phone or 'Not provided'}</p>
+                    <p style="margin: 10px 0; font-size: 15px;"><strong>Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+                </div>
+
+                <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #e65100;">
+                        <strong>⚠️ Action Required:</strong> Please log in to the Admin Panel to approve or reject this user.
+                    </p>
+                </div>
+
+                <div style="text-align: center; margin-top: 25px;">
+                    <a href="https://helwan-plast.anvil.app" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                        Go to Admin Panel
+                    </a>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+                <p style="font-size: 12px; color: #999; text-align: center;">
+                    This is an automated notification from Helwan Plast System
+                </p>
+            </div>
+        </div>
+        """
+
+        anvil.email.send(
+            to=ADMIN_NOTIFICATION_EMAIL,
+            subject=subject,
+            html=html_body
+        )
+
+        logger.info(f"Admin notification email sent for new user: {new_user_email}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to send admin notification email: {e}")
         return False
 
 
@@ -568,6 +632,9 @@ def register_user(email, password, full_name, phone=None):
                   email, ip_address)
 
         logger.info(f"New user registered: {email}")
+
+        # إرسال إيميل للأدمن
+        send_admin_notification_email(email, full_name, phone)
 
         return {
             'success': True,

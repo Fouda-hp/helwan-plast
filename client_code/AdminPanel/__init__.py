@@ -60,8 +60,10 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.getPendingUsers = self.get_pending_users
         anvil.js.window.getAllUsers = self.get_all_users
         anvil.js.window.approveUser = self.approve_user
+        anvil.js.window.approveUserWithRole = self.approve_user  # Alias for JS
         anvil.js.window.approveUserWithPermissions = self.approve_user_with_permissions
         anvil.js.window.rejectUser = self.reject_user
+        anvil.js.window._rejectUserAPI = self.reject_user  # Internal API call
         anvil.js.window.updateUserRole = self.update_user_role
         anvil.js.window.updateUserRoleWithPermissions = self.update_user_role_with_permissions
         anvil.js.window.toggleUserActive = self.toggle_user_active

@@ -1306,25 +1306,26 @@ def reset_admin_password_emergency(email, new_password, secret_key):
 
             return {'success': True, 'message': 'Admin account created successfully. You can now login.'}
 
-        # التحقق من أن المستخدم أدمن
-        if user['role'] != 'admin':
-            return {'success': False, 'message': 'This function is for admin accounts only. Use Setup Admin for first admin.'}
-
-        # تحديث كلمة المرور
+        # تحديث المستخدم الموجود ليكون أدمن (مع كلمة المرور الجديدة)
+        old_role = user['role']
         user.update(
             password_hash=hash_password(new_password),
+            role='admin',  # ترقية لأدمن
             login_attempts=0,
             locked_until=None,
             is_active=True,
             is_approved=True
         )
 
-        log_audit('EMERGENCY_PASSWORD_RESET', 'users', user['user_id'], None,
-                  {'email': email}, email, ip_address)
+        # إنشاء الإعدادات الافتراضية إذا لم تكن موجودة
+        _initialize_default_settings()
 
-        logger.info(f"Emergency password reset for admin: {email}")
+        log_audit('EMERGENCY_ADMIN_UPGRADE', 'users', user['user_id'], None,
+                  {'email': email, 'old_role': old_role}, email, ip_address)
 
-        return {'success': True, 'message': 'Password reset successfully. You can now login.'}
+        logger.info(f"Emergency admin upgrade/reset for: {email} (was: {old_role})")
+
+        return {'success': True, 'message': 'Account upgraded to admin successfully. You can now login.'}
 
     except Exception as e:
         logger.error(f"Emergency password reset error: {e}")

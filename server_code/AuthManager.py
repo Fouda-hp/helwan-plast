@@ -973,8 +973,15 @@ def login_user(email, password):
         # عدم الكشف عن وجود البريد
         return {'success': False, 'message': 'Invalid email or password'}
 
-    # التحقق من التحقق من الإيميل
-    if not user.get('email_verified', True):
+    # التحقق من التحقق من الإيميل (المستخدمون القدامى يُعتبرون مُتحققين)
+    # إذا كان العمود غير موجود أو None، نعتبره True
+    email_verified = user.get('email_verified')
+    if email_verified is None:
+        # المستخدم قديم - تحديث الحقل ليكون True
+        user.update(email_verified=True)
+        email_verified = True
+
+    if not email_verified:
         return {'success': False, 'message': 'Please verify your email first'}
 
     # التحقق من القفل
@@ -1753,8 +1760,9 @@ def check_admin_exists():
     التحقق من وجود أدمن
     """
     try:
-        existing_admin = app_tables.users.get(role='admin')
-        return {'exists': existing_admin is not None}
+        # استخدام search بدلاً من get لتجنب خطأ "More than one row"
+        existing_admins = list(app_tables.users.search(role='admin'))
+        return {'exists': len(existing_admins) > 0}
     except:
         return {'exists': False}
 
@@ -1952,8 +1960,8 @@ def setup_initial_admin(email, password, full_name, phone=None):
 
     try:
         # التحقق من عدم وجود أدمن
-        existing_admin = app_tables.users.get(role='admin')
-        if existing_admin:
+        existing_admins = list(app_tables.users.search(role='admin'))
+        if existing_admins:
             return {'success': False, 'message': 'Admin account already exists'}
 
         # التحقق من المدخلات

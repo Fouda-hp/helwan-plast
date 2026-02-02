@@ -973,11 +973,11 @@ def login_user(email, password):
         # عدم الكشف عن وجود البريد
         return {'success': False, 'message': 'Invalid email or password'}
 
-    # التحقق من التحقق من الإيميل (المستخدمون القدامى يُعتبرون مُتحققين)
-    # إذا كان العمود غير موجود أو None، نعتبره True
+    # التحقق من التحقق من الإيميل
+    # المستخدمون الذين تمت الموافقة عليهم (is_approved=True) يُعتبرون مُتحققين تلقائياً
     email_verified = user.get('email_verified')
-    if email_verified is None:
-        # المستخدم قديم - تحديث الحقل ليكون True
+    if email_verified is None or (not email_verified and user.get('is_approved')):
+        # المستخدم قديم أو معتمد - تحديث الحقل ليكون True
         user.update(email_verified=True)
         email_verified = True
 

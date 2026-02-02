@@ -1200,6 +1200,12 @@ container:
           // DASHBOARD
           // ============================================
           window.loadDashboard = async function() {
+            // Helper function to safely set text content
+            function setStatText(id, value) {
+              var el = document.getElementById(id);
+              if (el) el.textContent = value;
+            }
+
             try {
               // Wait for Python bridge to be ready
               if (!window.getDashboardStats) {
@@ -1210,26 +1216,26 @@ container:
 
               var stats = await window.getDashboardStats();
               if (stats) {
-                document.getElementById('statClients').textContent = (stats.total_clients || 0).toLocaleString();
-                document.getElementById('statQuotations').textContent = (stats.total_quotations || 0).toLocaleString();
-                document.getElementById('statValue').textContent = (stats.total_value || 0).toLocaleString();
-                document.getElementById('statMonthly').textContent = (stats.this_month_quotations || 0).toLocaleString();
+                setStatText('statClients', (stats.total_clients || 0).toLocaleString());
+                setStatText('statQuotations', (stats.total_quotations || 0).toLocaleString());
+                setStatText('statValue', (stats.total_value || 0).toLocaleString());
+                setStatText('statMonthly', (stats.this_month_quotations || 0).toLocaleString());
               }
 
               // Update pending badge
               if (window.getPendingUsers) {
                 var pending = await window.getPendingUsers();
                 if (pending && pending.success && pending.users) {
-                  document.getElementById('pendingBadge').textContent = pending.users.length;
+                  setStatText('pendingBadge', pending.users.length);
                 }
               }
             } catch (e) {
               console.error('Dashboard error:', e);
-              // Show zeros on error
-              document.getElementById('statClients').textContent = '0';
-              document.getElementById('statQuotations').textContent = '0';
-              document.getElementById('statValue').textContent = '0';
-              document.getElementById('statMonthly').textContent = '0';
+              // Show zeros on error (safely)
+              setStatText('statClients', '0');
+              setStatText('statQuotations', '0');
+              setStatText('statValue', '0');
+              setStatText('statMonthly', '0');
             }
           };
 

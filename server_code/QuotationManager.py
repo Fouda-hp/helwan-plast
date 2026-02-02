@@ -964,11 +964,30 @@ def get_dashboard_stats():
 # =========================================================
 # دوال استيراد البيانات (للأدمن فقط)
 # =========================================================
+def _normalize_client_row(row):
+    """تحويل الصف لاستخدام أسماء أعمدة موحدة للعملاء"""
+    mapping = {
+        'Client Name :': 'Client Name',
+        'Company:': 'Company',
+        'Country :': 'Country',
+        'Adress :': 'Address',
+        'Email :': 'Email',
+        'Sales Rep :': 'Sales Rep',
+        'Source :': 'Source',
+    }
+    normalized = {}
+    for key, value in row.items():
+        new_key = mapping.get(key, key.strip())
+        normalized[new_key] = value
+    return normalized
+
+
 @anvil.server.callable
 def import_clients_data(data_list, token_or_email):
     """
     استيراد بيانات العملاء من CSV/Excel
     يتطلب صلاحية الأدمن
+    يدعم أسماء الأعمدة القديمة والجديدة
     """
     # التحقق من صلاحية الأدمن باستخدام require_admin الموحدة
     is_authorized, error = AuthManager.require_admin(token_or_email)
@@ -981,8 +1000,11 @@ def import_clients_data(data_list, token_or_email):
     imported = 0
     errors = []
 
-    for i, row in enumerate(data_list):
+    for i, original_row in enumerate(data_list):
         try:
+            # تحويل أسماء الأعمدة
+            row = _normalize_client_row(original_row)
+
             client_code = row.get('Client Code')
             if not client_code:
                 client_code = str(_get_next_number('clients', 'Client Code'))
@@ -1036,11 +1058,68 @@ def import_clients_data(data_list, token_or_email):
     }
 
 
+def _clean_price(value):
+    """تنظيف قيمة السعر من العملة والفواصل"""
+    if not value or value == '-' or value == 'FREE':
+        return None
+    value = str(value)
+    # إزالة العملة والمسافات
+    value = value.replace('ج.م.', '').replace('\u200f', '').replace('$', '').replace(' ', '')
+    # إزالة الفواصل كفاصل آلاف
+    value = value.replace(',', '')
+    # محاولة التحويل
+    try:
+        return float(value) if value else None
+    except:
+        return None
+
+
+def _map_column_name(key):
+    """تحويل أسماء الأعمدة القديمة للجديدة"""
+    mapping = {
+        'Quotation #': 'Quotation#',
+        'Date :': 'Date',
+        'Client Name :': 'Client Name',
+        'Company:': 'Company',
+        'Country :': 'Country',
+        'Adress :': 'Address',
+        'Email :': 'Email',
+        'Sales Rep :': 'Sales Rep',
+        'Source :': 'Source',
+        'Given Price :': 'Given Price',
+        'Agreed Price ': 'Agreed Price',
+        'Modle  :': 'Model',
+        'machine type': 'Machine type',
+        'Standard Machine FOB cost': 'Standard Machine FOB cost',
+        ' Machine FOB cost With Cylinders': 'Machine FOB cost With Cylinders',
+        'FOB price for over seas clients': 'FOB price for over seas clients',
+        ' In Stock ': 'In Stock',
+        ' New Order ': 'New Order',
+        'Haydrolic Staion Unwind': 'Hydraulic Station Unwind',
+        'over seas clients': 'Overseas Client',
+        # Cylinder columns (first one has no number)
+        'Size in CM': 'Size in CM1',
+        'Count': 'Count1',
+        ' Cost ': 'Cost1',
+    }
+    return mapping.get(key, key.strip())
+
+
+def _normalize_row(row):
+    """تحويل الصف لاستخدام أسماء أعمدة موحدة"""
+    normalized = {}
+    for key, value in row.items():
+        new_key = _map_column_name(key)
+        normalized[new_key] = value
+    return normalized
+
+
 @anvil.server.callable
 def import_quotations_data(data_list, token_or_email):
     """
     استيراد بيانات العروض من CSV/Excel
     يتطلب صلاحية الأدمن
+    يدعم أسماء الأعمدة القديمة والجديدة
     """
     # التحقق من صلاحية الأدمن باستخدام require_admin الموحدة
     is_authorized, error = AuthManager.require_admin(token_or_email)
@@ -1053,8 +1132,11 @@ def import_quotations_data(data_list, token_or_email):
     imported = 0
     errors = []
 
-    for i, row in enumerate(data_list):
+    for i, original_row in enumerate(data_list):
         try:
+            # تحويل أسماء الأعمدة
+            row = _normalize_row(original_row)
+
             quotation_number = safe_int(row.get('Quotation#'))
             if not quotation_number:
                 quotation_number = _get_next_number('quotations', 'Quotation#')
@@ -1064,6 +1146,16 @@ def import_quotations_data(data_list, token_or_email):
             if existing:
                 errors.append(f"Row {i+1}: Quotation# {quotation_number} already exists")
                 continue
+
+            # تنظيف الأسعار
+            given_price = _clean_price(row.get('Given Price'))
+            agreed_price = _clean_price(row.get('Agreed Price'))
+            in_stock = _clean_price(row.get('In Stock'))
+            new_order = _clean_price(row.get('New Order'))
+            fob_cost = _clean_price(row.get('Standard Machine FOB cost'))
+            fob_with_cyl = _clean_price(row.get('Machine FOB cost With Cylinders'))
+            fob_overseas = _clean_price(row.get('FOB price for over seas clients'))
+            exchange_rate = _clean_price(row.get('Exchange Rate'))
 
             data = {
                 'Quotation#': int(quotation_number),
@@ -1076,11 +1168,22 @@ def import_quotations_data(data_list, token_or_email):
                 'Machine width': safe_int(row.get('Machine width')),
                 'Material': safe_strip(row.get('Material')),
                 'Winder': safe_strip(row.get('Winder')),
-                'Given Price': safe_float(row.get('Given Price')),
-                'Agreed Price': safe_float(row.get('Agreed Price')),
-                'In Stock': safe_float(row.get('In Stock')),
-                'New Order': safe_float(row.get('New Order')),
+                'Given Price': given_price,
+                'Agreed Price': agreed_price,
+                'In Stock': in_stock,
+                'New Order': new_order,
+                'Standard Machine FOB cost': fob_cost,
+                'Machine FOB cost With Cylinders': fob_with_cyl,
+                'FOB price for over seas clients': fob_overseas,
+                'Exchange Rate': exchange_rate,
                 'Notes': safe_strip(row.get('Notes')),
+                'Video inspection': safe_strip(row.get('Video inspection')),
+                'PLC': safe_strip(row.get('PLC')),
+                'Slitter': safe_strip(row.get('Slitter')),
+                'Pneumatic Unwind': safe_strip(row.get('Pneumatic Unwind')),
+                'Pneumatic Rewind': safe_strip(row.get('Pneumatic Rewind')),
+                'Surface Rewind': safe_strip(row.get('Surface Rewind')),
+                'Hydraulic Station Unwind': safe_strip(row.get('Hydraulic Station Unwind')),
                 'is_deleted': False,
                 'created_by': user_email,
                 'created_at': datetime.now(),
@@ -1090,9 +1193,15 @@ def import_quotations_data(data_list, token_or_email):
 
             # إضافة بيانات الأسطوانات
             for j in range(1, 13):
-                data[f'Size in CM{j}'] = safe_strip(row.get(f'Size in CM{j}'))
-                data[f'Count{j}'] = safe_strip(row.get(f'Count{j}'))
-                data[f'Cost{j}'] = safe_strip(row.get(f'Cost{j}'))
+                size_key = f'Size in CM{j}' if j > 1 else 'Size in CM1'
+                count_key = f'Count{j}' if j > 1 else 'Count1'
+                cost_key = f'Cost{j}' if j > 1 else 'Cost1'
+
+                data[f'Size in CM{j}'] = safe_strip(row.get(size_key))
+                data[f'Count{j}'] = safe_strip(row.get(count_key))
+                # تنظيف تكلفة الأسطوانة
+                cost_val = _clean_price(row.get(cost_key))
+                data[f'Cost{j}'] = str(cost_val) if cost_val else ''
 
             app_tables.quotations.add_row(**data)
             imported += 1

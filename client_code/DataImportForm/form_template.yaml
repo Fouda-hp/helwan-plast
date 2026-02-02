@@ -530,7 +530,11 @@ container:
           };
 
           window.goBack = function() {
-            window.location.hash = '#admin';
+            if (window.pyGoBack) {
+              window.pyGoBack();
+            } else {
+              window.location.hash = '#admin';
+            }
           };
         })();
       </script>

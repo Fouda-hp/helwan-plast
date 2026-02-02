@@ -25,6 +25,7 @@ class DataImportForm(DataImportFormTemplate):
         # Setup JavaScript bridge functions
         anvil.js.window.pyImportClients = self.import_clients
         anvil.js.window.pyImportQuotations = self.import_quotations
+        anvil.js.window.pyGoBack = self.go_back
 
         # Listen for hash changes
         anvil.js.window.addEventListener("hashchange", self.on_hash_change)
@@ -90,3 +91,7 @@ class DataImportForm(DataImportFormTemplate):
             return anvil.server.call('import_quotations_data', data, self.auth_token)
         else:
             return {'success': False, 'message': 'Not authenticated. Please login again.'}
+
+    def go_back(self):
+        """Navigate back to AdminPanel"""
+        open_form('AdminPanel')

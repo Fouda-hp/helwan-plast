@@ -1071,19 +1071,21 @@ def import_clients_data(data_list, token_or_email):
 
 
 def _clean_price(value):
-    """تنظيف قيمة السعر من العملة والفواصل"""
-    if not value or value == '-' or value == 'FREE':
-        return None
+    """تنظيف قيمة السعر من العملة والفواصل - ترجع 0 بدلاً من None"""
+    if not value or value == '-' or value == 'FREE' or str(value).strip() == '':
+        return 0.0  # Anvil number columns don't accept None
     value = str(value)
-    # إزالة العملة والمسافات
+    # إزالة العملة والمسافات والرموز
     value = value.replace('ج.م.', '').replace('\u200f', '').replace('$', '').replace(' ', '')
+    value = value.replace('‏', '')  # Remove RTL mark
     # إزالة الفواصل كفاصل آلاف
     value = value.replace(',', '')
     # محاولة التحويل
     try:
-        return float(value) if value else None
+        result = float(value) if value.strip() else 0.0
+        return result
     except:
-        return None
+        return 0.0
 
 
 def _map_column_name(key):
@@ -1128,8 +1130,9 @@ def _normalize_row(row):
 
 def _is_price_column(col_name):
     """التحقق إذا كان العمود يحتوي على سعر"""
-    price_keywords = ['price', 'cost', 'fob', 'stock', 'order', 'rate', 'Price', 'Cost', 'FOB', 'Stock', 'Order', 'Rate']
-    return any(keyword in col_name for keyword in price_keywords)
+    col_lower = col_name.lower()
+    price_keywords = ['price', 'cost', 'fob', 'stock', 'order', 'rate', 'exchange']
+    return any(keyword in col_lower for keyword in price_keywords)
 
 
 @anvil.server.callable
@@ -1193,15 +1196,36 @@ def import_quotations_data(data_list, token_or_email):
 
                 # تنظيف القيمة حسب نوعها
                 if _is_price_column(col_name):
-                    # تنظيف الأسعار
+                    # تنظيف الأسعار - دائماً رقم (0 للقيم الفارغة)
                     cleaned_value = _clean_price(col_value)
-                    data[col_name] = cleaned_value
+                    if cleaned_value is not None:
+                        data[col_name] = float(cleaned_value)
+                    else:
+                        data[col_name] = 0.0
                 elif col_name == 'Number of colors' or col_name == 'Machine width':
                     # الأرقام الصحيحة
-                    data[col_name] = safe_int(col_value)
+                    int_val = safe_int(col_value)
+                    if int_val is not None:
+                        data[col_name] = int_val
                 elif col_name == 'Date':
-                    # استخدام التاريخ الحالي
-                    data[col_name] = datetime.now().date()
+                    # تحويل التاريخ من النص
+                    if col_value and str(col_value).strip():
+                        try:
+                            # محاولة تحويل من تنسيق DD-MM-YYYY
+                            date_str = str(col_value).strip()
+                            if '-' in date_str:
+                                parts = date_str.split('-')
+                                if len(parts) == 3:
+                                    if len(parts[2]) == 4:  # DD-MM-YYYY
+                                        data[col_name] = datetime.strptime(date_str, '%d-%m-%Y').date()
+                                    else:  # YYYY-MM-DD
+                                        data[col_name] = datetime.strptime(date_str, '%Y-%m-%d').date()
+                            else:
+                                data[col_name] = datetime.now().date()
+                        except:
+                            data[col_name] = datetime.now().date()
+                    else:
+                        data[col_name] = datetime.now().date()
                 else:
                     # النصوص العادية
                     data[col_name] = safe_strip(col_value)

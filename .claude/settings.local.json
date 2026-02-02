@@ -16,7 +16,11 @@
       "Bash(pip:*)",
       "Bash(git stash:*)",
       "Bash(git fetch:*)",
-      "Bash(dir \"E:\\\\One Drive\\\\OneDrive - Helwan Plast\\\\2026\\\\المطابع\\\\Mohamed\\\\Backup\\\\anvil\\\\Backup\\\\Helwan_Plast\" /s /b)"
+      "Bash(dir \"E:\\\\One Drive\\\\OneDrive - Helwan Plast\\\\2026\\\\المطابع\\\\Mohamed\\\\Backup\\\\anvil\\\\Backup\\\\Helwan_Plast\" /s /b)",
+      "Bash(py -3:*)",
+      "Bash(C:/Users/Fouda/AppData/Local/Programs/Python/Python312/python.exe:*)",
+      "Bash(C:/Python312/python.exe:*)",
+      "Bash(C:/Python311/python.exe:*)"
     ]
   }
 }

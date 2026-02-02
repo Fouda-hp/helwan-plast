@@ -86,7 +86,9 @@ def send_email_smtp(to_email, subject, html_body):
     msg.attach(html_part)
 
     # الاتصال بـ SMTP server وإرسال الإيميل
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+    logger.info(f"Attempting to send email via SMTP to {to_email}")
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=30) as server:
+      server.set_debuglevel(0)
       server.starttls()
       server.login(smtp_email, smtp_password)
       server.sendmail(smtp_email, to_email, msg.as_string())
@@ -94,8 +96,14 @@ def send_email_smtp(to_email, subject, html_body):
     logger.info(f"Email sent successfully via SMTP to {to_email}")
     return True
 
+  except smtplib.SMTPAuthenticationError as e:
+    logger.error(f"SMTP Authentication failed: {e}")
+    return False
+  except smtplib.SMTPException as e:
+    logger.error(f"SMTP Error: {e}")
+    return False
   except Exception as e:
-    logger.error(f"Failed to send email via SMTP to {to_email}: {e}")
+    logger.error(f"Failed to send email via SMTP to {to_email}: {type(e).__name__}: {e}")
     return False
 
 
@@ -1112,8 +1120,12 @@ def login_user(email, password):
             'message': 'Verification code sent to your email'
         }
     else:
-        # في حالة فشل إرسال الإيميل، نكمل تسجيل الدخول مباشرة
-        return complete_login(user, ip_address)
+        # في حالة فشل إرسال الإيميل، نرجع خطأ بدلاً من السماح بالدخول
+        logger.error(f"Failed to send 2FA OTP to: {email}")
+        return {
+            'success': False,
+            'message': 'Failed to send verification code. Please try again later.'
+        }
 
 
 @anvil.server.callable

@@ -483,8 +483,42 @@ container:
             </div>
           </div>
 
+          <!-- Emergency Password Reset Form (Hidden) -->
+          <div id="resetForm" class="auth-form">
+            <div id="resetMessage" class="message"></div>
+
+            <div style="background:#fff3cd;padding:12px;border-radius:8px;margin-bottom:20px;font-size:13px;color:#856404;">
+              ⚠️ This is for emergency admin password reset only. You need the secret key.
+            </div>
+
+            <div class="field">
+              <label>Admin Email</label>
+              <input type="email" id="resetEmail" placeholder="admin@company.com">
+            </div>
+
+            <div class="field">
+              <label>New Password</label>
+              <input type="password" id="resetNewPassword" placeholder="New password (min 6 chars)">
+            </div>
+
+            <div class="field">
+              <label>Secret Key</label>
+              <input type="password" id="resetSecretKey" placeholder="Enter emergency secret key">
+            </div>
+
+            <button class="auth-btn" id="resetBtn" style="background:linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
+              <span class="btn-text">RESET PASSWORD</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="backFromReset">Back to Login</a>
+            </div>
+          </div>
+
           <div class="footer">
             Design And devloped By Helwan Plast
+            <br><small style="opacity:0.5;cursor:pointer;" id="emergencyResetLink">Admin Reset</small>
           </div>
 
         </div>
@@ -792,6 +826,85 @@ container:
 
             setLoading(setupBtn, false);
           };
+
+          // ============================================
+          // EMERGENCY PASSWORD RESET
+          // ============================================
+          var resetForm = document.getElementById('resetForm');
+          var resetBtn = document.getElementById('resetBtn');
+          var resetEmail = document.getElementById('resetEmail');
+          var resetNewPassword = document.getElementById('resetNewPassword');
+          var resetSecretKey = document.getElementById('resetSecretKey');
+          var emergencyResetLink = document.getElementById('emergencyResetLink');
+          var backFromReset = document.getElementById('backFromReset');
+
+          // Show reset form
+          if (emergencyResetLink) {
+            emergencyResetLink.onclick = function() {
+              loginForm.classList.remove('active');
+              registerForm.classList.remove('active');
+              setupForm.classList.remove('active');
+              resetForm.classList.add('active');
+              document.querySelector('.auth-tabs').style.display = 'none';
+            };
+          }
+
+          // Back to login from reset
+          if (backFromReset) {
+            backFromReset.onclick = function() {
+              resetForm.classList.remove('active');
+              loginForm.classList.add('active');
+              document.querySelector('.auth-tabs').style.display = 'flex';
+            };
+          }
+
+          // Reset password action
+          if (resetBtn) {
+            resetBtn.onclick = async function() {
+              clearMessages();
+
+              var email = resetEmail.value.trim();
+              var newPassword = resetNewPassword.value;
+              var secretKey = resetSecretKey.value;
+
+              if (!email || !newPassword || !secretKey) {
+                showMessage('resetMessage', 'error', 'Please fill all fields');
+                return;
+              }
+
+              if (newPassword.length < 6) {
+                showMessage('resetMessage', 'error', 'Password must be at least 6 characters');
+                return;
+              }
+
+              setLoading(resetBtn, true);
+
+              try {
+                var result = await window.resetAdminPassword(email, newPassword, secretKey);
+
+                if (result.success) {
+                  showMessage('resetMessage', 'success', result.message);
+
+                  setTimeout(function() {
+                    resetForm.classList.remove('active');
+                    loginForm.classList.add('active');
+                    document.querySelector('.auth-tabs').style.display = 'flex';
+                    loginEmail.value = email;
+                  }, 2000);
+
+                } else {
+                  showMessage('resetMessage', 'error', result.message);
+                }
+
+              } catch (e) {
+                console.error('Reset password error:', e);
+                var errorMsg = e.message || e.toString() || 'Connection error';
+                showMessage('resetMessage', 'error', 'Error: ' + errorMsg);
+              }
+
+              setLoading(resetBtn, false);
+            };
+          }
 
         })();
       </script>

@@ -118,28 +118,58 @@ def hash_password(password):
 def verify_password(password, stored_hash):
     """
     التحقق من كلمة المرور
+    يدعم كلمات المرور القديمة (SHA-256) والجديدة (PBKDF2)
     """
-    if not stored_hash or ':' not in stored_hash:
+    if not stored_hash:
         return False
 
     try:
-        salt, hash_value = stored_hash.split(':', 1)
+        # التحقق من نوع التشفير
+        if ':' in stored_hash:
+            # تشفير PBKDF2 الجديد (salt:hash)
+            salt, hash_value = stored_hash.split(':', 1)
 
-        # إعادة حساب الهاش
-        key = hashlib.pbkdf2_hmac(
-            'sha256',
-            password.encode('utf-8'),
-            salt.encode('utf-8'),
-            PBKDF2_ITERATIONS
-        )
+            # إعادة حساب الهاش
+            key = hashlib.pbkdf2_hmac(
+                'sha256',
+                password.encode('utf-8'),
+                salt.encode('utf-8'),
+                PBKDF2_ITERATIONS
+            )
 
-        check_hash = key.hex()
+            check_hash = key.hex()
 
-        # مقارنة آمنة (ثابتة الوقت)
-        return secrets.compare_digest(check_hash, hash_value)
+            # مقارنة آمنة (ثابتة الوقت)
+            return secrets.compare_digest(check_hash, hash_value)
+        else:
+            # تشفير SHA-256 القديم (للتوافق مع كلمات المرور السابقة)
+            old_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+            return secrets.compare_digest(old_hash, stored_hash)
+
     except Exception as e:
         logger.error(f"Password verification error: {e}")
         return False
+
+
+def upgrade_password_hash(user, password):
+    """
+    ترقية كلمة المرور من SHA-256 القديم إلى PBKDF2 الجديد
+    يتم استدعاؤها تلقائياً عند تسجيل الدخول الناجح
+    """
+    try:
+        stored_hash = user['password_hash']
+
+        # إذا كانت كلمة المرور بالتشفير القديم (بدون :)
+        if stored_hash and ':' not in stored_hash:
+            # إعادة تشفير كلمة المرور بالطريقة الجديدة
+            new_hash = hash_password(password)
+            user.update(password_hash=new_hash)
+            logger.info(f"Password hash upgraded for user: {user['email']}")
+            return True
+    except Exception as e:
+        logger.error(f"Error upgrading password hash: {e}")
+
+    return False
 
 
 # =========================================================
@@ -501,6 +531,9 @@ def login_user(email, password):
         locked_until=None,
         last_login=datetime.now()
     )
+
+    # ترقية كلمة المرور من التشفير القديم إلى الجديد (إذا لزم الأمر)
+    upgrade_password_hash(user, password)
 
     # إنشاء جلسة جديدة
     token = create_session(email, user['role'], ip_address)
@@ -950,6 +983,59 @@ def check_admin_exists():
         return {'exists': existing_admin is not None}
     except:
         return {'exists': False}
+
+
+@anvil.server.callable
+def reset_admin_password_emergency(email, new_password, secret_key):
+    """
+    إعادة تعيين كلمة مرور الأدمن (للطوارئ فقط)
+    تتطلب مفتاح سري للحماية
+    المفتاح: HELWAN_RESET_2024
+    """
+    ip_address = get_client_ip()
+
+    # مفتاح الطوارئ (يمكن تغييره لاحقاً)
+    EMERGENCY_KEY = "HELWAN_RESET_2024"
+
+    try:
+        # التحقق من المفتاح السري
+        if secret_key != EMERGENCY_KEY:
+            log_audit('FAILED_EMERGENCY_RESET', 'users', None, None,
+                      {'email': email, 'reason': 'Invalid secret key'}, email, ip_address)
+            return {'success': False, 'message': 'Invalid secret key'}
+
+        # التحقق من كلمة المرور الجديدة
+        if not new_password or len(new_password) < 6:
+            return {'success': False, 'message': 'Password must be at least 6 characters'}
+
+        email = str(email or '').strip().lower()
+
+        # البحث عن المستخدم
+        user = app_tables.users.get(email=email)
+        if not user:
+            return {'success': False, 'message': 'User not found'}
+
+        # التحقق من أن المستخدم أدمن
+        if user['role'] != 'admin':
+            return {'success': False, 'message': 'This function is for admin accounts only'}
+
+        # تحديث كلمة المرور
+        user.update(
+            password_hash=hash_password(new_password),
+            login_attempts=0,
+            locked_until=None
+        )
+
+        log_audit('EMERGENCY_PASSWORD_RESET', 'users', user['user_id'], None,
+                  {'email': email}, email, ip_address)
+
+        logger.info(f"Emergency password reset for admin: {email}")
+
+        return {'success': True, 'message': 'Password reset successfully. You can now login.'}
+
+    except Exception as e:
+        logger.error(f"Emergency password reset error: {e}")
+        return {'success': False, 'message': f'Error: {str(e)}'}
 
 
 @anvil.server.callable

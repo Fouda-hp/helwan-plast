@@ -24,6 +24,7 @@ class LoginForm(LoginFormTemplate):
         anvil.js.window.registerUser = self.register_user
         anvil.js.window.setupAdmin = self.setup_admin
         anvil.js.window.checkAdminExists = self.check_admin_exists
+        anvil.js.window.resetAdminPassword = self.reset_admin_password
 
         # Check route on load
         self.check_route()
@@ -97,3 +98,14 @@ class LoginForm(LoginFormTemplate):
             return result
         except Exception as e:
             return {'exists': True}  # Default to true for safety
+
+    def reset_admin_password(self, email, new_password, secret_key):
+        """
+        Emergency admin password reset - called from JavaScript
+        إعادة تعيين كلمة مرور الأدمن (للطوارئ)
+        """
+        try:
+            result = anvil.server.call('reset_admin_password_emergency', email, new_password, secret_key)
+            return result
+        except Exception as e:
+            return {'success': False, 'message': f'Error: {str(e)}'}

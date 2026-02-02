@@ -1251,6 +1251,8 @@ def reset_admin_password_emergency(email, new_password, secret_key):
     إعادة تعيين كلمة مرور الأدمن (للطوارئ فقط)
     تتطلب مفتاح سري للحماية
     المفتاح: HELWAN_RESET_2024
+
+    إذا لم يكن المستخدم موجوداً، سيتم إنشاء حساب أدمن جديد
     """
     ip_address = get_client_ip()
 
@@ -1270,20 +1272,51 @@ def reset_admin_password_emergency(email, new_password, secret_key):
 
         email = str(email or '').strip().lower()
 
+        if not validate_email(email):
+            return {'success': False, 'message': 'Invalid email address format'}
+
         # البحث عن المستخدم
         user = app_tables.users.get(email=email)
+
         if not user:
-            return {'success': False, 'message': 'User not found'}
+            # إذا لم يكن المستخدم موجوداً، أنشئ حساب أدمن جديد
+            user_id = str(uuid.uuid4())
+
+            app_tables.users.add_row(
+                user_id=user_id,
+                email=email,
+                password_hash=hash_password(new_password),
+                full_name='Administrator',
+                phone=None,
+                role='admin',
+                is_approved=True,
+                is_active=True,
+                created_at=datetime.now(),
+                login_attempts=0,
+                custom_permissions=None
+            )
+
+            # إنشاء الإعدادات الافتراضية
+            _initialize_default_settings()
+
+            log_audit('EMERGENCY_ADMIN_CREATED', 'users', user_id, None,
+                      {'email': email}, email, ip_address)
+
+            logger.info(f"Emergency admin created: {email}")
+
+            return {'success': True, 'message': 'Admin account created successfully. You can now login.'}
 
         # التحقق من أن المستخدم أدمن
         if user['role'] != 'admin':
-            return {'success': False, 'message': 'This function is for admin accounts only'}
+            return {'success': False, 'message': 'This function is for admin accounts only. Use Setup Admin for first admin.'}
 
         # تحديث كلمة المرور
         user.update(
             password_hash=hash_password(new_password),
             login_attempts=0,
-            locked_until=None
+            locked_until=None,
+            is_active=True,
+            is_approved=True
         )
 
         log_audit('EMERGENCY_PASSWORD_RESET', 'users', user['user_id'], None,

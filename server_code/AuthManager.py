@@ -49,45 +49,28 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # =========================================================
-# Resend Email API Configuration
+# Google Gmail API Configuration (via Anvil)
 # =========================================================
-import anvil.http
-import json
-
-RESEND_API_KEY = "re_MLqRuXbz_NY1ycMDub7M42rRkfbZGM4eC"
-RESEND_FROM_EMAIL = "onboarding@resend.dev"  # الإيميل الافتراضي من Resend
+import anvil.google.mail
 
 def send_email_smtp(to_email, subject, html_body):
   """
-  إرسال إيميل عبر Resend API
+  إرسال إيميل عبر Google Gmail API
   """
   try:
-    logger.info(f"Attempting to send email via Resend to {to_email}")
+    logger.info(f"Attempting to send email via Google to {to_email}")
 
-    response = anvil.http.request(
-      url="https://api.resend.com/emails",
-      method="POST",
-      headers={
-        "Authorization": f"Bearer {RESEND_API_KEY}",
-        "Content-Type": "application/json"
-      },
-      data=json.dumps({
-        "from": f"Helwan Plast <{RESEND_FROM_EMAIL}>",
-        "to": [to_email],
-        "subject": subject,
-        "html": html_body
-      }),
-      json=True
+    anvil.google.mail.send(
+      to=to_email,
+      subject=subject,
+      html=html_body
     )
 
-    logger.info(f"Email sent successfully via Resend to {to_email}")
+    logger.info(f"Email sent successfully via Google to {to_email}")
     return True
 
-  except anvil.http.HttpError as e:
-    logger.error(f"Resend API Error: {e.status} - {e.content}")
-    return False
   except Exception as e:
-    logger.error(f"Failed to send email via Resend to {to_email}: {type(e).__name__}: {e}")
+    logger.error(f"Failed to send email via Google to {to_email}: {type(e).__name__}: {e}")
     return False
 
 

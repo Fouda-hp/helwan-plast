@@ -89,6 +89,12 @@
   function mapMachineType(v) {
     v = String(v || "").toLowerCase();
     if (v.includes("metal")) return "Metal anilox";
+    // Handle both "Doctor" and "Doctore" (typo in old data)
+    if (v.includes("single") && (v.includes("doctor") || v.includes("ceramic")))
+      return "Ceramic anilox Single Doctor Blade";
+    if (v.includes("chamber") && (v.includes("doctor") || v.includes("ceramic")))
+      return "Ceramic anilox Chamber Doctor Blade";
+    // Fallback for partial matches
     if (v.includes("single")) return "Ceramic anilox Single Doctor Blade";
     if (v.includes("chamber")) return "Ceramic anilox Chamber Doctor Blade";
     return "";
@@ -96,7 +102,9 @@
 
   function mapWinder(v) {
     v = String(v || "").toLowerCase();
+    // Handle "single winder", "single", etc.
     if (v.includes("single")) return "Single";
+    // Handle "double winder", "double", etc.
     if (v.includes("double")) return "Double";
     return "";
   }

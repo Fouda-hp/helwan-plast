@@ -525,6 +525,64 @@ container:
             </button>
           </div>
 
+          <!-- OTP Verification Form (for 2FA Login) -->
+          <div id="otpLoginForm" class="auth-form">
+            <div id="otpLoginMessage" class="message"></div>
+
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="font-size:48px;margin-bottom:10px;">🔐</div>
+              <h3 style="color:#1976d2;margin:0 0 8px;" id="otpLoginTitle">Two-Factor Authentication</h3>
+              <p style="color:#666;font-size:14px;" id="otpLoginSubtitle">Enter the verification code sent to your email</p>
+            </div>
+
+            <div class="field">
+              <label id="lblOtpLoginCode">Verification Code</label>
+              <input type="text" id="otpLoginCode" placeholder="000000" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:8px;font-weight:bold;">
+            </div>
+
+            <button class="auth-btn" id="verifyOtpLoginBtn">
+              <span class="btn-text" id="btnVerifyOtpLogin">VERIFY & LOGIN</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="resendOtpLogin">Didn't receive code? Resend</a>
+            </div>
+
+            <div class="setup-link" style="margin-top:10px;">
+              <a id="backFromOtpLogin">← Back to Login</a>
+            </div>
+          </div>
+
+          <!-- OTP Verification Form (for Registration) -->
+          <div id="otpRegForm" class="auth-form">
+            <div id="otpRegMessage" class="message"></div>
+
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="font-size:48px;margin-bottom:10px;">📧</div>
+              <h3 style="color:#1976d2;margin:0 0 8px;" id="otpRegTitle">Verify Your Email</h3>
+              <p style="color:#666;font-size:14px;" id="otpRegSubtitle">Enter the verification code sent to your email</p>
+            </div>
+
+            <div class="field">
+              <label id="lblOtpRegCode">Verification Code</label>
+              <input type="text" id="otpRegCode" placeholder="000000" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:8px;font-weight:bold;">
+            </div>
+
+            <button class="auth-btn" id="verifyOtpRegBtn" style="background:linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);">
+              <span class="btn-text" id="btnVerifyOtpReg">VERIFY EMAIL</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="resendOtpReg">Didn't receive code? Resend</a>
+            </div>
+
+            <div class="setup-link" style="margin-top:10px;">
+              <a id="backFromOtpReg">← Back to Registration</a>
+            </div>
+          </div>
+
           <!-- Setup Admin Form (Hidden) -->
           <div id="setupForm" class="auth-form">
             <div id="setupMessage" class="message"></div>
@@ -593,8 +651,7 @@ container:
           </div>
 
           <div class="footer">
-            Design And Devloped By Helwan Plast
-            <br><small style="opacity:0.5;cursor:pointer;" id="emergencyResetLink">Admin Reset</small>
+            Design And Developed By Helwan Plast
           </div>
 
         </div>
@@ -851,11 +908,13 @@ container:
           };
 
           // ============================================
-          // LOGIN
+          // LOGIN (with 2FA)
           // ============================================
           var loginBtn = document.getElementById('loginBtn');
           var loginEmail = document.getElementById('loginEmail');
           var loginPassword = document.getElementById('loginPassword');
+          var otpLoginForm = document.getElementById('otpLoginForm');
+          var pendingLoginEmail = ''; // Store email for OTP verification
 
           loginBtn.onclick = async function() {
             clearMessages();
@@ -874,26 +933,22 @@ container:
               var result = await window.loginUser(email, password);
 
               if (result.success) {
-                // Store session
-                sessionStorage.setItem('auth_token', result.token);
-                sessionStorage.setItem('user_email', result.user.email);
-                sessionStorage.setItem('user_name', result.user.full_name);
-                sessionStorage.setItem('user_role', result.user.role);
-
-                showMessage('loginMessage', 'success', 'Login successful! Redirecting...');
-
-                setTimeout(function() {
-                  if (result.user.role === 'admin') {
-                    location.hash = '#admin';
-                  } else {
-                    location.hash = '#launcher';
-                  }
-                }, 800);
-
+                if (result.requires_2fa) {
+                  // Show OTP form for 2FA
+                  pendingLoginEmail = email;
+                  loginForm.classList.remove('active');
+                  otpLoginForm.classList.add('active');
+                  document.querySelector('.auth-tabs').style.display = 'none';
+                  showMessage('otpLoginMessage', 'success', result.message);
+                  document.getElementById('otpLoginCode').focus();
+                } else {
+                  // Direct login (email service down)
+                  completeLogin(result);
+                }
               } else {
                 showMessage('loginMessage', 'error', result.message);
-                setLoading(loginBtn, false);
               }
+              setLoading(loginBtn, false);
 
             } catch (e) {
               console.error('Login error:', e);
@@ -903,19 +958,97 @@ container:
             }
           };
 
+          function completeLogin(result) {
+            // Store session
+            sessionStorage.setItem('auth_token', result.token);
+            sessionStorage.setItem('user_email', result.user.email);
+            sessionStorage.setItem('user_name', result.user.full_name);
+            sessionStorage.setItem('user_role', result.user.role);
+
+            showMessage('loginMessage', 'success', 'Login successful! Redirecting...');
+
+            setTimeout(function() {
+              if (result.user.role === 'admin') {
+                location.hash = '#admin';
+              } else {
+                location.hash = '#launcher';
+              }
+            }, 800);
+          }
+
           // Enter key for login
           loginPassword.onkeypress = function(e) {
             if (e.key === 'Enter') loginBtn.click();
           };
 
           // ============================================
-          // REGISTER
+          // OTP LOGIN VERIFICATION (2FA)
+          // ============================================
+          var verifyOtpLoginBtn = document.getElementById('verifyOtpLoginBtn');
+          var otpLoginCode = document.getElementById('otpLoginCode');
+
+          verifyOtpLoginBtn.onclick = async function() {
+            clearMessages();
+            var otp = otpLoginCode.value.trim();
+
+            if (!otp || otp.length !== 6) {
+              showMessage('otpLoginMessage', 'error', 'Please enter the 6-digit code');
+              return;
+            }
+
+            setLoading(verifyOtpLoginBtn, true);
+
+            try {
+              var result = await window.verifyLoginOtp(pendingLoginEmail, otp);
+
+              if (result.success) {
+                completeLogin(result);
+              } else {
+                showMessage('otpLoginMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              console.error('OTP verify error:', e);
+              showMessage('otpLoginMessage', 'error', 'Verification failed');
+            }
+
+            setLoading(verifyOtpLoginBtn, false);
+          };
+
+          // Enter key for OTP login
+          otpLoginCode.onkeypress = function(e) {
+            if (e.key === 'Enter') verifyOtpLoginBtn.click();
+          };
+
+          // Resend OTP for login
+          document.getElementById('resendOtpLogin').onclick = async function() {
+            try {
+              var result = await window.resendLoginOtp(pendingLoginEmail);
+              showMessage('otpLoginMessage', result.success ? 'success' : 'error', result.message);
+            } catch (e) {
+              showMessage('otpLoginMessage', 'error', 'Failed to resend code');
+            }
+          };
+
+          // Back from OTP login
+          document.getElementById('backFromOtpLogin').onclick = function() {
+            otpLoginForm.classList.remove('active');
+            loginForm.classList.add('active');
+            document.querySelector('.auth-tabs').style.display = 'flex';
+            otpLoginCode.value = '';
+            clearMessages();
+          };
+
+          // ============================================
+          // REGISTER (with Email Verification)
           // ============================================
           var registerBtn = document.getElementById('registerBtn');
           var regName = document.getElementById('regName');
           var regEmail = document.getElementById('regEmail');
           var regPhone = document.getElementById('regPhone');
           var regConfirm = document.getElementById('regConfirm');
+          var otpRegForm = document.getElementById('otpRegForm');
+          var pendingRegEmail = ''; // Store email for OTP verification
 
           registerBtn.onclick = async function() {
             clearMessages();
@@ -936,8 +1069,8 @@ container:
               return;
             }
 
-            if (password.length < 6) {
-              showMessage('registerMessage', 'error', 'Password must be at least 6 characters');
+            if (password.length < 8) {
+              showMessage('registerMessage', 'error', 'Password must be at least 8 characters');
               return;
             }
 
@@ -947,13 +1080,24 @@ container:
               var result = await window.registerUser(email, password, name, phone || null);
 
               if (result.success) {
-                showMessage('registerMessage', 'success', result.message);
-                regName.value = '';
-                regEmail.value = '';
-                regPhone.value = '';
-                regPassword.value = '';
-                regConfirm.value = '';
-                strengthBar.className = 'password-strength-bar';
+                if (result.requires_verification) {
+                  // Show OTP form for email verification
+                  pendingRegEmail = email;
+                  registerForm.classList.remove('active');
+                  otpRegForm.classList.add('active');
+                  document.querySelector('.auth-tabs').style.display = 'none';
+                  showMessage('otpRegMessage', 'success', result.message);
+                  document.getElementById('otpRegCode').focus();
+                } else {
+                  // Direct registration (email service down)
+                  showMessage('registerMessage', 'success', result.message);
+                  regName.value = '';
+                  regEmail.value = '';
+                  regPhone.value = '';
+                  regPassword.value = '';
+                  regConfirm.value = '';
+                  strengthBar.className = 'password-strength-bar';
+                }
               } else {
                 showMessage('registerMessage', 'error', result.message);
               }
@@ -965,6 +1109,80 @@ container:
             }
 
             setLoading(registerBtn, false);
+          };
+
+          // ============================================
+          // OTP REGISTRATION VERIFICATION
+          // ============================================
+          var verifyOtpRegBtn = document.getElementById('verifyOtpRegBtn');
+          var otpRegCode = document.getElementById('otpRegCode');
+
+          verifyOtpRegBtn.onclick = async function() {
+            clearMessages();
+            var otp = otpRegCode.value.trim();
+
+            if (!otp || otp.length !== 6) {
+              showMessage('otpRegMessage', 'error', 'Please enter the 6-digit code');
+              return;
+            }
+
+            setLoading(verifyOtpRegBtn, true);
+
+            try {
+              var result = await window.verifyRegistrationOtp(pendingRegEmail, otp);
+
+              if (result.success) {
+                showMessage('otpRegMessage', 'success', result.message);
+                // Clear form and go back to login after 2 seconds
+                setTimeout(function() {
+                  otpRegForm.classList.remove('active');
+                  loginForm.classList.add('active');
+                  document.querySelector('.auth-tabs').style.display = 'flex';
+                  tabs[0].classList.add('active');
+                  tabs[1].classList.remove('active');
+                  otpRegCode.value = '';
+                  regName.value = '';
+                  regEmail.value = '';
+                  regPhone.value = '';
+                  regPassword.value = '';
+                  regConfirm.value = '';
+                  strengthBar.className = 'password-strength-bar';
+                  showMessage('loginMessage', 'success', 'Email verified! Please wait for admin approval.');
+                }, 2000);
+              } else {
+                showMessage('otpRegMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              console.error('OTP verify error:', e);
+              showMessage('otpRegMessage', 'error', 'Verification failed');
+            }
+
+            setLoading(verifyOtpRegBtn, false);
+          };
+
+          // Enter key for OTP registration
+          otpRegCode.onkeypress = function(e) {
+            if (e.key === 'Enter') verifyOtpRegBtn.click();
+          };
+
+          // Resend OTP for registration
+          document.getElementById('resendOtpReg').onclick = async function() {
+            try {
+              var result = await window.resendVerificationOtp(pendingRegEmail);
+              showMessage('otpRegMessage', result.success ? 'success' : 'error', result.message);
+            } catch (e) {
+              showMessage('otpRegMessage', 'error', 'Failed to resend code');
+            }
+          };
+
+          // Back from OTP registration
+          document.getElementById('backFromOtpReg').onclick = function() {
+            otpRegForm.classList.remove('active');
+            registerForm.classList.add('active');
+            document.querySelector('.auth-tabs').style.display = 'flex';
+            otpRegCode.value = '';
+            clearMessages();
           };
 
           // ============================================

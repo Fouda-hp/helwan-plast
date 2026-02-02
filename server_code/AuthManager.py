@@ -40,13 +40,21 @@ logger = logging.getLogger(__name__)
 # =========================================================
 MAX_LOGIN_ATTEMPTS = 5           # عدد المحاولات قبل القفل
 LOCKOUT_DURATION_MINUTES = 30    # مدة القفل بالدقائق
-SESSION_DURATION_HOURS = 24      # مدة الجلسة بالساعات
+SESSION_DURATION_MINUTES = 60    # مدة الجلسة بالدقائق (60 دقيقة = ساعة واحدة)
 RATE_LIMIT_WINDOW_MINUTES = 15   # نافذة Rate Limiting
 RATE_LIMIT_MAX_REQUESTS = 100    # الحد الأقصى للطلبات في النافذة
 PBKDF2_ITERATIONS = 100000       # عدد التكرارات للتشفير (أكثر أماناً)
+PASSWORD_HISTORY_COUNT = 5       # عدد كلمات المرور السابقة للتحقق منها
+OTP_EXPIRY_MINUTES = 10          # مدة صلاحية OTP
 
-# Admin Email for Notifications
-ADMIN_NOTIFICATION_EMAIL = "mohamedadelfouda@helwanplast.com"  # Change to your admin email
+# Admin Email for Notifications - يُقرأ من Environment Variables
+try:
+    import anvil.secrets
+    ADMIN_NOTIFICATION_EMAIL = anvil.secrets.get_secret('ADMIN_EMAIL') or "mohamedadelfouda@helwanplast.com"
+    EMERGENCY_SECRET_KEY = anvil.secrets.get_secret('EMERGENCY_KEY') or "HELWAN_RESET_2024"
+except:
+    ADMIN_NOTIFICATION_EMAIL = "mohamedadelfouda@helwanplast.com"
+    EMERGENCY_SECRET_KEY = "HELWAN_RESET_2024"
 
 # صلاحيات الأدوار
 ROLES = {
@@ -194,6 +202,151 @@ def send_approval_email(user_email, user_name, role, approved=True):
         return False
 
 
+# =========================================================
+# OTP Generation and Verification
+# =========================================================
+def generate_otp():
+    """توليد رمز OTP من 6 أرقام"""
+    return ''.join([str(secrets.randbelow(10)) for _ in range(6)])
+
+
+def send_otp_email(user_email, user_name, otp, purpose='verification'):
+    """
+    إرسال OTP عبر البريد الإلكتروني
+    purpose: 'verification' | '2fa' | 'password_reset'
+    """
+    if not EMAIL_SERVICE_AVAILABLE:
+        logger.warning("Email service not available. Skipping OTP email.")
+        return False
+
+    try:
+        purposes = {
+            'verification': {
+                'subject': '🔐 Email Verification - Helwan Plast',
+                'title': 'Email Verification',
+                'message': 'Please use the following code to verify your email address:'
+            },
+            '2fa': {
+                'subject': '🔐 Login Verification - Helwan Plast',
+                'title': 'Two-Factor Authentication',
+                'message': 'Please use the following code to complete your login:'
+            },
+            'password_reset': {
+                'subject': '🔐 Password Reset - Helwan Plast',
+                'title': 'Password Reset Request',
+                'message': 'Please use the following code to reset your password:'
+            }
+        }
+
+        p = purposes.get(purpose, purposes['verification'])
+
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; text-align: center;">Helwan Plast System</h1>
+            </div>
+
+            <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #1976d2; margin-top: 0;">{p['title']}</h2>
+
+                <p style="font-size: 16px; color: #333;">Dear <strong>{user_name}</strong>,</p>
+
+                <p style="font-size: 16px; color: #333;">{p['message']}</p>
+
+                <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin: 25px 0; text-align: center;">
+                    <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1976d2;">{otp}</span>
+                </div>
+
+                <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #e65100;">
+                        <strong>⚠️ Important:</strong> This code will expire in {OTP_EXPIRY_MINUTES} minutes. Do not share this code with anyone.
+                    </p>
+                </div>
+
+                <p style="font-size: 14px; color: #666;">
+                    If you did not request this code, please ignore this email.
+                </p>
+
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+                <p style="font-size: 12px; color: #999; text-align: center;">
+                    Best regards,<br>
+                    <strong>Helwan Plast System</strong>
+                </p>
+            </div>
+        </div>
+        """
+
+        anvil.email.send(
+            to=user_email,
+            subject=p['subject'],
+            html=html_body
+        )
+
+        logger.info(f"OTP email sent to {user_email} for {purpose}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to send OTP email to {user_email}: {e}")
+        return False
+
+
+def store_otp(user_email, otp, purpose='verification'):
+    """
+    حفظ OTP في قاعدة البيانات
+    """
+    try:
+        # حذف أي OTP قديم لنفس المستخدم والغرض
+        old_otps = list(app_tables.otp_codes.search(user_email=user_email, purpose=purpose))
+        for old in old_otps:
+            old.delete()
+
+        # إضافة OTP جديد
+        app_tables.otp_codes.add_row(
+            otp_id=str(uuid.uuid4()),
+            user_email=user_email,
+            otp_code=otp,
+            purpose=purpose,
+            created_at=datetime.now(),
+            expires_at=datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
+            is_used=False
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Failed to store OTP: {e}")
+        return False
+
+
+def verify_otp(user_email, otp, purpose='verification'):
+    """
+    التحقق من صحة OTP
+    """
+    try:
+        otp_record = app_tables.otp_codes.get(
+            user_email=user_email,
+            otp_code=otp,
+            purpose=purpose,
+            is_used=False
+        )
+
+        if not otp_record:
+            return False, "Invalid or expired code"
+
+        # التحقق من انتهاء الصلاحية
+        if datetime.now() > otp_record['expires_at']:
+            otp_record.delete()
+            return False, "Code has expired"
+
+        # تحديث كمستخدم
+        otp_record.update(is_used=True)
+
+        return True, "Code verified successfully"
+
+    except Exception as e:
+        logger.error(f"OTP verification error: {e}")
+        return False, "Verification failed"
+
+
 def send_admin_notification_email(new_user_email, new_user_name, new_user_phone):
     """
     إرسال إيميل للأدمن عند تسجيل مستخدم جديد
@@ -339,6 +492,53 @@ def upgrade_password_hash(user, password):
 
 
 # =========================================================
+# Password History (منع تكرار كلمات المرور)
+# =========================================================
+def add_to_password_history(user_email, password_hash):
+    """
+    إضافة كلمة المرور إلى سجل كلمات المرور السابقة
+    """
+    try:
+        app_tables.password_history.add_row(
+            history_id=str(uuid.uuid4()),
+            user_email=user_email,
+            password_hash=password_hash,
+            created_at=datetime.now()
+        )
+
+        # حذف كلمات المرور القديمة إذا تجاوزت الحد
+        history = list(app_tables.password_history.search(user_email=user_email))
+        history.sort(key=lambda x: x['created_at'], reverse=True)
+
+        if len(history) > PASSWORD_HISTORY_COUNT:
+            for old in history[PASSWORD_HISTORY_COUNT:]:
+                old.delete()
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to add password to history: {e}")
+        return False
+
+
+def check_password_history(user_email, new_password):
+    """
+    التحقق من أن كلمة المرور الجديدة ليست مستخدمة سابقاً
+    Returns: (is_valid, message)
+    """
+    try:
+        history = list(app_tables.password_history.search(user_email=user_email))
+
+        for record in history:
+            if verify_password(new_password, record['password_hash']):
+                return False, f"Cannot reuse any of your last {PASSWORD_HISTORY_COUNT} passwords"
+
+        return True, "Password is valid"
+    except Exception as e:
+        logger.error(f"Password history check error: {e}")
+        return True, "Check passed"  # السماح في حالة الخطأ
+
+
+# =========================================================
 # إدارة الجلسات (في قاعدة البيانات)
 # =========================================================
 def generate_session_token():
@@ -351,7 +551,7 @@ def create_session(user_email, role, ip_address=None, user_agent=None):
     إنشاء جلسة جديدة في قاعدة البيانات
     """
     token = generate_session_token()
-    expires = datetime.now() + timedelta(hours=SESSION_DURATION_HOURS)
+    expires = datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES)
 
     try:
         app_tables.sessions.add_row(
@@ -567,7 +767,7 @@ def get_client_ip():
 @anvil.server.callable
 def register_user(email, password, full_name, phone=None):
     """
-    تسجيل مستخدم جديد (في انتظار موافقة الأدمن)
+    تسجيل مستخدم جديد - الخطوة الأولى (إرسال OTP للتحقق من البريد)
     """
     ip_address = get_client_ip()
 
@@ -605,53 +805,155 @@ def register_user(email, password, full_name, phone=None):
     # التحقق من عدم وجود البريد مسبقاً
     existing = app_tables.users.get(email=email)
     if existing:
+        # إذا كان المستخدم موجود ولكن لم يتحقق من إيميله بعد
+        if not existing.get('email_verified', True):
+            # إعادة إرسال OTP
+            otp = generate_otp()
+            store_otp(email, otp, 'verification')
+            send_otp_email(email, full_name, otp, 'verification')
+            return {
+                'success': True,
+                'requires_verification': True,
+                'message': 'Verification code resent to your email'
+            }
         return {'success': False, 'message': 'Email already registered'}
 
-    # إنشاء المستخدم
+    # إنشاء المستخدم (غير مُتحقق منه)
     user_id = str(uuid.uuid4())
-    password_hash = hash_password(password)
+    password_hash_value = hash_password(password)
 
     try:
         app_tables.users.add_row(
             user_id=user_id,
             email=email,
-            password_hash=password_hash,
+            password_hash=password_hash_value,
             full_name=full_name,
             phone=phone,
             role='viewer',  # الدور الافتراضي
             is_approved=False,
             is_active=True,
+            email_verified=False,  # غير مُتحقق من الإيميل بعد
             created_at=datetime.now(),
             login_attempts=0,
             custom_permissions=None
         )
 
+        # إضافة كلمة المرور لسجل كلمات المرور
+        add_to_password_history(email, password_hash_value)
+
+        # إرسال OTP للتحقق من البريد
+        otp = generate_otp()
+        store_otp(email, otp, 'verification')
+        email_sent = send_otp_email(email, full_name, otp, 'verification')
+
         # تسجيل في Audit Log
-        log_audit('REGISTER', 'users', user_id, None,
+        log_audit('REGISTER_PENDING', 'users', user_id, None,
                   {'email': email, 'full_name': full_name},
                   email, ip_address)
 
-        logger.info(f"New user registered: {email}")
+        logger.info(f"New user registration started: {email}")
 
-        # إرسال إيميل للأدمن
-        send_admin_notification_email(email, full_name, phone)
+        if email_sent:
+            return {
+                'success': True,
+                'requires_verification': True,
+                'message': 'Please check your email for verification code'
+            }
+        else:
+            # في حالة فشل إرسال الإيميل، نُكمل التسجيل مباشرة
+            return complete_registration_without_verification(email)
 
-        return {
-            'success': True,
-            'message': 'Registration successful! Please wait for admin approval.'
-        }
     except Exception as e:
         logger.error(f"Registration error: {e}")
         return {'success': False, 'message': 'Registration failed. Please try again.'}
 
 
+@anvil.server.callable
+def verify_registration_otp(email, otp):
+    """
+    التحقق من OTP وإتمام التسجيل
+    """
+    email = str(email or '').strip().lower()
+
+    # التحقق من OTP
+    is_valid, message = verify_otp(email, otp, 'verification')
+
+    if not is_valid:
+        return {'success': False, 'message': message}
+
+    # تحديث المستخدم كمُتحقق منه
+    user = app_tables.users.get(email=email)
+    if not user:
+        return {'success': False, 'message': 'User not found'}
+
+    user.update(email_verified=True)
+
+    ip_address = get_client_ip()
+
+    # تسجيل في Audit Log
+    log_audit('EMAIL_VERIFIED', 'users', user['user_id'], None,
+              {'email': email}, email, ip_address)
+
+    # إرسال إيميل للأدمن
+    send_admin_notification_email(email, user['full_name'], user.get('phone'))
+
+    logger.info(f"Email verified and registration completed: {email}")
+
+    return {
+        'success': True,
+        'message': 'Email verified! Your registration is pending admin approval.'
+    }
+
+
+def complete_registration_without_verification(email):
+    """
+    إتمام التسجيل بدون التحقق من الإيميل (في حالة فشل إرسال الإيميل)
+    """
+    user = app_tables.users.get(email=email)
+    if user:
+        user.update(email_verified=True)
+        send_admin_notification_email(email, user['full_name'], user.get('phone'))
+
+    return {
+        'success': True,
+        'message': 'Registration successful! Please wait for admin approval.'
+    }
+
+
+@anvil.server.callable
+def resend_verification_otp(email):
+    """
+    إعادة إرسال OTP للتحقق من البريد
+    """
+    ip_address = get_client_ip()
+
+    if not check_rate_limit(ip_address, 'resend_otp'):
+        return {'success': False, 'message': 'Too many requests. Please wait a few minutes.'}
+
+    email = str(email or '').strip().lower()
+
+    user = app_tables.users.get(email=email)
+    if not user:
+        return {'success': False, 'message': 'Email not found'}
+
+    if user.get('email_verified', True):
+        return {'success': False, 'message': 'Email already verified'}
+
+    otp = generate_otp()
+    store_otp(email, otp, 'verification')
+    send_otp_email(email, user['full_name'], otp, 'verification')
+
+    return {'success': True, 'message': 'Verification code sent'}
+
+
 # =========================================================
-# تسجيل الدخول
+# تسجيل الدخول (مع Two-Factor Authentication)
 # =========================================================
 @anvil.server.callable
 def login_user(email, password):
     """
-    تسجيل دخول المستخدم
+    تسجيل دخول المستخدم - الخطوة الأولى
+    يتحقق من البريد وكلمة المرور ثم يرسل OTP
     """
     ip_address = get_client_ip()
 
@@ -670,6 +972,10 @@ def login_user(email, password):
     if not user:
         # عدم الكشف عن وجود البريد
         return {'success': False, 'message': 'Invalid email or password'}
+
+    # التحقق من التحقق من الإيميل
+    if not user.get('email_verified', True):
+        return {'success': False, 'message': 'Please verify your email first'}
 
     # التحقق من القفل
     if user['locked_until'] and user['locked_until'] > datetime.now():
@@ -711,6 +1017,51 @@ def login_user(email, password):
             'message': f'Invalid password. {remaining} attempts remaining.'
         }
 
+    # كلمة المرور صحيحة - إرسال OTP للتحقق الثنائي
+    otp = generate_otp()
+    store_otp(email, otp, '2fa')
+    email_sent = send_otp_email(email, user['full_name'], otp, '2fa')
+
+    if email_sent:
+        logger.info(f"2FA OTP sent to: {email}")
+        return {
+            'success': True,
+            'requires_2fa': True,
+            'message': 'Verification code sent to your email'
+        }
+    else:
+        # في حالة فشل إرسال الإيميل، نكمل تسجيل الدخول مباشرة
+        return complete_login(user, ip_address)
+
+
+@anvil.server.callable
+def verify_login_otp(email, otp):
+    """
+    التحقق من OTP وإتمام تسجيل الدخول
+    """
+    ip_address = get_client_ip()
+    email = str(email or '').strip().lower()
+
+    # التحقق من OTP
+    is_valid, message = verify_otp(email, otp, '2fa')
+
+    if not is_valid:
+        return {'success': False, 'message': message}
+
+    # البحث عن المستخدم
+    user = app_tables.users.get(email=email)
+    if not user:
+        return {'success': False, 'message': 'User not found'}
+
+    return complete_login(user, ip_address)
+
+
+def complete_login(user, ip_address):
+    """
+    إتمام تسجيل الدخول بعد التحقق من 2FA
+    """
+    email = user['email']
+
     # نجاح تسجيل الدخول
     user.update(
         login_attempts=0,
@@ -719,7 +1070,7 @@ def login_user(email, password):
     )
 
     # ترقية كلمة المرور من التشفير القديم إلى الجديد (إذا لزم الأمر)
-    upgrade_password_hash(user, password)
+    upgrade_password_hash(user, user['password_hash'])
 
     # حذف جميع الجلسات القديمة لهذا المستخدم
     for old_session in app_tables.sessions.search(user_email=email):
@@ -748,6 +1099,29 @@ def login_user(email, password):
             'phone': user.get('phone', '')
         }
     }
+
+
+@anvil.server.callable
+def resend_login_otp(email):
+    """
+    إعادة إرسال OTP لتسجيل الدخول
+    """
+    ip_address = get_client_ip()
+
+    if not check_rate_limit(ip_address, 'resend_otp'):
+        return {'success': False, 'message': 'Too many requests. Please wait a few minutes.'}
+
+    email = str(email or '').strip().lower()
+
+    user = app_tables.users.get(email=email)
+    if not user:
+        return {'success': False, 'message': 'Email not found'}
+
+    otp = generate_otp()
+    store_otp(email, otp, '2fa')
+    send_otp_email(email, user['full_name'], otp, '2fa')
+
+    return {'success': True, 'message': 'Verification code sent'}
 
 
 # =========================================================
@@ -1225,9 +1599,9 @@ def reset_user_password(token_or_email, user_id, new_password):
 
 
 @anvil.server.callable
-def change_own_password(token, old_password, new_password):
+def request_password_change(token, old_password, new_password):
     """
-    تغيير كلمة المرور الخاصة
+    طلب تغيير كلمة المرور - الخطوة الأولى (إرسال OTP)
     """
     session = validate_session(token)
 
@@ -1246,12 +1620,128 @@ def change_own_password(token, old_password, new_password):
     if not new_password or len(new_password) < 8:
         return {'success': False, 'message': 'New password must be at least 8 characters'}
 
-    user.update(password_hash=hash_password(new_password))
+    # التحقق من قوة كلمة المرور
+    if not re.search(r'[A-Z]', new_password):
+        return {'success': False, 'message': 'Password must contain at least one uppercase letter'}
+
+    if not re.search(r'[a-z]', new_password):
+        return {'success': False, 'message': 'Password must contain at least one lowercase letter'}
+
+    if not re.search(r'\d', new_password):
+        return {'success': False, 'message': 'Password must contain at least one number'}
+
+    # التحقق من سجل كلمات المرور
+    is_valid, message = check_password_history(user['email'], new_password)
+    if not is_valid:
+        return {'success': False, 'message': message}
+
+    # حفظ كلمة المرور الجديدة مؤقتاً
+    store_pending_password(user['email'], hash_password(new_password))
+
+    # إرسال OTP للتحقق
+    otp = generate_otp()
+    store_otp(user['email'], otp, 'password_change')
+    email_sent = send_otp_email(user['email'], user['full_name'], otp, 'password_reset')
+
+    if email_sent:
+        return {
+            'success': True,
+            'requires_verification': True,
+            'message': 'Verification code sent to your email'
+        }
+    else:
+        # في حالة فشل إرسال الإيميل، نُكمل التغيير مباشرة
+        return complete_password_change(user['email'])
+
+
+def store_pending_password(email, password_hash):
+    """
+    حفظ كلمة المرور الجديدة مؤقتاً حتى التحقق من OTP
+    """
+    try:
+        # حذف أي كلمة مرور معلقة سابقة
+        old_pending = list(app_tables.pending_passwords.search(user_email=email))
+        for old in old_pending:
+            old.delete()
+
+        # حفظ كلمة المرور الجديدة
+        app_tables.pending_passwords.add_row(
+            pending_id=str(uuid.uuid4()),
+            user_email=email,
+            new_password_hash=password_hash,
+            created_at=datetime.now(),
+            expires_at=datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Failed to store pending password: {e}")
+        return False
+
+
+@anvil.server.callable
+def verify_password_change_otp(email, otp):
+    """
+    التحقق من OTP وإتمام تغيير كلمة المرور
+    """
+    email = str(email or '').strip().lower()
+
+    # التحقق من OTP
+    is_valid, message = verify_otp(email, otp, 'password_change')
+
+    if not is_valid:
+        return {'success': False, 'message': message}
+
+    return complete_password_change(email)
+
+
+def complete_password_change(email):
+    """
+    إتمام تغيير كلمة المرور بعد التحقق من OTP
+    """
+    ip_address = get_client_ip()
+
+    user = app_tables.users.get(email=email)
+    if not user:
+        return {'success': False, 'message': 'User not found'}
+
+    # الحصول على كلمة المرور الجديدة المعلقة
+    pending = app_tables.pending_passwords.get(user_email=email)
+    if not pending:
+        return {'success': False, 'message': 'No pending password change found'}
+
+    # التحقق من انتهاء الصلاحية
+    if datetime.now() > pending['expires_at']:
+        pending.delete()
+        return {'success': False, 'message': 'Password change request has expired'}
+
+    new_password_hash = pending['new_password_hash']
+
+    # تحديث كلمة المرور
+    user.update(password_hash=new_password_hash)
+
+    # إضافة إلى سجل كلمات المرور
+    add_to_password_history(email, new_password_hash)
+
+    # حذف كلمة المرور المعلقة
+    pending.delete()
+
+    # إنهاء جميع الجلسات القديمة (إجبار إعادة تسجيل الدخول)
+    for session in app_tables.sessions.search(user_email=email):
+        session.update(is_active=False)
 
     log_audit('CHANGE_PASSWORD', 'users', user['user_id'], None,
-              {'email': user['email']}, user['email'], ip_address)
+              {'email': email}, email, ip_address)
 
-    return {'success': True, 'message': 'Password changed successfully'}
+    return {'success': True, 'message': 'Password changed successfully. Please login again.'}
+
+
+@anvil.server.callable
+def change_own_password(token, old_password, new_password):
+    """
+    تغيير كلمة المرور الخاصة (للتوافق مع الإصدارات القديمة)
+    يُعيد التوجيه إلى request_password_change
+    """
+    return request_password_change(token, old_password, new_password)
 
 
 # =========================================================
@@ -1334,11 +1824,9 @@ def diagnose_admin_access(email, token=None):
 def fix_admin_user(email, secret_key):
     """
     إصلاح حساب الأدمن - تأكيد أنه is_active و is_approved
-    المفتاح: HELWAN_RESET_2024
+    يتطلب مفتاح سري من Environment Variables
     """
-    EMERGENCY_KEY = "HELWAN_RESET_2024"
-
-    if secret_key != EMERGENCY_KEY:
+    if secret_key != EMERGENCY_SECRET_KEY:
         return {'success': False, 'message': 'Invalid secret key'}
 
     email = str(email or '').strip().lower()
@@ -1354,6 +1842,7 @@ def fix_admin_user(email, secret_key):
     user.update(
         is_active=True,
         is_approved=True,
+        email_verified=True,
         login_attempts=0,
         locked_until=None
     )
@@ -1375,19 +1864,15 @@ def fix_admin_user(email, secret_key):
 def reset_admin_password_emergency(email, new_password, secret_key):
     """
     إعادة تعيين كلمة مرور الأدمن (للطوارئ فقط)
-    تتطلب مفتاح سري للحماية
-    المفتاح: HELWAN_RESET_2024
+    تتطلب مفتاح سري من Environment Variables
 
     إذا لم يكن المستخدم موجوداً، سيتم إنشاء حساب أدمن جديد
     """
     ip_address = get_client_ip()
 
-    # مفتاح الطوارئ (يمكن تغييره لاحقاً)
-    EMERGENCY_KEY = "HELWAN_RESET_2024"
-
     try:
         # التحقق من المفتاح السري
-        if secret_key != EMERGENCY_KEY:
+        if secret_key != EMERGENCY_SECRET_KEY:
             log_audit('FAILED_EMERGENCY_RESET', 'users', None, None,
                       {'email': email, 'reason': 'Invalid secret key'}, email, ip_address)
             return {'success': False, 'message': 'Invalid secret key'}
@@ -1736,3 +2221,138 @@ def get_available_permissions():
         'permissions': AVAILABLE_PERMISSIONS,
         'roles': list(ROLES.keys())
     }
+
+
+# =========================================================
+# حذف المستخدم نهائياً
+# =========================================================
+@anvil.server.callable
+def delete_user_permanently(token_or_email, user_id):
+    """
+    حذف مستخدم نهائياً من جميع السجلات
+    يتطلب صلاحيات أدمن
+    """
+    is_authorized, error = require_admin(token_or_email)
+    if not is_authorized:
+        return error
+
+    ip_address = get_client_ip()
+    admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
+
+    user = app_tables.users.get(user_id=user_id)
+
+    if not user:
+        return {'success': False, 'message': 'User not found'}
+
+    user_email = user['email']
+
+    # منع حذف الأدمن نفسه
+    session = validate_session(token_or_email)
+    if session and session.get('email') == user_email:
+        return {'success': False, 'message': 'Cannot delete your own account'}
+
+    # منع حذف آخر أدمن في النظام
+    if user['role'] == 'admin':
+        admin_count = len(list(app_tables.users.search(role='admin', is_active=True)))
+        if admin_count <= 1:
+            return {'success': False, 'message': 'Cannot delete the last admin account'}
+
+    try:
+        # حذف جميع الجلسات
+        for session in app_tables.sessions.search(user_email=user_email):
+            session.delete()
+
+        # حذف سجل كلمات المرور
+        for history in app_tables.password_history.search(user_email=user_email):
+            history.delete()
+
+        # حذف OTP codes
+        for otp in app_tables.otp_codes.search(user_email=user_email):
+            otp.delete()
+
+        # حذف pending passwords
+        for pending in app_tables.pending_passwords.search(user_email=user_email):
+            pending.delete()
+
+        # تسجيل في Audit Log قبل الحذف
+        log_audit('DELETE_USER_PERMANENTLY', 'users', user_id, {
+            'email': user_email,
+            'full_name': user['full_name'],
+            'role': user['role']
+        }, None, admin_email, ip_address)
+
+        # حذف المستخدم
+        user.delete()
+
+        logger.info(f"User permanently deleted: {user_email} by {admin_email}")
+
+        return {
+            'success': True,
+            'message': f'User {user_email} has been permanently deleted'
+        }
+
+    except Exception as e:
+        logger.error(f"Error deleting user permanently: {e}")
+        return {'success': False, 'message': f'Error: {str(e)}'}
+
+
+# =========================================================
+# Session Activity Check (for auto-logout)
+# =========================================================
+@anvil.server.callable
+def check_session_activity(token):
+    """
+    التحقق من نشاط الجلسة وتحديث وقت النشاط
+    يُستدعى دورياً من العميل
+    """
+    session = validate_session(token)
+
+    if not session:
+        return {'valid': False, 'message': 'Session expired'}
+
+    try:
+        # تحديث وقت آخر نشاط
+        session_record = app_tables.sessions.get(session_token=token)
+        if session_record:
+            # تمديد الجلسة إذا كان المستخدم نشطاً
+            new_expires = datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES)
+            session_record.update(
+                expires_at=new_expires,
+                last_activity=datetime.now()
+            )
+
+        return {
+            'valid': True,
+            'expires_in_minutes': SESSION_DURATION_MINUTES,
+            'message': 'Session refreshed'
+        }
+    except Exception as e:
+        logger.error(f"Session activity check error: {e}")
+        return {'valid': True}  # لا نُنهي الجلسة في حالة خطأ
+
+
+@anvil.server.callable
+def get_session_info(token):
+    """
+    الحصول على معلومات الجلسة الحالية
+    """
+    session = validate_session(token)
+
+    if not session:
+        return {'valid': False}
+
+    try:
+        session_record = app_tables.sessions.get(session_token=token)
+        if session_record:
+            remaining = (session_record['expires_at'] - datetime.now()).total_seconds() / 60
+
+            return {
+                'valid': True,
+                'remaining_minutes': max(0, int(remaining)),
+                'expires_at': session_record['expires_at'].isoformat(),
+                'session_timeout_minutes': SESSION_DURATION_MINUTES
+            }
+    except:
+        pass
+
+    return {'valid': True}

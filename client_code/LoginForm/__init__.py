@@ -25,6 +25,11 @@ class LoginForm(LoginFormTemplate):
         anvil.js.window.setupAdmin = self.setup_admin
         anvil.js.window.checkAdminExists = self.check_admin_exists
         anvil.js.window.resetAdminPassword = self.reset_admin_password
+        # New OTP verification functions
+        anvil.js.window.verifyLoginOtp = self.verify_login_otp
+        anvil.js.window.resendLoginOtp = self.resend_login_otp
+        anvil.js.window.verifyRegistrationOtp = self.verify_registration_otp
+        anvil.js.window.resendVerificationOtp = self.resend_verification_otp
 
         # Check route on load
         self.check_route()
@@ -109,6 +114,61 @@ class LoginForm(LoginFormTemplate):
         """
         try:
             result = anvil.server.call('reset_admin_password_emergency', email, new_password, secret_key)
+            return result
+        except Exception as e:
+            return {'success': False, 'message': f'Error: {str(e)}'}
+
+    # =========================================
+    # OTP Verification functions
+    # =========================================
+    def verify_login_otp(self, email, otp):
+        """
+        Verify OTP for 2FA login
+        التحقق من OTP لتسجيل الدخول
+        """
+        try:
+            result = anvil.server.call('verify_login_otp', email, otp)
+
+            # حفظ معلومات المستخدم إذا نجح التحقق
+            if result.get('success') and result.get('user'):
+                user = result['user']
+                anvil.js.window.sessionStorage.setItem('user_email', user.get('email', ''))
+                anvil.js.window.sessionStorage.setItem('user_name', user.get('full_name', ''))
+                anvil.js.window.sessionStorage.setItem('user_role', user.get('role', ''))
+
+            return result
+        except Exception as e:
+            return {'success': False, 'message': f'Error: {str(e)}'}
+
+    def resend_login_otp(self, email):
+        """
+        Resend OTP for 2FA login
+        إعادة إرسال OTP لتسجيل الدخول
+        """
+        try:
+            result = anvil.server.call('resend_login_otp', email)
+            return result
+        except Exception as e:
+            return {'success': False, 'message': f'Error: {str(e)}'}
+
+    def verify_registration_otp(self, email, otp):
+        """
+        Verify OTP for email verification
+        التحقق من OTP للتسجيل
+        """
+        try:
+            result = anvil.server.call('verify_registration_otp', email, otp)
+            return result
+        except Exception as e:
+            return {'success': False, 'message': f'Error: {str(e)}'}
+
+    def resend_verification_otp(self, email):
+        """
+        Resend verification OTP
+        إعادة إرسال OTP للتحقق من البريد
+        """
+        try:
+            result = anvil.server.call('resend_verification_otp', email)
             return result
         except Exception as e:
             return {'success': False, 'message': f'Error: {str(e)}'}

@@ -279,20 +279,24 @@
       qoBody.appendChild(searchContainer);
 
       /* ================= TABLE ================= */
-      var tableContainer = document.createElement("div");
-      tableContainer.innerHTML = `
-    <table class="qo-table">
-      <thead>
-        <tr>
-          <th>Quotation #</th>
-          <th>Client Name</th>
-          <th>Date</th>
-        </tr>
-      </thead>
-      <tbody id="quotationList"></tbody>
-    </table>
-  `;
-      qoBody.appendChild(tableContainer);
+      var tableWrapper = document.createElement("div");
+      tableWrapper.className = "qo-table-wrapper";
+
+      tableWrapper.innerHTML = `
+  <table class="qo-table">
+    <thead>
+      <tr>
+        <th>Quotation #</th>
+        <th>Client Name</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody id="quotationList"></tbody>
+  </table>
+`;
+
+      qoBody.appendChild(tableWrapper);
+
 
       /* ================= PAGINATION ================= */
       var paginationContainer = document.createElement("div");
@@ -421,68 +425,4 @@
   })();
 
 })();
-
-
-  /* Search box */
-  .qo-search-box {
-  display:flex;
-  align-items:center;
-  gap:10px;
-  background:#fff;
-  border:2px solid #4a90d9;
-  border-radius:30px;
-  padding:10px 18px;
-  width:420px;
-  max-width:90%;
-  box-shadow:0 8px 20px rgba(0,0,0,.08);
-}
-
-.qo-search-box input {
-  border:none;
-  outline:none;
-  font-size:15px;
-  width:100%;
-}
-
-.qo-search-icon {
-  font-size:16px;
-  color:#4a90d9;
-}
-.qo-page-btn {
-  padding:8px 22px;
-  background:#4a90d9;
-  color:#fff;
-  border:none;
-  border-radius:20px;
-  font-size:14px;
-  cursor:pointer;
-}
-
-.qo-page-info {
-  font-size:14px;
-  color:#555;
-}
-
-.qo-table {
-  width:100%;
-  border-collapse:collapse;
-}
-
-.qo-table th,
-  .qo-table td {
-  padding:14px 10px;
-  text-align:center;
-  vertical-align:middle;
-  border-bottom:1px solid #eee;
-  font-size:14px;
-}
-
-.qo-table thead tr {
-  background:#f5f8fc;
-  font-weight:600;
-}
-
-
-
-
 

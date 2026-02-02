@@ -331,14 +331,26 @@ def validate_session(token):
             session.update(is_active=False)
             return None
 
-        # جلب الـ role الحالي من جدول users (وليس من الجلسة)
-        # هذا يضمن أن أي تغيير في الـ role يُطبق فوراً
+        # جلب المستخدم الحالي من جدول users
+        # هذا يضمن أن أي تغيير في الـ role أو الحالة يُطبق فوراً
         user = app_tables.users.get(email=session['user_email'])
-        current_role = user['role'] if user else session['user_role']
+
+        if not user:
+            # المستخدم تم حذفه - إبطال الجلسة
+            session.update(is_active=False)
+            return None
+
+        # التحقق من أن المستخدم مفعل ومعتمد
+        if not user['is_active'] or not user['is_approved']:
+            # المستخدم غير مفعل أو غير معتمد - إبطال الجلسة
+            session.update(is_active=False)
+            return None
 
         return {
             'email': session['user_email'],
-            'role': current_role,  # استخدام الـ role الحالي من users table
+            'role': user['role'],  # استخدام الـ role الحالي من users table
+            'is_active': user['is_active'],
+            'is_approved': user['is_approved'],
             'created': session['created_at'],
             'expires': session['expires_at']
         }
@@ -760,30 +772,25 @@ def check_permission(token, action):
 
 
 @anvil.server.callable
-def is_admin(token):
+def is_admin(token_or_email):
     """
     التحقق من أن المستخدم أدمن
     يدعم: token الجلسة أو البريد الإلكتروني
+
+    الآن validate_session يتحقق من is_active و is_approved تلقائياً
     """
-    if not token:
+    if not token_or_email:
         return False
 
-    # أولاً: التحقق من الجلسة في قاعدة البيانات
-    session = validate_session(token)
+    # أولاً: إذا كان بريد إلكتروني، تحقق مباشرة
+    if '@' in str(token_or_email):
+        return is_admin_by_email(token_or_email)
+
+    # ثانياً: التحقق من الجلسة في قاعدة البيانات
+    # validate_session يتحقق من is_active و is_approved تلقائياً
+    session = validate_session(token_or_email)
     if session and session.get('role') == 'admin':
         return True
-
-    # ثانياً: إذا كان token هو email
-    if '@' in str(token):
-        user = app_tables.users.get(email=str(token).lower())
-        if user and user['role'] == 'admin' and user['is_active'] and user['is_approved']:
-            return True
-
-    # ثالثاً: البحث عن الجلسة بواسطة email من الجلسة
-    if session and session.get('email'):
-        user = app_tables.users.get(email=session['email'].lower())
-        if user and user['role'] == 'admin' and user['is_active'] and user['is_approved']:
-            return True
 
     return False
 
@@ -802,38 +809,43 @@ def require_admin(token_or_email):
     """
     دالة مساعدة للتحقق من صلاحية الأدمن
     تعود tuple: (is_admin, error_response)
-    """
-    logger.info(f"require_admin checking: {token_or_email[:30] if token_or_email else 'None'}...")
 
-    # محاولة التحقق من كونه أدمن
+    تدعم:
+    - token الجلسة
+    - البريد الإلكتروني
+    - user_id
+    """
+    if not token_or_email:
+        logger.warning("require_admin: No token or email provided")
+        return False, {'success': False, 'message': 'Admin access required'}
+
+    token_preview = str(token_or_email)[:30] if token_or_email else 'None'
+    logger.info(f"require_admin checking: {token_preview}...")
+
+    # الطريقة 1: استخدام is_admin الموحدة (تدعم token و email)
     if is_admin(token_or_email):
         logger.info("Admin access granted via is_admin()")
         return True, None
 
-    # إذا كان بريد إلكتروني، تحقق مباشرة
-    if token_or_email and '@' in str(token_or_email):
-        if is_admin_by_email(token_or_email):
-            logger.info(f"Admin access granted via email: {token_or_email}")
-            return True, None
-
-    # محاولة استخراج البريد من الجلسة
+    # الطريقة 2: محاولة استخراج البريد من الجلسة والتحقق منه
     session = validate_session(token_or_email)
     if session and session.get('email'):
-        logger.info(f"Found session with email: {session['email']}")
-        if is_admin_by_email(session['email']):
+        email = session['email']
+        logger.info(f"Found session with email: {email}")
+        if is_admin_by_email(email):
             logger.info("Admin access granted via session email")
             return True, None
 
-    # محاولة إيجاد المستخدم بالـ token كـ user_id
+    # الطريقة 3: محاولة إيجاد المستخدم بالـ token كـ user_id (للحالات الخاصة)
     try:
-        user_by_token = app_tables.users.get(user_id=token_or_email)
-        if user_by_token and user_by_token['role'] == 'admin' and user_by_token['is_active'] and user_by_token['is_approved']:
+        user_by_id = app_tables.users.get(user_id=token_or_email)
+        if user_by_id and user_by_id['role'] == 'admin' and user_by_id['is_active'] and user_by_id['is_approved']:
             logger.info("Admin access granted via user_id")
             return True, None
-    except:
+    except Exception:
         pass
 
-    logger.warning(f"Admin access denied for: {token_or_email[:20] if token_or_email else 'None'}...")
+    logger.warning(f"Admin access denied for: {token_preview}...")
     return False, {'success': False, 'message': 'Admin access required'}
 
 

@@ -107,6 +107,8 @@ class AdminPanel(AdminPanelTemplate):
             open_form('LauncherForm')
         elif hash_val == "#calculator":
             open_form('CalculatorForm')
+        elif hash_val == "#import":
+            open_form('DataImportForm')
         elif hash_val == "#login" or hash_val == "":
             open_form('LoginForm')
 

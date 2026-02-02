@@ -970,9 +970,10 @@ def import_clients_data(data_list, token_or_email):
     استيراد بيانات العملاء من CSV/Excel
     يتطلب صلاحية الأدمن
     """
-    # التحقق من صلاحية الأدمن
-    if not AuthManager.is_admin(token_or_email) and not AuthManager.is_admin_by_email(token_or_email):
-        return {'success': False, 'message': 'Admin access required'}
+    # التحقق من صلاحية الأدمن باستخدام require_admin الموحدة
+    is_authorized, error = AuthManager.require_admin(token_or_email)
+    if not is_authorized:
+        return error
 
     ip_address = get_client_ip()
     user_email = token_or_email if '@' in str(token_or_email) else 'admin'
@@ -1041,8 +1042,10 @@ def import_quotations_data(data_list, token_or_email):
     استيراد بيانات العروض من CSV/Excel
     يتطلب صلاحية الأدمن
     """
-    if not AuthManager.is_admin(token_or_email) and not AuthManager.is_admin_by_email(token_or_email):
-        return {'success': False, 'message': 'Admin access required'}
+    # التحقق من صلاحية الأدمن باستخدام require_admin الموحدة
+    is_authorized, error = AuthManager.require_admin(token_or_email)
+    if not is_authorized:
+        return error
 
     ip_address = get_client_ip()
     user_email = token_or_email if '@' in str(token_or_email) else 'admin'

@@ -44,6 +44,8 @@ class LoginForm(LoginFormTemplate):
             open_form('CalculatorForm')
         elif hash_val == "#admin":
             open_form('AdminPanel')
+        elif hash_val == "#import":
+            open_form('DataImportForm')
 
     # =========================================
     # Bridge functions for JavaScript
@@ -59,6 +61,7 @@ class LoginForm(LoginFormTemplate):
             # حفظ معلومات المستخدم في sessionStorage إذا نجح تسجيل الدخول
             if result.get('success') and result.get('user'):
                 user = result['user']
+                anvil.js.window.sessionStorage.setItem('user_email', user.get('email', ''))
                 anvil.js.window.sessionStorage.setItem('user_name', user.get('full_name', ''))
                 anvil.js.window.sessionStorage.setItem('user_role', user.get('role', ''))
 

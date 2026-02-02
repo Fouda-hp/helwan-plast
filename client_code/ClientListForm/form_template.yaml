@@ -1,0 +1,97 @@
+# =========================================================
+# ClientListForm - صفحة عرض العملاء (للقراءة فقط)
+# =========================================================
+
+components:
+  # العنوان الرئيسي
+  - type: Label
+    name: title_label
+    properties:
+      text: "📋 Clients List (Read Only)"
+      font_size: 24
+      bold: true
+      spacing_above: medium
+      spacing_below: medium
+      align: center
+
+  # شريط البحث
+  - type: FlowPanel
+    name: search_panel
+    properties:
+      spacing_above: small
+      spacing_below: small
+    components:
+      - type: TextBox
+        name: search_input
+        properties:
+          placeholder: "Search clients..."
+          width: 300
+
+      - type: Button
+        name: btn_search
+        properties:
+          text: "🔍 Search"
+          role: primary
+        event_bindings:
+          click: btn_search_click
+
+      - type: Button
+        name: btn_export
+        properties:
+          text: "📥 Export CSV"
+          role: secondary
+        event_bindings:
+          click: btn_export_click
+
+      - type: Button
+        name: btn_back
+        properties:
+          text: "🔙 Back"
+        event_bindings:
+          click: btn_back_click
+
+  # جدول البيانات
+  - type: RichText
+    name: table_container
+    properties:
+      content: "<p>Loading...</p>"
+      enable_slots: false
+      spacing_above: medium
+
+  # شريط الترقيم
+  - type: FlowPanel
+    name: pagination_panel
+    properties:
+      spacing_above: medium
+      align: center
+    components:
+      - type: Button
+        name: btn_prev
+        properties:
+          text: "◀ Previous"
+          enabled: false
+        event_bindings:
+          click: btn_prev_click
+
+      - type: Label
+        name: page_info
+        properties:
+          text: "Page 1 of 1"
+          spacing_above: none
+          spacing_below: none
+
+      - type: Button
+        name: btn_next
+        properties:
+          text: "Next ▶"
+          enabled: false
+        event_bindings:
+          click: btn_next_click
+
+# أنماط CSS
+container:
+  type: ColumnPanel
+properties:
+  title: Clients List
+custom_component: true
+is_package: true

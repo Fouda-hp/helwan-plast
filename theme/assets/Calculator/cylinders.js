@@ -1,5 +1,5 @@
 // ===============================
-// cylinders.js (COMPLETE FIX)
+// cylinders.js - محدث مع تحميل الأسعار من السيرفر
 // ===============================
 
 // 🔒 Prevent double loading
@@ -9,46 +9,103 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
 
   window.__cylindersLoaded = true;
 
-  const CM_PRICES = {80:3.49,100:3.59,120:4.05,130:4.5,140:5.026,160:5.4};
+  // ----------------------------------------
+  // أسعار الأسطوانات - يتم تحميلها من السيرفر
+  // القيم الافتراضية تُستخدم إذا فشل التحميل
+  // ----------------------------------------
+  let CM_PRICES = {80:3.49, 100:3.59, 120:4.05, 130:4.5, 140:5.026, 160:5.4};
   const DEFAULT_SIZES = [25,30,35,40,45,50,60];
 
-  // 🔁 Central pricing trigger
-  function triggerFullRecalculation() {
-    if (window.LOADING_FROM_QUOTATION) return;
-    if (typeof window.calculateAll === "function") {
-      window.calculateAll();
+  // تحميل أسعار الأسطوانات من السيرفر
+  async function loadCylinderPricesFromServer() {
+    try {
+      // تحميل أسعار كل عرض
+      const widths = [80, 100, 120, 130, 140, 160];
+
+      for (const width of widths) {
+        const price = await window.anvil?.server?.call('get_setting', `cylinder_price_${width}`);
+        if (price && !isNaN(price)) {
+          CM_PRICES[width] = parseFloat(price);
+        }
+      }
+
+      console.log('🔧 Cylinder prices loaded from server:', CM_PRICES);
+    } catch (e) {
+      console.warn('⚠️ Could not load cylinder prices from server, using defaults:', e);
     }
   }
 
+  // تحميل الأسعار عند بدء التشغيل
+  loadCylinderPricesFromServer();
+
+  // دالة للحصول على أسعار الأسطوانات الحالية (للأدمن)
+  window.getCylinderPrices = function() {
+    return {...CM_PRICES};
+  };
+
+  // دالة لتحديث سعر أسطوانة معينة
+  window.updateCylinderPrice = function(width, price) {
+    if (CM_PRICES.hasOwnProperty(width) && price && !isNaN(price)) {
+      CM_PRICES[width] = parseFloat(price);
+      console.log(`🔧 Cylinder price for ${width}cm updated to:`, CM_PRICES[width]);
+    }
+  };
+
+  // 🔁 Central pricing trigger - with guard against infinite loops
+  let isRecalculating = false;
+
+  function triggerFullRecalculation() {
+    if (window.LOADING_FROM_QUOTATION) return;
+    if (isRecalculating) return; // Prevent infinite loop
+
+    isRecalculating = true;
+    try {
+      if (typeof window.calculateAll === "function") {
+        window.calculateAll();
+      }
+    } finally {
+      isRecalculating = false;
+    }
+  }
+
+  // Guard against multiple initializations
+  let isInitializingCylinders = false;
+
   window.initCylinderTable = function (colorsValue) {
     if (window.LOADING_FROM_QUOTATION) return;
+    if (isInitializingCylinders) return; // Prevent re-entry
 
+    isInitializingCylinders = true;
     console.log("🔄 Initializing cylinder table with colors:", colorsValue);
 
-    for (let i = 1; i <= 12; i++) {
-      const s = document.getElementById(`Size in CM${i}`);
-      const c = document.getElementById(`Count${i}`);
-      if (!s || !c) continue;
+    try {
+      for (let i = 1; i <= 12; i++) {
+        const s = document.getElementById(`Size in CM${i}`);
+        const c = document.getElementById(`Count${i}`);
+        if (!s || !c) continue;
 
-      if (i <= DEFAULT_SIZES.length) {
-        s.value = DEFAULT_SIZES[i - 1];
-        c.value = colorsValue || "";
-      } else {
-        s.value = "";
-        c.value = "";
+        if (i <= DEFAULT_SIZES.length) {
+          s.value = DEFAULT_SIZES[i - 1];
+          c.value = colorsValue || "";
+        } else {
+          s.value = "";
+          c.value = "";
+        }
+
+        // Clear any error styling
+        s.style.border = "";
+        s.style.background = "";
+        c.style.border = "";
+        c.style.background = "";
       }
 
-      // Clear any error styling
-      s.style.border = "";
-      s.style.background = "";
-      c.style.border = "";
-      c.style.background = "";
-    }
-
-    // Immediately calculate after init
-    const widthValue = document.getElementById("Machine width")?.value;
-    if (widthValue && colorsValue) {
-      triggerFullRecalculation();
+      // Calculate cylinders directly without triggering full recalculation
+      const widthValue = document.getElementById("Machine width")?.value;
+      if (widthValue && colorsValue) {
+        window.calculateCylinders?.(parseInt(widthValue), parseInt(colorsValue));
+      }
+    } finally {
+      isInitializingCylinders = false;
     }
   };
 

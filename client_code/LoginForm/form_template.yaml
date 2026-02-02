@@ -426,6 +426,11 @@ container:
             </div>
 
             <div class="field">
+              <label>Phone Number (Optional)</label>
+              <input type="tel" id="regPhone" placeholder="Enter your phone number">
+            </div>
+
+            <div class="field">
               <label>Password</label>
               <input type="password" id="regPassword" placeholder="Min 6 characters">
               <div class="password-strength">
@@ -456,6 +461,11 @@ container:
             <div class="field">
               <label>Admin Email</label>
               <input type="email" id="adminEmail" placeholder="admin@company.com">
+            </div>
+
+            <div class="field">
+              <label>Admin Phone (Optional)</label>
+              <input type="tel" id="adminPhone" placeholder="Admin phone number">
             </div>
 
             <div class="field">
@@ -674,6 +684,7 @@ container:
           var registerBtn = document.getElementById('registerBtn');
           var regName = document.getElementById('regName');
           var regEmail = document.getElementById('regEmail');
+          var regPhone = document.getElementById('regPhone');
           var regConfirm = document.getElementById('regConfirm');
 
           registerBtn.onclick = async function() {
@@ -681,11 +692,12 @@ container:
 
             var name = regName.value.trim();
             var email = regEmail.value.trim();
+            var phone = regPhone.value.trim();
             var password = regPassword.value;
             var confirm = regConfirm.value;
 
             if (!name || !email || !password || !confirm) {
-              showMessage('registerMessage', 'error', 'Please fill all fields');
+              showMessage('registerMessage', 'error', 'Please fill all required fields');
               return;
             }
 
@@ -702,12 +714,13 @@ container:
             setLoading(registerBtn, true);
 
             try {
-              var result = await window.registerUser(email, password, name);
+              var result = await window.registerUser(email, password, name, phone || null);
 
               if (result.success) {
                 showMessage('registerMessage', 'success', result.message);
                 regName.value = '';
                 regEmail.value = '';
+                regPhone.value = '';
                 regPassword.value = '';
                 regConfirm.value = '';
                 strengthBar.className = 'password-strength-bar';
@@ -730,6 +743,7 @@ container:
           var setupBtn = document.getElementById('setupBtn');
           var adminName = document.getElementById('adminName');
           var adminEmail = document.getElementById('adminEmail');
+          var adminPhone = document.getElementById('adminPhone');
           var adminPassword = document.getElementById('adminPassword');
 
           setupBtn.onclick = async function() {
@@ -737,10 +751,11 @@ container:
 
             var name = adminName.value.trim();
             var email = adminEmail.value.trim();
+            var phone = adminPhone.value.trim();
             var password = adminPassword.value;
 
             if (!name || !email || !password) {
-              showMessage('setupMessage', 'error', 'Please fill all fields');
+              showMessage('setupMessage', 'error', 'Please fill all required fields');
               return;
             }
 
@@ -752,7 +767,7 @@ container:
             setLoading(setupBtn, true);
 
             try {
-              var result = await window.setupAdmin(email, password, name);
+              var result = await window.setupAdmin(email, password, name, phone || null);
 
               if (result.success) {
                 showMessage('setupMessage', 'success', result.message + ' You can now login.');

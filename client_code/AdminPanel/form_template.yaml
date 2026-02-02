@@ -15,6 +15,7 @@ container:
           padding: 0;
           background: #f5f7fa;
           height: 100%;
+          width: 100%;
           overflow: hidden;
         }
 
@@ -22,18 +23,28 @@ container:
         .admin-container {
           display: flex;
           height: 100vh;
+          width: 100vw;
           overflow: hidden;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
         }
 
         /* ================= SIDEBAR ================= */
         .sidebar {
           width: 260px;
+          min-width: 260px;
+          max-width: 260px;
           background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
           color: #fff;
           padding: 0;
           position: fixed;
+          left: 0;
+          top: 0;
           height: 100vh;
-          overflow-y: auto;
+          overflow: hidden;
           z-index: 100;
           transition: transform 0.3s ease;
           display: flex;
@@ -41,31 +52,55 @@ container:
         }
 
         .sidebar-header {
-          padding: 25px 20px;
+          padding: 20px 15px;
           border-bottom: 1px solid rgba(255,255,255,0.1);
           text-align: center;
+          flex-shrink: 0;
         }
 
         .sidebar-header img {
-          height: 60px;
-          margin-bottom: 10px;
+          height: 55px;
+          margin-bottom: 8px;
         }
 
         .sidebar-header h2 {
           margin: 0;
-          font-size: 18px;
+          font-size: 16px;
           font-weight: 600;
         }
 
         .sidebar-header p {
           margin: 5px 0 0;
-          font-size: 12px;
+          font-size: 11px;
           opacity: 0.7;
+        }
+
+        /* اسم المستخدم تحت اللوجو */
+        .sidebar-user-welcome {
+          padding: 12px 15px;
+          background: rgba(102,126,234,0.15);
+          border-bottom: 1px solid rgba(255,255,255,0.1);
+          text-align: center;
+          flex-shrink: 0;
+        }
+
+        .sidebar-user-welcome .welcome-text {
+          font-size: 11px;
+          opacity: 0.7;
+          margin-bottom: 4px;
+        }
+
+        .sidebar-user-welcome .user-name-display {
+          font-size: 14px;
+          font-weight: 600;
+          color: #667eea;
         }
 
         .sidebar-nav {
           padding: 15px 0;
           flex: 1;
+          overflow-y: auto;
+          min-height: 0;
         }
 
         .nav-section {
@@ -115,10 +150,11 @@ container:
         }
 
         .sidebar-footer {
-          padding: 15px 20px;
+          padding: 12px 15px;
           border-top: 1px solid rgba(255,255,255,0.1);
           background: #16213e;
           flex-shrink: 0;
+          margin-top: auto;
         }
 
         .user-info {
@@ -127,32 +163,40 @@ container:
         }
 
         .user-avatar {
-          width: 40px;
-          height: 40px;
+          width: 36px;
+          height: 36px;
           background: linear-gradient(135deg, #667eea, #764ba2);
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 16px;
+          font-size: 14px;
           font-weight: 600;
-          margin-right: 12px;
+          margin-right: 10px;
+          flex-shrink: 0;
+        }
+
+        .user-details {
+          overflow: hidden;
         }
 
         .user-details h4 {
           margin: 0;
-          font-size: 14px;
+          font-size: 13px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .user-details p {
           margin: 2px 0 0;
-          font-size: 12px;
+          font-size: 11px;
           opacity: 0.7;
         }
 
         .logout-btn {
           width: 100%;
-          margin-top: 15px;
+          margin-top: 12px;
           padding: 10px;
           background: rgba(231,76,60,0.2);
           border: 1px solid rgba(231,76,60,0.3);
@@ -172,9 +216,12 @@ container:
         .main-content {
           flex: 1;
           margin-left: 260px;
-          padding: 30px;
+          padding: 25px;
           height: 100vh;
+          width: calc(100vw - 260px);
           overflow-y: auto;
+          overflow-x: hidden;
+          box-sizing: border-box;
         }
 
         .page-header {
@@ -659,6 +706,12 @@ container:
             <p>Helwan Plast System</p>
           </div>
 
+          <!-- اسم المستخدم تحت اللوجو -->
+          <div class="sidebar-user-welcome">
+            <div class="welcome-text">Welcome back,</div>
+            <div class="user-name-display" id="sidebarUserName">Admin</div>
+          </div>
+
           <nav class="sidebar-nav">
             <div class="nav-section">Main</div>
             <a class="nav-item active" data-panel="dashboard">
@@ -688,9 +741,19 @@ container:
             </a>
 
             <div class="nav-section">System</div>
+            <a class="nav-item" data-panel="settings">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+              Settings
+            </a>
             <a class="nav-item" data-panel="audit">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
               Audit Log
+            </a>
+
+            <div class="nav-section">Tools</div>
+            <a class="nav-item" id="goToDataImport">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              Data Import
             </a>
 
             <div class="nav-section">Application</div>
@@ -850,6 +913,19 @@ container:
             </div>
           </div>
 
+          <!-- Settings Panel -->
+          <div class="panel" id="settings-panel">
+            <div class="panel-header">
+              <h3>System Settings</h3>
+              <button class="action-btn" onclick="loadSettings()">Refresh</button>
+            </div>
+            <div class="panel-body">
+              <div id="settingsContent">
+                <div class="loading-spinner"><div class="spinner"></div></div>
+              </div>
+            </div>
+          </div>
+
         </main>
       </div>
 
@@ -931,6 +1007,12 @@ container:
             document.getElementById('userName').textContent = name;
             document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
             document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+
+            // تحديث اسم المستخدم تحت اللوجو
+            var sidebarUserName = document.getElementById('sidebarUserName');
+            if (sidebarUserName) {
+              sidebarUserName.textContent = name;
+            }
           }
 
           // ============================================
@@ -971,6 +1053,7 @@ container:
                 else if (panel === 'clients') loadClients();
                 else if (panel === 'quotations') loadQuotations();
                 else if (panel === 'audit') loadAuditLogs();
+                else if (panel === 'settings') loadSettings();
               };
             });
 
@@ -983,6 +1066,18 @@ container:
                 e.preventDefault();
                 console.log('Going to Launcher');
                 window.location.hash = '#launcher';
+              };
+            }
+
+            // Go to Data Import
+            var importBtn = document.getElementById('goToDataImport');
+            if (importBtn) {
+              importBtn.style.cursor = 'pointer';
+              importBtn.onclick = function(e) {
+                e.preventDefault();
+                if (window.openDataImport) {
+                  window.openDataImport();
+                }
               };
             }
 
@@ -1396,6 +1491,130 @@ container:
               container.innerHTML = html;
             } catch (e) {
               container.innerHTML = '<div class="empty-state"><h4>Error loading audit logs</h4></div>';
+            }
+          };
+
+          // ============================================
+          // SETTINGS
+          // ============================================
+          window.loadSettings = async function() {
+            var container = document.getElementById('settingsContent');
+            container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+            try {
+              var result = await window.getAllSettings();
+              if (!result || !result.success) {
+                container.innerHTML = '<div class="empty-state"><h4>' + (result ? result.message : 'Error loading settings') + '</h4></div>';
+                return;
+              }
+
+              var settings = result.settings || {};
+
+              var html = '<div style="max-width: 800px;">';
+
+              // Exchange Rate Section
+              html += '<div style="background:#f8f9fa;padding:20px;border-radius:12px;margin-bottom:20px;">';
+              html += '<h4 style="margin:0 0 15px;color:#1a1a2e;">💱 Exchange Rate</h4>';
+              html += '<div class="form-group" style="margin-bottom:0;">';
+              html += '<label>USD to EGP Rate</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="number" step="0.01" id="setting_exchange_rate" value="' + (settings.exchange_rate || 47.5) + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSetting(\'exchange_rate\')">Save</button>';
+              html += '</div></div></div>';
+
+              // Shipping & Expenses Section
+              html += '<div style="background:#f8f9fa;padding:20px;border-radius:12px;margin-bottom:20px;">';
+              html += '<h4 style="margin:0 0 15px;color:#1a1a2e;">🚢 Shipping & Expenses (USD)</h4>';
+
+              html += '<div class="form-group">';
+              html += '<label>Sea Shipping Cost</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="number" step="1" id="setting_shipping_sea" value="' + (settings.shipping_sea || 3200) + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSetting(\'shipping_sea\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>THS Cost</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="number" step="1" id="setting_ths_cost" value="' + (settings.ths_cost || 1000) + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSetting(\'ths_cost\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Clearance Expenses</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="number" step="1" id="setting_clearance_expenses" value="' + (settings.clearance_expenses || 1400) + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSetting(\'clearance_expenses\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Tax Rate (%)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="number" step="0.01" id="setting_tax_rate" value="' + ((settings.tax_rate || 0.15) * 100) + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSetting(\'tax_rate\', true)">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group" style="margin-bottom:0;">';
+              html += '<label>Bank Commission (%)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="number" step="0.001" id="setting_bank_commission" value="' + ((settings.bank_commission || 0.0132) * 100) + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSetting(\'bank_commission\', true)">Save</button>';
+              html += '</div></div>';
+
+              html += '</div>';
+
+              // Cylinder Prices Section
+              html += '<div style="background:#f8f9fa;padding:20px;border-radius:12px;margin-bottom:20px;">';
+              html += '<h4 style="margin:0 0 15px;color:#1a1a2e;">🔧 Cylinder Prices (USD per cm)</h4>';
+
+              var widths = [80, 100, 120, 130, 140, 160];
+              var defaultPrices = {80:3.49, 100:3.59, 120:4.05, 130:4.5, 140:5.026, 160:5.4};
+
+              widths.forEach(function(w, i) {
+                var isLast = (i === widths.length - 1);
+                html += '<div class="form-group"' + (isLast ? ' style="margin-bottom:0;"' : '') + '>';
+                html += '<label>Width ' + w + ' cm</label>';
+                html += '<div style="display:flex;gap:10px;align-items:center;">';
+                html += '<input type="number" step="0.001" id="setting_cylinder_price_' + w + '" value="' + (settings['cylinder_price_' + w] || defaultPrices[w]) + '" style="flex:1;">';
+                html += '<button class="action-btn" onclick="saveSetting(\'cylinder_price_' + w + '\')">Save</button>';
+                html += '</div></div>';
+              });
+
+              html += '</div>';
+
+              html += '</div>';
+
+              container.innerHTML = html;
+            } catch (e) {
+              console.error('Settings error:', e);
+              container.innerHTML = '<div class="empty-state"><h4>Error loading settings</h4></div>';
+            }
+          };
+
+          window.saveSetting = async function(key, isPercent) {
+            var input = document.getElementById('setting_' + key);
+            if (!input) return;
+
+            var value = parseFloat(input.value);
+            if (isNaN(value)) {
+              alert('Please enter a valid number');
+              return;
+            }
+
+            // تحويل النسبة المئوية
+            if (isPercent) {
+              value = value / 100;
+            }
+
+            try {
+              var result = await window.updateSetting(key, value);
+              if (result && result.success) {
+                alert('Setting saved successfully!');
+              } else {
+                alert(result ? result.message : 'Error saving setting');
+              }
+            } catch (e) {
+              alert('Error saving setting: ' + e);
             }
           };
 

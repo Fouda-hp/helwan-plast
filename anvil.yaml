@@ -1,6 +1,9 @@
 allow_embedding: false
 correct_dependency_ids: {}
 db_schema:
+  # ==========================================
+  # جدول سجل التدقيق - لتتبع جميع العمليات
+  # ==========================================
   audit_log:
     client: none
     columns:
@@ -33,6 +36,10 @@ db_schema:
       type: string
     server: full
     title: AUDIT_LOG
+
+  # ==========================================
+  # جدول العملاء
+  # ==========================================
   clients:
     client: none
     columns:
@@ -89,6 +96,10 @@ db_schema:
       type: datetime
     server: full
     title: CLIENTS
+
+  # ==========================================
+  # جدول العروض السعرية
+  # ==========================================
   quotations:
     client: none
     columns:
@@ -101,215 +112,223 @@ db_schema:
     - admin_ui: {order: 2, width: 200}
       name: Date
       type: date
+    # حقل جديد - اسم العميل مباشرة في العرض
     - admin_ui: {order: 3, width: 200}
+      name: Client Name
+      type: string
+    - admin_ui: {order: 4, width: 200}
       name: Given Price
       type: number
-    - admin_ui: {order: 4, width: 200}
+    - admin_ui: {order: 5, width: 200}
       name: Agreed Price
       type: number
-    - admin_ui: {order: 5, width: 200}
+    - admin_ui: {order: 6, width: 200}
       name: Model
       type: string
-    - admin_ui: {order: 6, width: 200}
+    - admin_ui: {order: 7, width: 200}
       name: Machine type
       type: string
-    - admin_ui: {order: 7, width: 200}
+    - admin_ui: {order: 8, width: 200}
       name: Number of colors
       type: number
-    - admin_ui: {order: 8, width: 200}
+    - admin_ui: {order: 9, width: 200}
       name: Machine width
       type: number
-    - admin_ui: {order: 9, width: 200}
+    - admin_ui: {order: 10, width: 200}
       name: Material
       type: string
-    - admin_ui: {order: 10, width: 200}
+    - admin_ui: {order: 11, width: 200}
       name: Winder
       type: string
-    - admin_ui: {order: 11, width: 200}
+    - admin_ui: {order: 12, width: 200}
       name: Video inspection
       type: string
-    - admin_ui: {order: 12, width: 200}
+    - admin_ui: {order: 13, width: 200}
       name: PLC
       type: string
-    - admin_ui: {order: 13, width: 200}
+    - admin_ui: {order: 14, width: 200}
       name: Pneumatic Unwind
       type: string
-    - admin_ui: {order: 14, width: 200}
+    - admin_ui: {order: 15, width: 200}
       name: Hydraulic Station Unwind
       type: string
-    - admin_ui: {order: 15, width: 200}
+    - admin_ui: {order: 16, width: 200}
       name: Pneumatic Rewind
       type: string
-    - admin_ui: {order: 16, width: 200}
+    - admin_ui: {order: 17, width: 200}
       name: Surface Rewind
       type: string
-    - admin_ui: {order: 17, width: 200}
+    - admin_ui: {order: 18, width: 200}
       name: Slitter
       type: string
-    - admin_ui: {order: 18, width: 200}
+    - admin_ui: {order: 19, width: 200}
       name: Standard Machine FOB cost
       type: string
-    - admin_ui: {order: 19, width: 200}
+    - admin_ui: {order: 20, width: 200}
       name: Machine FOB cost With Cylinders
       type: string
-    - admin_ui: {order: 20, width: 200}
+    - admin_ui: {order: 21, width: 200}
       name: FOB price for over seas clients
       type: number
-    - admin_ui: {order: 21, width: 200}
+    - admin_ui: {order: 22, width: 200}
       name: Exchange Rate
       type: number
-    - admin_ui: {order: 22, width: 200}
+    - admin_ui: {order: 23, width: 200}
       name: In Stock
       type: number
-    - admin_ui: {order: 23, width: 200}
+    - admin_ui: {order: 24, width: 200}
       name: New Order
       type: number
-    - admin_ui: {order: 24, width: 200}
+    - admin_ui: {order: 25, width: 200}
       name: Overseas clients
       type: string
-    - admin_ui: {order: 25, width: 200}
+    - admin_ui: {order: 26, width: 200}
       name: Contract
       type: string
-    - admin_ui: {order: 26, width: 200}
+    - admin_ui: {order: 27, width: 200}
       name: Expected delivery time
       type: date
-    - admin_ui: {order: 27, width: 200}
+    - admin_ui: {order: 28, width: 200}
       name: Notes
       type: string
-    - admin_ui: {order: 28, width: 200}
+    - admin_ui: {order: 29, width: 200}
       name: Pricing Mode
       type: string
-    - admin_ui: {order: 29, width: 200}
+    - admin_ui: {order: 30, width: 200}
       name: Size in CM1
       type: string
-    - admin_ui: {order: 30, width: 200}
+    - admin_ui: {order: 31, width: 200}
       name: Count1
       type: string
-    - admin_ui: {order: 31, width: 200}
+    - admin_ui: {order: 32, width: 200}
       name: Cost1
       type: string
-    - admin_ui: {order: 32, width: 200}
+    - admin_ui: {order: 33, width: 200}
       name: Size in CM2
       type: string
-    - admin_ui: {order: 33, width: 200}
+    - admin_ui: {order: 34, width: 200}
       name: Count2
       type: string
-    - admin_ui: {order: 34, width: 200}
+    - admin_ui: {order: 35, width: 200}
       name: Cost2
       type: string
-    - admin_ui: {order: 35, width: 200}
+    - admin_ui: {order: 36, width: 200}
       name: Size in CM3
       type: string
-    - admin_ui: {order: 36, width: 200}
+    - admin_ui: {order: 37, width: 200}
       name: Count3
       type: string
-    - admin_ui: {order: 37, width: 200}
+    - admin_ui: {order: 38, width: 200}
       name: Cost3
       type: string
-    - admin_ui: {order: 38, width: 200}
+    - admin_ui: {order: 39, width: 200}
       name: Size in CM4
       type: string
-    - admin_ui: {order: 39, width: 200}
+    - admin_ui: {order: 40, width: 200}
       name: Count4
       type: string
-    - admin_ui: {order: 40, width: 200}
+    - admin_ui: {order: 41, width: 200}
       name: Cost4
       type: string
-    - admin_ui: {order: 41, width: 200}
+    - admin_ui: {order: 42, width: 200}
       name: Size in CM5
       type: string
-    - admin_ui: {order: 42, width: 200}
+    - admin_ui: {order: 43, width: 200}
       name: Count5
       type: string
-    - admin_ui: {order: 43, width: 200}
+    - admin_ui: {order: 44, width: 200}
       name: Cost5
       type: string
-    - admin_ui: {order: 44, width: 200}
+    - admin_ui: {order: 45, width: 200}
       name: Size in CM6
       type: string
-    - admin_ui: {order: 45, width: 200}
+    - admin_ui: {order: 46, width: 200}
       name: Count6
       type: string
-    - admin_ui: {order: 46, width: 200}
+    - admin_ui: {order: 47, width: 200}
       name: Cost6
       type: string
-    - admin_ui: {order: 47, width: 200}
+    - admin_ui: {order: 48, width: 200}
       name: Size in CM7
       type: string
-    - admin_ui: {order: 48, width: 200}
+    - admin_ui: {order: 49, width: 200}
       name: Count7
       type: string
-    - admin_ui: {order: 49, width: 200}
+    - admin_ui: {order: 50, width: 200}
       name: Cost7
       type: string
-    - admin_ui: {order: 50, width: 200}
+    - admin_ui: {order: 51, width: 200}
       name: Size in CM8
       type: string
-    - admin_ui: {order: 51, width: 200}
+    - admin_ui: {order: 52, width: 200}
       name: Count8
       type: string
-    - admin_ui: {order: 52, width: 200}
+    - admin_ui: {order: 53, width: 200}
       name: Cost8
       type: string
-    - admin_ui: {order: 53, width: 200}
+    - admin_ui: {order: 54, width: 200}
       name: Size in CM9
       type: string
-    - admin_ui: {order: 54, width: 200}
+    - admin_ui: {order: 55, width: 200}
       name: Count9
       type: string
-    - admin_ui: {order: 55, width: 200}
+    - admin_ui: {order: 56, width: 200}
       name: Cost9
       type: string
-    - admin_ui: {order: 56, width: 200}
+    - admin_ui: {order: 57, width: 200}
       name: Size in CM10
       type: string
-    - admin_ui: {order: 57, width: 200}
+    - admin_ui: {order: 58, width: 200}
       name: Count10
       type: string
-    - admin_ui: {order: 58, width: 200}
+    - admin_ui: {order: 59, width: 200}
       name: Cost10
       type: string
-    - admin_ui: {order: 59, width: 200}
+    - admin_ui: {order: 60, width: 200}
       name: Size in CM11
       type: string
-    - admin_ui: {order: 60, width: 200}
+    - admin_ui: {order: 61, width: 200}
       name: Count11
       type: string
-    - admin_ui: {order: 61, width: 200}
+    - admin_ui: {order: 62, width: 200}
       name: Cost11
       type: string
-    - admin_ui: {order: 62, width: 200}
+    - admin_ui: {order: 63, width: 200}
       name: Size in CM12
       type: string
-    - admin_ui: {order: 63, width: 200}
+    - admin_ui: {order: 64, width: 200}
       name: Count12
       type: string
-    - admin_ui: {order: 64, width: 200}
+    - admin_ui: {order: 65, width: 200}
       name: Cost12
       type: string
-    - admin_ui: {order: 65, width: 200}
+    - admin_ui: {order: 66, width: 200}
       name: is_deleted
       type: bool
-    - admin_ui: {order: 66, width: 200}
+    - admin_ui: {order: 67, width: 200}
       name: deleted_at
       type: datetime
-    - admin_ui: {order: 67, width: 200}
+    - admin_ui: {order: 68, width: 200}
       name: deleted_by
       type: string
-    - admin_ui: {order: 68, width: 200}
+    - admin_ui: {order: 69, width: 200}
       name: created_by
       type: string
-    - admin_ui: {order: 69, width: 200}
+    - admin_ui: {order: 70, width: 200}
       name: created_at
       type: datetime
-    - admin_ui: {order: 70, width: 200}
+    - admin_ui: {order: 71, width: 200}
       name: updated_by
       type: string
-    - admin_ui: {order: 71, width: 200}
+    - admin_ui: {order: 72, width: 200}
       name: updated_at
       type: datetime
     server: full
     title: QUOTATIONS
+
+  # ==========================================
+  # جدول المستخدمين - محدث مع رقم التليفون
+  # ==========================================
   users:
     client: none
     columns:
@@ -325,37 +344,134 @@ db_schema:
     - admin_ui: {order: 3, width: 200}
       name: full_name
       type: string
+    # حقل جديد - رقم التليفون
     - admin_ui: {order: 4, width: 200}
-      name: role
+      name: phone
       type: string
     - admin_ui: {order: 5, width: 200}
+      name: role
+      type: string
+    - admin_ui: {order: 6, width: 200}
       name: is_approved
       type: bool
-    - admin_ui: {order: 6, width: 200}
+    - admin_ui: {order: 7, width: 200}
       name: is_active
       type: bool
-    - admin_ui: {order: 7, width: 200}
+    - admin_ui: {order: 8, width: 200}
       name: created_at
       type: datetime
-    - admin_ui: {order: 8, width: 200}
+    - admin_ui: {order: 9, width: 200}
       name: approved_by
       type: string
-    - admin_ui: {order: 9, width: 200}
+    - admin_ui: {order: 10, width: 200}
       name: approved_at
       type: datetime
-    - admin_ui: {order: 10, width: 200}
+    - admin_ui: {order: 11, width: 200}
       name: last_login
       type: datetime
-    - admin_ui: {order: 11, width: 200}
+    - admin_ui: {order: 12, width: 200}
       name: login_attempts
       type: number
-    - admin_ui: {order: 12, width: 200}
+    - admin_ui: {order: 13, width: 200}
       name: locked_until
       type: datetime
+    # حقل جديد - صلاحيات مخصصة (JSON)
+    - admin_ui: {order: 14, width: 200}
+      name: custom_permissions
+      type: string
     server: full
     title: USERS
+
+  # ==========================================
+  # جدول جديد - الجلسات (بدلاً من الذاكرة)
+  # ==========================================
+  sessions:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: session_token
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: user_email
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: user_role
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {order: 4, width: 200}
+      name: expires_at
+      type: datetime
+    - admin_ui: {order: 5, width: 200}
+      name: ip_address
+      type: string
+    - admin_ui: {order: 6, width: 200}
+      name: user_agent
+      type: string
+    - admin_ui: {order: 7, width: 200}
+      name: is_active
+      type: bool
+    server: full
+    title: SESSIONS
+
+  # ==========================================
+  # جدول جديد - الإعدادات (سعر الصرف، أسعار الأسطوانات، إلخ)
+  # ==========================================
+  settings:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: setting_key
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: setting_value
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: setting_type
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: description
+      type: string
+    - admin_ui: {order: 4, width: 200}
+      name: updated_by
+      type: string
+    - admin_ui: {order: 5, width: 200}
+      name: updated_at
+      type: datetime
+    server: full
+    title: SETTINGS
+
+  # ==========================================
+  # جدول جديد - Rate Limiting (حماية من الطلبات المتكررة)
+  # ==========================================
+  rate_limits:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: ip_address
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: endpoint
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: request_count
+      type: number
+    - admin_ui: {order: 3, width: 200}
+      name: window_start
+      type: datetime
+    - admin_ui: {order: 4, width: 200}
+      name: blocked_until
+      type: datetime
+    server: full
+    title: RATE_LIMITS
+
 dependencies: []
-metadata: {logo_img: 'asset:helwan_logo-logo.png', title: Helwan Plast - Printer System}
+metadata:
+  logo_img: 'asset:helwan_logo-logo.png'
+  title: Helwan Plast - Printer System
+  # حماية من محركات البحث
+  robots: noindex, nofollow
 name: Helwan Plast System
 package_name: Helwan_Plast
 runtime_options:

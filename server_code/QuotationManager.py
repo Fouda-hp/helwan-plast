@@ -1,6 +1,13 @@
 """
-Server Module - WITH AUTO-NUMBERING, AUDIT TRAIL & SOFT DELETE
-===============================================================
+QuotationManager.py - إدارة العملاء والعروض السعرية
+====================================================
+الميزات:
+- الترقيم التلقائي للعملاء والعروض
+- حفظ اسم العميل في جدول العروض مباشرة
+- سجل التدقيق مع IP Address
+- تحسين استعلامات N+1
+- التحقق من الصلاحيات في دوال الحذف
+- استخدام نظام logging بدلاً من print
 """
 
 import anvil.server
@@ -8,36 +15,61 @@ from anvil.tables import app_tables
 from datetime import datetime
 import json
 import uuid
+import logging
+
+# استيراد الدوال المشتركة من AuthManager
+from . import AuthManager
+
+# =========================================================
+# إعداد نظام التسجيل (Logging)
+# =========================================================
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # =========================================================
-# AUDIT LOGGING HELPER
+# استخدام دالة log_audit من AuthManager (موحدة)
 # =========================================================
-def log_audit(action, table_name, record_id, old_data, new_data, user_email='system'):
-    """Log action to audit trail"""
-    try:
-        app_tables.audit_log.add_row(
-            log_id=str(uuid.uuid4()),
-            timestamp=datetime.now(),
-            user_email=user_email,
-            action=action,
-            table_name=table_name,
-            record_id=str(record_id) if record_id else None,
-            old_data=json.dumps(old_data, default=str) if old_data else None,
-            new_data=json.dumps(new_data, default=str) if new_data else None
-        )
-    except Exception as e:
-        print(f"Audit log error: {e}")
+def log_audit(action, table_name, record_id, old_data, new_data, user_email='system', ip_address=None):
+    """
+    استخدام دالة التدقيق الموحدة من AuthManager
+    """
+    AuthManager.log_audit(action, table_name, record_id, old_data, new_data, user_email, ip_address)
+
+
+def get_client_ip():
+    """
+    الحصول على IP Address
+    """
+    return AuthManager.get_client_ip()
 
 
 # =========================================================
-# AUTO-NUMBERING FUNCTIONS
+# دوال مساعدة للتحقق من الصلاحيات
+# =========================================================
+def check_delete_permission(token_or_email):
+    """
+    التحقق من صلاحية الحذف
+    """
+    # الأدمن لديه صلاحية كاملة
+    if AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(token_or_email):
+        return True, None
+
+    # التحقق من صلاحية delete
+    if token_or_email and AuthManager.check_permission(token_or_email, 'delete'):
+        return True, None
+
+    return False, {'success': False, 'message': 'Permission denied: delete access required'}
+
+
+# =========================================================
+# دوال الترقيم التلقائي
 # =========================================================
 @anvil.server.callable
 def get_next_client_code():
     """
-    Used on page load / NEW button
-    Always returns max Client Code + 1
+    الحصول على رمز العميل التالي
+    يُستخدم عند تحميل الصفحة أو زر NEW
     """
     return _get_next_number('clients', 'Client Code')
 
@@ -45,8 +77,8 @@ def get_next_client_code():
 @anvil.server.callable
 def get_next_quotation_number():
     """
-    Used on page load / NEW button
-    Always returns max Quotation# + 1
+    الحصول على رقم العرض التالي
+    يُستخدم عند تحميل الصفحة أو زر NEW
     """
     return _get_next_number('quotations', 'Quotation#')
 
@@ -54,7 +86,8 @@ def get_next_quotation_number():
 @anvil.server.callable
 def get_or_create_client_code(client_name, phone):
     """
-    Allow same name, but phone must be unique
+    البحث عن عميل بالهاتف أو إنشاء رمز جديد
+    الهاتف يجب أن يكون فريداً
     """
     if not phone:
         return None
@@ -62,48 +95,47 @@ def get_or_create_client_code(client_name, phone):
     phone = str(phone).strip()
     client_name = str(client_name).strip() if client_name else ""
 
-    print(f"Checking phone='{phone}'")
+    logger.info(f"Checking phone='{phone}'")
 
-    # Search by PHONE ONLY (exclude deleted)
+    # البحث بالهاتف فقط (باستثناء المحذوف)
     row = app_tables.clients.get(Phone=phone, is_deleted=False)
 
     if row:
         code = str(row["Client Code"])
-        print(f"Existing phone found, client_code={code}")
+        logger.info(f"Existing phone found, client_code={code}")
         return code
 
-    # New phone -> new client
+    # هاتف جديد -> عميل جديد
     new_code = _get_next_number('clients', 'Client Code')
-    print(f"New phone, generated client_code={new_code}")
+    logger.info(f"New phone, generated client_code={new_code}")
     return str(new_code)
 
 
 @anvil.server.callable
 def get_quotation_number_if_needed(current_number, model):
     """
-    Get quotation number only if needed
-    Called from JavaScript when model code is built
+    الحصول على رقم العرض إذا لزم الأمر
+    يُستدعى من JavaScript عند بناء كود النموذج
     """
     if current_number:
-        print(f"Quotation number already exists: {current_number}")
+        logger.info(f"Quotation number already exists: {current_number}")
         return int(current_number)
 
     if not model:
-        print("No model provided")
+        logger.info("No model provided")
         return None
 
     new_q = _get_next_number('quotations', 'Quotation#')
-    print(f"Generated new quotation number: {new_q}")
+    logger.info(f"Generated new quotation number: {new_q}")
     return int(new_q)
 
 
 def _get_next_number(table_name, column_name):
     """
-    Generate next number safely (transaction-safe)
-    Searches for maximum value and increments
+    توليد الرقم التالي بشكل آمن
+    يبحث عن القيمة القصوى ويضيف 1
     """
     table = getattr(app_tables, table_name)
-
     max_val = 0
 
     for row in table.search():
@@ -117,18 +149,20 @@ def _get_next_number(table_name, column_name):
                 pass
 
     next_val = max_val + 1
-    print(f"{table_name}.{column_name}: max={max_val}, next={next_val}")
+    logger.info(f"{table_name}.{column_name}: max={max_val}, next={next_val}")
     return next_val
 
 
 # =========================================================
-# VALIDATION HELPERS
+# دوال التحقق المساعدة
 # =========================================================
 def safe_strip(v):
+    """تنظيف النص"""
     return str(v).strip() if v not in (None, "") else ""
 
 
 def safe_int(v):
+    """تحويل آمن لـ int"""
     try:
         return int(v)
     except:
@@ -136,6 +170,7 @@ def safe_int(v):
 
 
 def safe_float(v):
+    """تحويل آمن لـ float"""
     try:
         return float(v)
     except:
@@ -143,12 +178,13 @@ def safe_float(v):
 
 
 def yes_no(v):
+    """تحويل bool إلى YES/NO"""
     return "YES" if v else "NO"
 
 
 @anvil.server.callable
 def phone_exists(phone, exclude_client_code=None):
-    """Check if phone exists (exclude deleted)"""
+    """التحقق من وجود الهاتف (باستثناء المحذوف)"""
     phone = safe_strip(phone)
     if not phone:
         return False
@@ -167,7 +203,7 @@ def phone_exists(phone, exclude_client_code=None):
 
 @anvil.server.callable
 def client_exists(client_code):
-    """Check if client exists by code (not deleted)"""
+    """التحقق من وجود العميل (غير محذوف)"""
     if not client_code:
         return False
 
@@ -178,7 +214,7 @@ def client_exists(client_code):
 
 @anvil.server.callable
 def quotation_exists(quotation_number):
-    """Check if quotation exists by number (not deleted)"""
+    """التحقق من وجود العرض (غير محذوف)"""
     if not quotation_number:
         return False
 
@@ -191,23 +227,26 @@ def quotation_exists(quotation_number):
 
 
 # =========================================================
-# MAIN SAVE FUNCTION
+# دالة الحفظ الرئيسية
 # =========================================================
 @anvil.server.callable
 def save_quotation(form_data, user_email='system'):
-    """Main save function with auto-numbering and audit trail"""
+    """
+    دالة الحفظ الرئيسية مع الترقيم التلقائي وسجل التدقيق
+    """
+    ip_address = get_client_ip()
+    logger.info("Received form_data for save")
 
-    print("Received form_data")
-
-    # Extract data
+    # استخراج البيانات
     client_code_raw = form_data.get('Client Code')
     quotation_number_raw = form_data.get('Quotation#')
     model = safe_strip(form_data.get('Model'))
+    client_name = safe_strip(form_data.get('Client Name'))
 
     client_code = str(client_code_raw) if client_code_raw else None
     quotation_number = safe_int(quotation_number_raw)
 
-    # Detect existing vs new client
+    # اكتشاف العميل الحالي vs الجديد
     existing_client_row = None
     if client_code:
         existing_client_row = app_tables.clients.get(**{"Client Code": str(client_code)})
@@ -224,7 +263,7 @@ def save_quotation(form_data, user_email='system'):
 
     is_new_quotation = is_quotation and (not quotation_number or not quotation_exists(quotation_number))
 
-    # Client validation (ONLY if new client)
+    # التحقق من بيانات العميل (فقط إذا كان عميل جديد)
     missing = []
 
     if is_new_client:
@@ -241,6 +280,7 @@ def save_quotation(form_data, user_email='system'):
                 "message": "Missing Client Data:\n" + "\n".join(missing)
             }
 
+    # التحقق من بيانات العرض
     if is_quotation:
         q_missing = []
         if not form_data.get('Given Price'):
@@ -254,7 +294,7 @@ def save_quotation(form_data, user_email='system'):
                 "message": "Quotation missing data:\n" + "\n".join(q_missing)
             }
 
-    # Phone validation
+    # التحقق من الهاتف
     phone = safe_strip(form_data.get('Phone'))
 
     if phone:
@@ -263,11 +303,11 @@ def save_quotation(form_data, user_email='system'):
         if phone_row:
             if is_existing_client:
                 if phone_row != existing_client_row:
-                    return {"success": False, "message": "Phone already exists"}
+                    return {"success": False, "message": "Phone already exists for another client"}
             else:
                 return {"success": False, "message": "Phone already exists"}
 
-    # PRICE VALIDATION
+    # التحقق من الأسعار
     if is_quotation:
         given = safe_float(form_data.get('Given Price'))
         agreed = safe_float(form_data.get('Agreed Price'))
@@ -336,26 +376,32 @@ def save_quotation(form_data, user_email='system'):
                         "message": f"For New Order mode, Agreed Price ({agreed:,.0f}) cannot exceed In Stock price ({in_stock_price:,.0f})"
                     }
 
-    # AUTO-NUMBERING FROM SERVER
+    # الترقيم التلقائي من السيرفر
     if is_new_client:
         client_code = str(_get_next_number('clients', 'Client Code'))
 
     if is_new_quotation and is_quotation:
         quotation_number = _get_next_number('quotations', 'Quotation#')
 
-    print(f"Saving: client_code={client_code}, quotation_number={quotation_number}")
+    logger.info(f"Saving: client_code={client_code}, quotation_number={quotation_number}")
 
-    # Save with audit
-    client_action = save_client_data(client_code, form_data, is_new_client, user_email)
+    # الحفظ مع التدقيق
+    client_action = save_client_data(client_code, form_data, is_new_client, user_email, ip_address)
 
     quotation_action = None
     if is_quotation:
+        # الحصول على اسم العميل لحفظه مع العرض
+        if not client_name and existing_client_row:
+            client_name = existing_client_row.get('Client Name', '')
+
         quotation_action = save_quotation_data(
             client_code,
             quotation_number,
             form_data,
             is_new_quotation,
-            user_email
+            user_email,
+            ip_address,
+            client_name  # تمرير اسم العميل
         )
 
     actions = [a for a in (client_action, quotation_action) if a]
@@ -369,10 +415,10 @@ def save_quotation(form_data, user_email='system'):
 
 
 # =========================================================
-# SAVE FUNCTIONS WITH AUDIT
+# دوال الحفظ مع التدقيق
 # =========================================================
-def save_client_data(client_code, form_data, is_new, user_email='system'):
-    """Save or update client data with audit"""
+def save_client_data(client_code, form_data, is_new, user_email='system', ip_address=None):
+    """حفظ أو تحديث بيانات العميل مع التدقيق"""
 
     date_value = form_data.get('Date')
     if date_value and isinstance(date_value, str):
@@ -403,19 +449,19 @@ def save_client_data(client_code, form_data, is_new, user_email='system'):
         data['created_by'] = user_email
         data['created_at'] = datetime.now()
         app_tables.clients.add_row(**data)
-        log_audit('CREATE', 'clients', client_code, None, data, user_email)
+        log_audit('CREATE', 'clients', client_code, None, data, user_email, ip_address)
         return "Added Client"
 
     row = app_tables.clients.get(**{"Client Code": str(client_code)})
     if row:
         old_data = {k: row[k] for k in data.keys() if k in [c.name for c in app_tables.clients.list_columns()]}
         row.update(**data)
-        log_audit('UPDATE', 'clients', client_code, old_data, data, user_email)
+        log_audit('UPDATE', 'clients', client_code, old_data, data, user_email, ip_address)
     return "Updated Client"
 
 
-def save_quotation_data(client_code, quotation_number, form_data, is_new, user_email='system'):
-    """Save or update quotation data with audit"""
+def save_quotation_data(client_code, quotation_number, form_data, is_new, user_email='system', ip_address=None, client_name=''):
+    """حفظ أو تحديث بيانات العرض مع التدقيق"""
 
     date_value = form_data.get('Date')
     if date_value and isinstance(date_value, str):
@@ -430,6 +476,7 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
         'Client Code': str(client_code),
         'Quotation#': int(quotation_number),
         'Date': date_value,
+        'Client Name': client_name or safe_strip(form_data.get('Client Name')),  # حفظ اسم العميل
         'Notes': safe_strip(form_data.get('Notes')),
 
         'Model': safe_strip(form_data.get('Model')),
@@ -462,6 +509,7 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
         'updated_at': datetime.now()
     }
 
+    # إضافة بيانات الأسطوانات
     for i in range(1, 13):
         data[f'Size in CM{i}'] = safe_strip(form_data.get(f'Size in CM{i}'))
         data[f"Count{i}"] = safe_strip(form_data.get(f"Count{i}"))
@@ -471,7 +519,7 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
         data['created_by'] = user_email
         data['created_at'] = datetime.now()
         app_tables.quotations.add_row(**data)
-        log_audit('CREATE', 'quotations', quotation_number, None, data, user_email)
+        log_audit('CREATE', 'quotations', quotation_number, None, data, user_email, ip_address)
         return "Added Quotation"
 
     row = app_tables.quotations.get(**{"Quotation#": int(quotation_number)})
@@ -486,16 +534,24 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
             pass
 
     row.update(**data)
-    log_audit('UPDATE', 'quotations', quotation_number, old_data, data, user_email)
+    log_audit('UPDATE', 'quotations', quotation_number, old_data, data, user_email, ip_address)
     return "Updated Quotation"
 
 
 # =========================================================
-# SOFT DELETE (Admin Only)
+# الحذف الناعم (مع التحقق من الصلاحيات)
 # =========================================================
 @anvil.server.callable
-def soft_delete_client(client_code, user_email='admin'):
-    """Soft delete a client (admin only)"""
+def soft_delete_client(client_code, token_or_email='admin'):
+    """حذف عميل (يتطلب صلاحية الحذف)"""
+
+    # التحقق من الصلاحية
+    has_permission, error = check_delete_permission(token_or_email)
+    if not has_permission:
+        return error
+
+    ip_address = get_client_ip()
+    user_email = token_or_email if '@' in str(token_or_email) else 'admin'
 
     row = app_tables.clients.get(**{"Client Code": str(client_code)})
     if not row:
@@ -509,14 +565,22 @@ def soft_delete_client(client_code, user_email='admin'):
         deleted_by=user_email
     )
 
-    log_audit('SOFT_DELETE', 'clients', client_code, old_data, {"is_deleted": True}, user_email)
+    log_audit('SOFT_DELETE', 'clients', client_code, old_data, {"is_deleted": True}, user_email, ip_address)
 
     return {"success": True, "message": "Client deleted successfully"}
 
 
 @anvil.server.callable
-def soft_delete_quotation(quotation_number, user_email='admin'):
-    """Soft delete a quotation (admin only)"""
+def soft_delete_quotation(quotation_number, token_or_email='admin'):
+    """حذف عرض (يتطلب صلاحية الحذف)"""
+
+    # التحقق من الصلاحية
+    has_permission, error = check_delete_permission(token_or_email)
+    if not has_permission:
+        return error
+
+    ip_address = get_client_ip()
+    user_email = token_or_email if '@' in str(token_or_email) else 'admin'
 
     row = app_tables.quotations.get(**{"Quotation#": int(quotation_number)})
     if not row:
@@ -530,14 +594,21 @@ def soft_delete_quotation(quotation_number, user_email='admin'):
         deleted_by=user_email
     )
 
-    log_audit('SOFT_DELETE', 'quotations', quotation_number, old_data, {"is_deleted": True}, user_email)
+    log_audit('SOFT_DELETE', 'quotations', quotation_number, old_data, {"is_deleted": True}, user_email, ip_address)
 
     return {"success": True, "message": "Quotation deleted successfully"}
 
 
 @anvil.server.callable
-def restore_client(client_code, user_email='admin'):
-    """Restore a soft-deleted client (admin only)"""
+def restore_client(client_code, token_or_email='admin'):
+    """استعادة عميل محذوف (يتطلب صلاحية الحذف)"""
+
+    has_permission, error = check_delete_permission(token_or_email)
+    if not has_permission:
+        return error
+
+    ip_address = get_client_ip()
+    user_email = token_or_email if '@' in str(token_or_email) else 'admin'
 
     row = app_tables.clients.get(**{"Client Code": str(client_code)})
     if not row:
@@ -549,14 +620,21 @@ def restore_client(client_code, user_email='admin'):
         deleted_by=None
     )
 
-    log_audit('RESTORE', 'clients', client_code, {"is_deleted": True}, {"is_deleted": False}, user_email)
+    log_audit('RESTORE', 'clients', client_code, {"is_deleted": True}, {"is_deleted": False}, user_email, ip_address)
 
     return {"success": True, "message": "Client restored successfully"}
 
 
 @anvil.server.callable
-def restore_quotation(quotation_number, user_email='admin'):
-    """Restore a soft-deleted quotation (admin only)"""
+def restore_quotation(quotation_number, token_or_email='admin'):
+    """استعادة عرض محذوف (يتطلب صلاحية الحذف)"""
+
+    has_permission, error = check_delete_permission(token_or_email)
+    if not has_permission:
+        return error
+
+    ip_address = get_client_ip()
+    user_email = token_or_email if '@' in str(token_or_email) else 'admin'
 
     row = app_tables.quotations.get(**{"Quotation#": int(quotation_number)})
     if not row:
@@ -568,32 +646,42 @@ def restore_quotation(quotation_number, user_email='admin'):
         deleted_by=None
     )
 
-    log_audit('RESTORE', 'quotations', quotation_number, {"is_deleted": True}, {"is_deleted": False}, user_email)
+    log_audit('RESTORE', 'quotations', quotation_number, {"is_deleted": True}, {"is_deleted": False}, user_email, ip_address)
 
     return {"success": True, "message": "Quotation restored successfully"}
 
 
 # =========================================================
-# GET FUNCTIONS WITH PAGINATION & SEARCH
+# دوال الاسترجاع مع تحسين N+1 والترتيب
 # =========================================================
 @anvil.server.callable
 def get_all_quotations(page=1, per_page=20, search='', include_deleted=False):
-    """Get quotations with pagination and search"""
+    """الحصول على العروض مع الترقيم والبحث - محسّن لمشكلة N+1"""
 
     all_rows = list(app_tables.quotations.search())
 
-    # Filter deleted
+    # تصفية المحذوف
     if not include_deleted:
         all_rows = [r for r in all_rows if not r.get('is_deleted', False)]
 
-    # Search filter
+    # جلب جميع العملاء مرة واحدة (حل مشكلة N+1)
+    all_clients = list(app_tables.clients.search())
+    clients_dict = {str(c['Client Code']): c for c in all_clients}
+
+    # فلتر البحث
     if search:
         search = search.lower()
         filtered = []
         for r in all_rows:
-            client = app_tables.clients.get(**{"Client Code": str(r['Client Code'])})
-            client_name = client['Client Name'].lower() if client and client['Client Name'] else ''
-            company = client['Company'].lower() if client and client['Company'] else ''
+            client_code = str(r.get('Client Code', ''))
+            client = clients_dict.get(client_code)
+
+            # البحث في اسم العميل المحفوظ في العرض أو في جدول العملاء
+            client_name = (r.get('Client Name') or '').lower()
+            if not client_name and client:
+                client_name = (client.get('Client Name') or '').lower()
+
+            company = (client.get('Company') or '').lower() if client else ''
 
             if (search in client_name or
                 search in company or
@@ -602,7 +690,7 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False):
                 filtered.append(r)
         all_rows = filtered
 
-    # Sort by quotation number ascending
+    # ترتيب تصاعدي حسب رقم العرض
     all_rows.sort(key=lambda x: x.get('Quotation#') or 0, reverse=False)
 
     total = len(all_rows)
@@ -614,18 +702,11 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False):
 
     rows = []
     for r in page_rows:
-        # Get client data - try multiple ways
-        client = None
-        client_code = r.get('Client Code') or r.get('client_code') or ''
+        client_code = r.get('Client Code') or ''
+        client = clients_dict.get(str(client_code))
 
-        if client_code:
-            try:
-                client = app_tables.clients.get(**{"Client Code": str(client_code)})
-            except:
-                client = None
-
-        # Also try to get Client Name directly from quotation if stored there
-        client_name = r.get('Client Name') or r.get('client_name') or ''
+        # استخدام اسم العميل من العرض أو من جدول العملاء
+        client_name = r.get('Client Name') or ''
         if not client_name and client:
             client_name = client.get('Client Name', '')
 
@@ -633,7 +714,7 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False):
             "Client Code": client_code,
             "Quotation#": r["Quotation#"],
             "Date": r["Date"].isoformat() if r["Date"] else "",
-            "Client Name": client_name if client_name else (client["Client Name"] if client else ""),
+            "Client Name": client_name,
             "Company": client["Company"] if client else "",
             "Phone": client["Phone"] if client else "",
             "Country": client["Country"] if client else "",
@@ -678,15 +759,15 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False):
 
 @anvil.server.callable
 def get_all_clients(page=1, per_page=20, search='', include_deleted=False):
-    """Get clients with pagination and search"""
+    """الحصول على العملاء مع الترقيم والبحث"""
 
     all_rows = list(app_tables.clients.search())
 
-    # Filter deleted
+    # تصفية المحذوف
     if not include_deleted:
         all_rows = [r for r in all_rows if not r.get('is_deleted', False)]
 
-    # Search filter
+    # فلتر البحث
     if search:
         search = search.lower()
         all_rows = [r for r in all_rows if (
@@ -696,8 +777,8 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False):
             search in str(r['Client Code']).lower()
         )]
 
-    # Sort by client code
-    all_rows.sort(key=lambda x: int(x['Client Code']) if x['Client Code'].isdigit() else 0, reverse=True)
+    # ترتيب حسب رمز العميل (تنازلي)
+    all_rows.sort(key=lambda x: int(x['Client Code']) if str(x['Client Code']).isdigit() else 0, reverse=True)
 
     total = len(all_rows)
     total_pages = (total + per_page - 1) // per_page
@@ -732,11 +813,11 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False):
 
 
 # =========================================================
-# EXPORT FUNCTIONS
+# دوال التصدير
 # =========================================================
 @anvil.server.callable
 def export_clients_data(include_deleted=False):
-    """Export all clients data for CSV/Excel"""
+    """تصدير جميع بيانات العملاء لـ CSV/Excel"""
 
     all_rows = list(app_tables.clients.search())
 
@@ -763,22 +844,32 @@ def export_clients_data(include_deleted=False):
 
 @anvil.server.callable
 def export_quotations_data(include_deleted=False):
-    """Export all quotations data for CSV/Excel"""
+    """تصدير جميع بيانات العروض لـ CSV/Excel - محسّن"""
 
     all_rows = list(app_tables.quotations.search())
 
     if not include_deleted:
         all_rows = [r for r in all_rows if not r.get('is_deleted', False)]
 
+    # جلب جميع العملاء مرة واحدة
+    all_clients = list(app_tables.clients.search())
+    clients_dict = {str(c['Client Code']): c for c in all_clients}
+
     data = []
     for r in all_rows:
-        client = app_tables.clients.get(**{"Client Code": str(r['Client Code'])})
+        client_code = str(r.get('Client Code', ''))
+        client = clients_dict.get(client_code)
+
+        # استخدام اسم العميل من العرض أو من جدول العملاء
+        client_name = r.get('Client Name') or ''
+        if not client_name and client:
+            client_name = client.get('Client Name', '')
 
         row_data = {
             "Quotation#": r["Quotation#"],
             "Date": str(r["Date"] or ""),
-            "Client Code": r["Client Code"],
-            "Client Name": client["Client Name"] if client else "",
+            "Client Code": client_code,
+            "Client Name": client_name,
             "Company": client["Company"] if client else "",
             "Phone": client["Phone"] if client else "",
             "Model": r["Model"],
@@ -799,11 +890,11 @@ def export_quotations_data(include_deleted=False):
 
 
 # =========================================================
-# STATISTICS (For Admin Dashboard)
+# إحصائيات لوحة التحكم
 # =========================================================
 @anvil.server.callable
 def get_dashboard_stats():
-    """Get statistics for admin dashboard"""
+    """الحصول على إحصائيات لوحة التحكم"""
 
     clients = list(app_tables.clients.search())
     quotations = list(app_tables.quotations.search())
@@ -813,7 +904,7 @@ def get_dashboard_stats():
 
     total_agreed = sum(q['Agreed Price'] or 0 for q in active_quotations)
 
-    # This month
+    # هذا الشهر
     now = datetime.now()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
@@ -832,4 +923,151 @@ def get_dashboard_stats():
         "this_month_value": this_month_value,
         "deleted_clients": len(clients) - len(active_clients),
         "deleted_quotations": len(quotations) - len(active_quotations)
+    }
+
+
+# =========================================================
+# دوال استيراد البيانات (للأدمن فقط)
+# =========================================================
+@anvil.server.callable
+def import_clients_data(data_list, token_or_email):
+    """
+    استيراد بيانات العملاء من CSV/Excel
+    يتطلب صلاحية الأدمن
+    """
+    # التحقق من صلاحية الأدمن
+    if not AuthManager.is_admin(token_or_email) and not AuthManager.is_admin_by_email(token_or_email):
+        return {'success': False, 'message': 'Admin access required'}
+
+    ip_address = get_client_ip()
+    user_email = token_or_email if '@' in str(token_or_email) else 'admin'
+
+    imported = 0
+    errors = []
+
+    for i, row in enumerate(data_list):
+        try:
+            client_code = row.get('Client Code')
+            if not client_code:
+                client_code = str(_get_next_number('clients', 'Client Code'))
+
+            # التحقق من عدم وجود العميل
+            existing = app_tables.clients.get(**{"Client Code": str(client_code)})
+            if existing:
+                errors.append(f"Row {i+1}: Client Code {client_code} already exists")
+                continue
+
+            # التحقق من الهاتف
+            phone = safe_strip(row.get('Phone'))
+            if phone:
+                phone_exists_row = app_tables.clients.get(Phone=phone, is_deleted=False)
+                if phone_exists_row:
+                    errors.append(f"Row {i+1}: Phone {phone} already exists")
+                    continue
+
+            app_tables.clients.add_row(
+                **{
+                    'Client Code': str(client_code),
+                    'Client Name': safe_strip(row.get('Client Name')),
+                    'Company': safe_strip(row.get('Company')),
+                    'Phone': phone,
+                    'Country': safe_strip(row.get('Country')),
+                    'Address': safe_strip(row.get('Address')),
+                    'Email': safe_strip(row.get('Email')),
+                    'Sales Rep': safe_strip(row.get('Sales Rep')),
+                    'Source': safe_strip(row.get('Source')),
+                    'Date': datetime.now().date(),
+                    'is_deleted': False,
+                    'created_by': user_email,
+                    'created_at': datetime.now(),
+                    'updated_by': user_email,
+                    'updated_at': datetime.now()
+                }
+            )
+            imported += 1
+
+        except Exception as e:
+            errors.append(f"Row {i+1}: {str(e)}")
+
+    log_audit('IMPORT', 'clients', None, None,
+              {'imported': imported, 'errors': len(errors)}, user_email, ip_address)
+
+    return {
+        'success': True,
+        'message': f'Imported {imported} clients',
+        'imported': imported,
+        'errors': errors
+    }
+
+
+@anvil.server.callable
+def import_quotations_data(data_list, token_or_email):
+    """
+    استيراد بيانات العروض من CSV/Excel
+    يتطلب صلاحية الأدمن
+    """
+    if not AuthManager.is_admin(token_or_email) and not AuthManager.is_admin_by_email(token_or_email):
+        return {'success': False, 'message': 'Admin access required'}
+
+    ip_address = get_client_ip()
+    user_email = token_or_email if '@' in str(token_or_email) else 'admin'
+
+    imported = 0
+    errors = []
+
+    for i, row in enumerate(data_list):
+        try:
+            quotation_number = safe_int(row.get('Quotation#'))
+            if not quotation_number:
+                quotation_number = _get_next_number('quotations', 'Quotation#')
+
+            # التحقق من عدم وجود العرض
+            existing = app_tables.quotations.get(**{"Quotation#": int(quotation_number)})
+            if existing:
+                errors.append(f"Row {i+1}: Quotation# {quotation_number} already exists")
+                continue
+
+            data = {
+                'Quotation#': int(quotation_number),
+                'Client Code': safe_strip(row.get('Client Code')),
+                'Client Name': safe_strip(row.get('Client Name')),
+                'Date': datetime.now().date(),
+                'Model': safe_strip(row.get('Model')),
+                'Machine type': safe_strip(row.get('Machine type')),
+                'Number of colors': safe_int(row.get('Number of colors')),
+                'Machine width': safe_int(row.get('Machine width')),
+                'Material': safe_strip(row.get('Material')),
+                'Winder': safe_strip(row.get('Winder')),
+                'Given Price': safe_float(row.get('Given Price')),
+                'Agreed Price': safe_float(row.get('Agreed Price')),
+                'In Stock': safe_float(row.get('In Stock')),
+                'New Order': safe_float(row.get('New Order')),
+                'Notes': safe_strip(row.get('Notes')),
+                'is_deleted': False,
+                'created_by': user_email,
+                'created_at': datetime.now(),
+                'updated_by': user_email,
+                'updated_at': datetime.now()
+            }
+
+            # إضافة بيانات الأسطوانات
+            for j in range(1, 13):
+                data[f'Size in CM{j}'] = safe_strip(row.get(f'Size in CM{j}'))
+                data[f'Count{j}'] = safe_strip(row.get(f'Count{j}'))
+                data[f'Cost{j}'] = safe_strip(row.get(f'Cost{j}'))
+
+            app_tables.quotations.add_row(**data)
+            imported += 1
+
+        except Exception as e:
+            errors.append(f"Row {i+1}: {str(e)}")
+
+    log_audit('IMPORT', 'quotations', None, None,
+              {'imported': imported, 'errors': len(errors)}, user_email, ip_address)
+
+    return {
+        'success': True,
+        'message': f'Imported {imported} quotations',
+        'imported': imported,
+        'errors': errors
     }

@@ -1,3 +1,11 @@
+"""
+LoginForm - صفحة تسجيل الدخول والتسجيل
+======================================
+- تسجيل الدخول
+- تسجيل مستخدم جديد (مع رقم التليفون)
+- إعداد الأدمن الأولي
+"""
+
 from ._anvil_designer import LoginFormTemplate
 from anvil import *
 import anvil.server
@@ -40,31 +48,50 @@ class LoginForm(LoginFormTemplate):
     # Bridge functions for JavaScript
     # =========================================
     def login_user(self, email, password):
-        """Login user - called from JavaScript"""
+        """
+        Login user - called from JavaScript
+        تسجيل دخول المستخدم
+        """
         try:
             result = anvil.server.call('login_user', email, password)
+
+            # حفظ معلومات المستخدم في sessionStorage إذا نجح تسجيل الدخول
+            if result.get('success') and result.get('user'):
+                user = result['user']
+                anvil.js.window.sessionStorage.setItem('user_name', user.get('full_name', ''))
+                anvil.js.window.sessionStorage.setItem('user_role', user.get('role', ''))
+
             return result
         except Exception as e:
             return {'success': False, 'message': f'Error: {str(e)}'}
 
-    def register_user(self, email, password, full_name):
-        """Register user - called from JavaScript"""
+    def register_user(self, email, password, full_name, phone=None):
+        """
+        Register user - called from JavaScript
+        تسجيل مستخدم جديد مع رقم التليفون
+        """
         try:
-            result = anvil.server.call('register_user', email, password, full_name)
+            result = anvil.server.call('register_user', email, password, full_name, phone)
             return result
         except Exception as e:
             return {'success': False, 'message': f'Error: {str(e)}'}
 
-    def setup_admin(self, email, password, full_name):
-        """Setup initial admin - called from JavaScript"""
+    def setup_admin(self, email, password, full_name, phone=None):
+        """
+        Setup initial admin - called from JavaScript
+        إعداد الأدمن الأولي مع رقم التليفون
+        """
         try:
-            result = anvil.server.call('setup_initial_admin', email, password, full_name)
+            result = anvil.server.call('setup_initial_admin', email, password, full_name, phone)
             return result
         except Exception as e:
             return {'success': False, 'message': f'Error: {str(e)}'}
 
     def check_admin_exists(self):
-        """Check if admin exists - called from JavaScript"""
+        """
+        Check if admin exists - called from JavaScript
+        التحقق من وجود أدمن
+        """
         try:
             result = anvil.server.call('check_admin_exists')
             return result

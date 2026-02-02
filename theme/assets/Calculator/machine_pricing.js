@@ -1,14 +1,17 @@
 // ========================================
-// machine_pricing.js
+// machine_pricing.js - محدث مع تحميل الإعدادات من السيرفر
 // ========================================
 
 (function () {
   if (window.__machinePricingLoaded) return;
   window.__machinePricingLoaded = true;
 
-  const EXCHANGE_RATE = 47.5;
-
-  const CONFIG = {
+  // ----------------------------------------
+  // الإعدادات - يتم تحميلها من السيرفر
+  // القيم الافتراضية تُستخدم إذا فشل التحميل
+  // ----------------------------------------
+  let EXCHANGE_RATE = 47.5;  // قيمة افتراضية
+  let CONFIG = {
     SHIPPING_SEA: 3200,
     THS: 1000,
     EXPENSES_CLEARANCE: 1400,
@@ -16,6 +19,48 @@
     BANK_COMMISSION: 0.0132
   };
 
+  // تحميل الإعدادات من السيرفر
+  async function loadSettingsFromServer() {
+    try {
+      // تحميل سعر الصرف
+      const exchangeRate = await window.anvil?.server?.call('get_setting', 'exchange_rate');
+      if (exchangeRate && !isNaN(exchangeRate)) {
+        EXCHANGE_RATE = parseFloat(exchangeRate);
+        console.log('📈 Exchange rate loaded from server:', EXCHANGE_RATE);
+      }
+
+      // تحميل باقي الإعدادات
+      const shippingSea = await window.anvil?.server?.call('get_setting', 'shipping_sea');
+      if (shippingSea && !isNaN(shippingSea)) CONFIG.SHIPPING_SEA = parseFloat(shippingSea);
+
+      const thsCost = await window.anvil?.server?.call('get_setting', 'ths_cost');
+      if (thsCost && !isNaN(thsCost)) CONFIG.THS = parseFloat(thsCost);
+
+      const clearanceExpenses = await window.anvil?.server?.call('get_setting', 'clearance_expenses');
+      if (clearanceExpenses && !isNaN(clearanceExpenses)) CONFIG.EXPENSES_CLEARANCE = parseFloat(clearanceExpenses);
+
+      const taxRate = await window.anvil?.server?.call('get_setting', 'tax_rate');
+      if (taxRate && !isNaN(taxRate)) CONFIG.TAX_RATE = parseFloat(taxRate);
+
+      const bankCommission = await window.anvil?.server?.call('get_setting', 'bank_commission');
+      if (bankCommission && !isNaN(bankCommission)) CONFIG.BANK_COMMISSION = parseFloat(bankCommission);
+
+      // تحديث حقل سعر الصرف في الواجهة
+      const exchangeInput = document.getElementById("exchange_rate");
+      if (exchangeInput) exchangeInput.value = EXCHANGE_RATE.toFixed(2);
+
+      console.log('⚙️ Settings loaded successfully from server');
+    } catch (e) {
+      console.warn('⚠️ Could not load settings from server, using defaults:', e);
+    }
+  }
+
+  // تحميل الإعدادات عند بدء التشغيل
+  loadSettingsFromServer();
+
+  // ----------------------------------------
+  // عناصر الواجهة
+  // ----------------------------------------
   const machineType = document.getElementById("machine_type");
   const colors      = document.getElementById("Number of colors");
   const width       = document.getElementById("Machine width");
@@ -34,7 +79,7 @@
   if (exchangeInput) exchangeInput.value = EXCHANGE_RATE.toFixed(2);
 
   // ----------------------------------------
-  // Helpers
+  // دوال مساعدة
   // ----------------------------------------
 
   function halfUpRound(v) {
@@ -127,7 +172,7 @@
   }
 
   // ----------------------------------------
-  // Machine prices JSON
+  // أسعار الآلات - JSON
   // ----------------------------------------
 
   let MACHINE_PRICES = {};
@@ -179,7 +224,24 @@
   }
 
   // ----------------------------------------
-  // Core Calculations
+  // دالة الحصول على سعر الصرف الحالي
+  // ----------------------------------------
+  window.getExchangeRate = function() {
+    return EXCHANGE_RATE;
+  };
+
+  // دالة لتحديث سعر الصرف (يمكن استدعاؤها من الأدمن)
+  window.updateExchangeRate = function(newRate) {
+    if (newRate && !isNaN(newRate)) {
+      EXCHANGE_RATE = parseFloat(newRate);
+      const exchangeInput = document.getElementById("exchange_rate");
+      if (exchangeInput) exchangeInput.value = EXCHANGE_RATE.toFixed(2);
+      console.log('📈 Exchange rate updated to:', EXCHANGE_RATE);
+    }
+  };
+
+  // ----------------------------------------
+  // الحسابات الأساسية
   // ----------------------------------------
 
   window.buildModelCode = function () {
@@ -273,7 +335,7 @@
   };
 
   // ----------------------------------------
-  // Events
+  // الأحداث
   // ----------------------------------------
 
   ["Video inspection","PLC","Slitter"].forEach(id => {

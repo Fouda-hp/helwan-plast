@@ -49,61 +49,45 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # =========================================================
-# Gmail SMTP Configuration
+# Resend Email API Configuration
 # =========================================================
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import anvil.http
+import json
 
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_EMAIL = "mohamedadelfouda@gmail.com"
-SMTP_PASSWORD = "mcum qlob fscc fctb"
-
-def get_smtp_credentials():
-  """الحصول على بيانات SMTP"""
-  return SMTP_EMAIL, SMTP_PASSWORD
+RESEND_API_KEY = "re_MLqRuXbz_NY1ycMDub7M42rRkfbZGM4eC"
+RESEND_FROM_EMAIL = "onboarding@resend.dev"  # الإيميل الافتراضي من Resend
 
 def send_email_smtp(to_email, subject, html_body):
   """
-  إرسال إيميل عبر Gmail SMTP
+  إرسال إيميل عبر Resend API
   """
-  smtp_email, smtp_password = get_smtp_credentials()
-
-  if not smtp_email or not smtp_password:
-    logger.error("SMTP credentials not configured")
-    return False
-
   try:
-    # إنشاء الرسالة
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = f"Helwan Plast System <{smtp_email}>"
-    msg['To'] = to_email
+    logger.info(f"Attempting to send email via Resend to {to_email}")
 
-    # إضافة HTML body
-    html_part = MIMEText(html_body, 'html', 'utf-8')
-    msg.attach(html_part)
+    response = anvil.http.request(
+      url="https://api.resend.com/emails",
+      method="POST",
+      headers={
+        "Authorization": f"Bearer {RESEND_API_KEY}",
+        "Content-Type": "application/json"
+      },
+      data=json.dumps({
+        "from": f"Helwan Plast <{RESEND_FROM_EMAIL}>",
+        "to": [to_email],
+        "subject": subject,
+        "html": html_body
+      }),
+      json=True
+    )
 
-    # الاتصال بـ SMTP server وإرسال الإيميل
-    logger.info(f"Attempting to send email via SMTP to {to_email}")
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=30) as server:
-      server.set_debuglevel(0)
-      server.starttls()
-      server.login(smtp_email, smtp_password)
-      server.sendmail(smtp_email, to_email, msg.as_string())
-
-    logger.info(f"Email sent successfully via SMTP to {to_email}")
+    logger.info(f"Email sent successfully via Resend to {to_email}")
     return True
 
-  except smtplib.SMTPAuthenticationError as e:
-    logger.error(f"SMTP Authentication failed: {e}")
-    return False
-  except smtplib.SMTPException as e:
-    logger.error(f"SMTP Error: {e}")
+  except anvil.http.HttpError as e:
+    logger.error(f"Resend API Error: {e.status} - {e.content}")
     return False
   except Exception as e:
-    logger.error(f"Failed to send email via SMTP to {to_email}: {type(e).__name__}: {e}")
+    logger.error(f"Failed to send email via Resend to {to_email}: {type(e).__name__}: {e}")
     return False
 
 

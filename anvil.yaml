@@ -528,6 +528,7 @@ name: Helwan Plast System
 package_name: Helwan_Plast
 runtime_options:
   client_version: '3'
+  legacy_features: {__dict__: true, bootstrap3: true, class_names: true, root_container: true}
   server_spec: {base: python310-minimal}
   version: 3
 services:
@@ -535,7 +536,7 @@ services:
   server_config: {auto_create_missing_columns: true}
   source: /runtime/services/tables.yml
 - client_config: {}
-  server_config: {custom_smtp: false}
+  server_config: {custom_smtp: false, test_mode: false}
   source: /runtime/services/anvil/email.yml
 startup: {module: LoginForm, type: form}
 startup_form: null

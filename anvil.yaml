@@ -406,6 +406,11 @@ db_schema:
       type: datetime
     server: full
     title: SETTINGS
+  table_8:
+    client: none
+    columns: []
+    server: full
+    title: Table 8
   users:
     client: none
     columns:

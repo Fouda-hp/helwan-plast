@@ -49,29 +49,44 @@ class DataImportForm(DataImportFormTemplate):
         """Get auth token and user email from session"""
         try:
             self.auth_token = anvil.js.window.sessionStorage.getItem('auth_token') or ''
-            if self.auth_token:
+            self.user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
+
+            print(f"DEBUG: auth_token exists: {bool(self.auth_token)}")
+            print(f"DEBUG: user_email from storage: {self.user_email}")
+
+            # إذا لم يكن هناك email في sessionStorage، نحاول الحصول عليه من الـ token
+            if self.auth_token and not self.user_email:
                 result = anvil.server.call('validate_token', self.auth_token)
                 if result.get('valid'):
                     self.user_email = result['user']['email']
+                    print(f"DEBUG: user_email from token validation: {self.user_email}")
         except Exception as e:
             print(f"Error getting auth info: {e}")
 
     def import_clients(self, data):
         """Import clients data - sends both token and email for verification"""
-        # Try with token first, fallback to email
-        if self.auth_token:
-            return anvil.server.call('import_clients_data', data, self.auth_token)
-        elif self.user_email:
+        print(f"DEBUG import_clients: token={bool(self.auth_token)}, email={self.user_email}")
+
+        # استخدام الـ email مباشرة لأنه أكثر موثوقية
+        if self.user_email:
+            print(f"DEBUG: Using email for auth: {self.user_email}")
             return anvil.server.call('import_clients_data', data, self.user_email)
+        elif self.auth_token:
+            print(f"DEBUG: Using token for auth")
+            return anvil.server.call('import_clients_data', data, self.auth_token)
         else:
             return {'success': False, 'message': 'Not authenticated. Please login again.'}
 
     def import_quotations(self, data):
         """Import quotations data - sends both token and email for verification"""
-        # Try with token first, fallback to email
-        if self.auth_token:
-            return anvil.server.call('import_quotations_data', data, self.auth_token)
-        elif self.user_email:
+        print(f"DEBUG import_quotations: token={bool(self.auth_token)}, email={self.user_email}")
+
+        # استخدام الـ email مباشرة لأنه أكثر موثوقية
+        if self.user_email:
+            print(f"DEBUG: Using email for auth: {self.user_email}")
             return anvil.server.call('import_quotations_data', data, self.user_email)
+        elif self.auth_token:
+            print(f"DEBUG: Using token for auth")
+            return anvil.server.call('import_quotations_data', data, self.auth_token)
         else:
             return {'success': False, 'message': 'Not authenticated. Please login again.'}

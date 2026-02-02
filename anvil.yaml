@@ -406,11 +406,69 @@ db_schema:
       type: datetime
     server: full
     title: SETTINGS
-  table_8:
+  otp_codes:
     client: none
-    columns: []
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: otp_id
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: user_email
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: otp_code
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: purpose
+      type: string
+    - admin_ui: {order: 4, width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {order: 5, width: 200}
+      name: expires_at
+      type: datetime
+    - admin_ui: {order: 6, width: 200}
+      name: is_used
+      type: bool
     server: full
-    title: Table 8
+    title: OTP_CODES
+  password_history:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: history_id
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: user_email
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: password_hash
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: created_at
+      type: datetime
+    server: full
+    title: PASSWORD_HISTORY
+  pending_passwords:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: pending_id
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: user_email
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: new_password_hash
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {order: 4, width: 200}
+      name: expires_at
+      type: datetime
+    server: full
+    title: PENDING_PASSWORDS
   users:
     client: none
     columns:
@@ -459,6 +517,9 @@ db_schema:
     - admin_ui: {order: 14, width: 200}
       name: custom_permissions
       type: string
+    - admin_ui: {order: 15, width: 200}
+      name: email_verified
+      type: bool
     server: full
     title: USERS
 dependencies: []

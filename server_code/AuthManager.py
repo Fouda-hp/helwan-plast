@@ -850,6 +850,44 @@ def require_permission(token, permission):
 # وظائف الأدمن
 # =========================================================
 @anvil.server.callable
+def debug_admin_check(token_or_email):
+    """
+    Debug function to check admin access - للتشخيص
+    """
+    result = {
+        'token_received': token_or_email[:50] if token_or_email else 'None',
+        'session_valid': False,
+        'session_data': None,
+        'user_found': False,
+        'user_data': None,
+        'is_admin_result': False
+    }
+
+    # Check session
+    session = validate_session(token_or_email)
+    if session:
+        result['session_valid'] = True
+        result['session_data'] = session
+
+    # Check if email
+    if token_or_email and '@' in str(token_or_email):
+        user = app_tables.users.get(email=str(token_or_email).lower())
+        if user:
+            result['user_found'] = True
+            result['user_data'] = {
+                'email': user['email'],
+                'role': user['role'],
+                'is_active': user['is_active'],
+                'is_approved': user['is_approved']
+            }
+
+    # Check is_admin
+    result['is_admin_result'] = is_admin(token_or_email)
+
+    return result
+
+
+@anvil.server.callable
 def get_pending_users(token_or_email):
     """
     الحصول على المستخدمين في انتظار الموافقة

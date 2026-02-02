@@ -92,6 +92,9 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.openDataImport = self.open_data_import
         anvil.js.window.logoutUser = self.logout_user
 
+        # Debug
+        anvil.js.window.debugAdminCheck = self.debug_admin_check
+
     # =========================================================
     # التوجيه
     # =========================================================
@@ -244,6 +247,13 @@ class AdminPanel(AdminPanelTemplate):
             open_form("DataImportForm")
         except Exception as e:
             alert(f"Error opening DataImportForm: {e}")
+
+    # =========================================================
+    # Debug
+    # =========================================================
+    def debug_admin_check(self):
+        """Debug function to check admin access"""
+        return anvil.server.call('debug_admin_check', self.get_auth())
 
     # =========================================================
     # Logout

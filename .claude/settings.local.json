@@ -8,7 +8,15 @@
       "Bash(git push:*)",
       "Bash(git pull:*)",
       "Bash(git commit:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(python -c:*)",
+      "Bash(python3:*)",
+      "Bash(where:*)",
+      "Bash(\"C:\\\\Users\\\\moham_ub2xpub\\\\AppData\\\\Local\\\\Microsoft\\\\WindowsApps\\\\python.exe\" -c \"\nimport yaml\n\nwith open\\(''client_code/CalculatorForm/form_template.yaml'', ''r'', encoding=''utf-8''\\) as f:\n    data = yaml.safe_load\\(f\\)\n\nhtml = data[''container''][''properties''][''html'']\n\n# Find quotationOverlay section\nstart = html.find\\(''quotationOverlay''\\)\nend = html.find\\(''clientOverlay''\\)\n\nprint\\(''=== QUOTATION OVERLAY HTML ===''\\)\nprint\\(html[start:end][:1500]\\)\n\")",
+      "Bash(pip:*)",
+      "Bash(git stash:*)",
+      "Bash(git fetch:*)",
+      "Bash(dir \"E:\\\\One Drive\\\\OneDrive - Helwan Plast\\\\2026\\\\المطابع\\\\Mohamed\\\\Backup\\\\anvil\\\\Backup\\\\Helwan_Plast\" /s /b)"
     ]
   }
 }

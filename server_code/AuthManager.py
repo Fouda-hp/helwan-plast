@@ -331,9 +331,14 @@ def validate_session(token):
             session.update(is_active=False)
             return None
 
+        # جلب الـ role الحالي من جدول users (وليس من الجلسة)
+        # هذا يضمن أن أي تغيير في الـ role يُطبق فوراً
+        user = app_tables.users.get(email=session['user_email'])
+        current_role = user['role'] if user else session['user_role']
+
         return {
             'email': session['user_email'],
-            'role': session['user_role'],
+            'role': current_role,  # استخدام الـ role الحالي من users table
             'created': session['created_at'],
             'expires': session['expires_at']
         }

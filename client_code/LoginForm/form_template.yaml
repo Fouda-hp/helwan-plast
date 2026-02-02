@@ -372,21 +372,92 @@ container:
             font-size: 22px;
           }
         }
+
+        /* ================= LANGUAGE SWITCHER ================= */
+        .login-lang-switcher {
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          z-index: 100;
+        }
+
+        .lang-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 16px;
+          background: rgba(255,255,255,0.15);
+          border: 1px solid rgba(255,255,255,0.25);
+          border-radius: 10px;
+          color: #fff;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(10px);
+        }
+
+        .lang-btn:hover {
+          background: rgba(255,255,255,0.25);
+          transform: translateY(-2px);
+        }
+
+        .lang-btn .lang-icon {
+          font-size: 18px;
+        }
+
+        /* ================= RTL SUPPORT ================= */
+        body.rtl .login-lang-switcher {
+          right: auto;
+          left: 20px;
+        }
+
+        body.rtl .login-box {
+          direction: rtl;
+          text-align: right;
+        }
+
+        body.rtl .field label {
+          text-align: right;
+        }
+
+        body.rtl .field input {
+          text-align: right;
+        }
+
+        body.rtl .auth-tabs {
+          direction: rtl;
+        }
+
+        body.rtl .footer {
+          direction: rtl;
+        }
       </style>
 
+      <!-- Load i18n Script -->
+      <script src="_/theme/assets/i18n.js"></script>
+
       <div class="login-wrapper">
+        <!-- Language Switcher -->
+        <div class="login-lang-switcher">
+          <button class="lang-btn" id="langSwitchBtn" onclick="toggleLanguage()">
+            <span class="lang-icon">🌐</span>
+            <span id="langBtnText">العربية</span>
+          </button>
+        </div>
+
         <div class="login-box">
 
           <div class="logo">
             <img src="_/theme/helwan_logo.png" alt="Helwan Plast">
-            <h2>Helwan Plast</h2>
-            <p>Secure Authentication</p>
+            <h2 id="logoTitle">Helwan Plast</h2>
+            <p id="logoSubtitle">Secure Authentication</p>
           </div>
 
           <!-- Auth Tabs -->
           <div class="auth-tabs">
-            <button class="auth-tab active" data-tab="login">Login</button>
-            <button class="auth-tab" data-tab="register">Register</button>
+            <button class="auth-tab active" data-tab="login" id="tabLogin">Login</button>
+            <button class="auth-tab" data-tab="register" id="tabRegister">Register</button>
           </div>
 
           <!-- Login Form -->
@@ -394,17 +465,17 @@ container:
             <div id="loginMessage" class="message"></div>
 
             <div class="field">
-              <label>Email Address</label>
+              <label id="lblLoginEmail">Email Address</label>
               <input type="email" id="loginEmail" placeholder="Enter your email">
             </div>
 
             <div class="field">
-              <label>Password</label>
+              <label id="lblLoginPassword">Password</label>
               <input type="password" id="loginPassword" placeholder="Enter your password">
             </div>
 
             <button class="auth-btn" id="loginBtn">
-              <span class="btn-text">LOGIN</span>
+              <span class="btn-text" id="btnLoginText">LOGIN</span>
               <div class="btn-loader"></div>
             </button>
 
@@ -419,35 +490,35 @@ container:
             <div id="registerMessage" class="message"></div>
 
             <div class="field">
-              <label>Full Name</label>
+              <label id="lblRegName">Full Name</label>
               <input type="text" id="regName" placeholder="Enter your full name">
             </div>
 
             <div class="field">
-              <label>Email Address</label>
+              <label id="lblRegEmail">Email Address</label>
               <input type="email" id="regEmail" placeholder="Enter your email">
             </div>
 
             <div class="field">
-              <label>Phone Number (Optional)</label>
+              <label id="lblRegPhone">Phone Number (Optional)</label>
               <input type="tel" id="regPhone" placeholder="Enter your phone number">
             </div>
 
             <div class="field">
-              <label>Password</label>
-              <input type="password" id="regPassword" placeholder="Min 6 characters">
+              <label id="lblRegPassword">Password</label>
+              <input type="password" id="regPassword" placeholder="Min 8 characters">
               <div class="password-strength">
                 <div class="password-strength-bar" id="strengthBar"></div>
               </div>
             </div>
 
             <div class="field">
-              <label>Confirm Password</label>
+              <label id="lblRegConfirm">Confirm Password</label>
               <input type="password" id="regConfirm" placeholder="Confirm your password">
             </div>
 
             <button class="auth-btn" id="registerBtn">
-              <span class="btn-text">CREATE ACCOUNT</span>
+              <span class="btn-text" id="btnRegisterText">CREATE ACCOUNT</span>
               <div class="btn-loader"></div>
             </button>
           </div>
@@ -537,6 +608,126 @@ container:
 
       <script>
         (function() {
+
+          // ============================================
+          // LANGUAGE SYSTEM
+          // ============================================
+          var currentLang = localStorage.getItem('hp_language') || 'en';
+
+          var translations = {
+            en: {
+              logoTitle: 'Helwan Plast',
+              logoSubtitle: 'Secure Authentication',
+              tabLogin: 'Login',
+              tabRegister: 'Register',
+              lblLoginEmail: 'Email Address',
+              lblLoginPassword: 'Password',
+              btnLoginText: 'LOGIN',
+              setupAdminLink: 'First time? Setup Admin Account',
+              lblRegName: 'Full Name',
+              lblRegEmail: 'Email Address',
+              lblRegPhone: 'Phone Number (Optional)',
+              lblRegPassword: 'Password',
+              lblRegConfirm: 'Confirm Password',
+              btnRegisterText: 'CREATE ACCOUNT',
+              loginEmailPlaceholder: 'Enter your email',
+              loginPasswordPlaceholder: 'Enter your password',
+              regNamePlaceholder: 'Enter your full name',
+              regEmailPlaceholder: 'Enter your email',
+              regPhonePlaceholder: 'Enter your phone number',
+              regPasswordPlaceholder: 'Min 8 characters',
+              regConfirmPlaceholder: 'Confirm your password',
+              langBtnText: 'العربية',
+              errorFillFields: 'Please enter email and password',
+              errorFillAllFields: 'Please fill all required fields',
+              errorPasswordMatch: 'Passwords do not match',
+              errorPasswordMin: 'Password must be at least 8 characters',
+              successLogin: 'Login successful! Redirecting...',
+              footer: 'Design And Developed By Helwan Plast'
+            },
+            ar: {
+              logoTitle: 'حلوان بلاست',
+              logoSubtitle: 'تسجيل دخول آمن',
+              tabLogin: 'تسجيل الدخول',
+              tabRegister: 'تسجيل جديد',
+              lblLoginEmail: 'البريد الإلكتروني',
+              lblLoginPassword: 'كلمة المرور',
+              btnLoginText: 'دخول',
+              setupAdminLink: 'أول مرة؟ إنشاء حساب المسؤول',
+              lblRegName: 'الاسم بالكامل',
+              lblRegEmail: 'البريد الإلكتروني',
+              lblRegPhone: 'رقم الهاتف (اختياري)',
+              lblRegPassword: 'كلمة المرور',
+              lblRegConfirm: 'تأكيد كلمة المرور',
+              btnRegisterText: 'إنشاء الحساب',
+              loginEmailPlaceholder: 'أدخل بريدك الإلكتروني',
+              loginPasswordPlaceholder: 'أدخل كلمة المرور',
+              regNamePlaceholder: 'أدخل اسمك بالكامل',
+              regEmailPlaceholder: 'أدخل بريدك الإلكتروني',
+              regPhonePlaceholder: 'أدخل رقم هاتفك',
+              regPasswordPlaceholder: '8 أحرف على الأقل',
+              regConfirmPlaceholder: 'أعد كتابة كلمة المرور',
+              langBtnText: 'English',
+              errorFillFields: 'الرجاء إدخال البريد وكلمة المرور',
+              errorFillAllFields: 'الرجاء ملء جميع الحقول المطلوبة',
+              errorPasswordMatch: 'كلمتا المرور غير متطابقتين',
+              errorPasswordMin: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+              successLogin: 'تم تسجيل الدخول بنجاح! جاري التحويل...',
+              footer: 'تصميم وتطوير حلوان بلاست'
+            }
+          };
+
+          function t(key) {
+            return translations[currentLang][key] || translations['en'][key] || key;
+          }
+
+          function applyTranslations() {
+            // Apply RTL/LTR
+            if (currentLang === 'ar') {
+              document.body.classList.add('rtl');
+              document.documentElement.dir = 'rtl';
+            } else {
+              document.body.classList.remove('rtl');
+              document.documentElement.dir = 'ltr';
+            }
+
+            // Update text elements
+            var elements = ['logoTitle', 'logoSubtitle', 'tabLogin', 'tabRegister',
+              'lblLoginEmail', 'lblLoginPassword', 'btnLoginText', 'setupAdminLink',
+              'lblRegName', 'lblRegEmail', 'lblRegPhone', 'lblRegPassword',
+              'lblRegConfirm', 'btnRegisterText', 'langBtnText'];
+
+            elements.forEach(function(id) {
+              var el = document.getElementById(id);
+              if (el) el.textContent = t(id);
+            });
+
+            // Update placeholders
+            var loginEmail = document.getElementById('loginEmail');
+            var loginPassword = document.getElementById('loginPassword');
+            var regName = document.getElementById('regName');
+            var regEmail = document.getElementById('regEmail');
+            var regPhone = document.getElementById('regPhone');
+            var regPassword = document.getElementById('regPassword');
+            var regConfirm = document.getElementById('regConfirm');
+
+            if (loginEmail) loginEmail.placeholder = t('loginEmailPlaceholder');
+            if (loginPassword) loginPassword.placeholder = t('loginPasswordPlaceholder');
+            if (regName) regName.placeholder = t('regNamePlaceholder');
+            if (regEmail) regEmail.placeholder = t('regEmailPlaceholder');
+            if (regPhone) regPhone.placeholder = t('regPhonePlaceholder');
+            if (regPassword) regPassword.placeholder = t('regPasswordPlaceholder');
+            if (regConfirm) regConfirm.placeholder = t('regConfirmPlaceholder');
+          }
+
+          window.toggleLanguage = function() {
+            currentLang = currentLang === 'en' ? 'ar' : 'en';
+            localStorage.setItem('hp_language', currentLang);
+            applyTranslations();
+          };
+
+          // Apply on load
+          setTimeout(applyTranslations, 100);
 
           // ============================================
           // CHECK IF ADMIN EXISTS (Hide setup link if admin exists)

@@ -43,6 +43,12 @@ except ImportError:
   EMAIL_SERVICE_AVAILABLE = False
 
 # =========================================================
+# إعداد نظام التسجيل (Logging) - يجب أن يكون أولاً
+# =========================================================
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# =========================================================
 # Gmail SMTP Configuration
 # =========================================================
 import smtplib
@@ -91,12 +97,6 @@ def send_email_smtp(to_email, subject, html_body):
   except Exception as e:
     logger.error(f"Failed to send email via SMTP to {to_email}: {e}")
     return False
-
-# =========================================================
-# إعداد نظام التسجيل (Logging)
-# =========================================================
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 # =========================================================

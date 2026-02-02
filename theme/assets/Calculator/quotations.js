@@ -143,11 +143,13 @@
     var prevDisabled = currentPage <= 1 ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '';
     var nextDisabled = currentPage >= totalPages ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '';
 
-    pagination.innerHTML =
-      '<button ' + prevDisabled + ' onclick="window.quotationPrevPage()" style="padding:8px 20px;background:#4a90d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-right:10px;">◀ Prev</button>' +
-      '<span style="font-size:14px;color:#666;">Page ' + currentPage + ' of ' + totalPages + '</span>' +
-      '<button ' + nextDisabled + ' onclick="window.quotationNextPage()" style="padding:8px 20px;background:#4a90d9;color:#fff;border:none;border-radius:5px;cursor:pointer;margin-left:10px;">Next ▶</button>';
-  }
+    pagination.innerHTML = `
+  <button ${prevDisabled} class="qo-page-btn">◀ Prev</button>
+  <span class="qo-page-info">Page ${currentPage} of ${totalPages}</span>
+  <button ${nextDisabled} class="qo-page-btn">Next ▶</button>
+`;
+}    
+
 
   window.quotationPrevPage = function() {
     if (currentPage > 1) {
@@ -249,55 +251,93 @@
   // ----------------------------------------
   // Rebuild overlay structure
   // ----------------------------------------
-  function rebuildOverlay(overlay) {
-    var qoBody = overlay.querySelector(".qo-body");
-    if (!qoBody) return;
+    function rebuildOverlay(overlay) {
+      var qoBody = overlay.querySelector(".qo-body");
+      if (!qoBody) return;
 
-    // Clear existing content and rebuild
-    qoBody.innerHTML = '';
+      qoBody.innerHTML = '';
 
-    // Search container - centered at top
-    var searchContainer = document.createElement("div");
-    searchContainer.style.cssText = "text-align:center;margin-bottom:20px;";
-    searchContainer.innerHTML = '<input type="text" id="quotationSearchInput" placeholder="🔍 Search by client name..." style="width:80%;max-width:400px;padding:12px 20px;border:2px solid #4a90d9;border-radius:25px;font-size:15px;outline:none;transition:border-color 0.3s;">';
-    qoBody.appendChild(searchContainer);
+      /* ================= SEARCH ================= */
+      var searchContainer = document.createElement("div");
+      searchContainer.style.cssText = `
+    display:flex;
+    justify-content:center;
+    margin:15px 0 25px;
+  `;
 
-    // Table container - NO scroll
-    var tableContainer = document.createElement("div");
-    tableContainer.style.cssText = "width:100%;";
-    tableContainer.innerHTML = `
-      <table class="qo-table" style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr style="background:#4a90d9;color:#fff;">
-            <th style="padding:12px 15px;text-align:left;">Quotation #</th>
-            <th style="padding:12px 15px;text-align:left;">Client Name</th>
-            <th style="padding:12px 15px;text-align:left;">Date</th>
-          </tr>
-        </thead>
-        <tbody id="quotationList"></tbody>
-      </table>
+      searchContainer.innerHTML = `
+    <div class="qo-search-box">
+      <span class="qo-search-icon">🔍</span>
+      <input
+        type="text"
+        id="quotationSearchInput"
+        placeholder="Search by quotation #, client name, company..."
+      />
+    </div>
+  `;
+
+      qoBody.appendChild(searchContainer);
+
+      /* ================= TABLE ================= */
+      var tableContainer = document.createElement("div");
+      tableContainer.innerHTML = `
+    <table class="qo-table">
+      <thead>
+        <tr>
+          <th>Quotation #</th>
+          <th>Client Name</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="quotationList"></tbody>
+    </table>
+  `;
+      qoBody.appendChild(tableContainer);
+
+      /* ================= PAGINATION ================= */
+      var paginationContainer = document.createElement("div");
+      paginationContainer.id = "quotationPagination";
+      paginationContainer.style.cssText = `
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:20px;
+    padding:18px 0;
+    margin-top:20px;
+    border-top:1px solid #eee;
+  `;
+      qoBody.appendChild(paginationContainer);
+
+      /* ================= MODAL STYLE ================= */
+      var modal = overlay.querySelector(".qo-modal");
+      if (modal) {
+        modal.style.cssText = `
+      background:#fff;
+      border-radius:15px;
+      width:90%;
+      max-width:700px;
+      max-height:90vh;
+      display:flex;
+      flex-direction:column;
+      box-shadow:0 25px 50px rgba(0,0,0,0.3);
     `;
-    qoBody.appendChild(tableContainer);
+      }
 
-    // Pagination container - centered at bottom
-    var paginationContainer = document.createElement("div");
-    paginationContainer.id = "quotationPagination";
-    paginationContainer.style.cssText = "text-align:center;padding:20px 0;margin-top:15px;border-top:1px solid #eee;";
-    qoBody.appendChild(paginationContainer);
+      var header = overlay.querySelector(".qo-header");
+      if (header) {
+        header.style.cssText = `
+      padding:20px 25px;
+      background:linear-gradient(135deg,#4a90d9,#667eea);
+      color:#fff;
+      border-radius:15px 15px 0 0;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    `;
+      }
 
-    // Style the modal for better appearance
-    var modal = overlay.querySelector(".qo-modal");
-    if (modal) {
-      modal.style.cssText = "background:#fff;border-radius:15px;width:90%;max-width:700px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.3);";
+      qoBody.style.cssText = "padding:25px;flex:1;overflow:hidden;";
     }
-
-    var header = overlay.querySelector(".qo-header");
-    if (header) {
-      header.style.cssText = "padding:20px 25px;background:linear-gradient(135deg,#4a90d9,#667eea);color:#fff;border-radius:15px 15px 0 0;display:flex;justify-content:space-between;align-items:center;";
-    }
-
-    qoBody.style.cssText = "padding:25px;flex:1;overflow:hidden;";
-  }
 
   // ----------------------------------------
   // Quotation overlay (search)
@@ -381,3 +421,68 @@
   })();
 
 })();
+
+
+  /* Search box */
+  .qo-search-box {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:#fff;
+  border:2px solid #4a90d9;
+  border-radius:30px;
+  padding:10px 18px;
+  width:420px;
+  max-width:90%;
+  box-shadow:0 8px 20px rgba(0,0,0,.08);
+}
+
+.qo-search-box input {
+  border:none;
+  outline:none;
+  font-size:15px;
+  width:100%;
+}
+
+.qo-search-icon {
+  font-size:16px;
+  color:#4a90d9;
+}
+.qo-page-btn {
+  padding:8px 22px;
+  background:#4a90d9;
+  color:#fff;
+  border:none;
+  border-radius:20px;
+  font-size:14px;
+  cursor:pointer;
+}
+
+.qo-page-info {
+  font-size:14px;
+  color:#555;
+}
+
+.qo-table {
+  width:100%;
+  border-collapse:collapse;
+}
+
+.qo-table th,
+  .qo-table td {
+  padding:14px 10px;
+  text-align:center;
+  vertical-align:middle;
+  border-bottom:1px solid #eee;
+  font-size:14px;
+}
+
+.qo-table thead tr {
+  background:#f5f8fc;
+  font-weight:600;
+}
+
+
+
+
+

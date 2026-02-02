@@ -681,12 +681,28 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False):
             if not client_name and client:
                 client_name = (client.get('Client Name') or '').lower()
 
-            company = (client.get('Company') or '').lower() if client else ''
+            # البحث في الشركة من الـ quotation أو من جدول العملاء
+            company = (r.get('Company') or '').lower()
+            if not company and client:
+                company = (client.get('Company') or '').lower()
+
+            # البحث في التليفون من الـ quotation أو من جدول العملاء
+            phone = (r.get('Phone') or '').lower()
+            if not phone and client:
+                phone = (client.get('Phone') or '').lower()
+
+            # البحث في البلد
+            country = (r.get('Country') or '').lower()
+            if not country and client:
+                country = (client.get('Country') or '').lower()
 
             if (search in client_name or
                 search in company or
+                search in phone or
+                search in country or
                 search in str(r.get('Quotation#', '')) or
-                search in str(r.get('Model', '')).lower()):
+                search in str(r.get('Model', '')).lower() or
+                search in (r.get('Notes') or '').lower()):
                 filtered.append(r)
         all_rows = filtered
 
@@ -710,41 +726,60 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False):
         if not client_name and client:
             client_name = client.get('Client Name', '')
 
+        # استخدام البيانات من الـ quotation أو من جدول العملاء
+        company = r.get('Company') or (client.get('Company', '') if client else '')
+        phone = r.get('Phone') or (client.get('Phone', '') if client else '')
+        country = r.get('Country') or (client.get('Country', '') if client else '')
+        address = r.get('Address') or (client.get('Address', '') if client else '')
+        email = r.get('Email') or (client.get('Email', '') if client else '')
+        sales_rep = r.get('Sales Rep') or (client.get('Sales Rep', '') if client else '')
+        source = r.get('Source') or (client.get('Source', '') if client else '')
+
         row_data = {
             "Client Code": client_code,
             "Quotation#": r["Quotation#"],
-            "Date": r["Date"].isoformat() if r["Date"] else "",
+            "Date": r["Date"].isoformat() if r.get("Date") else "",
             "Client Name": client_name,
-            "Company": client["Company"] if client else "",
-            "Phone": client["Phone"] if client else "",
-            "Country": client["Country"] if client else "",
-            "Address": client["Address"] if client else "",
-            "Email": client["Email"] if client else "",
-            "Sales Rep": client["Sales Rep"] if client else "",
-            "Source": client["Source"] if client else "",
-            "Given Price": r["Given Price"],
-            "Agreed Price": r["Agreed Price"],
-            "Notes": r["Notes"],
-            "Model": r["Model"],
-            "Machine type": r["Machine type"],
-            "Number of colors": r["Number of colors"],
-            "Machine width": r["Machine width"],
-            "Material": r["Material"],
-            "Winder": r["Winder"],
-            "Video inspection": r["Video inspection"],
-            "PLC": r["PLC"],
-            "Slitter": r["Slitter"],
-            "Pneumatic Unwind": r["Pneumatic Unwind"],
-            "Hydraulic Station Unwind": r["Hydraulic Station Unwind"],
-            "Pneumatic Rewind": r["Pneumatic Rewind"],
-            "Surface Rewind": r["Surface Rewind"],
+            "Company": company,
+            "Phone": phone,
+            "Country": country,
+            "Address": address,
+            "Email": email,
+            "Sales Rep": sales_rep,
+            "Source": source,
+            "Given Price": r.get("Given Price", ""),
+            "Agreed Price": r.get("Agreed Price", ""),
+            "Notes": r.get("Notes", ""),
+            "Model": r.get("Model", ""),
+            "Machine type": r.get("Machine type", ""),
+            "Number of colors": r.get("Number of colors", ""),
+            "Machine width": r.get("Machine width", ""),
+            "Material": r.get("Material", ""),
+            "Winder": r.get("Winder", ""),
+            "Video inspection": r.get("Video inspection", ""),
+            "PLC": r.get("PLC", ""),
+            "Slitter": r.get("Slitter", ""),
+            "Pneumatic Unwind": r.get("Pneumatic Unwind", ""),
+            "Hydraulic Station Unwind": r.get("Hydraulic Station Unwind", ""),
+            "Pneumatic Rewind": r.get("Pneumatic Rewind", ""),
+            "Surface Rewind": r.get("Surface Rewind", ""),
+            "Standard Machine FOB cost": r.get("Standard Machine FOB cost", ""),
+            "Machine FOB cost With Cylinders": r.get("Machine FOB cost With Cylinders", ""),
+            "FOB price for over seas clients": r.get("FOB price for over seas clients", ""),
+            "Exchange Rate": r.get("Exchange Rate", ""),
+            "In Stock": r.get("In Stock", ""),
+            "New Order": r.get("New Order", ""),
+            "Pricing Mode": r.get("Pricing Mode", ""),
+            "Overseas clients": r.get("Overseas clients", ""),
+            "Contract": r.get("Contract", ""),
+            "Expected delivery time": r["Expected delivery time"].isoformat() if r.get("Expected delivery time") else "",
             "is_deleted": r.get("is_deleted", False)
         }
 
         for i in range(1, 13):
-            row_data[f"Size in CM{i}"] = r[f"Size in CM{i}"]
-            row_data[f"Count{i}"] = r[f"Count{i}"]
-            row_data[f"Cost{i}"] = r[f"Cost{i}"]
+            row_data[f"Size in CM{i}"] = r.get(f"Size in CM{i}", "")
+            row_data[f"Count{i}"] = r.get(f"Count{i}", "")
+            row_data[f"Cost{i}"] = r.get(f"Cost{i}", "")
 
         rows.append(row_data)
 

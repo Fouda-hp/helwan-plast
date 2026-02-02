@@ -1,126 +1,63 @@
-# =========================================================
-# DataImportForm - صفحة استيراد البيانات (للأدمن فقط)
-# =========================================================
-
 components:
-  # العنوان
-  - type: Label
-    name: title_label
-    properties:
-      text: "📤 Data Import (Admin Only)"
-      font_size: 24
-      bold: true
-      spacing_above: medium
-      spacing_below: medium
-      align: center
-
-  # اختيار نوع الاستيراد
-  - type: FlowPanel
-    name: type_selector
-    properties:
-      spacing_below: medium
-      align: center
-    components:
-      - type: Label
-        name: type_label
-        properties:
-          text: "Select import type:"
-          bold: true
-
-      - type: Button
-        name: btn_clients
-        properties:
-          text: "👥 Clients"
-          role: primary
-        event_bindings:
-          click: btn_clients_click
-
-      - type: Button
-        name: btn_quotations
-        properties:
-          text: "📊 Quotations"
-          role: secondary
-        event_bindings:
-          click: btn_quotations_click
-
-  # معلومات القالب
-  - type: RichText
-    name: template_info
-    properties:
-      content: |
-        <div style="background:#e3f2fd;padding:15px;border-radius:8px;margin:10px 0;">
-            <h4 style="margin:0 0 10px 0;">📋 Clients CSV Template</h4>
-            <p style="margin:5px 0;font-size:13px;">Required columns:</p>
-            <code style="display:block;background:#fff;padding:10px;border-radius:4px;font-size:12px;">
-            Client Name, Company, Phone, Country, Address, Email, Sales Rep, Source
-            </code>
-        </div>
-
-  # أدوات التحميل
-  - type: FlowPanel
-    name: upload_panel
-    properties:
-      spacing_above: medium
-      spacing_below: medium
-    components:
-      - type: FileLoader
-        name: file_loader
-        properties:
-          text: "📁 Choose CSV File"
-          file_types: ".csv"
-        event_bindings:
-          change: file_loader_change
-
-      - type: Button
-        name: btn_download_template
-        properties:
-          text: "📥 Download Template"
-          role: secondary
-        event_bindings:
-          click: btn_download_template_click
-
-      - type: Button
-        name: btn_back
-        properties:
-          text: "🔙 Back"
-        event_bindings:
-          click: btn_back_click
-
-  # حالة التحميل
-  - type: Label
-    name: status_label
-    properties:
-      text: ""
-      font_size: 14
-
-  # معاينة البيانات
-  - type: RichText
-    name: preview_container
-    properties:
-      content: ""
-      spacing_above: medium
-
-  # زر الاستيراد
-  - type: Button
-    name: btn_import
-    properties:
-      text: "🚀 Start Import"
-      role: primary
-      enabled: false
-      spacing_above: medium
-    event_bindings:
-      click: btn_import_click
-
-  # نتيجة الاستيراد
-  - type: RichText
-    name: result_container
-    properties:
-      content: ""
-      spacing_above: medium
-
-container:
-  type: ColumnPanel
-properties:
-  title: Data Import
+- name: title_label
+  properties: {align: center, bold: true, font_size: 24, spacing_above: medium, spacing_below: medium, text: 📤 Data Import (Admin Only)}
+  type: Label
+- components:
+  - name: type_label
+    properties: {bold: true, text: 'Select import type:'}
+    type: Label
+  - event_bindings: {click: btn_clients_click}
+    name: btn_clients
+    properties: {role: primary, text: 👥 Clients}
+    type: Button
+  - event_bindings: {click: btn_quotations_click}
+    name: btn_quotations
+    properties: {role: secondary, text: 📊 Quotations}
+    type: Button
+  name: type_selector
+  properties: {align: center, spacing_below: medium}
+  type: FlowPanel
+- name: template_info
+  properties:
+    content: |
+      <div style="background:#e3f2fd;padding:15px;border-radius:8px;margin:10px 0;">
+          <h4 style="margin:0 0 10px 0;">📋 Clients CSV Template</h4>
+          <p style="margin:5px 0;font-size:13px;">Required columns:</p>
+          <code style="display:block;background:#fff;padding:10px;border-radius:4px;font-size:12px;">
+          Client Name, Company, Phone, Country, Address, Email, Sales Rep, Source
+          </code>
+      </div>
+  type: RichText
+- components:
+  - event_bindings: {change: file_loader_change}
+    name: file_loader
+    properties: {file_types: .csv, text: 📁 Choose CSV File}
+    type: FileLoader
+  - event_bindings: {click: btn_download_template_click}
+    name: btn_download_template
+    properties: {role: secondary, text: 📥 Download Template}
+    type: Button
+  - event_bindings: {click: btn_back_click}
+    name: btn_back
+    properties: {text: 🔙 Back}
+    type: Button
+  name: upload_panel
+  properties: {spacing_above: medium, spacing_below: medium}
+  type: FlowPanel
+- name: status_label
+  properties: {font_size: 14, text: ''}
+  type: Label
+- name: preview_container
+  properties: {content: '', spacing_above: medium}
+  type: RichText
+- event_bindings: {click: btn_import_click}
+  name: btn_import
+  properties: {enabled: false, role: primary, spacing_above: medium, text: 🚀 Start Import}
+  type: Button
+- name: result_container
+  properties: {content: '', spacing_above: medium}
+  type: RichText
+container: {type: ColumnPanel}
 custom_component: true
 is_package: true
+properties: {title: Data Import}

@@ -1,9 +1,6 @@
 allow_embedding: false
 correct_dependency_ids: {}
 db_schema:
-  # ==========================================
-  # جدول سجل التدقيق - لتتبع جميع العمليات
-  # ==========================================
   audit_log:
     client: none
     columns:
@@ -36,10 +33,6 @@ db_schema:
       type: string
     server: full
     title: AUDIT_LOG
-
-  # ==========================================
-  # جدول العملاء
-  # ==========================================
   clients:
     client: none
     columns:
@@ -96,10 +89,6 @@ db_schema:
       type: datetime
     server: full
     title: CLIENTS
-
-  # ==========================================
-  # جدول العروض السعرية
-  # ==========================================
   quotations:
     client: none
     columns:
@@ -112,7 +101,6 @@ db_schema:
     - admin_ui: {order: 2, width: 200}
       name: Date
       type: date
-    # حقل جديد - اسم العميل مباشرة في العرض
     - admin_ui: {order: 3, width: 200}
       name: Client Name
       type: string
@@ -325,10 +313,78 @@ db_schema:
       type: datetime
     server: full
     title: QUOTATIONS
-
-  # ==========================================
-  # جدول المستخدمين - محدث مع رقم التليفون
-  # ==========================================
+  rate_limits:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: ip_address
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: endpoint
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: request_count
+      type: number
+    - admin_ui: {order: 3, width: 200}
+      name: window_start
+      type: datetime
+    - admin_ui: {order: 4, width: 200}
+      name: blocked_until
+      type: datetime
+    server: full
+    title: RATE_LIMITS
+  sessions:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: session_token
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: user_email
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: user_role
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {order: 4, width: 200}
+      name: expires_at
+      type: datetime
+    - admin_ui: {order: 5, width: 200}
+      name: ip_address
+      type: string
+    - admin_ui: {order: 6, width: 200}
+      name: user_agent
+      type: string
+    - admin_ui: {order: 7, width: 200}
+      name: is_active
+      type: bool
+    server: full
+    title: SESSIONS
+  settings:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: setting_key
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: setting_value
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: setting_type
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: description
+      type: string
+    - admin_ui: {order: 4, width: 200}
+      name: updated_by
+      type: string
+    - admin_ui: {order: 5, width: 200}
+      name: updated_at
+      type: datetime
+    server: full
+    title: SETTINGS
   users:
     client: none
     columns:
@@ -344,7 +400,6 @@ db_schema:
     - admin_ui: {order: 3, width: 200}
       name: full_name
       type: string
-    # حقل جديد - رقم التليفون
     - admin_ui: {order: 4, width: 200}
       name: phone
       type: string
@@ -375,103 +430,13 @@ db_schema:
     - admin_ui: {order: 13, width: 200}
       name: locked_until
       type: datetime
-    # حقل جديد - صلاحيات مخصصة (JSON)
     - admin_ui: {order: 14, width: 200}
       name: custom_permissions
       type: string
     server: full
     title: USERS
-
-  # ==========================================
-  # جدول جديد - الجلسات (بدلاً من الذاكرة)
-  # ==========================================
-  sessions:
-    client: none
-    columns:
-    - admin_ui: {order: 0, width: 200}
-      name: session_token
-      type: string
-    - admin_ui: {order: 1, width: 200}
-      name: user_email
-      type: string
-    - admin_ui: {order: 2, width: 200}
-      name: user_role
-      type: string
-    - admin_ui: {order: 3, width: 200}
-      name: created_at
-      type: datetime
-    - admin_ui: {order: 4, width: 200}
-      name: expires_at
-      type: datetime
-    - admin_ui: {order: 5, width: 200}
-      name: ip_address
-      type: string
-    - admin_ui: {order: 6, width: 200}
-      name: user_agent
-      type: string
-    - admin_ui: {order: 7, width: 200}
-      name: is_active
-      type: bool
-    server: full
-    title: SESSIONS
-
-  # ==========================================
-  # جدول جديد - الإعدادات (سعر الصرف، أسعار الأسطوانات، إلخ)
-  # ==========================================
-  settings:
-    client: none
-    columns:
-    - admin_ui: {order: 0, width: 200}
-      name: setting_key
-      type: string
-    - admin_ui: {order: 1, width: 200}
-      name: setting_value
-      type: string
-    - admin_ui: {order: 2, width: 200}
-      name: setting_type
-      type: string
-    - admin_ui: {order: 3, width: 200}
-      name: description
-      type: string
-    - admin_ui: {order: 4, width: 200}
-      name: updated_by
-      type: string
-    - admin_ui: {order: 5, width: 200}
-      name: updated_at
-      type: datetime
-    server: full
-    title: SETTINGS
-
-  # ==========================================
-  # جدول جديد - Rate Limiting (حماية من الطلبات المتكررة)
-  # ==========================================
-  rate_limits:
-    client: none
-    columns:
-    - admin_ui: {order: 0, width: 200}
-      name: ip_address
-      type: string
-    - admin_ui: {order: 1, width: 200}
-      name: endpoint
-      type: string
-    - admin_ui: {order: 2, width: 200}
-      name: request_count
-      type: number
-    - admin_ui: {order: 3, width: 200}
-      name: window_start
-      type: datetime
-    - admin_ui: {order: 4, width: 200}
-      name: blocked_until
-      type: datetime
-    server: full
-    title: RATE_LIMITS
-
 dependencies: []
-metadata:
-  logo_img: 'asset:helwan_logo-logo.png'
-  title: Helwan Plast - Printer System
-  # حماية من محركات البحث
-  robots: noindex, nofollow
+metadata: {logo_img: 'asset:helwan_logo-logo.png', robots: 'noindex, nofollow', title: Helwan Plast - Printer System}
 name: Helwan Plast System
 package_name: Helwan_Plast
 runtime_options:

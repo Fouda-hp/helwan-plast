@@ -10,19 +10,25 @@
   width: 100%;
   display: flex;
   justify-content: center;
+  margin: 10px 0 18px;
 }
 
 .qo-search-box {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #fff;
-  border: 2px solid #4a90d9;
-  border-radius: 30px;
-  padding: 10px 18px;
+  background: #f6f8fb; 
+  border: 1px solid #d6deea;
+  border-radius: 14px;
+  padding: 10px 14px;
   width: 90%;
   max-width: 650px; /* نفس عرض الجدول */
   box-shadow: 0 8px 20px rgba(0,0,0,.08);
+    transition: all .25s ease;
+}
+
+.qo-search-box:hover {
+  border-color: #b7c8e8;
 }
 
 .qo-search-box input {
@@ -33,7 +39,19 @@
 }
 
 .qo-search-icon {
-  color: #4a90d9;
+  font-size: 14px;
+  color: #7a8ca5;
+}
+
+.qo-search-clear {
+  font-size: 14px;
+  color: #9aa7bb;
+  cursor: pointer;
+  display: none;
+}
+
+.qo-search-box.has-value .qo-search-clear {
+  display: block;
 }
 
 /* ================= TABLE ================= */
@@ -98,4 +116,13 @@
   width: 90%;
   max-width: 650px;
   border-collapse: collapse;
+}
+
+.qo-search-box {
+  animation: fadeSlide .3s ease;
+}
+
+@keyframes fadeSlide {
+  from { opacity:0; transform:translateY(-6px); }
+  to   { opacity:1; transform:translateY(0); }
 }

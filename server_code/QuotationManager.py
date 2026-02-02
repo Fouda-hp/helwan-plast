@@ -1219,7 +1219,7 @@ def import_quotations_data(data_list, token_or_email):
                     int_val = safe_int(col_value)
                     if int_val is not None:
                         data[col_name] = int_val
-                elif col_name == 'Date':
+                elif col_name == 'Date' or col_name == 'Expected delivery time':
                     # تحويل التاريخ من النص
                     if col_value and str(col_value).strip():
                         try:
@@ -1232,12 +1232,28 @@ def import_quotations_data(data_list, token_or_email):
                                         data[col_name] = datetime.strptime(date_str, '%d-%m-%Y').date()
                                     else:  # YYYY-MM-DD
                                         data[col_name] = datetime.strptime(date_str, '%Y-%m-%d').date()
+                                else:
+                                    # تاريخ غير صالح - استخدم None للـ Expected delivery time
+                                    if col_name == 'Expected delivery time':
+                                        data[col_name] = None
+                                    else:
+                                        data[col_name] = datetime.now().date()
+                            else:
+                                if col_name == 'Expected delivery time':
+                                    data[col_name] = None
+                                else:
+                                    data[col_name] = datetime.now().date()
+                        except:
+                            if col_name == 'Expected delivery time':
+                                data[col_name] = None
                             else:
                                 data[col_name] = datetime.now().date()
-                        except:
-                            data[col_name] = datetime.now().date()
                     else:
-                        data[col_name] = datetime.now().date()
+                        # القيمة فارغة
+                        if col_name == 'Expected delivery time':
+                            data[col_name] = None  # يمكن أن يكون فارغاً
+                        else:
+                            data[col_name] = datetime.now().date()
                 else:
                     # النصوص العادية
                     data[col_name] = safe_strip(col_value)

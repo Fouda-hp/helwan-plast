@@ -122,11 +122,13 @@ class AdminPanel(AdminPanelTemplate):
         return anvil.js.window.sessionStorage.getItem('auth_token')
 
     def get_auth(self):
-        """Get token or email for auth - email as fallback"""
-        token = self.get_token()
-        if token:
-            return token
-        return self.get_email()
+        """Get email for auth (more reliable than token)"""
+        # استخدام الإيميل مباشرة لأنه أكثر موثوقية
+        email = self.get_email()
+        if email:
+            return email
+        # fallback للـ token
+        return self.get_token()
 
     def get_user_name(self):
         """الحصول على اسم المستخدم"""

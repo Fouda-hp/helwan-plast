@@ -866,36 +866,36 @@ def register_user(email, password, full_name, phone=None):
     """
   ip_address = get_client_ip()
 
-  # التحقق من Rate Limit
-  if not check_rate_limit(ip_address, 'register'):
-    return {'success': False, 'message': 'Too many requests. Please try again later.'}
+    # التحقق من Rate Limit
+    if not check_rate_limit(ip_address, 'register'):
+        return {'success': False, 'message': 'Too many requests. Please try again later.'}
 
     # تنظيف المدخلات
-  email = str(email or '').strip().lower()
-  full_name = str(full_name or '').strip()
-  phone = str(phone or '').strip() if phone else None
+    email = str(email or '').strip().lower()
+    full_name = str(full_name or '').strip()
+    phone = str(phone or '').strip() if phone else None
 
-  # التحقق من صحة البريد الإلكتروني
-  if not validate_email(email):
-    return {'success': False, 'message': 'Invalid email address format'}
+    # التحقق من صحة البريد الإلكتروني
+    if not validate_email(email):
+        return {'success': False, 'message': 'Invalid email address format'}
 
     # التحقق من كلمة المرور
-  if not password or len(password) < 8:
-    return {'success': False, 'message': 'Password must be at least 8 characters'}
+    if not password or len(password) < 8:
+        return {'success': False, 'message': 'Password must be at least 8 characters'}
 
     # التحقق من قوة كلمة المرور
-  if not re.search(r'[A-Z]', password):
-    return {'success': False, 'message': 'Password must contain at least one uppercase letter'}
+    if not re.search(r'[A-Z]', password):
+        return {'success': False, 'message': 'Password must contain at least one uppercase letter'}
 
-  if not re.search(r'[a-z]', password):
-    return {'success': False, 'message': 'Password must contain at least one lowercase letter'}
+    if not re.search(r'[a-z]', password):
+        return {'success': False, 'message': 'Password must contain at least one lowercase letter'}
 
-  if not re.search(r'\d', password):
-    return {'success': False, 'message': 'Password must contain at least one number'}
+    if not re.search(r'\d', password):
+        return {'success': False, 'message': 'Password must contain at least one number'}
 
     # التحقق من الاسم
-  if not full_name or len(full_name) < 2:
-    return {'success': False, 'message': 'Full name is required (at least 2 characters)'}
+    if not full_name or len(full_name) < 2:
+        return {'success': False, 'message': 'Full name is required (at least 2 characters)'}
 
     # التحقق من عدم وجود البريد مسبقاً
     existing = app_tables.users.get(email=email)

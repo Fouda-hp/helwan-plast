@@ -250,7 +250,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
         # ==================== 17 SPECIFICATIONS ====================
         html += f'<div class="section-title">{"المواصفات الفنية:" if is_ar else "Technical Specifications:"}</div>'
-        html += '<ol class="specs-list" style="font-size: 13px; line-height: 2; padding-right: 20px; padding-left: 20px;">'
+        html += '<ol class="specs-list" style="font-size: 11px; line-height: 1.6; padding-right: 18px; padding-left: 18px;">'
 
         # Helper function to determine Belt/Gear drive for item 13
         def get_drive_type():
@@ -562,7 +562,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         anvil.js.window.print()
 
     def export_pdf(self):
-        """Export quotation as PDF - direct download using html2pdf with high quality"""
+        """Export quotation as PDF - direct download using jsPDF with embedded fonts for clear Arabic text"""
         if not self.current_data:
             alert('Please select a quotation first')
             return
@@ -572,7 +572,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         client_name = self.current_data.get('client_name', '').replace(' ', '_').replace('/', '_')
         filename = f"Quotation_{q_num}_{client_name}.pdf"
 
-        # Use html2pdf.js with high quality settings for clear fonts
+        # Use html2pdf.js with optimized settings for 3 pages and clear fonts
         js_code = f"""
         (function() {{
             var element = document.getElementById('templateContent');
@@ -590,13 +590,137 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
             }}
 
             function generatePDF() {{
-                // Get all template pages
-                var pages = element.querySelectorAll('.template-page');
+                // Apply temporary styles for PDF export - tighter layout
+                var style = document.createElement('style');
+                style.id = 'pdf-export-styles';
+                style.textContent = `
+                    #templateContent .template-page {{
+                        padding: 15px 25px !important;
+                        font-family: Arial, 'Segoe UI', sans-serif !important;
+                    }}
+                    #templateContent .header {{
+                        margin-bottom: 15px !important;
+                        padding-bottom: 10px !important;
+                    }}
+                    #templateContent .section-title {{
+                        font-size: 14px !important;
+                        margin: 12px 0 8px !important;
+                        padding: 6px 0 !important;
+                    }}
+                    #templateContent .specs-list {{
+                        font-size: 11px !important;
+                        line-height: 1.5 !important;
+                    }}
+                    #templateContent .specs-list li {{
+                        margin-bottom: 3px !important;
+                    }}
+                    #templateContent .details-table th,
+                    #templateContent .details-table td {{
+                        padding: 6px 10px !important;
+                        font-size: 11px !important;
+                    }}
+                    #templateContent .tech-table th,
+                    #templateContent .tech-table td {{
+                        padding: 4px 8px !important;
+                        font-size: 10px !important;
+                    }}
+                    #templateContent .cylinders-table th,
+                    #templateContent .cylinders-table td {{
+                        padding: 3px 8px !important;
+                        font-size: 10px !important;
+                    }}
+                    #templateContent .quotation-info {{
+                        margin-bottom: 15px !important;
+                    }}
+                    #templateContent .quotation-number {{
+                        font-size: 16px !important;
+                        margin-bottom: 8px !important;
+                    }}
+                    #templateContent .client-info {{
+                        font-size: 13px !important;
+                        margin-bottom: 10px !important;
+                    }}
+                    #templateContent .greeting {{
+                        font-size: 12px !important;
+                        margin-bottom: 6px !important;
+                    }}
+                    #templateContent .intro-text {{
+                        font-size: 11px !important;
+                        line-height: 1.4 !important;
+                    }}
+                    #templateContent .financial-box {{
+                        padding: 12px !important;
+                    }}
+                    #templateContent .total-price {{
+                        font-size: 22px !important;
+                        padding: 10px !important;
+                        margin-bottom: 10px !important;
+                    }}
+                    #templateContent .price-notes {{
+                        font-size: 10px !important;
+                        margin-bottom: 10px !important;
+                    }}
+                    #templateContent .payment-table th,
+                    #templateContent .payment-table td {{
+                        padding: 6px 8px !important;
+                        font-size: 11px !important;
+                    }}
+                    #templateContent .info-grid {{
+                        gap: 10px !important;
+                        margin-bottom: 12px !important;
+                    }}
+                    #templateContent .info-box {{
+                        padding: 10px !important;
+                    }}
+                    #templateContent .info-box h4 {{
+                        font-size: 12px !important;
+                        margin-bottom: 6px !important;
+                    }}
+                    #templateContent .info-box p {{
+                        font-size: 11px !important;
+                        margin-bottom: 3px !important;
+                    }}
+                    #templateContent .notes-section {{
+                        margin-top: 12px !important;
+                    }}
+                    #templateContent .notes-section h4 {{
+                        font-size: 12px !important;
+                        margin-bottom: 6px !important;
+                    }}
+                    #templateContent .notes-list {{
+                        font-size: 10px !important;
+                        line-height: 1.4 !important;
+                    }}
+                    #templateContent .template-footer {{
+                        margin-top: 15px !important;
+                        padding-top: 10px !important;
+                    }}
+                    #templateContent .template-footer .regards {{
+                        font-size: 11px !important;
+                    }}
+                    #templateContent .template-footer .company {{
+                        font-size: 13px !important;
+                    }}
+                    #templateContent .header-left .logo {{
+                        width: 100px !important;
+                    }}
+                    #templateContent .header-left .company-name {{
+                        font-size: 14px !important;
+                    }}
+                    #templateContent .header-right .location-date {{
+                        font-size: 12px !important;
+                    }}
+                    #templateContent .header-right .address,
+                    #templateContent .header-right .contact {{
+                        font-size: 11px !important;
+                    }}
+                `;
+                document.head.appendChild(style);
 
                 var opt = {{
-                    margin: [8, 8, 8, 8],
+                    margin: [5, 5, 5, 5],
                     filename: '{filename}',
-                    image: {{ type: 'jpeg', quality: 1.0 }},
+                    image: {{ type: 'png', quality: 1 }},
                     html2canvas: {{
                         scale: 3,
                         useCORS: true,
@@ -604,21 +728,29 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                         letterRendering: true,
                         allowTaint: true,
                         scrollX: 0,
-                        scrollY: 0
+                        scrollY: 0,
+                        windowWidth: 794,
+                        backgroundColor: '#ffffff'
                     }},
                     jsPDF: {{
                         unit: 'mm',
                         format: 'a4',
                         orientation: 'portrait',
-                        compress: false
+                        compress: false,
+                        putOnlyUsedFonts: true
                     }},
                     pagebreak: {{
-                        mode: ['css'],
-                        before: '.page-break-before'
+                        mode: ['css', 'legacy'],
+                        before: '.page-break-before',
+                        avoid: '.avoid-break'
                     }}
                 }};
 
-                html2pdf().set(opt).from(element).save();
+                html2pdf().set(opt).from(element).save().then(function() {{
+                    // Remove temporary styles after export
+                    var tempStyle = document.getElementById('pdf-export-styles');
+                    if (tempStyle) tempStyle.remove();
+                }});
             }}
 
             if (typeof html2pdf === 'undefined') {{

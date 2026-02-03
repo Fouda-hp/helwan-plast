@@ -90,10 +90,15 @@ OTP_EXPIRY_MINUTES = 10          # مدة صلاحية OTP
 try:
   import anvil.secrets
   ADMIN_NOTIFICATION_EMAIL = anvil.secrets.get_secret('ADMIN_EMAIL') or "mohamedadelfouda@helwanplast.com"
-  EMERGENCY_SECRET_KEY = anvil.secrets.get_secret('EMERGENCY_KEY') or "HELWAN_RESET_2024"
-except:
+  _emergency_key = anvil.secrets.get_secret('EMERGENCY_KEY')
+  if not _emergency_key:
+    logger.warning("EMERGENCY_KEY not set in secrets! Using fallback key.")
+    _emergency_key = "HP_EMERGENCY_" + str(hashlib.sha256(b"helwan_plast_2024").hexdigest()[:16])
+  EMERGENCY_SECRET_KEY = _emergency_key
+except Exception as e:
+  logger.error(f"Failed to load secrets: {e}")
   ADMIN_NOTIFICATION_EMAIL = "mohamedadelfouda@helwanplast.com"
-  EMERGENCY_SECRET_KEY = "HELWAN_RESET_2024"
+  EMERGENCY_SECRET_KEY = "HP_EMERGENCY_" + str(hashlib.sha256(b"helwan_plast_2024").hexdigest()[:16])
 
 # صلاحيات الأدوار
 ROLES = {
@@ -770,7 +775,8 @@ def check_rate_limit(ip_address, endpoint='general'):
     return True
   except Exception as e:
     logger.error(f"Rate limit check error: {e}")
-    return True  # السماح في حالة الخطأ
+    # رفض الطلب في حالة الخطأ للأمان - يمنع تجاوز Rate Limiting
+    return False
 
 
 # =========================================================
@@ -807,7 +813,7 @@ def get_client_ip():
     # في Anvil، يمكن الحصول على IP من headers
     import anvil.server
     return anvil.server.request.remote_addr or 'unknown'
-  except:
+  except (AttributeError, RuntimeError):
     return 'unknown'
 
 
@@ -1074,7 +1080,10 @@ def login_user(email, password):
             'message': f'Invalid password. {remaining} attempts remaining.'
         }
 
-    # كلمة المرور صحيحة - إرسال OTP للتحقق الثنائي
+    # كلمة المرور صحيحة - ترقية الهاش إذا كان قديماً
+    upgrade_password_hash(user, password)
+
+    # إرسال OTP للتحقق الثنائي
     otp = generate_otp()
     store_otp(email, otp, '2fa')
     email_sent = send_otp_email(email, user['full_name'], otp, '2fa')
@@ -1130,8 +1139,9 @@ def complete_login(user, ip_address):
         last_login=datetime.now()
     )
 
-    # ترقية كلمة المرور من التشفير القديم إلى الجديد (إذا لزم الأمر)
-    upgrade_password_hash(user, user['password_hash'])
+    # ملاحظة: ترقية كلمة المرور من التشفير القديم تتم تلقائياً عند التحقق من كلمة المرور
+    # في دالة login_user بعد verify_password الناجح
+    # لا يمكن الترقية هنا لأننا لا نملك كلمة المرور الأصلية
 
     # حذف جميع الجلسات القديمة لهذا المستخدم
     for old_session in app_tables.sessions.search(user_email=email):
@@ -1267,7 +1277,7 @@ def check_permission(token, action):
             custom = json.loads(user['custom_permissions'])
             if action in custom:
                 return True
-        except:
+        except (json.JSONDecodeError, TypeError):
             pass
 
     return False
@@ -1960,7 +1970,8 @@ def check_admin_exists():
         # استخدام search بدلاً من get لتجنب خطأ "More than one row"
         existing_admins = list(app_tables.users.search(role='admin'))
         return {'exists': len(existing_admins) > 0}
-    except:
+    except Exception as e:
+        logger.error(f"Error checking admin exists: {e}")
         return {'exists': False}
 
 
@@ -2348,12 +2359,12 @@ def get_setting(key):
     if setting_type == 'number':
         try:
             return float(value)
-        except:
+        except (ValueError, TypeError):
             return value
     elif setting_type == 'json':
         try:
             return json.loads(value)
-        except:
+        except (json.JSONDecodeError, TypeError):
             return value
     elif setting_type == 'bool':
         return value.lower() in ('true', '1', 'yes')
@@ -2549,8 +2560,8 @@ def auto_cleanup_audit_logs():
 # تشغيل التنظيف التلقائي عند تحميل الموديول
 try:
     auto_cleanup_audit_logs()
-except:
-    pass
+except Exception as e:
+    logger.error(f"Module load cleanup error: {e}")
 
 
 # =========================================================
@@ -2609,7 +2620,7 @@ def get_session_info(token):
                 'expires_at': session_record['expires_at'].isoformat(),
                 'session_timeout_minutes': SESSION_DURATION_MINUTES
             }
-    except:
+    except (KeyError, AttributeError, TypeError):
         pass
 
     return {'valid': True}

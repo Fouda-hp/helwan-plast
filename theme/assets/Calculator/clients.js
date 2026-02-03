@@ -20,6 +20,19 @@
     return document.getElementById(id);
   }
 
+  // Debounce helper for search optimization
+  function debounce(fn, delay) {
+    var timer;
+    return function() {
+      var context = this;
+      var args = arguments;
+      clearTimeout(timer);
+      timer = setTimeout(function() {
+        fn.apply(context, args);
+      }, delay);
+    };
+  }
+
   function setValue(id, value) {
     var el = byId(id);
     if (el) el.value = value ?? "";
@@ -261,10 +274,14 @@
       var list = byId("clientList");
       var searchInput = byId("clientSearchInput");
 
-      // Search input event
+      // Search input event with debounce (300ms delay)
       if (searchInput) {
+        var debouncedSearch = debounce(function(value) {
+          window.searchClientsOverlay(value);
+        }, 300);
+
         searchInput.oninput = function() {
-          window.searchClientsOverlay(this.value);
+          debouncedSearch(this.value);
         };
         searchInput.onfocus = function() {
           this.style.borderColor = "#667eea";

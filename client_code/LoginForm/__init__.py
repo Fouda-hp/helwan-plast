@@ -33,6 +33,11 @@ class LoginForm(LoginFormTemplate):
         anvil.js.window.verifyRegistrationOtp = self.verify_registration_otp
         anvil.js.window.resendVerificationOtp = self.resend_verification_otp
 
+        # Forgot Password functions
+        anvil.js.window.requestPasswordReset = self.request_password_reset
+        anvil.js.window.verifyPasswordResetOtp = self.verify_password_reset_otp
+        anvil.js.window.completePasswordReset = self.complete_password_reset
+
         # Check route on load
         self.check_route()
 
@@ -171,6 +176,42 @@ class LoginForm(LoginFormTemplate):
         """
         try:
             result = anvil.server.call('resend_verification_otp', email)
+            return result
+        except Exception as e:
+            return {'success': False, 'message': f'Error: {str(e)}'}
+
+    # =========================================
+    # Forgot Password functions
+    # =========================================
+    def request_password_reset(self, email):
+        """
+        Request password reset - sends OTP to email
+        طلب إعادة تعيين كلمة المرور
+        """
+        try:
+            result = anvil.server.call('request_password_reset', email)
+            return result
+        except Exception as e:
+            return {'success': False, 'message': f'Error: {str(e)}'}
+
+    def verify_password_reset_otp(self, email, otp):
+        """
+        Verify OTP for password reset
+        التحقق من OTP لإعادة تعيين كلمة المرور
+        """
+        try:
+            result = anvil.server.call('verify_password_reset_otp', email, otp)
+            return result
+        except Exception as e:
+            return {'success': False, 'message': f'Error: {str(e)}'}
+
+    def complete_password_reset(self, email, new_password):
+        """
+        Complete password reset with new password
+        إتمام إعادة تعيين كلمة المرور
+        """
+        try:
+            result = anvil.server.call('complete_password_reset', email, new_password)
             return result
         except Exception as e:
             return {'success': False, 'message': f'Error: {str(e)}'}

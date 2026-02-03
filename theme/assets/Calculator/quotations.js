@@ -24,6 +24,19 @@
     return document.getElementById(id);
   }
 
+  // Debounce helper for search optimization
+  function debounce(fn, delay) {
+    var timer;
+    return function() {
+      var context = this;
+      var args = arguments;
+      clearTimeout(timer);
+      timer = setTimeout(function() {
+        fn.apply(context, args);
+      }, delay);
+    };
+  }
+
   function getField(record, names) {
     for (var i = 0; i < names.length; i++) {
       if (record[names[i]] !== undefined && record[names[i]] !== null) {
@@ -144,9 +157,9 @@
     var nextDisabled = currentPage >= totalPages ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : '';
 
     pagination.innerHTML = `
-  <button ${prevDisabled} class="qo-page-btn">◀ Prev</button>
+  <button ${prevDisabled} class="qo-page-btn" onclick="window.quotationPrevPage()">◀ Prev</button>
   <span class="qo-page-info">Page ${currentPage} of ${totalPages}</span>
-  <button ${nextDisabled} class="qo-page-btn">Next ▶</button>
+  <button ${nextDisabled} class="qo-page-btn" onclick="window.quotationNextPage()">Next ▶</button>
 `;
 }    
 
@@ -268,7 +281,7 @@
       searchContainer.innerHTML = `
     <div class="qo-search-box">
       <span class="search-icon">🔍</span>
-      <input type="text" placeholder="Search here">
+      <input type="text" id="quotationSearchInput" placeholder="Search here">
     </div>
   `;
 
@@ -360,10 +373,14 @@
       var list = byId("quotationList");
       var searchInput = byId("quotationSearchInput");
 
-      // Search input event
+      // Search input event with debounce (300ms delay)
       if (searchInput) {
+        var debouncedSearch = debounce(function(value) {
+          window.searchQuotationsOverlay(value);
+        }, 300);
+
         searchInput.oninput = function() {
-          window.searchQuotationsOverlay(this.value);
+          debouncedSearch(this.value);
         };
         searchInput.onfocus = function() {
           this.style.borderColor = "#667eea";

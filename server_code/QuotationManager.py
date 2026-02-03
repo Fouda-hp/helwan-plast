@@ -148,7 +148,7 @@ def _get_next_number(table_name, column_name):
                 num = int(val) if isinstance(val, str) else val
                 if num > max_val:
                     max_val = num
-            except:
+            except (ValueError, TypeError):
                 pass
 
     next_val = max_val + 1
@@ -168,7 +168,7 @@ def safe_int(v):
     """تحويل آمن لـ int"""
     try:
         return int(v)
-    except:
+    except (ValueError, TypeError):
         return None
 
 
@@ -176,7 +176,7 @@ def safe_float(v):
     """تحويل آمن لـ float"""
     try:
         return float(v)
-    except:
+    except (ValueError, TypeError):
         return None
 
 
@@ -427,7 +427,7 @@ def save_client_data(client_code, form_data, is_new, user_email='system', ip_add
     if date_value and isinstance(date_value, str):
         try:
             date_value = datetime.strptime(date_value, '%Y-%m-%d').date()
-        except:
+        except (ValueError, TypeError):
             date_value = datetime.now().date()
     elif not date_value:
         date_value = datetime.now().date()
@@ -461,7 +461,7 @@ def save_client_data(client_code, form_data, is_new, user_email='system', ip_add
         try:
             columns = app_tables.clients.list_columns()
             column_names = [c['name'] if isinstance(c, dict) else c.name for c in columns]
-        except:
+        except (AttributeError, TypeError):
             column_names = list(data.keys())
 
         old_data = {k: row[k] for k in data.keys() if k in column_names}
@@ -477,7 +477,7 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
     if date_value and isinstance(date_value, str):
         try:
             date_value = datetime.strptime(date_value, '%Y-%m-%d').date()
-        except:
+        except (ValueError, TypeError):
             date_value = datetime.now().date()
     elif not date_value:
         date_value = datetime.now().date()
@@ -540,7 +540,7 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
     for k in data.keys():
         try:
             old_data[k] = row[k]
-        except:
+        except (KeyError, AttributeError):
             pass
 
     row.update(**data)
@@ -1013,7 +1013,7 @@ def import_clients_data(data_list, token_or_email):
     # الحصول على أسماء الأعمدة الموجودة في جدول clients
     try:
         table_columns = [col.name for col in app_tables.clients.list_columns()]
-    except:
+    except (AttributeError, TypeError):
         table_columns = []
 
     for i, original_row in enumerate(data_list):
@@ -1094,7 +1094,7 @@ def _clean_price(value):
     try:
         result = float(value) if value.strip() else 0.0
         return result
-    except:
+    except (ValueError, TypeError):
         return 0.0
 
 
@@ -1178,7 +1178,7 @@ def import_quotations_data(data_list, token_or_email):
     # الحصول على أسماء الأعمدة الموجودة في جدول quotations
     try:
         table_columns = [col.name for col in app_tables.quotations.list_columns()]
-    except:
+    except (AttributeError, TypeError):
         table_columns = []
 
     for i, original_row in enumerate(data_list):
@@ -1253,7 +1253,7 @@ def import_quotations_data(data_list, token_or_email):
                                     data[col_name] = None
                                 else:
                                     data[col_name] = datetime.now().date()
-                        except:
+                        except (ValueError, TypeError):
                             if col_name == 'Expected delivery time':
                                 data[col_name] = None
                             else:

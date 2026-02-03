@@ -808,12 +808,19 @@ def log_audit(action, table_name, record_id, old_data, new_data, user_email=None
 def get_client_ip():
   """
     الحصول على IP Address للعميل
+    ملاحظة: anvil.server.request غير متاح في server callable functions
+    لذلك نستخدم anvil.server.context للحصول على معلومات العميل
     """
   try:
-    # في Anvil، يمكن الحصول على IP من headers
-    import anvil.server
-    return anvil.server.request.remote_addr or 'unknown'
-  except (AttributeError, RuntimeError):
+    # محاولة الحصول على IP من call context
+    context = anvil.server.context
+    if hasattr(context, 'client') and context.client:
+      client = context.client
+      if hasattr(client, 'ip'):
+        return client.ip or 'unknown'
+    # إذا لم يتوفر، نرجع قيمة افتراضية
+    return 'unknown'
+  except Exception:
     return 'unknown'
 
 

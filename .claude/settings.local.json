@@ -22,7 +22,9 @@
       "Bash(C:/Python312/python.exe:*)",
       "Bash(C:/Python311/python.exe:*)",
       "Bash(findstr:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(find:*)",
+      "Bash(py -c \"import hashlib; print\\(''HP_EMERGENCY_'' + hashlib.sha256\\(b''helwan_plast_2024''\\).hexdigest\\(\\)[:16]\\)\")"
     ]
   }
 }

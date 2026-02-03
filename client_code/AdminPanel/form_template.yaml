@@ -1007,8 +1007,18 @@ container:
         }
       </style>
 
-      <!-- Load i18n Script -->
-      <script src="_/theme/assets/i18n.js"></script>
+      <!-- Load i18n Script with inline fallback -->
+      <script>
+        // Inline i18n to avoid 404 issues
+        (function(){
+          'use strict';
+          if(window.i18n) return;
+          const translations={en:{save:'Save',cancel:'Cancel',delete:'Delete',edit:'Edit',add:'Add',search:'Search',refresh:'Refresh',export:'Export',loading:'Loading...',error:'Error',success:'Success',warning:'Warning',yes:'Yes',no:'No',confirm:'Confirm',close:'Close',actions:'Actions',status:'Status',name:'Name',email:'Email',phone:'Phone',role:'Role',active:'Active',inactive:'Inactive',admin_title:'Admin Panel',nav_dashboard:'Dashboard',nav_pending_approvals:'Pending Approvals',nav_all_users:'All Users',nav_clients:'Clients',nav_quotations:'Quotations',nav_settings:'Settings',nav_audit_log:'Audit Log',nav_logout:'Logout',dashboard_total_clients:'Total Clients',dashboard_total_quotations:'Total Quotations',pending_title:'Pending User Approvals',pending_approve:'Approve',pending_reject:'Reject',users_title:'All Users',clients_title:'Clients Management',quotations_title:'Quotations Management',settings_title:'System Settings'},ar:{save:'حفظ',cancel:'إلغاء',delete:'حذف',edit:'تعديل',add:'إضافة',search:'بحث',refresh:'تحديث',export:'تصدير',loading:'جاري التحميل...',error:'خطأ',success:'نجاح',warning:'تحذير',yes:'نعم',no:'لا',confirm:'تأكيد',close:'إغلاق',actions:'الإجراءات',status:'الحالة',name:'الاسم',email:'البريد الإلكتروني',phone:'الهاتف',role:'الدور',active:'نشط',inactive:'غير نشط',admin_title:'لوحة التحكم',nav_dashboard:'لوحة المعلومات',nav_pending_approvals:'طلبات الانتظار',nav_all_users:'جميع المستخدمين',nav_clients:'العملاء',nav_quotations:'عروض الأسعار',nav_settings:'الإعدادات',nav_audit_log:'سجل العمليات',nav_logout:'تسجيل الخروج',dashboard_total_clients:'إجمالي العملاء',dashboard_total_quotations:'إجمالي عروض الأسعار',pending_title:'طلبات تسجيل المستخدمين',pending_approve:'موافقة',pending_reject:'رفض',users_title:'جميع المستخدمين',clients_title:'إدارة العملاء',quotations_title:'إدارة عروض الأسعار',settings_title:'إعدادات النظام'}};
+          class I18n{constructor(){this.currentLang=localStorage.getItem('hp_language')||'en';this.listeners=[]}getLang(){return this.currentLang}setLang(lang){if(lang!=='en'&&lang!=='ar')return;this.currentLang=lang;localStorage.setItem('hp_language',lang);document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.documentElement.lang=lang;if(lang==='ar'){document.body.classList.add('rtl')}else{document.body.classList.remove('rtl')}this.listeners.forEach(fn=>fn(lang));window.dispatchEvent(new CustomEvent('languageChanged',{detail:{lang}}))}toggleLang(){this.setLang(this.currentLang==='en'?'ar':'en')}t(key,replacements={}){let text=translations[this.currentLang][key]||translations['en'][key]||key;Object.keys(replacements).forEach(k=>{text=text.replace(new RegExp(`\\{${k}\\}`,'g'),replacements[k])});return text}isRTL(){return this.currentLang==='ar'}onLangChange(callback){this.listeners.push(callback)}init(){this.setLang(this.currentLang)}}
+          window.i18n=new I18n();
+          if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>window.i18n.init())}else{window.i18n.init()}
+        })();
+      </script>
 
       <div class="admin-container">
 

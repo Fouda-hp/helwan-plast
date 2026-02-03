@@ -89,69 +89,6 @@ db_schema:
       type: datetime
     server: full
     title: CLIENTS
-  otp_codes:
-    client: none
-    columns:
-    - admin_ui: {order: 0, width: 200}
-      name: otp_id
-      type: string
-    - admin_ui: {order: 1, width: 200}
-      name: user_email
-      type: string
-    - admin_ui: {order: 2, width: 200}
-      name: otp_code
-      type: string
-    - admin_ui: {order: 3, width: 200}
-      name: purpose
-      type: string
-    - admin_ui: {order: 4, width: 200}
-      name: created_at
-      type: datetime
-    - admin_ui: {order: 5, width: 200}
-      name: expires_at
-      type: datetime
-    - admin_ui: {order: 6, width: 200}
-      name: is_used
-      type: bool
-    server: full
-    title: OTP_CODES
-  password_history:
-    client: none
-    columns:
-    - admin_ui: {order: 0, width: 200}
-      name: history_id
-      type: string
-    - admin_ui: {order: 1, width: 200}
-      name: user_email
-      type: string
-    - admin_ui: {order: 2, width: 200}
-      name: password_hash
-      type: string
-    - admin_ui: {order: 3, width: 200}
-      name: created_at
-      type: datetime
-    server: full
-    title: PASSWORD_HISTORY
-  pending_passwords:
-    client: none
-    columns:
-    - admin_ui: {order: 0, width: 200}
-      name: pending_id
-      type: string
-    - admin_ui: {order: 1, width: 200}
-      name: user_email
-      type: string
-    - admin_ui: {order: 2, width: 200}
-      name: new_password_hash
-      type: string
-    - admin_ui: {order: 3, width: 200}
-      name: created_at
-      type: datetime
-    - admin_ui: {order: 4, width: 200}
-      name: expires_at
-      type: datetime
-    server: full
-    title: PENDING_PASSWORDS
   machine_specs:
     client: none
     columns:
@@ -220,6 +157,69 @@ db_schema:
       type: string
     server: full
     title: MACHINE_SPECS
+  otp_codes:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: otp_id
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: user_email
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: otp_code
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: purpose
+      type: string
+    - admin_ui: {order: 4, width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {order: 5, width: 200}
+      name: expires_at
+      type: datetime
+    - admin_ui: {order: 6, width: 200}
+      name: is_used
+      type: bool
+    server: full
+    title: OTP_CODES
+  password_history:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: history_id
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: user_email
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: password_hash
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: created_at
+      type: datetime
+    server: full
+    title: PASSWORD_HISTORY
+  pending_passwords:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: pending_id
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: user_email
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      name: new_password_hash
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {order: 4, width: 200}
+      name: expires_at
+      type: datetime
+    server: full
+    title: PENDING_PASSWORDS
   quotations:
     client: none
     columns:

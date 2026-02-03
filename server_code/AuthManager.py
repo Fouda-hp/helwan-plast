@@ -77,8 +77,8 @@ def send_email_smtp(to_email, subject, html_body):
 # =========================================================
 # الثوابت والإعدادات
 # =========================================================
-MAX_LOGIN_ATTEMPTS = 5           # عدد المحاولات قبل القفل
-LOCKOUT_DURATION_MINUTES = 30    # مدة القفل بالدقائق
+MAX_LOGIN_ATTEMPTS = 50           # عدد المحاولات قبل القفل
+LOCKOUT_DURATION_MINUTES = 5    # مدة القفل بالدقائق
 SESSION_DURATION_MINUTES = 60    # مدة الجلسة بالدقائق (60 دقيقة = ساعة واحدة)
 RATE_LIMIT_WINDOW_MINUTES = 15   # نافذة Rate Limiting
 RATE_LIMIT_MAX_REQUESTS = 100    # الحد الأقصى للطلبات في النافذة

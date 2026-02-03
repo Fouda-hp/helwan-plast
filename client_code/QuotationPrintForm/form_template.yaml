@@ -2,21 +2,8 @@ components: []
 container:
   event_bindings: {}
   layout_properties: {}
-  properties: {}
-  type: HtmlTemplate
-custom_component: false
-is_package: true
-item_type:
-  accepts: {}
-  properties: []
-  type: ColumnPanel
-properties:
-  html: |
-    <!DOCTYPE html>
-    <html lang="ar" dir="rtl">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  properties:
+    html: |
       <style>
         :root {
           --primary-color: #1a1a2e;
@@ -26,22 +13,11 @@ properties:
           --border-color: #ddd;
         }
 
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-
-        body {
-          font-family: 'Segoe UI', Tahoma, sans-serif;
-          background: #f5f6fa;
-          min-height: 100vh;
-        }
-
         .print-container {
           max-width: 1200px;
           margin: 0 auto;
           padding: 20px;
+          font-family: 'Segoe UI', Tahoma, sans-serif;
         }
 
         /* Top Controls */
@@ -156,14 +132,14 @@ properties:
           overflow: hidden;
         }
 
-        .page {
+        .template-page {
           padding: 40px;
           min-height: 1100px;
           position: relative;
           border-bottom: 3px dashed #ccc;
         }
 
-        .page:last-child {
+        .template-page:last-child {
           border-bottom: none;
         }
 
@@ -294,35 +270,6 @@ properties:
         .details-table td {
           background: var(--highlight-color);
           text-align: left;
-        }
-
-        /* Specs List */
-        .specs-list {
-          list-style: none;
-          padding: 0;
-        }
-
-        .specs-list li {
-          padding: 8px 0;
-          border-bottom: 1px solid #eee;
-          font-size: 13px;
-          display: flex;
-          align-items: flex-start;
-        }
-
-        .specs-list li:before {
-          content: attr(data-num);
-          background: var(--accent-color);
-          color: white;
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          margin-left: 10px;
-          font-size: 11px;
-          flex-shrink: 0;
         }
 
         /* Technical Specs Table */
@@ -475,19 +422,19 @@ properties:
         }
 
         /* Footer */
-        .footer {
+        .template-footer {
           text-align: center;
           margin-top: 30px;
           padding-top: 20px;
           border-top: 1px solid #ddd;
         }
 
-        .footer .regards {
+        .template-footer .regards {
           font-size: 13px;
           margin-bottom: 10px;
         }
 
-        .footer .company {
+        .template-footer .company {
           font-size: 15px;
           font-weight: bold;
           color: var(--primary-color);
@@ -543,12 +490,12 @@ properties:
             box-shadow: none;
           }
 
-          .page {
+          .template-page {
             page-break-after: always;
             border-bottom: none;
           }
 
-          .page:last-child {
+          .template-page:last-child {
             page-break-after: avoid;
           }
         }
@@ -575,42 +522,36 @@ properties:
           text-align: right;
         }
 
-        .ltr .specs-list li:before {
-          margin-left: 0;
-          margin-right: 10px;
-        }
-
         .ltr .tech-table th {
           text-align: left;
         }
       </style>
-    </head>
-    <body>
-      <div class="print-container">
+
+      <div class="print-container" dir="rtl">
         <!-- Controls Bar -->
         <div class="controls-bar">
-          <button class="btn btn-back" onclick="goBack()">
+          <button class="btn btn-back" onclick="window.goBackToLauncher()">
             ← Back
           </button>
 
           <div class="search-section">
-            <select id="quotationSelect" onchange="loadSelectedQuotation()">
+            <select id="quotationSelect" onchange="window.loadSelectedQuotation()">
               <option value="">-- Select Quotation --</option>
             </select>
-            <input type="text" id="searchInput" placeholder="Search by number or client..." oninput="filterQuotations()">
+            <input type="text" id="searchInput" placeholder="Search by number or client..." oninput="window.filterQuotations()">
           </div>
 
           <div class="lang-toggle">
-            <button class="lang-btn active" id="btnArabic" onclick="switchLanguage('ar')">عربي</button>
-            <button class="lang-btn" id="btnEnglish" onclick="switchLanguage('en')">English</button>
+            <button class="lang-btn active" id="btnArabic" onclick="window.switchLanguage('ar')">عربي</button>
+            <button class="lang-btn" id="btnEnglish" onclick="window.switchLanguage('en')">English</button>
           </div>
 
           <div class="action-buttons">
-            <button class="btn btn-primary" onclick="printQuotation()">
-              🖨️ Print
+            <button class="btn btn-primary" onclick="window.printQuotation()">
+              Print
             </button>
-            <button class="btn btn-success" onclick="exportPDF()">
-              📄 Export PDF
+            <button class="btn btn-success" onclick="window.exportPDF()">
+              Export PDF
             </button>
           </div>
         </div>
@@ -630,273 +571,11 @@ properties:
           </div>
         </div>
       </div>
-
-      <script>
-        var currentLang = 'ar';
-        var currentData = null;
-        var allQuotations = [];
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-          // Auto-detect language from Launcher
-          var savedLang = localStorage.getItem('hp_language');
-          if (savedLang === 'en' || savedLang === 'ar') {
-            currentLang = savedLang;
-            updateLanguageButtons();
-          }
-          loadQuotationsList();
-        });
-
-        function updateLanguageButtons() {
-          document.getElementById('btnArabic').classList.toggle('active', currentLang === 'ar');
-          document.getElementById('btnEnglish').classList.toggle('active', currentLang === 'en');
-        }
-
-        function goBack() {
-          window.history.back();
-        }
-
-        async function loadQuotationsList() {
-          try {
-            var result = await window.searchQuotationsForPrint('');
-            if (result && result.success) {
-              allQuotations = result.data || [];
-              populateDropdown(allQuotations);
-            }
-          } catch (e) {
-            console.error('Error loading quotations:', e);
-          }
-        }
-
-        function populateDropdown(quotations) {
-          var select = document.getElementById('quotationSelect');
-          select.innerHTML = '<option value="">-- Select Quotation (' + quotations.length + ') --</option>';
-
-          quotations.forEach(function(q) {
-            var opt = document.createElement('option');
-            opt.value = q['Quotation#'];
-            opt.textContent = '#' + q['Quotation#'] + ' - ' + (q['Client Name'] || 'N/A') + ' - ' + (q['Model'] || '');
-            select.appendChild(opt);
-          });
-        }
-
-        function filterQuotations() {
-          var query = document.getElementById('searchInput').value.toLowerCase();
-          var filtered = allQuotations.filter(function(q) {
-            var num = String(q['Quotation#'] || '').toLowerCase();
-            var name = String(q['Client Name'] || '').toLowerCase();
-            var model = String(q['Model'] || '').toLowerCase();
-            return num.includes(query) || name.includes(query) || model.includes(query);
-          });
-          populateDropdown(filtered);
-        }
-
-        async function loadSelectedQuotation() {
-          var select = document.getElementById('quotationSelect');
-          var quotationNumber = select.value;
-
-          if (!quotationNumber) {
-            document.getElementById('emptyState').style.display = 'block';
-            document.getElementById('templateContent').style.display = 'none';
-            return;
-          }
-
-          document.getElementById('emptyState').style.display = 'none';
-          document.getElementById('templateContent').style.display = 'block';
-          document.getElementById('templateContent').innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading...</p></div>';
-
-          try {
-            var result = await window.loadQuotationForPrint(parseInt(quotationNumber));
-            if (result && result.success) {
-              currentData = result.data;
-              renderTemplate(currentData, currentLang);
-            } else {
-              document.getElementById('templateContent').innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + (result.message || 'Failed to load') + '</p></div>';
-            }
-          } catch (e) {
-            document.getElementById('templateContent').innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + e + '</p></div>';
-          }
-        }
-
-        function switchLanguage(lang) {
-          currentLang = lang;
-          document.getElementById('btnArabic').classList.toggle('active', lang === 'ar');
-          document.getElementById('btnEnglish').classList.toggle('active', lang === 'en');
-
-          if (currentData) {
-            renderTemplate(currentData, lang);
-          }
-        }
-
-        function renderTemplate(data, lang) {
-          var isAr = (lang === 'ar');
-          var c = data.company || {};
-
-          var html = '<div class="page ' + (isAr ? '' : 'ltr') + '">';
-
-          // Header
-          html += '<div class="header">';
-          html += '<div class="header-right">';
-          html += '<div class="location-date">' + (isAr ? c.quotation_location_ar : c.quotation_location_en) + ' / ' + (isAr ? data.quotation_date_ar : data.quotation_date_en) + '</div>';
-          html += '<div class="address">' + (isAr ? c.company_address_ar : c.company_address_en) + '</div>';
-          html += '<div class="contact">' + data.user_phone + '</div>';
-          html += '<div class="contact">' + c.company_email + '</div>';
-          html += '</div>';
-          html += '<div class="header-left">';
-          html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">';
-          html += '<div class="company-name">' + (isAr ? c.company_name_ar : c.company_name_en) + '</div>';
-          html += '<div class="website">' + c.company_website + '</div>';
-          html += '</div>';
-          html += '</div>';
-
-          // Quotation Info
-          html += '<div class="quotation-info">';
-          html += '<div class="quotation-number">' + (isAr ? 'عرض سعر رقم' : 'Quotation No.:') + ' <span>' + data.quotation_number + '</span></div>';
-          html += '<div class="client-info">' + (isAr ? 'السادة - شركة /' : 'To: / Company:') + ' <span>' + data.client_name + '</span></div>';
-          html += '<div class="greeting">' + (isAr ? 'تحية طيبة وبعد،' : 'Dear Sir/Madam,') + '</div>';
-          html += '<div class="intro-text">' + (isAr ?
-            'نحن نتشرف بتقديم عرض السعر التالي لماكينة الطباعة طبقاً للمواصفات الموضحة أدناه:' :
-            'We are pleased to submit our quotation for the following printing machine in accordance with the specifications detailed below:') + '</div>';
-          html += '</div>';
-
-          // Machine Details
-          html += '<div class="section-title">' + (isAr ? 'تفاصيل الماكينة :' : 'Machine Details') + '</div>';
-          html += '<table class="details-table">';
-          html += '<tr><th>' + (isAr ? 'نوع الماكينة :' : 'Machine Type:') + '</th><td>' + (data.machine_type || 'Flexo Stack') + '</td></tr>';
-          html += '<tr><th>' + (isAr ? 'الموديل :' : 'Model:') + '</th><td>' + data.model + '</td></tr>';
-          html += '<tr><th>' + (isAr ? 'بلد المنشأ :' : 'Country of Origin:') + '</th><td>' + (isAr ? c.country_origin_ar : c.country_origin_en) + '</td></tr>';
-          html += '<tr><th>' + (isAr ? 'عدد الألوان :' : 'Number of Colors:') + '</th><td>' + data.colors_count + '</td></tr>';
-          html += '<tr><th>' + (isAr ? 'الوندر :' : 'Winder:') + '</th><td>' + data.winder + '</td></tr>';
-          html += '<tr><th>' + (isAr ? 'عرض الماكينة :' : 'Machine Width:') + '</th><td>' + data.machine_width + ' ' + (isAr ? 'سم' : 'CM') + '</td></tr>';
-          html += '</table>';
-
-          html += '</div>'; // End Page 1
-
-          // Page 2 - Technical Specs
-          html += '<div class="page ' + (isAr ? '' : 'ltr') + '">';
-
-          // Header (repeated)
-          html += '<div class="header">';
-          html += '<div class="header-right">';
-          html += '<div class="location-date">' + (isAr ? c.quotation_location_ar : c.quotation_location_en) + ' / ' + (isAr ? data.quotation_date_ar : data.quotation_date_en) + '</div>';
-          html += '<div class="address">' + (isAr ? c.company_address_ar : c.company_address_en) + '</div>';
-          html += '<div class="contact">' + data.user_phone + '</div>';
-          html += '</div>';
-          html += '<div class="header-left">';
-          html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">';
-          html += '<div class="company-name">' + (isAr ? c.company_name_ar : c.company_name_en) + '</div>';
-          html += '</div>';
-          html += '</div>';
-
-          html += '<div class="section-title">' + (isAr ? 'المواصفات الفنية:' : 'Technical Specifications:') + '</div>';
-
-          html += '<table class="tech-table">';
-          html += '<tr><td class="row-num">1</td><th>' + (isAr ? 'الموديل' : 'Model') + '</th><td class="value">' + data.model + '</td></tr>';
-          html += '<tr><td class="row-num">2</td><th>' + (isAr ? 'عدد الألوان' : 'Number of Colors') + '</th><td class="value">' + data.colors_count + '</td></tr>';
-          html += '<tr><td class="row-num">3</td><th>' + (isAr ? 'نوع الانيلوكس' : 'Anilox Type') + '</th><td class="value">' + (isAr ? c.anilox_type_ar : c.anilox_type_en) + '</td></tr>';
-          html += '<tr><td class="row-num">4</td><th>' + (isAr ? 'مراقبة الطباعة بالفيديو' : 'Video Inspection') + '</th><td class="value">' + (data.video_inspection || 'NO') + '</td></tr>';
-          html += '<tr><td class="row-num">5</td><th>PLC</th><td class="value">' + (data.plc || 'NO') + '</td></tr>';
-          html += '<tr><td class="row-num">6</td><th>' + (isAr ? 'سليتر' : 'Slitter') + '</th><td class="value">' + (data.slitter || 'NO') + '</td></tr>';
-          html += '</table>';
-
-          // Cylinders
-          if (data.cylinders && data.cylinders.length > 0) {
-            html += '<div class="section-title">' + (isAr ? 'سلندرات الطباعة :' : 'Printing Cylinders:') + '</div>';
-            html += '<table class="cylinders-table">';
-            html += '<tr><th>' + (isAr ? 'مقاس' : 'Size') + '</th><th>' + (isAr ? 'عدد' : 'Count') + '</th></tr>';
-            data.cylinders.forEach(function(cyl, i) {
-              html += '<tr><td>' + cyl.size + '</td><td>' + cyl.count + '</td></tr>';
-            });
-            html += '</table>';
-          }
-
-          html += '</div>'; // End Page 2
-
-          // Page 3 - Financial
-          html += '<div class="page ' + (isAr ? '' : 'ltr') + '">';
-
-          // Header (repeated)
-          html += '<div class="header">';
-          html += '<div class="header-right">';
-          html += '<div class="location-date">' + (isAr ? c.quotation_location_ar : c.quotation_location_en) + ' / ' + (isAr ? data.quotation_date_ar : data.quotation_date_en) + '</div>';
-          html += '<div class="address">' + (isAr ? c.company_address_ar : c.company_address_en) + '</div>';
-          html += '<div class="contact">' + data.user_phone + '</div>';
-          html += '</div>';
-          html += '<div class="header-left">';
-          html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">';
-          html += '<div class="company-name">' + (isAr ? c.company_name_ar : c.company_name_en) + '</div>';
-          html += '</div>';
-          html += '</div>';
-
-          html += '<div class="section-title">' + (isAr ? 'العرض المالي:' : 'Financial Offer:') + '</div>';
-
-          html += '<div class="financial-box">';
-          html += '<div class="total-price">' + data.total_price + ' ' + (isAr ? 'ج.م' : 'EGP') + '</div>';
-          html += '<div class="price-notes">' + (isAr ? 'السعر شامل التوريد والتركيب والضمان' : 'The price includes: supply, installation, and warranty') + '</div>';
-
-          html += '<div class="section-title">' + (isAr ? 'طريقة الدفع:' : 'Payment Terms:') + '</div>';
-          html += '<table class="payment-table">';
-          html += '<tr><th>' + (isAr ? 'مقدم تعاقد' : 'Down Payment') + '</th><td>' + data.down_payment_percent + '%</td><td class="amount">' + data.down_payment_amount + ' ' + (isAr ? 'ج.م' : 'EGP') + '</td></tr>';
-          html += '<tr><th>' + (isAr ? 'قبل الشحن' : 'Before Shipping') + '</th><td>' + data.before_shipping_percent + '%</td><td class="amount">' + data.before_shipping_amount + ' ' + (isAr ? 'ج.م' : 'EGP') + '</td></tr>';
-          html += '<tr><th>' + (isAr ? 'قبل التسليم' : 'Before Delivery') + '</th><td>' + data.before_delivery_percent + '%</td><td class="amount">' + data.before_delivery_amount + ' ' + (isAr ? 'ج.م' : 'EGP') + '</td></tr>';
-          html += '</table>';
-          html += '</div>';
-
-          // Delivery & Warranty
-          html += '<div class="info-grid">';
-          html += '<div class="info-box">';
-          html += '<h4>' + (isAr ? 'التسليم :' : 'Delivery:') + '</h4>';
-          html += '<p>' + (isAr ? 'مكان التسليم :' : 'Place of delivery:') + ' <span class="highlight">' + (data.delivery_location || '-') + '</span></p>';
-          html += '<p>' + (isAr ? 'وقت التسليم المتوقع :' : 'Expected delivery time:') + ' <span class="highlight">' + (data.expected_delivery_formatted || '-') + '</span></p>';
-          html += '</div>';
-
-          html += '<div class="info-box">';
-          html += '<h4>' + (isAr ? 'الضمان وخدمة ما بعد البيع:' : 'Warranty & After-Sales Service:') + '</h4>';
-          html += '<p>' + (isAr ?
-            'يسري الضمان لمدة <strong>' + c.warranty_months + '</strong> شهر ضد عيوب الصناعة' :
-            'The warranty is valid for <strong>' + c.warranty_months + '</strong> months against manufacturing defects') + '</p>';
-          html += '</div>';
-          html += '</div>';
-
-          // Notes
-          html += '<div class="notes-section">';
-          html += '<h4>' + (isAr ? 'ملاحظات:' : 'Notes:') + '</h4>';
-          html += '<div class="notes-list">';
-          html += '<p>• ' + (isAr ? 'عرض السعر ساري لمدة ' + c.validity_days + ' يوم من تاريخ عرض السعر' : 'This quotation is valid for ' + c.validity_days + ' days from the quotation date') + '</p>';
-          html += '<p>• ' + (isAr ? 'يتم تعديل السعر في حالة ارتفاع سعر صرف الدولار بقيمة تزيد عن ٥٠ قرش' : 'The price may be adjusted in case of an increase in the USD exchange rate exceeding EGP 0.50') + '</p>';
-          html += '<p>• ' + (isAr ? 'هذا العرض استرشادي وغير ملزم إلا بعد توقيع العقد النهائي' : 'This quotation is indicative and non-binding until the final contract is signed') + '</p>';
-          html += '</div>';
-          html += '</div>';
-
-          // Footer
-          html += '<div class="footer">';
-          html += '<div class="regards">' + (isAr ? 'وتفضلوا بقبول وافر الاحترام،،،' : 'Yours faithfully,') + '</div>';
-          html += '<div class="company">' + (isAr ? c.company_name_ar : c.company_name_en) + '</div>';
-          html += '</div>';
-
-          html += '</div>'; // End Page 3
-
-          document.getElementById('templateContent').innerHTML = html;
-        }
-
-        function printQuotation() {
-          if (!currentData) {
-            alert('Please select a quotation first');
-            return;
-          }
-          window.print();
-        }
-
-        function exportPDF() {
-          if (!currentData) {
-            alert('Please select a quotation first');
-            return;
-          }
-          // For now, use print to PDF
-          alert('Use Print (Ctrl+P) and select "Save as PDF" as the printer');
-          window.print();
-        }
-      </script>
-    </body>
-    </html>
+  type: HtmlTemplate
+custom_component: false
+is_package: true
+item_type:
+  accepts: {}
+  properties: []
+  type: ColumnPanel
 toolbox_item: component

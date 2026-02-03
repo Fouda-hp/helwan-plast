@@ -17,7 +17,14 @@ container:
           max-width: 1200px;
           margin: 0 auto;
           padding: 20px;
-          font-family: 'Segoe UI', Tahoma, sans-serif;
+          font-family: 'Aptos Narrow', 'Segoe UI', Tahoma, sans-serif;
+          font-size: 16px;
+        }
+
+        /* Import Aptos Narrow font */
+        @font-face {
+          font-family: 'Aptos Narrow';
+          src: local('Aptos Narrow');
         }
 
         /* Top Controls */
@@ -569,6 +576,9 @@ container:
             </button>
             <button class="btn btn-success" onclick="window.exportPDF()">
               Export PDF
+            </button>
+            <button class="btn" onclick="window.exportExcel()" style="background: linear-gradient(135deg, #217346, #1e6b3e); color: white;">
+              Export Excel
             </button>
           </div>
         </div>

@@ -25,6 +25,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         anvil.js.window.switchLanguage = self.switch_language
         anvil.js.window.printQuotation = self.print_quotation
         anvil.js.window.exportPDF = self.export_pdf
+        anvil.js.window.exportExcel = self.export_excel
 
     def form_show(self, **event_args):
         """Called when the form is shown - initialize after HTML is rendered"""
@@ -163,9 +164,40 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         material = str(data.get('material', '')).upper()
         plc_value = str(data.get('plc', '')).upper()
 
-        # Determine machine type prefix
-        machine_type_base = data.get('model', '')
+        # Determine machine type prefix - use machine_type field not model
+        machine_type_base = data.get('machine_type', '') or data.get('model', '')
         machine_type_display = f"Flexo Stack With {machine_type_base}" if not is_ar else f"فليكسو ستاك مع {machine_type_base}"
+
+        # Determine Winder Type based on Unwind/Rewind checkboxes
+        def get_winder_type():
+            unwind_options = []
+            rewind_options = []
+
+            # Check Unwind options
+            if str(data.get('pneumatic_unwind', '')).upper() in ['YES', 'TRUE', '1']:
+                unwind_options.append('Pneumatic Unwind' if not is_ar else 'فك هوائي')
+            if str(data.get('hydraulic_station_unwind', '')).upper() in ['YES', 'TRUE', '1']:
+                unwind_options.append('Hydraulic Station Unwind' if not is_ar else 'فك هيدروليك')
+
+            # Check Rewind options
+            if str(data.get('pneumatic_rewind', '')).upper() in ['YES', 'TRUE', '1']:
+                rewind_options.append('Pneumatic Rewind' if not is_ar else 'لف هوائي')
+            if str(data.get('surface_rewind', '')).upper() in ['YES', 'TRUE', '1']:
+                rewind_options.append('Surface Rewind' if not is_ar else 'لف سطحي')
+
+            # Build winder type string
+            if not unwind_options and not rewind_options:
+                return 'Central' if not is_ar else 'مركزي'
+
+            parts = []
+            if unwind_options:
+                parts.append(', '.join(unwind_options))
+            if rewind_options:
+                parts.append(', '.join(rewind_options))
+
+            return ' / '.join(parts)
+
+        winder_type_display = get_winder_type()
 
         # ==================== PAGE 1 ====================
         html = f'<div class="template-page {"" if is_ar else "ltr"}">'
@@ -202,6 +234,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         html += f'<tr><th>{"بلد المنشأ :" if is_ar else "Country of Origin:"}</th><td>{c.get("country_origin_ar" if is_ar else "country_origin_en", "")}</td></tr>'
         html += f'<tr><th>{"عدد الألوان :" if is_ar else "Number of Colors:"}</th><td>{data.get("colors_count", "")}</td></tr>'
         html += f'<tr><th>{"الوندر :" if is_ar else "Winder:"}</th><td>{data.get("winder", "")}</td></tr>'
+        html += f'<tr><th>{"نوع الوندر :" if is_ar else "Winder Type:"}</th><td>{winder_type_display}</td></tr>'
         html += f'<tr><th>{"عرض الماكينة :" if is_ar else "Machine Width:"}</th><td>{data.get("machine_width", "")} {"سم" if is_ar else "CM"}</td></tr>'
         html += '</table>'
 
@@ -397,21 +430,21 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
             html += f'<tr><td class="row-num">{i}</td><th>{label}</th><td class="value">{spec["value"]}</td></tr>'
         html += '</table>'
 
-        # Cylinders - 2 columns, 12 rows fixed
+        # Cylinders - 2 columns, 12 rows fixed (border only on filled rows)
         cylinders = data.get('cylinders', [])
         html += f'<div class="section-title">{"سلندرات الطباعة :" if is_ar else "Printing Cylinders:"}</div>'
         html += '<table class="cylinders-table" style="width: 50%;">'
         html += f'<tr><th>{"مقاس" if is_ar else "Size"}</th><th>{"عدد" if is_ar else "Count"}</th></tr>'
 
-        # Always show 12 rows
+        # Always show 12 rows - border only on filled rows
         for i in range(12):
             if i < len(cylinders):
                 cyl = cylinders[i]
                 size = cyl.get("size", "")
                 count = cyl.get("count", "")
-                html += f'<tr><td>{size}</td><td>{count}</td></tr>'
+                html += f'<tr><td style="border: 1px solid #ddd;">{size}</td><td style="border: 1px solid #ddd;">{count}</td></tr>'
             else:
-                html += '<tr><td></td><td></td></tr>'
+                html += '<tr><td style="border: none;"></td><td style="border: none;"></td></tr>'
         html += '</table>'
 
         html += '</div>'  # End Page 2
@@ -496,12 +529,76 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         anvil.js.window.print()
 
     def export_pdf(self):
-        """Export quotation as PDF"""
+        """Export quotation as PDF using html2pdf.js"""
         if not self.current_data:
             alert('Please select a quotation first')
             return
-        alert('Use Print (Ctrl+P) and select "Save as PDF" as the printer')
-        anvil.js.window.print()
+
+        # Get quotation number for filename
+        q_num = self.current_data.get('quotation_number', 'quotation')
+        client_name = self.current_data.get('client_name', '').replace(' ', '_')
+        filename = f"Quotation_{q_num}_{client_name}.pdf"
+
+        # Use html2pdf.js to generate PDF
+        js_code = f"""
+        (function() {{
+            var element = document.getElementById('templateContent');
+            if (!element) {{
+                alert('No content to export');
+                return;
+            }}
+
+            // Check if html2pdf is loaded
+            if (typeof html2pdf === 'undefined') {{
+                // Load html2pdf.js dynamically
+                var script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+                script.onload = function() {{
+                    generatePDF();
+                }};
+                document.head.appendChild(script);
+            }} else {{
+                generatePDF();
+            }}
+
+            function generatePDF() {{
+                var opt = {{
+                    margin: 10,
+                    filename: '{filename}',
+                    image: {{ type: 'jpeg', quality: 0.98 }},
+                    html2canvas: {{ scale: 2, useCORS: true }},
+                    jsPDF: {{ unit: 'mm', format: 'a4', orientation: 'portrait' }},
+                    pagebreak: {{ mode: ['css', 'legacy'] }}
+                }};
+
+                html2pdf().set(opt).from(element).save();
+            }}
+        }})();
+        """
+        anvil.js.window.eval(js_code)
+
+    def export_excel(self):
+        """Export quotation data as Excel file"""
+        if not self.current_data:
+            alert('Please select a quotation first')
+            return
+
+        data = self.current_data
+        q_num = data.get('quotation_number', 'quotation')
+        client_name = data.get('client_name', '').replace(' ', '_')
+
+        # Call server to generate Excel
+        try:
+            result = anvil.server.call('export_quotation_excel', q_num)
+            if result.get('success'):
+                # Download the file
+                media = result.get('file')
+                if media:
+                    anvil.media.download(media)
+            else:
+                alert(f"Error: {result.get('message', 'Unknown error')}")
+        except Exception as e:
+            alert(f"Error exporting Excel: {str(e)}")
 
     # Server call wrappers
     def load_quotation_for_print(self, quotation_number):

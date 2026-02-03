@@ -1452,9 +1452,16 @@ def get_quotation_pdf_data(quotation_number, user_email):
             'colors_count': q_data.get('Number of colors', ''),
             'machine_width': q_data.get('Machine width', ''),
             'winder': q_data.get('Winder', ''),
+            'material': q_data.get('Material', ''),
             'video_inspection': q_data.get('Video inspection', 'NO'),
             'plc': q_data.get('PLC', 'NO'),
             'slitter': q_data.get('Slitter', 'NO'),
+
+            # Unwind/Rewind options
+            'pneumatic_unwind': q_data.get('Pneumatic Unwind', 'NO'),
+            'hydraulic_station_unwind': q_data.get('Hydraulic Station Unwind', 'NO'),
+            'pneumatic_rewind': q_data.get('Pneumatic Rewind', 'NO'),
+            'surface_rewind': q_data.get('Surface Rewind', 'NO'),
 
             # المواصفات الفنية
             'machine_specs': machine_specs,
@@ -1528,6 +1535,126 @@ def get_all_machine_specs():
             specs.append(dict(row))
         return {'success': True, 'specs': specs}
     except Exception as e:
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def export_quotation_excel(quotation_number):
+    """Export quotation data as Excel file"""
+    try:
+        import io
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+
+        # Get quotation data
+        q_data = app_tables.quotations.get(quotation_number=quotation_number)
+        if not q_data:
+            return {'success': False, 'message': 'Quotation not found'}
+
+        # Create workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = f"Quotation {quotation_number}"
+
+        # Styles
+        header_font = Font(name='Aptos Narrow', size=16, bold=True)
+        normal_font = Font(name='Aptos Narrow', size=14)
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+
+        # Add data
+        row = 1
+
+        # Header
+        ws.merge_cells('A1:C1')
+        ws['A1'] = f"Quotation #{quotation_number}"
+        ws['A1'].font = Font(name='Aptos Narrow', size=20, bold=True)
+        row = 3
+
+        # Client Info
+        client_data = [
+            ('Client Name', q_data.get('Client Name', '')),
+            ('Company', q_data.get('Company', '')),
+            ('Phone', q_data.get('Phone', '')),
+            ('Date', str(q_data.get('Date', ''))),
+        ]
+
+        for label, value in client_data:
+            ws[f'A{row}'] = label
+            ws[f'B{row}'] = value
+            ws[f'A{row}'].font = Font(name='Aptos Narrow', size=14, bold=True)
+            ws[f'B{row}'].font = normal_font
+            row += 1
+
+        row += 1
+
+        # Machine Details
+        ws[f'A{row}'] = "Machine Details"
+        ws[f'A{row}'].font = header_font
+        ws.merge_cells(f'A{row}:C{row}')
+        row += 1
+
+        machine_data = [
+            ('Model', q_data.get('Model', '')),
+            ('Machine Type', q_data.get('Machine type', '')),
+            ('Number of Colors', q_data.get('Number of colors', '')),
+            ('Machine Width', q_data.get('Machine width', '')),
+            ('Winder', q_data.get('Winder', '')),
+            ('Material', q_data.get('Material', '')),
+        ]
+
+        for label, value in machine_data:
+            ws[f'A{row}'] = label
+            ws[f'B{row}'] = str(value)
+            ws[f'A{row}'].font = Font(name='Aptos Narrow', size=14, bold=True)
+            ws[f'B{row}'].font = normal_font
+            ws[f'A{row}'].border = thin_border
+            ws[f'B{row}'].border = thin_border
+            row += 1
+
+        row += 1
+
+        # Pricing
+        ws[f'A{row}'] = "Pricing"
+        ws[f'A{row}'].font = header_font
+        row += 1
+
+        price_data = [
+            ('Given Price', q_data.get('Given Price', '')),
+            ('Agreed Price', q_data.get('Agreed Price', '')),
+        ]
+
+        for label, value in price_data:
+            ws[f'A{row}'] = label
+            ws[f'B{row}'] = str(value)
+            ws[f'A{row}'].font = Font(name='Aptos Narrow', size=14, bold=True)
+            ws[f'B{row}'].font = normal_font
+            row += 1
+
+        # Set column widths
+        ws.column_dimensions['A'].width = 25
+        ws.column_dimensions['B'].width = 40
+        ws.column_dimensions['C'].width = 20
+
+        # Save to bytes
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        # Create BlobMedia
+        filename = f"Quotation_{quotation_number}.xlsx"
+        media = anvil.BlobMedia('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                output.getvalue(), name=filename)
+
+        return {'success': True, 'file': media}
+
+    except Exception as e:
+        logger.error(f"Error exporting Excel: {e}")
         return {'success': False, 'message': str(e)}
 
 

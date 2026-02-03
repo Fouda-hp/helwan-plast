@@ -11,6 +11,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         self.current_lang = 'ar'
         self.current_data = None
         self.all_quotations = []
+        self.custom_delivery_date = ''  # User-entered delivery date
 
         # Expose functions to JavaScript
         anvil.js.window.loadQuotationForPrint = self.load_quotation_for_print
@@ -26,6 +27,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         anvil.js.window.printQuotation = self.print_quotation
         anvil.js.window.exportPDF = self.export_pdf
         anvil.js.window.exportExcel = self.export_excel
+        anvil.js.window.updateDeliveryDate = self.update_delivery_date
 
     def form_show(self, **event_args):
         """Called when the form is shown - initialize after HTML is rendered"""
@@ -149,6 +151,14 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
         if self.current_data:
             self.render_template()
+
+    def update_delivery_date(self):
+        """Update delivery date from input field and re-render"""
+        delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
+        if delivery_input:
+            self.custom_delivery_date = str(delivery_input.value).strip()
+            if self.current_data:
+                self.render_template()
 
     def render_template(self):
         """Render the quotation template - 3 pages without page breaks"""
@@ -502,7 +512,11 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         if is_in_stock:
             delivery_time = "بضاعه حاضره" if is_ar else "In Stock"
         else:
-            delivery_time = data.get("expected_delivery_formatted", "-")
+            # Use custom delivery date if entered, otherwise use data
+            if self.custom_delivery_date:
+                delivery_time = self.custom_delivery_date
+            else:
+                delivery_time = data.get("expected_delivery_formatted", "-")
 
         html += f'<p>{"وقت التسليم المتوقع :" if is_ar else "Expected delivery time:"} <span class="highlight">{delivery_time}</span></p>'
         html += '</div>'

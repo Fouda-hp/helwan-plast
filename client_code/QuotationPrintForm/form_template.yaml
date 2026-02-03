@@ -590,6 +590,11 @@ container:
             <input type="text" id="searchInput" placeholder="Search by number or client..." oninput="window.filterQuotations()">
           </div>
 
+          <div class="delivery-date-section" style="display: flex; align-items: center; gap: 8px;">
+            <label for="deliveryDateInput" style="font-size: 13px; white-space: nowrap;">Delivery Date:</label>
+            <input type="text" id="deliveryDateInput" placeholder="e.g. 3 months" oninput="window.updateDeliveryDate()" style="padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; width: 150px;">
+          </div>
+
           <div class="lang-toggle">
             <button class="lang-btn active" id="btnArabic" onclick="window.switchLanguage('ar')">عربي</button>
             <button class="lang-btn" id="btnEnglish" onclick="window.switchLanguage('en')">English</button>

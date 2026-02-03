@@ -1519,3 +1519,50 @@ def get_all_machine_specs():
         return {'success': True, 'specs': specs}
     except Exception as e:
         return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_quotations_list(search='', include_deleted=False):
+    """
+    جلب قائمة العروض للـ dropdown - نسخة مبسطة
+    تُستخدم في صفحة طباعة عروض الأسعار
+    """
+    try:
+        all_rows = list(app_tables.quotations.search())
+
+        # تصفية المحذوف
+        if not include_deleted:
+            all_rows = [r for r in all_rows if not r.get('is_deleted', False)]
+
+        # فلتر البحث
+        if search:
+            search = search.lower()
+            filtered = []
+            for r in all_rows:
+                client_name = str(r.get('Client Name', '') or '').lower()
+                model = str(r.get('Model', '') or '').lower()
+                q_num = str(r.get('Quotation#', '') or '').lower()
+
+                if search in client_name or search in model or search in q_num:
+                    filtered.append(r)
+            all_rows = filtered
+
+        # ترتيب تنازلي حسب رقم العرض
+        all_rows.sort(key=lambda x: x.get('Quotation#') or 0, reverse=True)
+
+        # تجهيز البيانات
+        data = []
+        for r in all_rows:
+            data.append({
+                'Quotation#': r.get('Quotation#'),
+                'Client Name': r.get('Client Name', ''),
+                'Model': r.get('Model', ''),
+                'Date': r.get('Date').isoformat() if r.get('Date') else '',
+                'Agreed Price': r.get('Agreed Price', 0)
+            })
+
+        return {'success': True, 'data': data}
+
+    except Exception as e:
+        logger.error(f"Error in get_quotations_list: {e}")
+        return {'success': False, 'message': str(e), 'data': []}

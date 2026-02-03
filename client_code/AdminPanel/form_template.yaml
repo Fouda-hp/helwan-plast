@@ -112,7 +112,7 @@ container:
         .sidebar-nav {
         padding: 15px 0;
         flex: 1;
-        overflow-y: auto;
+        overflow-y: hidden;
         min-height: 0;
         }
 
@@ -733,7 +733,7 @@ container:
         bottom: 0;
         padding: 24px 32px;
         overflow-y: auto;
-        overflow-x: hidden;
+        overflow-x: auto;
         }
 
         .panel-body {

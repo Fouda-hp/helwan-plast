@@ -1045,7 +1045,12 @@ container:
                   completeLogin(result);
                 }
               } else {
-                showMessage('loginMessage', 'error', result.message);
+                // Check if rate limit error and offer to clear
+                if (result.message && result.message.indexOf('Too many') !== -1) {
+                  showMessage('loginMessage', 'error', result.message + ' <a href="#" onclick="clearRateLimitAndRetry(); return false;" style="color:#667eea;text-decoration:underline;">Click here to reset</a>');
+                } else {
+                  showMessage('loginMessage', 'error', result.message);
+                }
               }
               setLoading(loginBtn, false);
 
@@ -1054,6 +1059,25 @@ container:
               var errorMsg = e.message || e.toString() || 'Connection error';
               showMessage('loginMessage', 'error', 'Error: ' + errorMsg);
               setLoading(loginBtn, false);
+            }
+          };
+
+          // Clear rate limit and retry login
+          window.clearRateLimitAndRetry = async function() {
+            showMessage('loginMessage', 'info', 'Clearing rate limit...');
+            try {
+              if (window.clearRateLimit) {
+                var result = await window.clearRateLimit();
+                if (result && result.success) {
+                  showMessage('loginMessage', 'success', 'Rate limit cleared! Please try again.');
+                } else {
+                  showMessage('loginMessage', 'error', 'Could not clear rate limit. Please wait 15 minutes.');
+                }
+              } else {
+                showMessage('loginMessage', 'error', 'System is loading, please refresh the page.');
+              }
+            } catch (e) {
+              showMessage('loginMessage', 'error', 'Error clearing rate limit.');
             }
           };
 

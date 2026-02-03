@@ -38,6 +38,9 @@ class LoginForm(LoginFormTemplate):
         anvil.js.window.verifyPasswordResetOtp = self.verify_password_reset_otp
         anvil.js.window.completePasswordReset = self.complete_password_reset
 
+        # Rate Limit Clear function
+        anvil.js.window.clearRateLimit = self.clear_rate_limit
+
         # Check if user is already logged in (auto-login)
         self.check_existing_session()
 
@@ -257,6 +260,16 @@ class LoginForm(LoginFormTemplate):
         """
         try:
             result = anvil.server.call('complete_password_reset', email, new_password)
+            return result
+        except Exception as e:
+            return {'success': False, 'message': f'Error: {str(e)}'}
+
+    def clear_rate_limit(self):
+        """
+        مسح Rate Limit للـ IP الحالي
+        """
+        try:
+            result = anvil.server.call('clear_my_rate_limit')
             return result
         except Exception as e:
             return {'success': False, 'message': f'Error: {str(e)}'}

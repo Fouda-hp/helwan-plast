@@ -232,7 +232,7 @@ container:
           padding: 24px 32px;
           padding-left: calc(260px + 32px); /* 👈 ده اللي هيزق الداش يمين */
           height: 100%;
-          overflow: hidden;
+          overflow: auto;
           box-sizing: border-box;
         }
 

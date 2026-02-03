@@ -1544,8 +1544,7 @@ def export_quotation_excel(quotation_number):
     """Export quotation data as Excel file"""
     try:
         import io
-        from openpyxl import Workbook
-        from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+        import csv
 
         # Get quotation data - use correct field name 'Quotation#'
         q_data = app_tables.quotations.get(**{'Quotation#': int(quotation_number)})
@@ -1556,114 +1555,65 @@ def export_quotation_excel(quotation_number):
         def get_field(field_name, default=''):
             try:
                 val = q_data[field_name]
-                return val if val is not None else default
+                return str(val) if val is not None else default
             except:
                 return default
 
-        # Create workbook
-        wb = Workbook()
-        ws = wb.active
-        ws.title = f"Quotation {quotation_number}"
-
-        # Styles
-        header_font = Font(name='Aptos Narrow', size=16, bold=True)
-        normal_font = Font(name='Aptos Narrow', size=14)
-        thin_border = Border(
-            left=Side(style='thin'),
-            right=Side(style='thin'),
-            top=Side(style='thin'),
-            bottom=Side(style='thin')
-        )
-        header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
-
-        # Add data
-        row = 1
+        # Create CSV content
+        output = io.StringIO()
+        writer = csv.writer(output)
 
         # Header
-        ws.merge_cells('A1:C1')
-        ws['A1'] = f"Quotation #{quotation_number}"
-        ws['A1'].font = Font(name='Aptos Narrow', size=20, bold=True)
-        row = 3
+        writer.writerow([f"Quotation #{quotation_number}", '', ''])
+        writer.writerow(['', '', ''])
 
         # Client Info
-        client_data = [
-            ('Client Name', get_field('Client Name', '')),
-            ('Company', get_field('Company', '')),
-            ('Phone', get_field('Phone', '')),
-            ('Date', str(get_field('Date', ''))),
-        ]
-
-        for label, value in client_data:
-            ws[f'A{row}'] = label
-            ws[f'B{row}'] = str(value) if value else ''
-            ws[f'A{row}'].font = Font(name='Aptos Narrow', size=14, bold=True)
-            ws[f'B{row}'].font = normal_font
-            row += 1
-
-        row += 1
+        writer.writerow(['=== Client Information ===', '', ''])
+        writer.writerow(['Client Name', get_field('Client Name', '')])
+        writer.writerow(['Company', get_field('Company', '')])
+        writer.writerow(['Phone', get_field('Phone', '')])
+        writer.writerow(['Date', get_field('Date', '')])
+        writer.writerow(['', '', ''])
 
         # Machine Details
-        ws[f'A{row}'] = "Machine Details"
-        ws[f'A{row}'].font = header_font
-        ws.merge_cells(f'A{row}:C{row}')
-        row += 1
+        writer.writerow(['=== Machine Details ===', '', ''])
+        writer.writerow(['Model', get_field('Model', '')])
+        writer.writerow(['Machine Type', get_field('Machine type', '')])
+        writer.writerow(['Number of Colors', get_field('Number of colors', '')])
+        writer.writerow(['Machine Width', get_field('Machine width', '')])
+        writer.writerow(['Winder', get_field('Winder', '')])
+        writer.writerow(['Material', get_field('Material', '')])
+        writer.writerow(['', '', ''])
 
-        machine_data = [
-            ('Model', get_field('Model', '')),
-            ('Machine Type', get_field('Machine type', '')),
-            ('Number of Colors', get_field('Number of colors', '')),
-            ('Machine Width', get_field('Machine width', '')),
-            ('Winder', get_field('Winder', '')),
-            ('Material', get_field('Material', '')),
-        ]
-
-        for label, value in machine_data:
-            ws[f'A{row}'] = label
-            ws[f'B{row}'] = str(value) if value else ''
-            ws[f'A{row}'].font = Font(name='Aptos Narrow', size=14, bold=True)
-            ws[f'B{row}'].font = normal_font
-            ws[f'A{row}'].border = thin_border
-            ws[f'B{row}'].border = thin_border
-            row += 1
-
-        row += 1
+        # Options
+        writer.writerow(['=== Options ===', '', ''])
+        writer.writerow(['Video Inspection', get_field('Video inspection', '')])
+        writer.writerow(['PLC', get_field('PLC', '')])
+        writer.writerow(['Slitter', get_field('Slitter', '')])
+        writer.writerow(['', '', ''])
 
         # Pricing
-        ws[f'A{row}'] = "Pricing"
-        ws[f'A{row}'].font = header_font
-        row += 1
+        writer.writerow(['=== Pricing ===', '', ''])
+        writer.writerow(['In Stock Price', get_field('In Stock', '')])
+        writer.writerow(['New Order Price', get_field('New Order', '')])
+        writer.writerow(['Given Price', get_field('Given Price', '')])
+        writer.writerow(['Agreed Price', get_field('Agreed Price', '')])
+        writer.writerow(['Pricing Mode', get_field('Pricing Mode', '')])
 
-        price_data = [
-            ('Given Price', get_field('Given Price', '')),
-            ('Agreed Price', get_field('Agreed Price', '')),
-        ]
+        # Get CSV content
+        csv_content = output.getvalue()
+        output.close()
 
-        for label, value in price_data:
-            ws[f'A{row}'] = label
-            ws[f'B{row}'] = str(value) if value else ''
-            ws[f'A{row}'].font = Font(name='Aptos Narrow', size=14, bold=True)
-            ws[f'B{row}'].font = normal_font
-            row += 1
-
-        # Set column widths
-        ws.column_dimensions['A'].width = 25
-        ws.column_dimensions['B'].width = 40
-        ws.column_dimensions['C'].width = 20
-
-        # Save to bytes
-        output = io.BytesIO()
-        wb.save(output)
-        output.seek(0)
-
-        # Create BlobMedia
-        filename = f"Quotation_{quotation_number}.xlsx"
-        media = anvil.BlobMedia('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                output.getvalue(), name=filename)
+        # Create BlobMedia - CSV with UTF-8 BOM for Excel compatibility
+        filename = f"Quotation_{quotation_number}.csv"
+        # Add UTF-8 BOM for Excel to recognize Arabic text
+        csv_bytes = b'\xef\xbb\xbf' + csv_content.encode('utf-8')
+        media = anvil.BlobMedia('text/csv', csv_bytes, name=filename)
 
         return {'success': True, 'file': media}
 
     except Exception as e:
-        logger.error(f"Error exporting Excel: {e}")
+        logger.error(f"Error exporting CSV: {e}")
         import traceback
         logger.error(traceback.format_exc())
         return {'success': False, 'message': str(e)}

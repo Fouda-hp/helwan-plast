@@ -490,8 +490,8 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         html += '<table class="payment-table">'
 
         if is_in_stock:
-            # In Stock mode: 2 rows only - Down Payment with total amount, Before Shipping without amounts
-            html += f'<tr><th>{"مقدم تعاقد" if is_ar else "Down Payment"}</th><td colspan="2" class="amount">{data.get("total_price", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
+            # In Stock mode: 2 rows only - Down Payment (no amount), Before Shipping (no amount)
+            html += f'<tr><th>{"مقدم تعاقد" if is_ar else "Down Payment"}</th><td colspan="2"></td></tr>'
             html += f'<tr><th>{"الدفع قبل الشحن" if is_ar else "Payment before shipping"}</th><td colspan="2"></td></tr>'
         else:
             # New Order mode: 3 rows with percentages and amounts

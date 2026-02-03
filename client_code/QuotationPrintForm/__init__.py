@@ -562,14 +562,85 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         anvil.js.window.print()
 
     def export_pdf(self):
-        """Export quotation as PDF using browser print dialog"""
+        """Export quotation as PDF - direct download"""
         if not self.current_data:
             alert('Please select a quotation first')
             return
 
-        # Use browser print which allows saving as PDF with proper fonts
-        # This opens print dialog where user can select "Save as PDF"
-        anvil.js.window.print()
+        q_num = self.current_data.get('quotation_number', 'quotation')
+        client_name = self.current_data.get('client_name', '').replace(' ', '_').replace('/', '_')
+        filename = f"Quotation_{q_num}_{client_name}.pdf"
+
+        js_code = f"""
+        (async function() {{
+            const element = document.getElementById('templateContent');
+            if (!element || !element.innerHTML.trim()) {{
+                alert('No content to export. Please select a quotation first.');
+                return;
+            }}
+
+            // Load libraries
+            function loadScript(url) {{
+                return new Promise((resolve, reject) => {{
+                    if (document.querySelector('script[src="' + url + '"]')) {{
+                        resolve();
+                        return;
+                    }}
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }});
+            }}
+
+            try {{
+                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+                const {{ jsPDF }} = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pages = element.querySelectorAll('.template-page');
+
+                if (pages.length === 0) {{
+                    alert('No pages found to export');
+                    return;
+                }}
+
+                for (let i = 0; i < pages.length; i++) {{
+                    const page = pages[i];
+
+                    // Capture page as canvas
+                    const canvas = await html2canvas(page, {{
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: true,
+                        backgroundColor: '#ffffff',
+                        logging: false,
+                        width: page.scrollWidth,
+                        height: page.scrollHeight
+                    }});
+
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    const imgWidth = 210; // A4 width in mm
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                    if (i > 0) {{
+                        pdf.addPage();
+                    }}
+
+                    pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+                }}
+
+                pdf.save('{filename}');
+
+            }} catch (error) {{
+                console.error('PDF Export Error:', error);
+                alert('Error exporting PDF: ' + error.message);
+            }}
+        }})();
+        """
+        anvil.js.window.eval(js_code)
 
     def export_excel(self):
         """Export quotation data as Excel file"""

@@ -1403,12 +1403,55 @@ container:
                   console.log('Initializing Admin Panel...');
                   initUser();
                   initNavigation();
+                  setupAutoLogout();
                   // Wait a bit for Python bridge functions then load dashboard
                   setTimeout(function() {
                     if (window.loadDashboard) {
                       window.loadDashboard();
                     }
                   }, 500);
+                }
+
+                // ============================================
+                // AUTO LOGOUT ON TAB CLOSE
+                // ============================================
+                function setupAutoLogout() {
+                  // Logout when tab/browser is closed
+                  window.addEventListener('beforeunload', function(e) {
+                    // Use sendBeacon for reliable logout on tab close
+                    var token = localStorage.getItem('auth_token');
+                    if (token && window.logoutUser) {
+                      // Try synchronous logout
+                      try {
+                        window.logoutUser();
+                      } catch(err) {
+                        console.log('Logout on close:', err);
+                      }
+                    }
+                  });
+
+                  // Also handle visibility change (tab hidden for long time)
+                  document.addEventListener('visibilitychange', function() {
+                    if (document.visibilityState === 'hidden') {
+                      // Store timestamp when tab became hidden
+                      sessionStorage.setItem('tab_hidden_at', Date.now());
+                    } else if (document.visibilityState === 'visible') {
+                      // Check if tab was hidden for more than 30 minutes
+                      var hiddenAt = sessionStorage.getItem('tab_hidden_at');
+                      if (hiddenAt) {
+                        var hiddenDuration = Date.now() - parseInt(hiddenAt);
+                        if (hiddenDuration > 30 * 60 * 1000) { // 30 minutes
+                          // Auto logout after long inactivity
+                          if (window.logoutUser) {
+                            window.logoutUser();
+                            localStorage.clear();
+                            window.location.hash = '#login';
+                          }
+                        }
+                        sessionStorage.removeItem('tab_hidden_at');
+                      }
+                    }
+                  });
                 }
 
                 function initUser() {

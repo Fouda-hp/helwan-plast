@@ -20,11 +20,29 @@ class LauncherForm(LauncherFormTemplate):
     def __init__(self, **properties):
         self.init_components(**properties)
 
+        # Expose logout function to JavaScript
+        anvil.js.window.logoutUserFromLauncher = self.logout_user
+
         # نفحص الـ hash مرة واحدة عند التحميل
         self.check_route()
 
         # نربط listener بطريقة صحيحة
         anvil.js.window.addEventListener("hashchange", self.on_hash_change)
+
+    def get_token(self):
+        """Get auth token from localStorage"""
+        return anvil.js.window.localStorage.getItem('auth_token')
+
+    def logout_user(self):
+        """تسجيل الخروج"""
+        token = self.get_token()
+        if token:
+            try:
+                anvil.server.call('logout_user', token)
+            except:
+                pass
+        anvil.js.window.localStorage.clear()
+        return True
 
     def on_hash_change(self, event):
         """معالجة تغيير الـ hash"""

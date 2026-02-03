@@ -965,10 +965,14 @@ container:
           // ============================================
           // MESSAGE HELPERS
           // ============================================
-          function showMessage(id, type, text) {
+          function showMessage(id, type, text, isHtml) {
             var el = document.getElementById(id);
             el.className = 'message ' + type + ' show';
-            el.textContent = text;
+            if (isHtml) {
+              el.innerHTML = text;
+            } else {
+              el.textContent = text;
+            }
           }
 
           function clearMessages() {
@@ -1047,7 +1051,7 @@ container:
               } else {
                 // Check if rate limit error and offer to clear
                 if (result.message && result.message.indexOf('Too many') !== -1) {
-                  showMessage('loginMessage', 'error', result.message + ' <a href="#" onclick="clearRateLimitAndRetry(); return false;" style="color:#667eea;text-decoration:underline;">Click here to reset</a>');
+                  showMessage('loginMessage', 'error', result.message + ' <a href="#" onclick="clearRateLimitAndRetry(); return false;" style="color:#667eea;text-decoration:underline;">Click here to reset</a>', true);
                 } else {
                   showMessage('loginMessage', 'error', result.message);
                 }

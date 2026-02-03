@@ -80,6 +80,7 @@ def send_email_smtp(to_email, subject, html_body):
 MAX_LOGIN_ATTEMPTS = 50           # عدد المحاولات قبل القفل
 LOCKOUT_DURATION_MINUTES = 5    # مدة القفل بالدقائق
 SESSION_DURATION_MINUTES = 60    # مدة الجلسة بالدقائق (60 دقيقة = ساعة واحدة)
+MAX_SESSIONS_PER_IP = 5          # الحد الأقصى للجلسات لكل IP
 RATE_LIMIT_WINDOW_MINUTES = 15   # نافذة Rate Limiting
 RATE_LIMIT_MAX_REQUESTS = 100    # الحد الأقصى للطلبات في النافذة
 PBKDF2_ITERATIONS = 100000       # عدد التكرارات للتشفير (أكثر أماناً)
@@ -602,29 +603,50 @@ def generate_session_token():
 
 
 def create_session(user_email, role, ip_address=None, user_agent=None):
-  """
-    إنشاء جلسة جديدة في قاعدة البيانات
     """
-  token = generate_session_token()
-  expires = datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES)
+    إنشاء جلسة جديدة في قاعدة البيانات
+    يسمح بـ MAX_SESSIONS_PER_IP جلسات لكل IP (افتراضياً 5)
+    """
+    token = generate_session_token()
+    expires = datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES)
+    ip = ip_address or 'unknown'
 
-  try:
-    app_tables.sessions.add_row(
-      session_token=token,
-      user_email=user_email,
-      user_role=role,
-      created_at=datetime.now(),
-      expires_at=expires,
-      ip_address=ip_address or 'unknown',
-      user_agent=user_agent or 'unknown',
-      is_active=True
-    )
+    try:
+        # التحقق من عدد الجلسات النشطة لهذا الـ IP
+        if ip != 'unknown':
+            active_sessions = list(app_tables.sessions.search(
+                ip_address=ip,
+                is_active=True
+            ))
 
-    logger.info(f"Session created for {user_email}")
-    return token
-  except Exception as e:
-    logger.error(f"Session creation error: {e}")
-    return None
+            # تصفية الجلسات المنتهية
+            now = datetime.now()
+            valid_sessions = [s for s in active_sessions if s['expires_at'] > now]
+
+            # إذا وصل للحد الأقصى، نحذف الجلسة الأقدم
+            if len(valid_sessions) >= MAX_SESSIONS_PER_IP:
+                # ترتيب حسب تاريخ الإنشاء وحذف الأقدم
+                valid_sessions.sort(key=lambda s: s['created_at'])
+                oldest_session = valid_sessions[0]
+                oldest_session.update(is_active=False)
+                logger.info(f"Deactivated oldest session for IP {ip} to allow new session")
+
+        app_tables.sessions.add_row(
+            session_token=token,
+            user_email=user_email,
+            user_role=role,
+            created_at=datetime.now(),
+            expires_at=expires,
+            ip_address=ip,
+            user_agent=user_agent or 'unknown',
+            is_active=True
+        )
+
+        logger.info(f"Session created for {user_email} from IP {ip}")
+        return token
+    except Exception as e:
+        logger.error(f"Session creation error: {e}")
+        return None
 
 
 def validate_session(token):

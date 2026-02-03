@@ -215,13 +215,63 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
         html += f'<div class="section-title">{"المواصفات الفنية:" if is_ar else "Technical Specifications:"}</div>'
 
+        # Generate Technical Specifications table dynamically
         html += '<table class="tech-table">'
-        html += f'<tr><td class="row-num">1</td><th>{"الموديل" if is_ar else "Model"}</th><td class="value">{data.get("model", "")}</td></tr>'
-        html += f'<tr><td class="row-num">2</td><th>{"عدد الألوان" if is_ar else "Number of Colors"}</th><td class="value">{data.get("colors_count", "")}</td></tr>'
-        html += f'<tr><td class="row-num">3</td><th>{"نوع الانيلوكس" if is_ar else "Anilox Type"}</th><td class="value">{c.get("anilox_type_ar" if is_ar else "anilox_type_en", "")}</td></tr>'
-        html += f'<tr><td class="row-num">4</td><th>{"مراقبة الطباعة بالفيديو" if is_ar else "Video Inspection"}</th><td class="value">{data.get("video_inspection", "NO")}</td></tr>'
-        html += f'<tr><td class="row-num">5</td><th>PLC</th><td class="value">{data.get("plc", "NO")}</td></tr>'
-        html += f'<tr><td class="row-num">6</td><th>{"سليتر" if is_ar else "Slitter"}</th><td class="value">{data.get("slitter", "NO")}</td></tr>'
+
+        # Get tech specs settings from company data or use defaults
+        tech_specs_settings = data.get('tech_specs_settings', {})
+
+        # Default technical specs configuration
+        default_specs = [
+            {'num': 1, 'ar': 'الموديل', 'en': 'Model', 'field': 'model'},
+            {'num': 2, 'ar': 'عدد الألوان', 'en': 'Number of Colors', 'field': 'colors_count'},
+            {'num': 3, 'ar': 'نوع الطباعة', 'en': 'Printing Sides', 'field': 'printing_sides'},
+            {'num': 4, 'ar': 'وحدات التحكم في الشد', 'en': 'Tension Control Units', 'field': 'tension_control'},
+            {'num': 5, 'ar': 'وحدات الكورونا', 'en': 'Corona Units', 'field': 'corona_units'},
+            {'num': 6, 'ar': 'نظام التحكم في مسجل الطباعة', 'en': 'Print Register Control System', 'field': 'print_register'},
+            {'num': 7, 'ar': 'سكاكين الدكتور', 'en': 'Doctor Blades', 'field': 'doctor_blades'},
+            {'num': 8, 'ar': 'نوع رولات الانيلوكس', 'en': 'Anilox Type', 'field': 'anilox_type'},
+            {'num': 9, 'ar': 'مراقبة الطباعة بالفيديو', 'en': 'Video Inspection', 'field': 'video_inspection'},
+            {'num': 10, 'ar': 'PLC', 'en': 'PLC', 'field': 'plc'},
+            {'num': 11, 'ar': 'HMI شاشة', 'en': 'HMI Screen', 'field': 'hmi_screen'},
+            {'num': 12, 'ar': 'سليتر', 'en': 'Slitter', 'field': 'slitter'},
+            {'num': 13, 'ar': 'نظام تجفيف الحبر', 'en': 'Ink Drying System', 'field': 'ink_drying'},
+            {'num': 14, 'ar': 'الموتورات', 'en': 'Motors', 'field': 'motors'},
+            {'num': 15, 'ar': 'سرعة الماكينة', 'en': 'Machine Speed', 'field': 'machine_speed'},
+            {'num': 16, 'ar': 'عرض الطباعة', 'en': 'Printing Width', 'field': 'printing_width'},
+            {'num': 17, 'ar': 'قطر الرول الأم', 'en': 'Parent Roll Diameter', 'field': 'roll_diameter'},
+            {'num': 18, 'ar': 'قطر البوبينة', 'en': 'Bobbin Diameter', 'field': 'bobbin_diameter'},
+            {'num': 19, 'ar': 'سمك المادة', 'en': 'Material Thickness', 'field': 'material_thickness'},
+            {'num': 20, 'ar': 'الوندر', 'en': 'Winder', 'field': 'winder'}
+        ]
+
+        for spec in default_specs:
+            spec_key = f"tech_spec_{spec['num']}"
+            spec_settings = tech_specs_settings.get(spec_key, {})
+
+            # Check if this spec is active (default to True for first 6)
+            is_active = spec_settings.get('active', spec['num'] <= 6)
+            if not is_active:
+                continue
+
+            # Get labels
+            label = spec_settings.get('label_ar' if is_ar else 'label_en', spec['ar' if is_ar else 'en'])
+
+            # Get value based on source
+            source = spec_settings.get('source', spec['field'])
+            if source == 'custom':
+                value = spec_settings.get('custom_value', '-')
+            elif source == 'yes_no':
+                raw_val = data.get(spec['field'], False)
+                value = ('نعم' if is_ar else 'YES') if raw_val else ('لا' if is_ar else 'NO')
+            else:
+                # Get from quotation data or company settings
+                value = data.get(source, c.get(f"{source}_ar" if is_ar else f"{source}_en", '-'))
+                if value is None or value == '':
+                    value = '-'
+
+            html += f'<tr><td class="row-num">{spec["num"]}</td><th>{label}</th><td class="value">{value}</td></tr>'
+
         html += '</table>'
 
         # Cylinders

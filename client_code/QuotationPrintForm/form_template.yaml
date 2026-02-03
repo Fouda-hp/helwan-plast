@@ -9,7 +9,7 @@ container:
         :root {
           --primary-color: #1a1a2e;
           --accent-color: #667eea;
-          --highlight-color: #fff59d;
+          --highlight-color: transparent;
           --success-color: #4caf50;
           --border-color: #ddd;
         }

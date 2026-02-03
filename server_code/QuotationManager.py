@@ -1396,6 +1396,13 @@ def get_quotation_pdf_data(quotation_number, user_email):
             'anilox_type_en': get_setting_value('anilox_type_en', 'Ceramic anilox'),
         }
 
+        # جلب إعدادات جدول المواصفات الفنية
+        tech_specs_raw = get_setting_value('technical_specs', '{}')
+        try:
+            tech_specs_settings = json.loads(tech_specs_raw) if isinstance(tech_specs_raw, str) else tech_specs_raw
+        except:
+            tech_specs_settings = {}
+
         # جلب المواصفات الفنية للماكينة
         model = q_data.get('Model', '')
         machine_specs = get_machine_specs(model)
@@ -1469,6 +1476,9 @@ def get_quotation_pdf_data(quotation_number, user_email):
             'delivery_location': q_data.get('Address', ''),
             'expected_delivery': q_data.get('Expected delivery time'),
             'expected_delivery_formatted': str(q_data.get('Expected delivery time') or ''),
+
+            # إعدادات جدول المواصفات الفنية
+            'tech_specs_settings': tech_specs_settings,
         }
 
         return {'success': True, 'data': pdf_data}

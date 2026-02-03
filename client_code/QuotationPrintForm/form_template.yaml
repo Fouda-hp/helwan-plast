@@ -141,14 +141,16 @@ container:
         }
 
         .template-page {
-          padding: 40px;
+          padding: 30px 40px;
           min-height: auto;
           position: relative;
-          border-bottom: none;
+          border-bottom: 2px dashed #e0e0e0;
+          margin-bottom: 20px;
         }
 
         .template-page:last-child {
           border-bottom: none;
+          margin-bottom: 0;
         }
 
         /* Specs List Style */
@@ -518,34 +520,125 @@ container:
 
         /* Print Styles */
         @media print {
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          body {
+            margin: 0;
+            padding: 0;
+          }
+
           .controls-bar {
             display: none !important;
+          }
+
+          .print-container {
+            padding: 0;
+            max-width: none;
           }
 
           .template-preview {
             box-shadow: none;
             overflow: visible !important;
+            max-height: none !important;
+            border-radius: 0;
           }
 
           .template-page {
-            page-break-after: always;
-            break-after: page;
-            border-bottom: none;
-            min-height: auto;
-            padding: 20px 40px;
+            page-break-after: always !important;
+            break-after: page !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            border-bottom: none !important;
+            margin-bottom: 0 !important;
+            padding: 15px 30px !important;
+            min-height: 270mm;
+            max-height: 277mm;
+            overflow: hidden;
           }
 
           .template-page:last-child {
-            page-break-after: avoid;
-            break-after: avoid;
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+          }
+
+          .page-break-before {
+            page-break-before: always !important;
+            break-before: page !important;
+          }
+
+          .header {
+            margin-bottom: 15px !important;
+            padding-bottom: 10px !important;
           }
 
           .specs-list {
-            page-break-inside: avoid;
+            font-size: 11px !important;
+            line-height: 1.6 !important;
           }
 
-          .header, .financial-box, .info-grid, .notes-section {
-            page-break-inside: avoid;
+          .specs-list li {
+            margin-bottom: 4px !important;
+          }
+
+          .tech-table th, .tech-table td {
+            padding: 5px 8px !important;
+            font-size: 10px !important;
+          }
+
+          .cylinders-table th, .cylinders-table td {
+            padding: 4px 10px !important;
+            font-size: 11px !important;
+          }
+
+          .section-title {
+            font-size: 14px !important;
+            margin: 10px 0 8px !important;
+            padding: 5px 0 !important;
+          }
+
+          .details-table th, .details-table td {
+            padding: 6px 10px !important;
+            font-size: 11px !important;
+          }
+
+          .financial-box {
+            padding: 15px !important;
+          }
+
+          .total-price {
+            font-size: 22px !important;
+            padding: 10px !important;
+          }
+
+          .info-grid {
+            gap: 10px !important;
+          }
+
+          .info-box {
+            padding: 10px !important;
+          }
+
+          .info-box h4 {
+            font-size: 12px !important;
+            margin-bottom: 5px !important;
+          }
+
+          .info-box p {
+            font-size: 11px !important;
+            margin-bottom: 3px !important;
+          }
+
+          .notes-list {
+            font-size: 10px !important;
+            line-height: 1.5 !important;
+          }
+
+          .template-footer {
+            margin-top: 15px !important;
+            padding-top: 10px !important;
           }
         }
 

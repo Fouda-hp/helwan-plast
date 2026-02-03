@@ -1006,12 +1006,60 @@ container:
           flex-direction: row-reverse;
         }
 
-        @media (min-width: 1024px) {
-          body.rtl .main-content {
-            margin-left: 0;
-            margin-right: 260px;
+
+        /* ================= SETTINGS LAYOUT ================= */
+        .settings-layout {
+          display: grid;
+          grid-template-columns: 2fr 1fr; /* شمال كبير | يمين صغير */
+          gap: 20px;
+          width: 100%;
+        }
+
+
+        .settings-left {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .settings-right {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .settings-full {
+          grid-column: 1 / -1; /* ياخد العرض كله */
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+          .settings-layout {
+            grid-template-columns: 1fr;
           }
         }
+
+        .tech-table-card {
+          background: #fff;
+          padding: 20px;
+          border-radius: 12px;
+          width: 100%;
+        }
+
+        .table-wrapper {
+          width: 100%;
+          overflow-x: auto;
+        }
+
+        .settings-left,
+        .settings-right {
+          width: 100%;
+        }
+        :root {
+          --section-gap: 20px;
+          --card-padding: 20px;
+        }
+
       </style>
 
       <!-- Load i18n Script with inline fallback -->
@@ -2011,159 +2059,117 @@ container:
 
               var settings = result.settings || {};
 
-              var html = '<div style="max-width: 800px;">';
+              var html = '<div>';
 
-              // Exchange Rate Section
-              html += '<div style="background:#f8f9fa;padding:20px;border-radius:12px;margin-bottom:20px;">';
-              html += '<h4 style="margin:0 0 15px;color:#1a1a2e;">💱 Exchange Rate</h4>';
+
+              /* =====================================================
+         TOP SECTION: Exchange Rate + Shipping (Vertical)
+      ===================================================== */
+
+              html += '<div style="display:flex;flex-direction:column;gap:var(--section-gap);margin-bottom:var(--section-gap);">';
+
+              /* Exchange Rate */
+              html += '<div style="background:#f8f9fa;padding:var(--card-padding);border-radius:12px;">';
+              html += '<h4>💱 Exchange Rate</h4>';
               html += '<div class="form-group" style="margin-bottom:0;">';
               html += '<label>USD to EGP Rate</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="number" step="0.01" id="setting_exchange_rate" value="' + (settings.exchange_rate || 47.5) + '" style="flex:1;">';
+              html += '<div style="display:flex;gap:10px;">';
+              html += '<input type="number" step="0.01" id="setting_exchange_rate" value="' + (settings.exchange_rate || 47.5) + '">';
               html += '<button class="action-btn" onclick="saveSetting(\'exchange_rate\')">Save</button>';
               html += '</div></div></div>';
 
-              // ==========================================
-              // Technical Specifications Table Settings
-              // ==========================================
-              html += '<div style="background:#e3f2fd;padding:20px;border-radius:12px;margin-bottom:20px;border:2px solid #2196f3;">';
-              html += '<h4 style="margin:0 0 15px;color:#1565c0;">📋 Technical Specifications Table Settings</h4>';
-              html += '<p style="margin:0 0 15px;color:#666;font-size:13px;">Configure which fields appear in the Technical Specifications table on the quotation PDF. Each row can show data from the quotation or a fixed value.</p>';
+              /* Shipping & Expenses */
+              html += '<div style="background:#f8f9fa;padding:var(--card-padding);border-radius:12px;">';
+              html += '<h4 style="margin:0 0 15px;">🚢 Shipping & Expenses (USD)</h4>';
 
-              html += '<div style="background:#fff;padding:15px;border-radius:8px;overflow-x:auto;">';
-              html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
-              html += '<thead><tr style="background:#f5f5f5;">';
-              html += '<th style="padding:10px;border:1px solid #ddd;text-align:center;width:40px;">#</th>';
-              html += '<th style="padding:10px;border:1px solid #ddd;text-align:right;">Label (Arabic)</th>';
-              html += '<th style="padding:10px;border:1px solid #ddd;text-align:left;">Label (English)</th>';
-              html += '<th style="padding:10px;border:1px solid #ddd;text-align:center;">Value Source</th>';
-              html += '<th style="padding:10px;border:1px solid #ddd;text-align:center;width:80px;">Active</th>';
-              html += '</tr></thead><tbody>';
-
-              // Define the 20 technical specs rows
-              var techSpecs = [
-                {num: 1, ar: 'الموديل', en: 'Model', field: 'model'},
-                {num: 2, ar: 'عدد الألوان', en: 'Number of Colors', field: 'colors_count'},
-                {num: 3, ar: 'نوع الطباعة', en: 'Printing Sides', field: 'printing_sides'},
-                {num: 4, ar: 'وحدات التحكم في الشد', en: 'Tension Control Units', field: 'tension_control'},
-                {num: 5, ar: 'وحدات الكورونا', en: 'Corona Units', field: 'corona_units'},
-                {num: 6, ar: 'نظام التحكم في مسجل الطباعة', en: 'Print Register Control System', field: 'print_register'},
-                {num: 7, ar: 'سكاكين الدكتور', en: 'Doctor Blades', field: 'doctor_blades'},
-                {num: 8, ar: 'نوع رولات الانيلوكس', en: 'Anilox Type', field: 'anilox_type'},
-                {num: 9, ar: 'مراقبة الطباعة بالفيديو', en: 'Video Inspection', field: 'video_inspection'},
-                {num: 10, ar: 'PLC', en: 'PLC', field: 'plc'},
-                {num: 11, ar: 'HMI شاشة', en: 'HMI Screen', field: 'hmi_screen'},
-                {num: 12, ar: 'سليتر', en: 'Slitter', field: 'slitter'},
-                {num: 13, ar: 'نظام تجفيف الحبر', en: 'Ink Drying System', field: 'ink_drying'},
-                {num: 14, ar: 'الموتورات', en: 'Motors', field: 'motors'},
-                {num: 15, ar: 'سرعة الماكينة', en: 'Machine Speed', field: 'machine_speed'},
-                {num: 16, ar: 'عرض الطباعة', en: 'Printing Width', field: 'printing_width'},
-                {num: 17, ar: 'قطر الرول الأم', en: 'Parent Roll Diameter', field: 'roll_diameter'},
-                {num: 18, ar: 'قطر البوبينة', en: 'Bobbin Diameter', field: 'bobbin_diameter'},
-                {num: 19, ar: 'سمك المادة', en: 'Material Thickness', field: 'material_thickness'},
-                {num: 20, ar: 'الوندر', en: 'Winder', field: 'winder'}
+              const shipFields = [
+                {key:'shipping_sea', label:'Sea Shipping Cost', def:3200},
+                {key:'ths_cost', label:'THS Cost', def:1000},
+                {key:'clearance_expenses', label:'Clearance Expenses', def:1400}
               ];
 
-              techSpecs.forEach(function(spec) {
-                var key = 'tech_spec_' + spec.num;
-                var savedSpec = settings[key] || {};
-                var isActive = savedSpec.active !== false;
-                var valueSource = savedSpec.source || spec.field;
-                var customValue = savedSpec.custom_value || '';
-                var labelAr = savedSpec.label_ar || spec.ar;
-                var labelEn = savedSpec.label_en || spec.en;
-
-                html += '<tr>';
-                html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;">' + spec.num + '</td>';
-                html += '<td style="padding:8px;border:1px solid #ddd;"><input type="text" id="tech_' + spec.num + '_label_ar" value="' + labelAr + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;" dir="rtl"></td>';
-                html += '<td style="padding:8px;border:1px solid #ddd;"><input type="text" id="tech_' + spec.num + '_label_en" value="' + labelEn + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;"></td>';
-                html += '<td style="padding:8px;border:1px solid #ddd;">';
-                html += '<select id="tech_' + spec.num + '_source" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;" onchange="toggleCustomValue(' + spec.num + ')">';
-                html += '<option value="' + spec.field + '"' + (valueSource === spec.field ? ' selected' : '') + '>From Quotation: ' + spec.field + '</option>';
-                html += '<option value="custom"' + (valueSource === 'custom' ? ' selected' : '') + '>Custom Fixed Value</option>';
-                html += '<option value="yes_no"' + (valueSource === 'yes_no' ? ' selected' : '') + '>Yes/No from Quotation</option>';
-                html += '</select>';
-                html += '<input type="text" id="tech_' + spec.num + '_custom" value="' + customValue + '" placeholder="Enter custom value..." style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;margin-top:5px;display:' + (valueSource === 'custom' ? 'block' : 'none') + ';">';
-                html += '</td>';
-                html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;">';
-                html += '<input type="checkbox" id="tech_' + spec.num + '_active"' + (isActive ? ' checked' : '') + ' style="width:20px;height:20px;cursor:pointer;">';
-                html += '</td>';
-                html += '</tr>';
+              shipFields.forEach(f=>{
+                html += '<div class="form-group">';
+                html += '<label>'+f.label+'</label>';
+                html += '<div style="display:flex;gap:10px;">';
+                html += '<input type="number" id="setting_'+f.key+'" value="'+(settings[f.key]||f.def)+'">';
+                html += '<button class="action-btn" onclick="saveSetting(\''+f.key+'\')">Save</button>';
+                html += '</div></div>';
               });
-
-              html += '</tbody></table>';
-              html += '</div>';
-
-              html += '<div style="margin-top:15px;text-align:center;">';
-              html += '<button class="action-btn green" onclick="saveTechSpecs()" style="padding:12px 30px;">💾 Save All Technical Specs</button>';
-              html += '</div>';
-
-              html += '</div>'; // End Technical Specs Section
-
-              // Shipping & Expenses Section
-              html += '<div style="background:#f8f9fa;padding:20px;border-radius:12px;margin-bottom:20px;">';
-              html += '<h4 style="margin:0 0 15px;color:#1a1a2e;">🚢 Shipping & Expenses (USD)</h4>';
-
-              html += '<div class="form-group">';
-              html += '<label>Sea Shipping Cost</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="number" step="1" id="setting_shipping_sea" value="' + (settings.shipping_sea || 3200) + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSetting(\'shipping_sea\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>THS Cost</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="number" step="1" id="setting_ths_cost" value="' + (settings.ths_cost || 1000) + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSetting(\'ths_cost\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Clearance Expenses</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="number" step="1" id="setting_clearance_expenses" value="' + (settings.clearance_expenses || 1400) + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSetting(\'clearance_expenses\')">Save</button>';
-              html += '</div></div>';
 
               html += '<div class="form-group">';
               html += '<label>Tax Rate (%)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="number" step="0.01" id="setting_tax_rate" value="' + ((settings.tax_rate || 0.15) * 100) + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSetting(\'tax_rate\', true)">Save</button>';
+              html += '<div style="display:flex;gap:10px;">';
+              html += '<input type="number" id="setting_tax_rate" value="'+((settings.tax_rate||0.15)*100)+'">';
+              html += '<button class="action-btn" onclick="saveSetting(\'tax_rate\',true)">Save</button>';
               html += '</div></div>';
 
               html += '<div class="form-group" style="margin-bottom:0;">';
               html += '<label>Bank Commission (%)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="number" step="0.001" id="setting_bank_commission" value="' + ((settings.bank_commission || 0.0132) * 100) + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSetting(\'bank_commission\', true)">Save</button>';
+              html += '<div style="display:flex;gap:10px;">';
+              html += '<input type="number" id="setting_bank_commission" value="'+((settings.bank_commission||0.0132)*100)+'">';
+              html += '<button class="action-btn" onclick="saveSetting(\'bank_commission\',true)">Save</button>';
               html += '</div></div>';
 
-              html += '</div>';
+              html += '</div>'; // Shipping
+              html += '</div>'; // Top stack
 
-              // Cylinder Prices Section
-              html += '<div style="background:#f8f9fa;padding:20px;border-radius:12px;margin-bottom:20px;">';
-              html += '<h4 style="margin:0 0 15px;color:#1a1a2e;">🔧 Cylinder Prices (USD per cm)</h4>';
 
-              var widths = [80, 100, 120, 130, 140, 160];
-              var defaultPrices = {80:3.49, 100:3.59, 120:4.05, 130:4.5, 140:5.026, 160:5.4};
+              /* =====================================================
+         BOTTOM GRID: Template LEFT | Cylinder RIGHT
+      ===================================================== */
 
-              widths.forEach(function(w, i) {
-                var isLast = (i === widths.length - 1);
-                html += '<div class="form-group"' + (isLast ? ' style="margin-bottom:0;"' : '') + '>';
-                html += '<label>Width ' + w + ' cm</label>';
-                html += '<div style="display:flex;gap:10px;align-items:center;">';
-                html += '<input type="number" step="0.001" id="setting_cylinder_price_' + w + '" value="' + (settings['cylinder_price_' + w] || defaultPrices[w]) + '" style="flex:1;">';
-                html += '<button class="action-btn" onclick="saveSetting(\'cylinder_price_' + w + '\')">Save</button>';
+              html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">';
+
+              /* ================= LEFT : QUOTATION TEMPLATE ================= */
+              html += '<div style="background:#e8f5e9;padding:var(--card-padding);border-radius:12px;border:2px solid #4caf50;">';
+              html += '<h4 style="margin:0 0 15px;">📄 Quotation PDF Template Settings</h4>';
+
+              /* Company Info */
+              html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
+              html += '<h5>🏢 Company Information</h5>';
+
+              [
+                ['company_name_ar','Company Name (Arabic)','شركة حلوان بلاست ذ.م.م','rtl'],
+                ['company_name_en','Company Name (English)','Helwan Plast LLC'],
+                ['company_address_ar','Company Address (Arabic)','المنطقة الصناعية','rtl'],
+                ['company_address_en','Company Address (English)','Industrial Zone'],
+                ['company_email','Company Email','sales@helwanplast.com'],
+                ['company_website','Company Website','www.helwanplast.com']
+              ].forEach(f=>{
+                html += '<div class="form-group">';
+                html += '<label>'+f[1]+'</label>';
+                html += '<div style="display:flex;gap:10px;">';
+                html += '<input type="text" id="setting_'+f[0]+'" value="'+(settings[f[0]]||f[2])+'" '+(f[3]?'dir="rtl"':'')+'>';
+                html += '<button class="action-btn" onclick="saveSettingText(\''+f[0]+'\')">Save</button>';
                 html += '</div></div>';
               });
 
-              html += '</div>';
+              html += '</div>'; // company box
+              html += '</div>'; // LEFT
+
+
+              /* ================= RIGHT : CYLINDER PRICES ================= */
+              html += '<div style="background:#f8f9fa;padding:var(--card-padding);border-radius:12px;">';
+              html += '<h4 style="margin:0 0 15px;">🔧 Cylinder Prices (USD per cm)</h4>';
+
+              const cyl = {80:3.49,100:3.59,120:4.05,130:4.5,140:5.026,160:5.4};
+              Object.keys(cyl).forEach(w=>{
+                html += '<div class="form-group">';
+                html += '<label>Width '+w+' cm</label>';
+                html += '<div style="display:flex;gap:10px;">';
+                html += '<input type="number" step="0.001" id="setting_cylinder_price_'+w+'" value="'+(settings['cylinder_price_'+w]||cyl[w])+'">';
+                html += '<button class="action-btn" onclick="saveSetting(\'cylinder_price_'+w+'\')">Save</button>';
+                html += '</div></div>';
+              });
+
+              html += '</div>'; // RIGHT
+              html += '</div>'; // GRID
 
               // ==========================================
               // Quotation Template Settings Section
               // ==========================================
-              html += '<div style="background:#e8f5e9;padding:20px;border-radius:12px;margin-bottom:20px;border:2px solid #4caf50;">';
+              html += '<div style="background:#e8f5e9;padding:var(--card-padding);border-radius:12px;margin-bottom:20px;border:2px solid #4caf50;">';
               html += '<h4 style="margin:0 0 15px;color:#2e7d32;">📄 Quotation PDF Template Settings</h4>';
 
               // Company Info

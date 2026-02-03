@@ -1,6 +1,7 @@
 components: []
 container:
-  event_bindings: {}
+  event_bindings:
+    show: form_show
   layout_properties: {}
   properties:
     html: |

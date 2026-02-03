@@ -26,7 +26,8 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         anvil.js.window.printQuotation = self.print_quotation
         anvil.js.window.exportPDF = self.export_pdf
 
-        # Initialize
+    def form_show(self, **event_args):
+        """Called when the form is shown - initialize after HTML is rendered"""
         self.init_page()
 
     def init_page(self):

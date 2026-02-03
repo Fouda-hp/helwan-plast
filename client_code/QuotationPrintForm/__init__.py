@@ -562,13 +562,73 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         anvil.js.window.print()
 
     def export_pdf(self):
-        """Export quotation as PDF - use browser print with PDF save"""
+        """Export quotation as PDF - direct download using html2pdf with high quality"""
         if not self.current_data:
             alert('Please select a quotation first')
             return
 
-        # Trigger browser print dialog - user can save as PDF
-        anvil.js.window.print()
+        # Get quotation number for filename
+        q_num = self.current_data.get('quotation_number', 'quotation')
+        client_name = self.current_data.get('client_name', '').replace(' ', '_').replace('/', '_')
+        filename = f"Quotation_{q_num}_{client_name}.pdf"
+
+        # Use html2pdf.js with high quality settings for clear fonts
+        js_code = f"""
+        (function() {{
+            var element = document.getElementById('templateContent');
+            if (!element) {{
+                alert('No content to export');
+                return;
+            }}
+
+            // Load html2pdf.js if not loaded
+            function loadScript(url, callback) {{
+                var script = document.createElement('script');
+                script.src = url;
+                script.onload = callback;
+                document.head.appendChild(script);
+            }}
+
+            function generatePDF() {{
+                // Get all template pages
+                var pages = element.querySelectorAll('.template-page');
+
+                var opt = {{
+                    margin: [8, 8, 8, 8],
+                    filename: '{filename}',
+                    image: {{ type: 'jpeg', quality: 1.0 }},
+                    html2canvas: {{
+                        scale: 3,
+                        useCORS: true,
+                        logging: false,
+                        letterRendering: true,
+                        allowTaint: true,
+                        scrollX: 0,
+                        scrollY: 0
+                    }},
+                    jsPDF: {{
+                        unit: 'mm',
+                        format: 'a4',
+                        orientation: 'portrait',
+                        compress: false
+                    }},
+                    pagebreak: {{
+                        mode: ['css'],
+                        before: '.page-break-before'
+                    }}
+                }};
+
+                html2pdf().set(opt).from(element).save();
+            }}
+
+            if (typeof html2pdf === 'undefined') {{
+                loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js', generatePDF);
+            }} else {{
+                generatePDF();
+            }}
+        }})();
+        """
+        anvil.js.window.eval(js_code)
 
     def export_excel(self):
         """Export quotation data as Excel file"""

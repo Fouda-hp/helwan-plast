@@ -17,14 +17,11 @@ container:
           max-width: 1200px;
           margin: 0 auto;
           padding: 20px;
-          font-family: 'Aptos Narrow', 'Segoe UI', Tahoma, sans-serif;
+          font-family: 'Segoe UI', 'Arial', 'Helvetica Neue', sans-serif;
           font-size: 16px;
-        }
-
-        /* Import Aptos Narrow font */
-        @font-face {
-          font-family: 'Aptos Narrow';
-          src: local('Aptos Narrow');
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-rendering: optimizeLegibility;
         }
 
         /* Top Controls */

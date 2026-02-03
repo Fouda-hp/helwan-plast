@@ -58,6 +58,8 @@ class LoginForm(LoginFormTemplate):
             open_form('AdminPanel')
         elif hash_val == "#import":
             open_form('DataImportForm')
+        elif hash_val == "#quotation-print":
+            open_form('QuotationPrintForm')
 
     # =========================================
     # Bridge functions for JavaScript

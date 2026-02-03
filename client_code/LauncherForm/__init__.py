@@ -44,6 +44,8 @@ class LauncherForm(LauncherFormTemplate):
             open_form('AdminPanel')
         elif hash_val == "#import":
             open_form('DataImportForm')
+        elif hash_val == "#quotation-print":
+            open_form('QuotationPrintForm')
 
     def form_show(self, **event_args):
         """عند عرض النموذج"""
@@ -90,6 +92,13 @@ class LauncherForm(LauncherFormTemplate):
                 open_form("DataImportForm")
             except Exception as e:
                 alert(f"Error opening DataImportForm: {e}")
+
+        elif h == "#quotation-print":
+            # فتح صفحة طباعة عروض الأسعار
+            try:
+                open_form("QuotationPrintForm")
+            except Exception as e:
+                alert(f"Error opening QuotationPrintForm: {e}")
 
         # لا نفتح LauncherForm مرة أخرى لتجنب الحلقة اللانهائية
 

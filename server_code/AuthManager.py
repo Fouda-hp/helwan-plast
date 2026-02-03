@@ -2351,7 +2351,7 @@ def get_all_settings(token_or_email):
 @anvil.server.callable
 def update_setting(token_or_email, key, value):
     """
-    تحديث إعداد معين
+    تحديث أو إنشاء إعداد معين (upsert)
     """
     is_authorized, error = require_admin(token_or_email)
     if not is_authorized:
@@ -2363,7 +2363,20 @@ def update_setting(token_or_email, key, value):
     setting = app_tables.settings.get(setting_key=key)
 
     if not setting:
-        return {'success': False, 'message': 'Setting not found'}
+        # إنشاء الإعداد إذا لم يكن موجوداً
+        app_tables.settings.add_row(
+            setting_key=key,
+            setting_value=str(value),
+            setting_type='text',
+            description=f'Auto-created setting: {key}',
+            updated_by=admin_email,
+            updated_at=datetime.now()
+        )
+        log_audit('CREATE_SETTING', 'settings', key,
+                  None,
+                  {'value': value, 'created_by': admin_email},
+                  admin_email, ip_address)
+        return {'success': True, 'message': 'Setting created successfully'}
 
     old_value = setting['setting_value']
 

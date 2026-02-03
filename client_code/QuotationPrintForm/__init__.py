@@ -235,7 +235,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
             {'num': 10, 'ar': 'PLC', 'en': 'PLC', 'field': 'plc'},
             {'num': 11, 'ar': 'HMI شاشة', 'en': 'HMI Screen', 'field': 'hmi_screen'},
             {'num': 12, 'ar': 'سليتر', 'en': 'Slitter', 'field': 'slitter'},
-            {'num': 13, 'ar': 'نظام تجفيف الحبر', 'en': 'Ink Drying System', 'field': 'ink_drying'},
+            {'num': 13, 'ar': 'قدرة المجفف', 'en': 'Dryer Capacity', 'field': 'dryer_capacity'},
             {'num': 14, 'ar': 'الموتورات', 'en': 'Motors', 'field': 'motors'},
             {'num': 15, 'ar': 'سرعة الماكينة', 'en': 'Machine Speed', 'field': 'machine_speed'},
             {'num': 16, 'ar': 'عرض الطباعة', 'en': 'Printing Width', 'field': 'printing_width'},
@@ -257,16 +257,69 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
             # Get labels
             label = spec_settings.get('label_ar' if is_ar else 'label_en', spec['ar' if is_ar else 'en'])
 
-            # Get value based on source
-            source = spec_settings.get('source', spec['field'])
-            if source == 'custom':
-                value = spec_settings.get('custom_value', '-')
+            # Get value based on source type
+            source = spec_settings.get('source', 'field')
+            value = '-'
+
+            if source == 'fixed':
+                # Fixed value
+                value = spec_settings.get('default_value', '-')
+
             elif source == 'yes_no':
+                # Yes/No from quotation field
                 raw_val = data.get(spec['field'], False)
-                value = ('نعم' if is_ar else 'YES') if raw_val else ('لا' if is_ar else 'NO')
+                if str(raw_val).upper() in ['YES', 'TRUE', '1', 'نعم']:
+                    value = 'نعم' if is_ar else 'YES'
+                else:
+                    value = 'لا' if is_ar else 'NO'
+
+            elif source == 'conditional':
+                # Conditional rules
+                rules = spec_settings.get('rules', [])
+                matched = False
+
+                for rule in rules:
+                    rule_field = rule.get('field', '')
+                    rule_op = rule.get('operator', '=')
+                    rule_val = rule.get('value', '')
+                    rule_result = rule.get('result', '')
+
+                    # Get actual value from quotation data
+                    actual_val = data.get(rule_field, '')
+                    if actual_val is None:
+                        actual_val = ''
+
+                    # Evaluate the condition
+                    try:
+                        if rule_op == '=':
+                            matched = str(actual_val).lower() == str(rule_val).lower()
+                        elif rule_op == '!=':
+                            matched = str(actual_val).lower() != str(rule_val).lower()
+                        elif rule_op == '>':
+                            matched = float(actual_val) > float(rule_val)
+                        elif rule_op == '<':
+                            matched = float(actual_val) < float(rule_val)
+                        elif rule_op == '>=':
+                            matched = float(actual_val) >= float(rule_val)
+                        elif rule_op == '<=':
+                            matched = float(actual_val) <= float(rule_val)
+                        elif rule_op == 'contains':
+                            matched = str(rule_val).lower() in str(actual_val).lower()
+                    except (ValueError, TypeError):
+                        matched = False
+
+                    if matched:
+                        value = rule_result
+                        break
+
+                # If no rule matched, use default value
+                if not matched:
+                    value = spec_settings.get('default_value', '-')
+
             else:
-                # Get from quotation data or company settings
-                value = data.get(source, c.get(f"{source}_ar" if is_ar else f"{source}_en", '-'))
+                # Default: get from quotation field
+                field_name = spec['field']
+                value = data.get(field_name, c.get(f"{field_name}_ar" if is_ar else f"{field_name}_en", '-'))
                 if value is None or value == '':
                     value = '-'
 

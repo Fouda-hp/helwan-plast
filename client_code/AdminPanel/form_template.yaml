@@ -2032,16 +2032,24 @@ container:
                     // ==========================================
                     html += '<div style="background:#e3f2fd;padding:20px;border-radius:12px;margin-bottom:20px;border:2px solid #2196f3;">';
                     html += '<h4 style="margin:0 0 15px;color:#1565c0;">📋 Technical Specifications Table Settings</h4>';
-                    html += '<p style="margin:0 0 15px;color:#666;font-size:13px;">Configure which fields appear in the Technical Specifications table on the quotation PDF. Each row can show data from the quotation or a fixed value.</p>';
+                    html += '<p style="margin:0 0 15px;color:#666;font-size:13px;">Configure which fields appear in the Technical Specifications table. Use <b>Conditional Rules</b> to show different values based on quotation data.</p>';
+
+                    // Get saved tech specs from settings
+                    var savedTechSpecs = {};
+                    try {
+                      if (settings.technical_specs) {
+                        savedTechSpecs = JSON.parse(settings.technical_specs);
+                      }
+                    } catch(e) { savedTechSpecs = {}; }
 
                     html += '<div style="background:#fff;padding:15px;border-radius:8px;overflow-x:auto;">';
                     html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
                     html += '<thead><tr style="background:#f5f5f5;">';
                     html += '<th style="padding:10px;border:1px solid #ddd;text-align:center;width:40px;">#</th>';
-                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:right;">Label (Arabic)</th>';
-                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:left;">Label (English)</th>';
-                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:center;">Value Source</th>';
-                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:center;width:80px;">Active</th>';
+                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:right;width:120px;">Label (AR)</th>';
+                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:left;width:120px;">Label (EN)</th>';
+                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:center;">Value Configuration</th>';
+                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:center;width:60px;">Active</th>';
                     html += '</tr></thead><tbody>';
 
                     // Define the 20 technical specs rows
@@ -2051,14 +2059,14 @@ container:
                       {num: 3, ar: 'نوع الطباعة', en: 'Printing Sides', field: 'printing_sides'},
                       {num: 4, ar: 'وحدات التحكم في الشد', en: 'Tension Control Units', field: 'tension_control'},
                       {num: 5, ar: 'وحدات الكورونا', en: 'Corona Units', field: 'corona_units'},
-                      {num: 6, ar: 'نظام التحكم في مسجل الطباعة', en: 'Print Register Control System', field: 'print_register'},
+                      {num: 6, ar: 'نظام التحكم في مسجل الطباعة', en: 'Print Register Control', field: 'print_register'},
                       {num: 7, ar: 'سكاكين الدكتور', en: 'Doctor Blades', field: 'doctor_blades'},
                       {num: 8, ar: 'نوع رولات الانيلوكس', en: 'Anilox Type', field: 'anilox_type'},
                       {num: 9, ar: 'مراقبة الطباعة بالفيديو', en: 'Video Inspection', field: 'video_inspection'},
                       {num: 10, ar: 'PLC', en: 'PLC', field: 'plc'},
                       {num: 11, ar: 'HMI شاشة', en: 'HMI Screen', field: 'hmi_screen'},
                       {num: 12, ar: 'سليتر', en: 'Slitter', field: 'slitter'},
-                      {num: 13, ar: 'نظام تجفيف الحبر', en: 'Ink Drying System', field: 'ink_drying'},
+                      {num: 13, ar: 'قدرة المجفف', en: 'Dryer Capacity', field: 'dryer_capacity'},
                       {num: 14, ar: 'الموتورات', en: 'Motors', field: 'motors'},
                       {num: 15, ar: 'سرعة الماكينة', en: 'Machine Speed', field: 'machine_speed'},
                       {num: 16, ar: 'عرض الطباعة', en: 'Printing Width', field: 'printing_width'},
@@ -2068,28 +2076,63 @@ container:
                       {num: 20, ar: 'الوندر', en: 'Winder', field: 'winder'}
                     ];
 
+                    // Available quotation fields for conditions
+                    var quotationFields = [
+                      'model', 'colors_count', 'machine_width', 'winder', 'video_inspection',
+                      'plc', 'slitter', 'hmi_screen', 'corona', 'tension_control'
+                    ];
+
                     techSpecs.forEach(function(spec) {
                       var key = 'tech_spec_' + spec.num;
-                      var savedSpec = settings[key] || {};
+                      var savedSpec = savedTechSpecs[key] || {};
                       var isActive = savedSpec.active !== false;
-                      var valueSource = savedSpec.source || spec.field;
-                      var customValue = savedSpec.custom_value || '';
+                      var valueSource = savedSpec.source || 'field';
+                      var rules = savedSpec.rules || [];
+                      var defaultValue = savedSpec.default_value || '';
                       var labelAr = savedSpec.label_ar || spec.ar;
                       var labelEn = savedSpec.label_en || spec.en;
 
-                      html += '<tr>';
-                      html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;">' + spec.num + '</td>';
-                      html += '<td style="padding:8px;border:1px solid #ddd;"><input type="text" id="tech_' + spec.num + '_label_ar" value="' + labelAr + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;" dir="rtl"></td>';
-                      html += '<td style="padding:8px;border:1px solid #ddd;"><input type="text" id="tech_' + spec.num + '_label_en" value="' + labelEn + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;"></td>';
+                      html += '<tr id="row_' + spec.num + '">';
+                      html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;vertical-align:top;">' + spec.num + '</td>';
+                      html += '<td style="padding:8px;border:1px solid #ddd;vertical-align:top;"><input type="text" id="tech_' + spec.num + '_label_ar" value="' + labelAr + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;" dir="rtl"></td>';
+                      html += '<td style="padding:8px;border:1px solid #ddd;vertical-align:top;"><input type="text" id="tech_' + spec.num + '_label_en" value="' + labelEn + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;"></td>';
+
+                      // Value Configuration Cell
                       html += '<td style="padding:8px;border:1px solid #ddd;">';
-                      html += '<select id="tech_' + spec.num + '_source" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;" onchange="toggleCustomValue(' + spec.num + ')">';
-                      html += '<option value="' + spec.field + '"' + (valueSource === spec.field ? ' selected' : '') + '>From Quotation: ' + spec.field + '</option>';
-                      html += '<option value="custom"' + (valueSource === 'custom' ? ' selected' : '') + '>Custom Fixed Value</option>';
-                      html += '<option value="yes_no"' + (valueSource === 'yes_no' ? ' selected' : '') + '>Yes/No from Quotation</option>';
+                      html += '<select id="tech_' + spec.num + '_source" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;margin-bottom:5px;" onchange="toggleValueConfig(' + spec.num + ')">';
+                      html += '<option value="field"' + (valueSource === 'field' ? ' selected' : '') + '>📊 From Quotation Field</option>';
+                      html += '<option value="fixed"' + (valueSource === 'fixed' ? ' selected' : '') + '>📝 Fixed Value</option>';
+                      html += '<option value="yes_no"' + (valueSource === 'yes_no' ? ' selected' : '') + '>✅ Yes/No Field</option>';
+                      html += '<option value="conditional"' + (valueSource === 'conditional' ? ' selected' : '') + '>🔀 Conditional Rules</option>';
                       html += '</select>';
-                      html += '<input type="text" id="tech_' + spec.num + '_custom" value="' + customValue + '" placeholder="Enter custom value..." style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;margin-top:5px;display:' + (valueSource === 'custom' ? 'block' : 'none') + ';">';
+
+                      // Fixed value input
+                      html += '<div id="tech_' + spec.num + '_fixed_div" style="display:' + (valueSource === 'fixed' ? 'block' : 'none') + ';">';
+                      html += '<input type="text" id="tech_' + spec.num + '_fixed" value="' + defaultValue + '" placeholder="Enter fixed value..." style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;">';
+                      html += '</div>';
+
+                      // Conditional rules container
+                      html += '<div id="tech_' + spec.num + '_rules_div" style="display:' + (valueSource === 'conditional' ? 'block' : 'none') + ';background:#f9f9f9;padding:8px;border-radius:4px;margin-top:5px;">';
+                      html += '<div id="tech_' + spec.num + '_rules_list">';
+
+                      // Render existing rules
+                      if (rules.length > 0) {
+                        rules.forEach(function(rule, idx) {
+                          html += renderRuleRow(spec.num, idx, rule, quotationFields);
+                        });
+                      }
+
+                      html += '</div>';
+                      html += '<button type="button" onclick="addRule(' + spec.num + ')" style="margin-top:5px;padding:4px 10px;background:#2196f3;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">+ Add Rule</button>';
+                      html += '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ddd;">';
+                      html += '<label style="font-size:11px;color:#666;">Default value (if no rule matches):</label>';
+                      html += '<input type="text" id="tech_' + spec.num + '_default" value="' + defaultValue + '" placeholder="Default value..." style="width:100%;padding:4px;border:1px solid #ddd;border-radius:4px;font-size:12px;">';
+                      html += '</div>';
+                      html += '</div>';
+
                       html += '</td>';
-                      html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;">';
+
+                      html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;vertical-align:top;">';
                       html += '<input type="checkbox" id="tech_' + spec.num + '_active"' + (isActive ? ' checked' : '') + ' style="width:20px;height:20px;cursor:pointer;">';
                       html += '</td>';
                       html += '</tr>';
@@ -2098,11 +2141,51 @@ container:
                     html += '</tbody></table>';
                     html += '</div>';
 
+                    // Help section
+                    html += '<div style="margin-top:15px;padding:12px;background:#fff3cd;border-radius:8px;border:1px solid #ffc107;">';
+                    html += '<h5 style="margin:0 0 8px;color:#856404;">💡 How Conditional Rules Work:</h5>';
+                    html += '<ul style="margin:0;padding-left:20px;font-size:12px;color:#856404;">';
+                    html += '<li><b>IF</b> [field] <b>=</b> [value] <b>THEN</b> show [result]</li>';
+                    html += '<li>Example: IF colors_count = 8 THEN show "8 ألوان"</li>';
+                    html += '<li>Rules are checked in order - first match wins</li>';
+                    html += '<li>If no rule matches, the default value is shown</li>';
+                    html += '</ul>';
+                    html += '</div>';
+
                     html += '<div style="margin-top:15px;text-align:center;">';
                     html += '<button class="action-btn green" onclick="saveTechSpecs()" style="padding:12px 30px;">💾 Save All Technical Specs</button>';
                     html += '</div>';
 
                     html += '</div>'; // End Technical Specs Section
+
+                    // Helper function to render a rule row
+                    function renderRuleRow(specNum, ruleIdx, rule, fields) {
+                      rule = rule || {field: '', operator: '=', value: '', result: ''};
+                      var rowHtml = '<div class="rule-row" id="rule_' + specNum + '_' + ruleIdx + '" style="display:flex;gap:5px;align-items:center;margin-bottom:5px;flex-wrap:wrap;">';
+                      rowHtml += '<span style="font-size:11px;color:#666;">IF</span>';
+                      rowHtml += '<select id="rule_' + specNum + '_' + ruleIdx + '_field" style="padding:4px;border:1px solid #ddd;border-radius:3px;font-size:11px;">';
+                      fields.forEach(function(f) {
+                        rowHtml += '<option value="' + f + '"' + (rule.field === f ? ' selected' : '') + '>' + f + '</option>';
+                      });
+                      rowHtml += '</select>';
+                      rowHtml += '<select id="rule_' + specNum + '_' + ruleIdx + '_op" style="padding:4px;border:1px solid #ddd;border-radius:3px;font-size:11px;">';
+                      rowHtml += '<option value="="' + (rule.operator === '=' ? ' selected' : '') + '>=</option>';
+                      rowHtml += '<option value="!="' + (rule.operator === '!=' ? ' selected' : '') + '>≠</option>';
+                      rowHtml += '<option value=">"' + (rule.operator === '>' ? ' selected' : '') + '>></option>';
+                      rowHtml += '<option value="<"' + (rule.operator === '<' ? ' selected' : '') + '><</option>';
+                      rowHtml += '<option value=">="' + (rule.operator === '>=' ? ' selected' : '') + '>≥</option>';
+                      rowHtml += '<option value="<="' + (rule.operator === '<=' ? ' selected' : '') + '>≤</option>';
+                      rowHtml += '<option value="contains"' + (rule.operator === 'contains' ? ' selected' : '') + '>contains</option>';
+                      rowHtml += '</select>';
+                      rowHtml += '<input type="text" id="rule_' + specNum + '_' + ruleIdx + '_val" value="' + (rule.value || '') + '" placeholder="value" style="width:60px;padding:4px;border:1px solid #ddd;border-radius:3px;font-size:11px;">';
+                      rowHtml += '<span style="font-size:11px;color:#666;">THEN</span>';
+                      rowHtml += '<input type="text" id="rule_' + specNum + '_' + ruleIdx + '_result" value="' + (rule.result || '') + '" placeholder="show this" style="flex:1;min-width:80px;padding:4px;border:1px solid #ddd;border-radius:3px;font-size:11px;">';
+                      rowHtml += '<button type="button" onclick="removeRule(' + specNum + ',' + ruleIdx + ')" style="padding:2px 6px;background:#f44336;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;">✕</button>';
+                      rowHtml += '</div>';
+                      return rowHtml;
+                    }
+                    window.renderRuleRow = renderRuleRow;
+                    window.quotationFields = quotationFields;
 
                     // Shipping & Expenses Section
                     html += '<div style="background:#f8f9fa;padding:20px;border-radius:12px;margin-bottom:20px;">';
@@ -2324,14 +2407,74 @@ container:
                   }
                 };
 
-                // Toggle custom value input visibility
-                window.toggleCustomValue = function(specNum) {
+                // Toggle value configuration based on source type
+                window.toggleValueConfig = function(specNum) {
                   var sourceSelect = document.getElementById('tech_' + specNum + '_source');
-                  var customInput = document.getElementById('tech_' + specNum + '_custom');
-                  if (sourceSelect && customInput) {
-                    customInput.style.display = sourceSelect.value === 'custom' ? 'block' : 'none';
+                  var fixedDiv = document.getElementById('tech_' + specNum + '_fixed_div');
+                  var rulesDiv = document.getElementById('tech_' + specNum + '_rules_div');
+
+                  if (sourceSelect && fixedDiv && rulesDiv) {
+                    var val = sourceSelect.value;
+                    fixedDiv.style.display = (val === 'fixed') ? 'block' : 'none';
+                    rulesDiv.style.display = (val === 'conditional') ? 'block' : 'none';
                   }
                 };
+
+                // Rule counter for each spec
+                window.ruleCounters = {};
+
+                // Add a new rule
+                window.addRule = function(specNum) {
+                  var rulesList = document.getElementById('tech_' + specNum + '_rules_list');
+                  if (!rulesList) return;
+
+                  if (!window.ruleCounters[specNum]) {
+                    window.ruleCounters[specNum] = rulesList.children.length;
+                  }
+                  var ruleIdx = window.ruleCounters[specNum]++;
+
+                  var ruleHtml = window.renderRuleRow(specNum, ruleIdx, {}, window.quotationFields);
+                  var div = document.createElement('div');
+                  div.innerHTML = ruleHtml;
+                  rulesList.appendChild(div.firstChild);
+                };
+
+                // Remove a rule
+                window.removeRule = function(specNum, ruleIdx) {
+                  var ruleRow = document.getElementById('rule_' + specNum + '_' + ruleIdx);
+                  if (ruleRow) {
+                    ruleRow.remove();
+                  }
+                };
+
+                // Collect rules for a spec
+                function collectRules(specNum) {
+                  var rules = [];
+                  var rulesList = document.getElementById('tech_' + specNum + '_rules_list');
+                  if (!rulesList) return rules;
+
+                  var ruleRows = rulesList.querySelectorAll('.rule-row');
+                  ruleRows.forEach(function(row) {
+                    var id = row.id; // rule_X_Y
+                    var parts = id.split('_');
+                    var idx = parts[2];
+
+                    var field = document.getElementById('rule_' + specNum + '_' + idx + '_field');
+                    var op = document.getElementById('rule_' + specNum + '_' + idx + '_op');
+                    var val = document.getElementById('rule_' + specNum + '_' + idx + '_val');
+                    var result = document.getElementById('rule_' + specNum + '_' + idx + '_result');
+
+                    if (field && op && val && result) {
+                      rules.push({
+                        field: field.value,
+                        operator: op.value,
+                        value: val.value,
+                        result: result.value
+                      });
+                    }
+                  });
+                  return rules;
+                }
 
                 // Save all technical specs
                 window.saveTechSpecs = async function() {
@@ -2341,17 +2484,29 @@ container:
                     var labelAr = document.getElementById('tech_' + i + '_label_ar');
                     var labelEn = document.getElementById('tech_' + i + '_label_en');
                     var source = document.getElementById('tech_' + i + '_source');
-                    var customValue = document.getElementById('tech_' + i + '_custom');
+                    var fixedValue = document.getElementById('tech_' + i + '_fixed');
+                    var defaultValue = document.getElementById('tech_' + i + '_default');
                     var active = document.getElementById('tech_' + i + '_active');
 
                     if (labelAr && labelEn && source && active) {
-                      specsData['tech_spec_' + i] = {
+                      var specData = {
                         label_ar: labelAr.value,
                         label_en: labelEn.value,
                         source: source.value,
-                        custom_value: customValue ? customValue.value : '',
                         active: active.checked
                       };
+
+                      // Add fixed/default value
+                      if (source.value === 'fixed' && fixedValue) {
+                        specData.default_value = fixedValue.value;
+                      } else if (source.value === 'conditional') {
+                        specData.rules = collectRules(i);
+                        if (defaultValue) {
+                          specData.default_value = defaultValue.value;
+                        }
+                      }
+
+                      specsData['tech_spec_' + i] = specData;
                     }
                   }
 

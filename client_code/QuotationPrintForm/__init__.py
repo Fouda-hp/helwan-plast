@@ -581,6 +581,12 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                 return;
             }}
 
+            // Make sure element is visible for capture
+            var wasHidden = element.style.display === 'none';
+            if (wasHidden) {{
+                element.style.display = 'block';
+            }}
+
             // Load html2pdf.js if not loaded
             function loadScript(url, callback) {{
                 var script = document.createElement('script');
@@ -746,15 +752,21 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                     }}
                 }};
 
-                html2pdf().set(opt).from(element).save().then(function() {{
-                    // Remove temporary styles after export
-                    var tempStyle = document.getElementById('pdf-export-styles');
-                    if (tempStyle) tempStyle.remove();
-                }});
+                // Small delay to ensure element is fully rendered
+                setTimeout(function() {{
+                    html2pdf().set(opt).from(element).save().then(function() {{
+                        // Remove temporary styles after export
+                        var tempStyle = document.getElementById('pdf-export-styles');
+                        if (tempStyle) tempStyle.remove();
+                    }});
+                }}, 100);
             }}
 
             if (typeof html2pdf === 'undefined') {{
-                loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js', generatePDF);
+                loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js', function() {{
+                    // Wait a bit for library to initialize
+                    setTimeout(generatePDF, 100);
+                }});
             }} else {{
                 generatePDF();
             }}

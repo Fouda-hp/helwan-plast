@@ -38,11 +38,45 @@ class LoginForm(LoginFormTemplate):
         anvil.js.window.verifyPasswordResetOtp = self.verify_password_reset_otp
         anvil.js.window.completePasswordReset = self.complete_password_reset
 
+        # Check if user is already logged in (auto-login)
+        self.check_existing_session()
+
         # Check route on load
         self.check_route()
 
         # Listen for hash changes
         anvil.js.window.addEventListener("hashchange", self.on_hash_change)
+
+    def check_existing_session(self):
+        """Check if user has valid session and redirect to launcher"""
+        try:
+            auth_token = anvil.js.window.localStorage.getItem('auth_token')
+            user_email = anvil.js.window.localStorage.getItem('user_email')
+            user_role = anvil.js.window.localStorage.getItem('user_role')
+
+            # Only check if we have saved credentials
+            if auth_token and user_email:
+                # Validate the token with the server
+                result = anvil.server.call('validate_token', auth_token)
+                if result.get('valid'):
+                    # Token is valid, redirect to appropriate page
+                    if user_role == 'admin':
+                        anvil.js.window.location.hash = '#admin'
+                    else:
+                        anvil.js.window.location.hash = '#launcher'
+                else:
+                    # Token expired or invalid, clear storage
+                    self.clear_auth_storage()
+        except Exception as e:
+            print(f"Auto-login check error: {e}")
+            self.clear_auth_storage()
+
+    def clear_auth_storage(self):
+        """Clear all auth-related localStorage items"""
+        anvil.js.window.localStorage.removeItem('auth_token')
+        anvil.js.window.localStorage.removeItem('user_email')
+        anvil.js.window.localStorage.removeItem('user_name')
+        anvil.js.window.localStorage.removeItem('user_role')
 
     def on_hash_change(self, event):
         self.check_route()
@@ -72,12 +106,14 @@ class LoginForm(LoginFormTemplate):
         try:
             result = anvil.server.call('login_user', email, password)
 
-            # حفظ معلومات المستخدم في sessionStorage إذا نجح تسجيل الدخول
+            # حفظ معلومات المستخدم في localStorage للحفاظ على الجلسة
             if result.get('success') and result.get('user'):
                 user = result['user']
-                anvil.js.window.sessionStorage.setItem('user_email', user.get('email', ''))
-                anvil.js.window.sessionStorage.setItem('user_name', user.get('full_name', ''))
-                anvil.js.window.sessionStorage.setItem('user_role', user.get('role', ''))
+                anvil.js.window.localStorage.setItem('user_email', user.get('email', ''))
+                anvil.js.window.localStorage.setItem('user_name', user.get('full_name', ''))
+                anvil.js.window.localStorage.setItem('user_role', user.get('role', ''))
+                if result.get('token'):
+                    anvil.js.window.localStorage.setItem('auth_token', result.get('token', ''))
 
             return result
         except Exception as e:
@@ -141,9 +177,11 @@ class LoginForm(LoginFormTemplate):
             # حفظ معلومات المستخدم إذا نجح التحقق
             if result.get('success') and result.get('user'):
                 user = result['user']
-                anvil.js.window.sessionStorage.setItem('user_email', user.get('email', ''))
-                anvil.js.window.sessionStorage.setItem('user_name', user.get('full_name', ''))
-                anvil.js.window.sessionStorage.setItem('user_role', user.get('role', ''))
+                anvil.js.window.localStorage.setItem('user_email', user.get('email', ''))
+                anvil.js.window.localStorage.setItem('user_name', user.get('full_name', ''))
+                anvil.js.window.localStorage.setItem('user_role', user.get('role', ''))
+                if result.get('token'):
+                    anvil.js.window.localStorage.setItem('auth_token', result.get('token', ''))
 
             return result
         except Exception as e:

@@ -122,11 +122,11 @@ class AdminPanel(AdminPanelTemplate):
     # =========================================================
     def get_email(self):
         """Get user email from session storage"""
-        return anvil.js.window.sessionStorage.getItem('user_email') or self.user_email
+        return anvil.js.window.localStorage.getItem('user_email') or self.user_email
 
     def get_token(self):
         """Get auth token from session storage"""
-        return anvil.js.window.sessionStorage.getItem('auth_token')
+        return anvil.js.window.localStorage.getItem('auth_token')
 
     def get_auth(self):
         """Get email for auth (more reliable than token)"""
@@ -141,7 +141,7 @@ class AdminPanel(AdminPanelTemplate):
         """الحصول على اسم المستخدم"""
         if self.user_name:
             return self.user_name
-        return anvil.js.window.sessionStorage.getItem('user_name') or 'Admin'
+        return anvil.js.window.localStorage.getItem('user_name') or 'Admin'
 
     def get_user_email(self):
         """الحصول على بريد المستخدم"""
@@ -151,7 +151,7 @@ class AdminPanel(AdminPanelTemplate):
         """الحصول على دور المستخدم"""
         if self.current_user:
             return self.current_user.get('role', 'admin')
-        return anvil.js.window.sessionStorage.getItem('user_role') or 'admin'
+        return anvil.js.window.localStorage.getItem('user_role') or 'admin'
 
     # =========================================================
     # Dashboard
@@ -278,5 +278,5 @@ class AdminPanel(AdminPanelTemplate):
                 anvil.server.call('logout_user', token)
             except:
                 pass
-        anvil.js.window.sessionStorage.clear()
+        anvil.js.window.localStorage.clear()
         return True

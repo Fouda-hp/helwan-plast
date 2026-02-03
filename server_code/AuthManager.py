@@ -883,10 +883,10 @@ def get_client_ip():
 # =========================================================
 @anvil.server.callable
 def register_user(email, password, full_name, phone=None):
-  """
+    """
     تسجيل مستخدم جديد - الخطوة الأولى (إرسال OTP للتحقق من البريد)
     """
-  ip_address = get_client_ip()
+    ip_address = get_client_ip()
 
     # التحقق من Rate Limit
     if not check_rate_limit(ip_address, 'register'):

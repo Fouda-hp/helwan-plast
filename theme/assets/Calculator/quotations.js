@@ -86,10 +86,33 @@
   }
 
   // ----------------------------------------
-  // Loading indicator
+  // Loading indicator (Skeleton Loading)
   // ----------------------------------------
   function showLoading(container) {
-    container.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:40px;"><div style="display:inline-block;width:30px;height:30px;border:3px solid #e0e0e0;border-top-color:#667eea;border-radius:50%;animation:spin 0.8s linear infinite;"></div><p style="margin-top:10px;color:#666;">Loading...</p></td></tr>';
+    var skeletonRows = '';
+    for (var i = 0; i < 5; i++) {
+      skeletonRows += `
+        <tr class="skeleton-row">
+          <td style="padding:12px 15px;border-bottom:1px solid #eee;">
+            <div class="skeleton-box" style="width:60px;height:18px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:skeleton-shimmer 1.5s infinite;border-radius:4px;"></div>
+          </td>
+          <td style="padding:12px 15px;border-bottom:1px solid #eee;">
+            <div class="skeleton-box" style="width:150px;height:18px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:skeleton-shimmer 1.5s infinite;border-radius:4px;"></div>
+          </td>
+          <td style="padding:12px 15px;border-bottom:1px solid #eee;">
+            <div class="skeleton-box" style="width:80px;height:18px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:skeleton-shimmer 1.5s infinite;border-radius:4px;"></div>
+          </td>
+        </tr>`;
+    }
+    container.innerHTML = skeletonRows;
+
+    // Add skeleton animation keyframes if not exists
+    if (!document.getElementById('skeleton-styles')) {
+      var style = document.createElement('style');
+      style.id = 'skeleton-styles';
+      style.textContent = '@keyframes skeleton-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}';
+      document.head.appendChild(style);
+    }
   }
 
   // ----------------------------------------

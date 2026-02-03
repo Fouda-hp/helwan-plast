@@ -779,6 +779,38 @@ def check_rate_limit(ip_address, endpoint='general'):
     return False
 
 
+@anvil.server.callable
+def clear_rate_limits():
+  """
+  مسح كل سجلات Rate Limit - للاستخدام الإداري فقط
+  """
+  try:
+    count = 0
+    for record in app_tables.rate_limits.search():
+      record.delete()
+      count += 1
+    logger.info(f"Cleared {count} rate limit records")
+    return {'success': True, 'message': f'Cleared {count} records'}
+  except Exception as e:
+    logger.error(f"Error clearing rate limits: {e}")
+    return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def reset_user_login_attempts(email):
+  """
+  إعادة تعيين محاولات تسجيل الدخول للمستخدم
+  """
+  try:
+    user = app_tables.users.get(email=email)
+    if user:
+      user.update(login_attempts=0, locked_until=None)
+      return {'success': True, 'message': 'Login attempts reset'}
+    return {'success': False, 'message': 'User not found'}
+  except Exception as e:
+    return {'success': False, 'message': str(e)}
+
+
 # =========================================================
 # تسجيل التدقيق (مع IP Address)
 # =========================================================

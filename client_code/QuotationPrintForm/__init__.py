@@ -150,7 +150,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
             self.render_template()
 
     def render_template(self):
-        """Render the quotation template"""
+        """Render the quotation template - 3 pages without page breaks"""
         if not self.current_data:
             return
 
@@ -158,6 +158,16 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         c = data.get('company', {})
         is_ar = (self.current_lang == 'ar')
 
+        # Get machine model and material for conditional logic
+        model = str(data.get('model', '')).upper()
+        material = str(data.get('material', '')).upper()
+        plc_value = str(data.get('plc', '')).upper()
+
+        # Determine machine type prefix
+        machine_type_base = data.get('model', '')
+        machine_type_display = f"Flexo Stack With {machine_type_base}" if not is_ar else f"فليكسو ستاك مع {machine_type_base}"
+
+        # ==================== PAGE 1 ====================
         html = f'<div class="template-page {"" if is_ar else "ltr"}">'
 
         # Header
@@ -187,7 +197,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         # Machine Details
         html += f'<div class="section-title">{"تفاصيل الماكينة :" if is_ar else "Machine Details"}</div>'
         html += '<table class="details-table">'
-        html += f'<tr><th>{"نوع الماكينة :" if is_ar else "Machine Type:"}</th><td>{data.get("machine_type", "Flexo Stack")}</td></tr>'
+        html += f'<tr><th>{"نوع الماكينة :" if is_ar else "Machine Type:"}</th><td>{machine_type_display}</td></tr>'
         html += f'<tr><th>{"الموديل :" if is_ar else "Model:"}</th><td>{data.get("model", "")}</td></tr>'
         html += f'<tr><th>{"بلد المنشأ :" if is_ar else "Country of Origin:"}</th><td>{c.get("country_origin_ar" if is_ar else "country_origin_en", "")}</td></tr>'
         html += f'<tr><th>{"عدد الألوان :" if is_ar else "Number of Colors:"}</th><td>{data.get("colors_count", "")}</td></tr>'
@@ -195,9 +205,83 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         html += f'<tr><th>{"عرض الماكينة :" if is_ar else "Machine Width:"}</th><td>{data.get("machine_width", "")} {"سم" if is_ar else "CM"}</td></tr>'
         html += '</table>'
 
+        # ==================== 17 SPECIFICATIONS ====================
+        html += f'<div class="section-title">{"المواصفات الفنية:" if is_ar else "Technical Specifications:"}</div>'
+        html += '<ol class="specs-list" style="font-size: 13px; line-height: 2; padding-right: 20px; padding-left: 20px;">'
+
+        # Helper function to determine Belt/Gear drive for item 13
+        def get_drive_type():
+            is_metal_anilox = 'METAL' in model
+            is_nonwoven = 'NONWOVEN' in material
+            # Belt drive if: Ceramic anilox OR NONWOVEN material
+            # Gear drive if: Metal anilox AND NOT NONWOVEN
+            if is_metal_anilox and not is_nonwoven:
+                return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق الجيربوكس' if is_ar else 'Gear drive',
+                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر نظام الجير لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+            else:
+                return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق السيور' if is_ar else 'Belt drive',
+                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر السيور لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+
+        # Helper function for item 7 (color registration)
+        def get_color_registration():
+            is_plc_yes = plc_value in ['YES', 'TRUE', '1', 'نعم']
+            if is_plc_yes:
+                return ('ضبط تسجيل الألوان الأفقي والرأسي أوتوماتيكياً أثناء التشغيل' if is_ar else 'Automatically horizontal and vertical color registration adjustment during operation')
+            else:
+                return ('ضبط تسجيل الألوان الأفقي والرأسي يدوياً أثناء التشغيل' if is_ar else 'Manual horizontal and vertical color registration adjustment during operation')
+
+        drive_type, drive_desc = get_drive_type()
+        color_reg = get_color_registration()
+
+        # 17 Specifications
+        specs_en = [
+            "Heavy-duty cast iron frame, stable and vibration-resistant",
+            "Automatic web tension control units suitable for different material weights, thicknesses, and flexibility, with manual adjustment option",
+            "Web guiding (oscillating) units to ensure accurate print centering on the substrate and smooth rewinding of printed material",
+            "Rollers and cylinders laser-treated for heavy-duty operation and extended service life",
+            "Automatic machine stop sensors in case of film breakage or material run-out",
+            "Printing cylinder pressure applied via hydraulic oil system to avoid pneumatic pressure issues and reduce electrical consumption caused by repeated air compressor operation",
+            color_reg if not is_ar else color_reg,
+            "Integrated overhead lifting cranes to facilitate loading and unloading of rolls and printing cylinders, saving time, labor, and effort",
+            "Suitable for solvent-based and water-based inks",
+            "Delta (Taiwan) inverters",
+            "Safety alarm before machine start-up to prevent injuries",
+            "Hot air drying units with extended web path to ensure complete ink drying, in addition to inter-color drying units",
+            drive_desc if not is_ar else drive_desc,
+            "Integrated lubrication pumps to ensure balanced oil distribution to all components, smooth operation, and protection of all moving parts",
+            "Separate rewind motors with independent control to allow operation with different flexibility and thicknesses of materials",
+            "Air-shaft unwind/rewind cylinders, in addition to one extra mechanical shaft to enable operation with any core size",
+            "Double-sided printing capability"
+        ]
+
+        specs_ar = [
+            "هيكل من الحديد الزهر الثقيل، ثابت ومقاوم للاهتزازات",
+            "وحدات تحكم أوتوماتيكية في شد الخامة مناسبة لأوزان وسماكات ومرونات مختلفة، مع خيار الضبط اليدوي",
+            "وحدات توجيه الخامة (المتأرجحة) لضمان دقة توسيط الطباعة على الخامة وإعادة لف سلسة للمادة المطبوعة",
+            "الرولات والأسطوانات معالجة بالليزر للتشغيل الشاق وإطالة عمر الخدمة",
+            "مستشعرات إيقاف أوتوماتيكي للماكينة في حالة انقطاع الفيلم أو نفاد الخامة",
+            "ضغط أسطوانة الطباعة يتم عبر نظام الزيت الهيدروليكي لتجنب مشاكل الضغط الهوائي وتقليل استهلاك الكهرباء الناتج عن تشغيل ضاغط الهواء المتكرر",
+            get_color_registration(),
+            "رافعات سقفية مدمجة لتسهيل تحميل وتفريغ الرولات وأسطوانات الطباعة، مما يوفر الوقت والجهد والعمالة",
+            "مناسبة لأحبار المذيبات والأحبار المائية",
+            "إنفرترات دلتا (تايوان)",
+            "إنذار أمان قبل بدء تشغيل الماكينة لمنع الإصابات",
+            "وحدات تجفيف بالهواء الساخن مع مسار خامة ممتد لضمان جفاف الحبر الكامل، بالإضافة إلى وحدات تجفيف بين الألوان",
+            get_drive_type()[1],
+            "مضخات تشحيم مدمجة لضمان توزيع متوازن للزيت على جميع المكونات، تشغيل سلس، وحماية جميع الأجزاء المتحركة",
+            "موتورات إعادة لف منفصلة بتحكم مستقل للسماح بالتشغيل مع مرونات وسماكات مختلفة للخامات",
+            "أسطوانات فك/لف بشافت هوائي، بالإضافة إلى شافت ميكانيكي إضافي لتمكين التشغيل مع أي حجم كور",
+            "إمكانية الطباعة على الوجهين"
+        ]
+
+        specs = specs_ar if is_ar else specs_en
+        for i, spec in enumerate(specs, 1):
+            html += f'<li>{spec}</li>'
+
+        html += '</ol>'
         html += '</div>'  # End Page 1
 
-        # Page 2 - Technical Specs
+        # ==================== PAGE 2 - Technical Table ====================
         html += f'<div class="template-page {"" if is_ar else "ltr"}">'
 
         # Header (repeated)
@@ -213,133 +297,126 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         html += '</div>'
         html += '</div>'
 
-        html += f'<div class="section-title">{"المواصفات الفنية:" if is_ar else "Technical Specifications:"}</div>'
+        html += f'<div class="section-title">{"جدول المواصفات الفنية:" if is_ar else "Technical Specifications Table:"}</div>'
 
-        # Generate Technical Specifications table dynamically
-        html += '<table class="tech-table">'
+        # ==================== CALCULATE TABLE VALUES ====================
+        # Get values from quotation data
+        winder_type = str(data.get('winder', '')).upper()
+        is_double_winder = 'DOUBLE' in winder_type
+        colors_count = int(data.get('colors_count', 0) or 0)
+        machine_width = float(data.get('machine_width', 0) or 0)
 
-        # Get tech specs settings from company data or use defaults
-        tech_specs_settings = data.get('tech_specs_settings', {})
+        # Determine if Belt or Gear drive
+        is_metal_anilox = 'METAL' in model
+        is_nonwoven = 'NONWOVEN' in material
+        is_belt_drive = not (is_metal_anilox and not is_nonwoven)
 
-        # Default technical specs configuration
-        default_specs = [
-            {'num': 1, 'ar': 'الموديل', 'en': 'Model', 'field': 'model'},
-            {'num': 2, 'ar': 'عدد الألوان', 'en': 'Number of Colors', 'field': 'colors_count'},
-            {'num': 3, 'ar': 'نوع الطباعة', 'en': 'Printing Sides', 'field': 'printing_sides'},
-            {'num': 4, 'ar': 'وحدات التحكم في الشد', 'en': 'Tension Control Units', 'field': 'tension_control'},
-            {'num': 5, 'ar': 'وحدات الكورونا', 'en': 'Corona Units', 'field': 'corona_units'},
-            {'num': 6, 'ar': 'نظام التحكم في مسجل الطباعة', 'en': 'Print Register Control System', 'field': 'print_register'},
-            {'num': 7, 'ar': 'سكاكين الدكتور', 'en': 'Doctor Blades', 'field': 'doctor_blades'},
-            {'num': 8, 'ar': 'نوع رولات الانيلوكس', 'en': 'Anilox Type', 'field': 'anilox_type'},
-            {'num': 9, 'ar': 'مراقبة الطباعة بالفيديو', 'en': 'Video Inspection', 'field': 'video_inspection'},
-            {'num': 10, 'ar': 'PLC', 'en': 'PLC', 'field': 'plc'},
-            {'num': 11, 'ar': 'HMI شاشة', 'en': 'HMI Screen', 'field': 'hmi_screen'},
-            {'num': 12, 'ar': 'سليتر', 'en': 'Slitter', 'field': 'slitter'},
-            {'num': 13, 'ar': 'قدرة المجفف', 'en': 'Dryer Capacity', 'field': 'dryer_capacity'},
-            {'num': 14, 'ar': 'الموتورات', 'en': 'Motors', 'field': 'motors'},
-            {'num': 15, 'ar': 'سرعة الماكينة', 'en': 'Machine Speed', 'field': 'machine_speed'},
-            {'num': 16, 'ar': 'عرض الطباعة', 'en': 'Printing Width', 'field': 'printing_width'},
-            {'num': 17, 'ar': 'قطر الرول الأم', 'en': 'Parent Roll Diameter', 'field': 'roll_diameter'},
-            {'num': 18, 'ar': 'قطر البوبينة', 'en': 'Bobbin Diameter', 'field': 'bobbin_diameter'},
-            {'num': 19, 'ar': 'سمك المادة', 'en': 'Material Thickness', 'field': 'material_thickness'},
-            {'num': 20, 'ar': 'الوندر', 'en': 'Winder', 'field': 'winder'}
+        # Get settings values with defaults
+        belt_max_machine_speed = int(c.get('belt_max_machine_speed', 120))
+        belt_max_print_speed = int(c.get('belt_max_print_speed', 120))
+        belt_print_length = c.get('belt_print_length', '300mm - 1300mm')
+        gear_max_machine_speed = int(c.get('gear_max_machine_speed', 100))
+        gear_max_print_speed = int(c.get('gear_max_print_speed', 80))
+        gear_print_length = c.get('gear_print_length', '240mm - 1000mm')
+        single_winder_roll_dia = int(c.get('single_winder_roll_dia', 1200))
+        double_winder_roll_dia = int(c.get('double_winder_roll_dia', 800))
+        dryer_capacity = c.get('dryer_capacity', '2.2kw air blower × 2 units')
+        main_motor_power = c.get('main_motor_power', '5 HP')
+
+        # Calculate values based on rules
+        # Number of Colors format
+        if colors_count == 8:
+            colors_display = "8+0, 7+1, 6+2, 5+3, 4+4 reverse printing" if not is_ar else "8+0، 7+1، 6+2، 5+3، 4+4 طباعة عكسية"
+        elif colors_count == 6:
+            colors_display = "6+0, 5+1, 4+2, 3+3 reverse printing" if not is_ar else "6+0، 5+1، 4+2، 3+3 طباعة عكسية"
+        elif colors_count == 4:
+            colors_display = "4+0, 3+1, 2+2 reverse printing" if not is_ar else "4+0، 3+1، 2+2 طباعة عكسية"
+        else:
+            colors_display = str(colors_count)
+
+        # Values based on winder type (double=4/2, single=2/1)
+        tension_units = 4 if is_double_winder else 2
+        brake_system = 4 if is_double_winder else 2
+        brake_power = 2 if is_double_winder else 1
+        web_guiding = 2 if is_double_winder else 1
+
+        # Width calculations
+        max_film_width = int(machine_width * 10 + 50)
+        max_print_width = int(machine_width * 10 - 40)
+
+        # Printing length based on drive type (from settings)
+        print_length = belt_print_length if is_belt_drive else gear_print_length
+
+        # Roll diameter based on winder (from settings)
+        max_roll_diameter = double_winder_roll_dia if is_double_winder else single_winder_roll_dia
+
+        # Anilox type
+        anilox_display = ("Metal Anilox" if not is_ar else "انيلوكس معدني") if is_metal_anilox else ("Ceramic Anilox" if not is_ar else "انيلوكس سيراميك")
+
+        # Speed based on drive type (from settings)
+        max_machine_speed = belt_max_machine_speed if is_belt_drive else gear_max_machine_speed
+        max_print_speed = belt_max_print_speed if is_belt_drive else gear_max_print_speed
+
+        # Drive type display
+        drive_display = ("Belt Drive" if not is_ar else "سيور") if is_belt_drive else ("Gear Drive" if not is_ar else "جيربوكس")
+
+        # Yes/No fields
+        def yes_no(field_name):
+            val = str(data.get(field_name, '')).upper()
+            if val in ['YES', 'TRUE', '1', 'نعم']:
+                return 'Yes' if not is_ar else 'نعم'
+            return 'No' if not is_ar else 'لا'
+
+        # Build specs table with calculated values
+        table_specs = [
+            {'en': 'Model', 'ar': 'الموديل', 'value': data.get('model', '-')},
+            {'en': 'Number of Colors', 'ar': 'عدد الألوان', 'value': colors_display},
+            {'en': 'Printing Sides', 'ar': 'أوجه الطباعة', 'value': '2'},
+            {'en': 'Tension Control Units', 'ar': 'وحدات التحكم في الشد', 'value': str(tension_units)},
+            {'en': 'Brake System', 'ar': 'نظام الفرامل', 'value': str(brake_system)},
+            {'en': 'Brake Power', 'ar': 'قوة الفرامل', 'value': str(brake_power)},
+            {'en': 'Web Guiding System (Oscillating Type)', 'ar': 'نظام توجيه الخامة (النوع المتأرجح)', 'value': str(web_guiding)},
+            {'en': 'Maximum Film Width', 'ar': 'أقصى عرض للفيلم', 'value': f"{max_film_width} mm"},
+            {'en': 'Maximum Printing Width', 'ar': 'أقصى عرض للطباعة', 'value': f"{max_print_width} mm"},
+            {'en': 'Minimum and Maximum Printing Length', 'ar': 'الحد الأدنى والأقصى لطول الطباعة', 'value': print_length},
+            {'en': 'Maximum Roll Diameter', 'ar': 'أقصى قطر للرول', 'value': f"{max_roll_diameter} mm"},
+            {'en': 'Anilox Type', 'ar': 'نوع الأنيلوكس', 'value': anilox_display},
+            {'en': 'Maximum Machine Speed', 'ar': 'أقصى سرعة للماكينة', 'value': f"{max_machine_speed} m/min"},
+            {'en': 'Maximum Printing Speed', 'ar': 'أقصى سرعة للطباعة', 'value': f"{max_print_speed} m/min"},
+            {'en': 'Dryer Capacity', 'ar': 'قدرة المجفف', 'value': dryer_capacity},
+            {'en': 'Power Transmission Method', 'ar': 'طريقة نقل القدرة', 'value': drive_display},
+            {'en': 'Main Motor Power', 'ar': 'قدرة الموتور الرئيسي', 'value': main_motor_power},
+            {'en': 'Video Inspection', 'ar': 'الفحص بالفيديو', 'value': yes_no('video_inspection')},
+            {'en': 'PLC', 'ar': 'PLC', 'value': yes_no('plc')},
+            {'en': 'Slitter', 'ar': 'السليتر', 'value': yes_no('slitter')},
         ]
 
-        for spec in default_specs:
-            spec_key = f"tech_spec_{spec['num']}"
-            spec_settings = tech_specs_settings.get(spec_key, {})
-
-            # Check if this spec is active (default to True for first 6)
-            is_active = spec_settings.get('active', spec['num'] <= 6)
-            if not is_active:
-                continue
-
-            # Get labels
-            label = spec_settings.get('label_ar' if is_ar else 'label_en', spec['ar' if is_ar else 'en'])
-
-            # Get value based on source type
-            source = spec_settings.get('source', 'field')
-            value = '-'
-
-            if source == 'fixed':
-                # Fixed value
-                value = spec_settings.get('default_value', '-')
-
-            elif source == 'yes_no':
-                # Yes/No from quotation field
-                raw_val = data.get(spec['field'], False)
-                if str(raw_val).upper() in ['YES', 'TRUE', '1', 'نعم']:
-                    value = 'نعم' if is_ar else 'YES'
-                else:
-                    value = 'لا' if is_ar else 'NO'
-
-            elif source == 'conditional':
-                # Conditional rules
-                rules = spec_settings.get('rules', [])
-                matched = False
-
-                for rule in rules:
-                    rule_field = rule.get('field', '')
-                    rule_op = rule.get('operator', '=')
-                    rule_val = rule.get('value', '')
-                    rule_result = rule.get('result', '')
-
-                    # Get actual value from quotation data
-                    actual_val = data.get(rule_field, '')
-                    if actual_val is None:
-                        actual_val = ''
-
-                    # Evaluate the condition
-                    try:
-                        if rule_op == '=':
-                            matched = str(actual_val).lower() == str(rule_val).lower()
-                        elif rule_op == '!=':
-                            matched = str(actual_val).lower() != str(rule_val).lower()
-                        elif rule_op == '>':
-                            matched = float(actual_val) > float(rule_val)
-                        elif rule_op == '<':
-                            matched = float(actual_val) < float(rule_val)
-                        elif rule_op == '>=':
-                            matched = float(actual_val) >= float(rule_val)
-                        elif rule_op == '<=':
-                            matched = float(actual_val) <= float(rule_val)
-                        elif rule_op == 'contains':
-                            matched = str(rule_val).lower() in str(actual_val).lower()
-                    except (ValueError, TypeError):
-                        matched = False
-
-                    if matched:
-                        value = rule_result
-                        break
-
-                # If no rule matched, use default value
-                if not matched:
-                    value = spec_settings.get('default_value', '-')
-
-            else:
-                # Default: get from quotation field
-                field_name = spec['field']
-                value = data.get(field_name, c.get(f"{field_name}_ar" if is_ar else f"{field_name}_en", '-'))
-                if value is None or value == '':
-                    value = '-'
-
-            html += f'<tr><td class="row-num">{spec["num"]}</td><th>{label}</th><td class="value">{value}</td></tr>'
-
+        html += '<table class="tech-table">'
+        for i, spec in enumerate(table_specs, 1):
+            label = spec['ar'] if is_ar else spec['en']
+            html += f'<tr><td class="row-num">{i}</td><th>{label}</th><td class="value">{spec["value"]}</td></tr>'
         html += '</table>'
 
-        # Cylinders
+        # Cylinders - 2 columns, 12 rows fixed
         cylinders = data.get('cylinders', [])
-        if cylinders:
-            html += f'<div class="section-title">{"سلندرات الطباعة :" if is_ar else "Printing Cylinders:"}</div>'
-            html += '<table class="cylinders-table">'
-            html += f'<tr><th>{"مقاس" if is_ar else "Size"}</th><th>{"عدد" if is_ar else "Count"}</th></tr>'
-            for cyl in cylinders:
-                html += f'<tr><td>{cyl.get("size", "")}</td><td>{cyl.get("count", "")}</td></tr>'
-            html += '</table>'
+        html += f'<div class="section-title">{"سلندرات الطباعة :" if is_ar else "Printing Cylinders:"}</div>'
+        html += '<table class="cylinders-table" style="width: 50%;">'
+        html += f'<tr><th>{"مقاس" if is_ar else "Size"}</th><th>{"عدد" if is_ar else "Count"}</th></tr>'
+
+        # Always show 12 rows
+        for i in range(12):
+            if i < len(cylinders):
+                cyl = cylinders[i]
+                size = cyl.get("size", "")
+                count = cyl.get("count", "")
+                html += f'<tr><td>{size}</td><td>{count}</td></tr>'
+            else:
+                html += '<tr><td></td><td></td></tr>'
+        html += '</table>'
 
         html += '</div>'  # End Page 2
 
-        # Page 3 - Financial
+        # ==================== PAGE 3 - Financial ====================
         html += f'<div class="template-page {"" if is_ar else "ltr"}">'
 
         # Header (repeated)

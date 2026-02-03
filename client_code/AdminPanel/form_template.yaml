@@ -2654,6 +2654,113 @@ container:
 
                     html += '</div>'; // End Machine Defaults
 
+                    // ==========================================
+                    // Technical Specs Table Rules Section
+                    // ==========================================
+                    html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-top:15px;">';
+                    html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">📊 Technical Specs Table Rules</h5>';
+                    html += '<p style="margin:0 0 15px;color:#666;font-size:12px;">Configure the calculation rules for the technical specifications table in the quotation PDF.</p>';
+
+                    // Belt Drive Speed Settings
+                    html += '<div style="background:#f5f5f5;padding:10px;border-radius:6px;margin-bottom:10px;">';
+                    html += '<h6 style="margin:0 0 8px;color:#333;">Belt Drive Settings</h6>';
+
+                    html += '<div class="form-group" style="margin-bottom:8px;">';
+                    html += '<label style="font-size:12px;">Max Machine Speed (m/min)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" id="setting_belt_max_machine_speed" value="' + (settings.belt_max_machine_speed || 120) + '" style="flex:1;">';
+                    html += '<button class="action-btn" style="padding:6px 12px;" onclick="saveSetting(\'belt_max_machine_speed\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group" style="margin-bottom:8px;">';
+                    html += '<label style="font-size:12px;">Max Printing Speed (m/min)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" id="setting_belt_max_print_speed" value="' + (settings.belt_max_print_speed || 120) + '" style="flex:1;">';
+                    html += '<button class="action-btn" style="padding:6px 12px;" onclick="saveSetting(\'belt_max_print_speed\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group" style="margin-bottom:0;">';
+                    html += '<label style="font-size:12px;">Printing Length Range</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_belt_print_length" value="' + (settings.belt_print_length || '300mm - 1300mm') + '" style="flex:1;">';
+                    html += '<button class="action-btn" style="padding:6px 12px;" onclick="saveSettingText(\'belt_print_length\')">Save</button>';
+                    html += '</div></div>';
+                    html += '</div>';
+
+                    // Gear Drive Speed Settings
+                    html += '<div style="background:#f5f5f5;padding:10px;border-radius:6px;margin-bottom:10px;">';
+                    html += '<h6 style="margin:0 0 8px;color:#333;">Gear Drive Settings</h6>';
+
+                    html += '<div class="form-group" style="margin-bottom:8px;">';
+                    html += '<label style="font-size:12px;">Max Machine Speed (m/min)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" id="setting_gear_max_machine_speed" value="' + (settings.gear_max_machine_speed || 100) + '" style="flex:1;">';
+                    html += '<button class="action-btn" style="padding:6px 12px;" onclick="saveSetting(\'gear_max_machine_speed\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group" style="margin-bottom:8px;">';
+                    html += '<label style="font-size:12px;">Max Printing Speed (m/min)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" id="setting_gear_max_print_speed" value="' + (settings.gear_max_print_speed || 80) + '" style="flex:1;">';
+                    html += '<button class="action-btn" style="padding:6px 12px;" onclick="saveSetting(\'gear_max_print_speed\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group" style="margin-bottom:0;">';
+                    html += '<label style="font-size:12px;">Printing Length Range</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_gear_print_length" value="' + (settings.gear_print_length || '240mm - 1000mm') + '" style="flex:1;">';
+                    html += '<button class="action-btn" style="padding:6px 12px;" onclick="saveSettingText(\'gear_print_length\')">Save</button>';
+                    html += '</div></div>';
+                    html += '</div>';
+
+                    // Winder Settings
+                    html += '<div style="background:#f5f5f5;padding:10px;border-radius:6px;margin-bottom:10px;">';
+                    html += '<h6 style="margin:0 0 8px;color:#333;">Winder Type Settings</h6>';
+
+                    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
+
+                    html += '<div class="form-group" style="margin-bottom:0;">';
+                    html += '<label style="font-size:12px;">Single Winder - Max Roll Diameter (mm)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" id="setting_single_winder_roll_dia" value="' + (settings.single_winder_roll_dia || 1200) + '" style="flex:1;">';
+                    html += '<button class="action-btn" style="padding:6px 12px;" onclick="saveSetting(\'single_winder_roll_dia\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group" style="margin-bottom:0;">';
+                    html += '<label style="font-size:12px;">Double Winder - Max Roll Diameter (mm)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" id="setting_double_winder_roll_dia" value="' + (settings.double_winder_roll_dia || 800) + '" style="flex:1;">';
+                    html += '<button class="action-btn" style="padding:6px 12px;" onclick="saveSetting(\'double_winder_roll_dia\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '</div>';
+                    html += '</div>';
+
+                    // Other Fixed Values
+                    html += '<div style="background:#f5f5f5;padding:10px;border-radius:6px;">';
+                    html += '<h6 style="margin:0 0 8px;color:#333;">Other Fixed Values</h6>';
+
+                    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
+
+                    html += '<div class="form-group" style="margin-bottom:0;">';
+                    html += '<label style="font-size:12px;">Dryer Capacity</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_dryer_capacity" value="' + (settings.dryer_capacity || '2.2kw air blower × 2 units') + '" style="flex:1;">';
+                    html += '<button class="action-btn" style="padding:6px 12px;" onclick="saveSettingText(\'dryer_capacity\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group" style="margin-bottom:0;">';
+                    html += '<label style="font-size:12px;">Main Motor Power</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_main_motor_power" value="' + (settings.main_motor_power || '5 HP') + '" style="flex:1;">';
+                    html += '<button class="action-btn" style="padding:6px 12px;" onclick="saveSettingText(\'main_motor_power\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '</div>';
+                    html += '</div>';
+
+                    html += '</div>'; // End Technical Specs Table Rules
+
                     html += '</div>'; // End Quotation Template Settings
 
                     html += '</div>';

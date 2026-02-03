@@ -134,13 +134,25 @@ container:
 
         .template-page {
           padding: 40px;
-          min-height: 1100px;
+          min-height: auto;
           position: relative;
-          border-bottom: 3px dashed #ccc;
+          border-bottom: none;
         }
 
         .template-page:last-child {
           border-bottom: none;
+        }
+
+        /* Specs List Style */
+        .specs-list {
+          margin: 0;
+          padding-right: 25px;
+          padding-left: 25px;
+        }
+
+        .specs-list li {
+          margin-bottom: 8px;
+          text-align: justify;
         }
 
         /* Header */
@@ -491,12 +503,17 @@ container:
           }
 
           .template-page {
-            page-break-after: always;
+            page-break-after: auto;
             border-bottom: none;
+            min-height: auto;
           }
 
           .template-page:last-child {
             page-break-after: avoid;
+          }
+
+          .specs-list {
+            page-break-inside: avoid;
           }
         }
 

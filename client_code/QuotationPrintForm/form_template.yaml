@@ -553,10 +553,10 @@ container:
             break-inside: avoid !important;
             border-bottom: none !important;
             margin-bottom: 0 !important;
-            padding: 15px 30px !important;
-            min-height: 270mm;
-            max-height: 277mm;
-            overflow: hidden;
+            padding: 8mm 10mm !important;
+            min-height: auto;
+            max-height: none;
+            overflow: visible;
           }
 
           .template-page:last-child {

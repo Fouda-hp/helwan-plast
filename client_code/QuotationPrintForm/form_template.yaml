@@ -599,11 +599,12 @@ container:
             padding: 5px 0 !important;
           }
 
-          .details-table th, .details-table td {
-            padding: 6px 10px !important;
-            font-size: 11px !important;
+          .details-table th,
+          .details-table td {
+            padding: 4px 6px !important;   /* مربعات أصغر */
+            font-size: 14px !important;    /* خط أكبر */
+            line-height: 1.4 !important;
           }
-
           .financial-box {
             padding: 15px !important;
           }
@@ -640,6 +641,24 @@ container:
             margin-top: 15px !important;
             padding-top: 10px !important;
           }
+          /* Shrink Machine Details table as a whole */
+          .details-table {
+            width: 85% !important;      /* كان 100% */
+            margin-left: auto;
+            margin-right: auto;
+            table-layout: fixed;
+          }
+
+          /* Keep columns balanced */
+          .details-table th {
+            width: 35% !important;
+            font-size: 11.5px !important;
+          }
+
+          .details-table td {
+            width: 65% !important;
+            font-size: 14px !important;
+          }
         }
 
         /* LTR for English */
@@ -667,6 +686,61 @@ container:
         .ltr .tech-table th {
           text-align: left;
         }
+        /* ===== Compact Boxes – Bigger Text ===== */
+
+        /* تفاصيل الماكينة */
+        .details-table th,
+        .details-table td {
+          padding: 4px 8px;      /* كان 6px 12px */
+          font-size: 13px;       /* كان 12px */
+        }
+
+        /* المواصفات الفنية */
+        .tech-table th,
+        .tech-table td {
+          padding: 4px 6px;      /* كان 5px 10px */
+          font-size: 12px;       /* كان 11px */
+        }
+
+        /* جدول السلندرات */
+        .cylinders-table th,
+        .cylinders-table td {
+          padding: 3px 8px;      /* كان 4px 10px */
+          font-size: 12px;       /* كان 11px */
+        }
+        .info-box p,
+        .notes-list {
+          font-size: 11.5px;   /* كان 11px / 10px */
+        }
+        /* FORCE compact boxes + bigger text */
+
+        .details-table th,
+        .details-table td {
+          padding: 4px 8px !important;
+          font-size: 14px !important;
+        }
+
+        .tech-table th,
+        .tech-table td {
+          padding: 4px 6px !important;
+          font-size: 13px !important;
+        }
+
+        .cylinders-table th,
+        .cylinders-table td {
+          padding: 3px 8px !important;
+          font-size: 13px !important;
+        }
+        /* === FORCE machine details table only === */
+
+        #templateContent .details-table th,
+        #templateContent .details-table td {
+          padding: 4px 6px !important;   /* يصغر المربعات */
+          font-size: 15px !important;    /* يكبر الخط */
+          line-height: 1.4 !important;
+        }
+
+
       </style>
 
       <div class="print-container" dir="rtl">

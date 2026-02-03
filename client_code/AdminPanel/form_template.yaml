@@ -2076,12 +2076,186 @@ container:
 
               html += '</div>';
 
+              // ==========================================
+              // Quotation Template Settings Section
+              // ==========================================
+              html += '<div style="background:#e8f5e9;padding:20px;border-radius:12px;margin-bottom:20px;border:2px solid #4caf50;">';
+              html += '<h4 style="margin:0 0 15px;color:#2e7d32;">📄 Quotation PDF Template Settings</h4>';
+
+              // Company Info
+              html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
+              html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">🏢 Company Information</h5>';
+
+              html += '<div class="form-group">';
+              html += '<label>Company Name (Arabic)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="text" id="setting_company_name_ar" value="' + (settings.company_name_ar || 'شركة حلوان بلاست ذ.م.م') + '" style="flex:1;" dir="rtl">';
+              html += '<button class="action-btn" onclick="saveSettingText(\'company_name_ar\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Company Name (English)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="text" id="setting_company_name_en" value="' + (settings.company_name_en || 'Helwan Plast LLC') + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSettingText(\'company_name_en\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Company Address (Arabic)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="text" id="setting_company_address_ar" value="' + (settings.company_address_ar || 'المنطقة الصناعية الثانية - قطعة ٢٠') + '" style="flex:1;" dir="rtl">';
+              html += '<button class="action-btn" onclick="saveSettingText(\'company_address_ar\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Company Address (English)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="text" id="setting_company_address_en" value="' + (settings.company_address_en || 'Second Industrial Zone – Plot 20') + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSettingText(\'company_address_en\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Company Email</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="email" id="setting_company_email" value="' + (settings.company_email || 'sales@helwanplast.com') + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSettingText(\'company_email\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Company Website</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="text" id="setting_company_website" value="' + (settings.company_website || 'www.helwanplast.com') + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSettingText(\'company_website\')">Save</button>';
+              html += '</div></div>';
+
+              html += '</div>'; // End Company Info
+
+              // Quotation Defaults
+              html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
+              html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">📋 Quotation Defaults</h5>';
+
+              html += '<div class="form-group">';
+              html += '<label>Quotation Location (Arabic)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="text" id="setting_quotation_location_ar" value="' + (settings.quotation_location_ar || 'القاهرة') + '" style="flex:1;" dir="rtl">';
+              html += '<button class="action-btn" onclick="saveSettingText(\'quotation_location_ar\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Quotation Location (English)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="text" id="setting_quotation_location_en" value="' + (settings.quotation_location_en || 'Cairo') + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSettingText(\'quotation_location_en\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Warranty Period (months)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="number" id="setting_warranty_months" value="' + (settings.warranty_months || 12) + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSetting(\'warranty_months\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Quotation Validity (days)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="number" id="setting_validity_days" value="' + (settings.validity_days || 15) + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSetting(\'validity_days\')">Save</button>';
+              html += '</div></div>';
+
+              html += '</div>'; // End Quotation Defaults
+
+              // Payment Terms
+              html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
+              html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">💰 Payment Terms (%)</h5>';
+
+              html += '<div class="form-group">';
+              html += '<label>Down Payment %</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="number" id="setting_down_payment_percent" value="' + (settings.down_payment_percent || 40) + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSetting(\'down_payment_percent\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Before Shipping %</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="number" id="setting_before_shipping_percent" value="' + (settings.before_shipping_percent || 30) + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSetting(\'before_shipping_percent\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Before Delivery %</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="number" id="setting_before_delivery_percent" value="' + (settings.before_delivery_percent || 30) + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSetting(\'before_delivery_percent\')">Save</button>';
+              html += '</div></div>';
+
+              html += '</div>'; // End Payment Terms
+
+              // Machine Defaults
+              html += '<div style="background:#fff;padding:15px;border-radius:8px;">';
+              html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">⚙️ Machine Defaults</h5>';
+
+              html += '<div class="form-group">';
+              html += '<label>Country of Origin (Arabic)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="text" id="setting_country_origin_ar" value="' + (settings.country_origin_ar || 'الصين') + '" style="flex:1;" dir="rtl">';
+              html += '<button class="action-btn" onclick="saveSettingText(\'country_origin_ar\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Country of Origin (English)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="text" id="setting_country_origin_en" value="' + (settings.country_origin_en || 'China') + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSettingText(\'country_origin_en\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Anilox Type (Arabic)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="text" id="setting_anilox_type_ar" value="' + (settings.anilox_type_ar || 'انيلوكس سيراميك') + '" style="flex:1;" dir="rtl">';
+              html += '<button class="action-btn" onclick="saveSettingText(\'anilox_type_ar\')">Save</button>';
+              html += '</div></div>';
+
+              html += '<div class="form-group">';
+              html += '<label>Anilox Type (English)</label>';
+              html += '<div style="display:flex;gap:10px;align-items:center;">';
+              html += '<input type="text" id="setting_anilox_type_en" value="' + (settings.anilox_type_en || 'Ceramic anilox') + '" style="flex:1;">';
+              html += '<button class="action-btn" onclick="saveSettingText(\'anilox_type_en\')">Save</button>';
+              html += '</div></div>';
+
+              html += '</div>'; // End Machine Defaults
+
+              html += '</div>'; // End Quotation Template Settings
+
               html += '</div>';
 
               container.innerHTML = html;
             } catch (e) {
               console.error('Settings error:', e);
               container.innerHTML = '<div class="empty-state"><h4>Error loading settings</h4></div>';
+            }
+          };
+
+          // Save text setting (not percentage)
+          window.saveSettingText = async function(key) {
+            var input = document.getElementById('setting_' + key);
+            if (!input) return;
+
+            var value = input.value.trim();
+            if (!value) {
+              alert('Please enter a value');
+              return;
+            }
+
+            try {
+              var result = await window.updateSetting(key, value);
+              if (result && result.success) {
+                alert('Setting saved successfully!');
+              } else {
+                alert(result ? result.message : 'Error saving setting');
+              }
+            } catch (e) {
+              alert('Error saving setting: ' + e);
             }
           };
 

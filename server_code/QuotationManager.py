@@ -1283,3 +1283,239 @@ def import_quotations_data(data_list, token_or_email):
         'imported': imported,
         'errors': errors
     }
+
+
+# =========================================================
+# PDF Export Functions
+# =========================================================
+
+def get_setting_value(key, default=None):
+    """جلب قيمة إعداد من جدول settings"""
+    try:
+        setting = app_tables.settings.get(setting_key=key)
+        if setting:
+            return setting['setting_value']
+        return default
+    except Exception:
+        return default
+
+
+def get_user_info(email):
+    """جلب معلومات المستخدم (الاسم ورقم الهاتف)"""
+    try:
+        user = app_tables.users.get(email=email)
+        if user:
+            return {
+                'name': user['full_name'] or 'N/A',
+                'phone': user['phone'] or 'N/A'
+            }
+        return {'name': 'N/A', 'phone': 'N/A'}
+    except Exception:
+        return {'name': 'N/A', 'phone': 'N/A'}
+
+
+def get_machine_specs(model):
+    """جلب المواصفات الفنية للماكينة حسب الموديل"""
+    try:
+        specs = app_tables.machine_specs.get(model=model)
+        if specs:
+            return dict(specs)
+        return None
+    except Exception:
+        return None
+
+
+def format_number(num):
+    """تنسيق الأرقام بالفواصل"""
+    try:
+        if num is None:
+            return "0"
+        return "{:,.0f}".format(float(num))
+    except (ValueError, TypeError):
+        return str(num)
+
+
+def format_date_ar(date_obj):
+    """تنسيق التاريخ بالعربي"""
+    if not date_obj:
+        return ""
+    months_ar = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+                 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
+    try:
+        return f"{date_obj.day} {months_ar[date_obj.month - 1]}"
+    except (AttributeError, IndexError):
+        return str(date_obj)
+
+
+def format_date_en(date_obj):
+    """تنسيق التاريخ بالإنجليزي"""
+    if not date_obj:
+        return ""
+    months_en = ['January', 'February', 'March', 'April', 'May', 'June',
+                 'July', 'August', 'September', 'October', 'November', 'December']
+    try:
+        return f"{date_obj.day} {months_en[date_obj.month - 1]}"
+    except (AttributeError, IndexError):
+        return str(date_obj)
+
+
+@anvil.server.callable
+def get_quotation_pdf_data(quotation_number, user_email):
+    """
+    جلب كل البيانات اللازمة لتصدير عرض السعر كـ PDF
+    """
+    try:
+        # جلب بيانات عرض السعر
+        quotation = app_tables.quotations.get(**{'Quotation#': quotation_number})
+        if not quotation:
+            return {'success': False, 'message': 'Quotation not found'}
+
+        q_data = dict(quotation)
+
+        # جلب معلومات المستخدم (الاسم والهاتف للهيدر)
+        user_info = get_user_info(user_email)
+
+        # جلب إعدادات الشركة
+        company_settings = {
+            'company_name_ar': get_setting_value('company_name_ar', 'شركة حلوان بلاست ذ.م.م'),
+            'company_name_en': get_setting_value('company_name_en', 'Helwan Plast LLC'),
+            'company_address_ar': get_setting_value('company_address_ar', 'المنطقة الصناعية الثانية - قطعة ٢٠'),
+            'company_address_en': get_setting_value('company_address_en', 'Second Industrial Zone – Plot 20'),
+            'company_email': get_setting_value('company_email', 'sales@helwanplast.com'),
+            'company_website': get_setting_value('company_website', 'www.helwanplast.com'),
+            'quotation_location_ar': get_setting_value('quotation_location_ar', 'القاهرة'),
+            'quotation_location_en': get_setting_value('quotation_location_en', 'Cairo'),
+            'warranty_months': get_setting_value('warranty_months', '12'),
+            'validity_days': get_setting_value('validity_days', '15'),
+            'down_payment_percent': get_setting_value('down_payment_percent', '40'),
+            'before_shipping_percent': get_setting_value('before_shipping_percent', '30'),
+            'before_delivery_percent': get_setting_value('before_delivery_percent', '30'),
+            'country_origin_ar': get_setting_value('country_origin_ar', 'الصين'),
+            'country_origin_en': get_setting_value('country_origin_en', 'China'),
+            'anilox_type_ar': get_setting_value('anilox_type_ar', 'انيلوكس سيراميك'),
+            'anilox_type_en': get_setting_value('anilox_type_en', 'Ceramic anilox'),
+        }
+
+        # جلب المواصفات الفنية للماكينة
+        model = q_data.get('Model', '')
+        machine_specs = get_machine_specs(model)
+
+        # تجهيز السلندرات
+        cylinders = []
+        for i in range(1, 13):
+            size = q_data.get(f'Size in CM{i}')
+            count = q_data.get(f'Count{i}')
+            if size and count:
+                cylinders.append({'size': size, 'count': count})
+
+        # حساب المبالغ المالية
+        total_price = float(q_data.get('Agreed Price') or 0)
+        down_percent = float(company_settings['down_payment_percent'])
+        shipping_percent = float(company_settings['before_shipping_percent'])
+        delivery_percent = float(company_settings['before_delivery_percent'])
+
+        down_amount = total_price * (down_percent / 100)
+        shipping_amount = total_price * (shipping_percent / 100)
+        delivery_amount = total_price * (delivery_percent / 100)
+
+        # تجهيز البيانات النهائية
+        pdf_data = {
+            # معلومات المستخدم (للهيدر)
+            'user_name': user_info['name'],
+            'user_phone': user_info['phone'],
+
+            # معلومات الشركة
+            'company': company_settings,
+
+            # معلومات عرض السعر
+            'quotation_number': q_data.get('Quotation#', ''),
+            'quotation_date': q_data.get('Date'),
+            'quotation_date_ar': format_date_ar(q_data.get('Date')),
+            'quotation_date_en': format_date_en(q_data.get('Date')),
+
+            # معلومات العميل
+            'client_name': q_data.get('Client Name', ''),
+            'client_company': q_data.get('Company', ''),
+            'client_phone': q_data.get('Phone', ''),
+            'client_address': q_data.get('Address', ''),
+
+            # معلومات الماكينة
+            'model': model,
+            'machine_type': q_data.get('Machine type', ''),
+            'colors_count': q_data.get('Number of colors', ''),
+            'machine_width': q_data.get('Machine width', ''),
+            'winder': q_data.get('Winder', ''),
+            'video_inspection': q_data.get('Video inspection', 'NO'),
+            'plc': q_data.get('PLC', 'NO'),
+            'slitter': q_data.get('Slitter', 'NO'),
+
+            # المواصفات الفنية
+            'machine_specs': machine_specs,
+
+            # السلندرات
+            'cylinders': cylinders,
+
+            # المعلومات المالية
+            'total_price': format_number(total_price),
+            'total_price_raw': total_price,
+            'down_payment_percent': down_percent,
+            'down_payment_amount': format_number(down_amount),
+            'before_shipping_percent': shipping_percent,
+            'before_shipping_amount': format_number(shipping_amount),
+            'before_delivery_percent': delivery_percent,
+            'before_delivery_amount': format_number(delivery_amount),
+
+            # التسليم
+            'delivery_location': q_data.get('Address', ''),
+            'expected_delivery': q_data.get('Expected delivery time'),
+            'expected_delivery_formatted': str(q_data.get('Expected delivery time') or ''),
+        }
+
+        return {'success': True, 'data': pdf_data}
+
+    except Exception as e:
+        logger.error(f"Error getting quotation PDF data: {e}")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_all_template_settings():
+    """جلب كل إعدادات القالب"""
+    try:
+        settings = {}
+        for row in app_tables.settings.search():
+            settings[row['setting_key']] = row['setting_value']
+        return {'success': True, 'settings': settings}
+    except Exception as e:
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def save_machine_specs(specs_data):
+    """حفظ المواصفات الفنية للماكينة"""
+    try:
+        model = specs_data.get('model')
+        if not model:
+            return {'success': False, 'message': 'Model is required'}
+
+        existing = app_tables.machine_specs.get(model=model)
+        if existing:
+            existing.update(**specs_data)
+        else:
+            app_tables.machine_specs.add_row(**specs_data)
+
+        return {'success': True, 'message': 'Machine specs saved'}
+    except Exception as e:
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_all_machine_specs():
+    """جلب كل المواصفات الفنية"""
+    try:
+        specs = []
+        for row in app_tables.machine_specs.search():
+            specs.append(dict(row))
+        return {'success': True, 'specs': specs}
+    except Exception as e:
+        return {'success': False, 'message': str(e)}

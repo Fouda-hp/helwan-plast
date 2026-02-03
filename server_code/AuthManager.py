@@ -82,7 +82,7 @@ LOCKOUT_DURATION_MINUTES = 5    # مدة القفل بالدقائق
 SESSION_DURATION_MINUTES = 60    # مدة الجلسة بالدقائق (60 دقيقة = ساعة واحدة)
 MAX_SESSIONS_PER_USER = 5        # الحد الأقصى للجلسات لكل مستخدم (يسمح لأجهزة متعددة على نفس الشبكة)
 RATE_LIMIT_WINDOW_MINUTES = 15   # نافذة Rate Limiting
-RATE_LIMIT_MAX_REQUESTS = 100    # الحد الأقصى للطلبات في النافذة
+RATE_LIMIT_MAX_REQUESTS = 500    # الحد الأقصى للطلبات في النافذة (زيادة للسماح بأجهزة متعددة على نفس الشبكة)
 PBKDF2_ITERATIONS = 100000       # عدد التكرارات للتشفير (أكثر أماناً)
 PASSWORD_HISTORY_COUNT = 5       # عدد كلمات المرور السابقة للتحقق منها
 OTP_EXPIRY_MINUTES = 10          # مدة صلاحية OTP
@@ -808,19 +808,37 @@ def check_rate_limit(ip_address, endpoint='general'):
 
 @anvil.server.callable
 def clear_rate_limits():
-  """
-  مسح كل سجلات Rate Limit - للاستخدام الإداري فقط
-  """
-  try:
-    count = 0
-    for record in app_tables.rate_limits.search():
-      record.delete()
-      count += 1
-    logger.info(f"Cleared {count} rate limit records")
-    return {'success': True, 'message': f'Cleared {count} records'}
-  except Exception as e:
-    logger.error(f"Error clearing rate limits: {e}")
-    return {'success': False, 'message': str(e)}
+    """
+    مسح كل سجلات Rate Limit - للاستخدام الإداري فقط
+    """
+    try:
+        count = 0
+        for record in app_tables.rate_limits.search():
+            record.delete()
+            count += 1
+        logger.info(f"Cleared {count} rate limit records")
+        return {'success': True, 'message': f'Cleared {count} records'}
+    except Exception as e:
+        logger.error(f"Error clearing rate limits: {e}")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def clear_my_rate_limit():
+    """
+    مسح Rate Limit للـ IP الحالي - يمكن استدعاؤها من العميل
+    """
+    try:
+        ip_address = get_client_ip()
+        count = 0
+        for record in app_tables.rate_limits.search(ip_address=ip_address):
+            record.delete()
+            count += 1
+        logger.info(f"Cleared {count} rate limit records for IP: {ip_address}")
+        return {'success': True, 'message': f'Rate limit cleared'}
+    except Exception as e:
+        logger.error(f"Error clearing rate limit: {e}")
+        return {'success': False, 'message': str(e)}
 
 
 @anvil.server.callable

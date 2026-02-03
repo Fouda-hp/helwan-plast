@@ -188,9 +188,21 @@
 
     // Search container - centered at top
     var searchContainer = document.createElement("div");
-    searchContainer.style.cssText = "text-align:center;margin-bottom:20px;";
-    searchContainer.innerHTML = '<input type="text" id="clientSearchInput" placeholder="🔍 Search by client name..." style="width:80%;max-width:400px;padding:12px 20px;border:2px solid #4a90d9;border-radius:25px;font-size:15px;outline:none;transition:border-color 0.3s;">';
+    searchContainer.className = "search-wrapper";
+
+    searchContainer.innerHTML = `
+  <div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input 
+      type="text" 
+      id="clientSearchInput" 
+      placeholder="Search by client name"
+    >
+  </div>
+`;
+
     qoBody.appendChild(searchContainer);
+
 
     // Table container - NO scroll
     var tableContainer = document.createElement("div");

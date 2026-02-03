@@ -267,12 +267,8 @@
 
       searchContainer.innerHTML = `
     <div class="qo-search-box">
-      <span class="qo-search-icon">🔍</span>
-      <input
-        type="text"
-        id="quotationSearchInput"
-        placeholder="Search by quotation #, client name, company..."
-      />
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="Search here">
     </div>
   `;
 

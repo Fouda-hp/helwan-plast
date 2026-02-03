@@ -162,27 +162,26 @@
       modal.id = "pricingModeModal";
       modal.innerHTML = `
       <div class="modal-backdrop">
-        <div class="modal-box">
+        <div class="modal-box pricing-modal">
+          <h3>Pricing Mode</h3>
           <p>Please select pricing mode</p>
-          <div style="display:flex; gap:12px; justify-content:center; margin-top:16px">
-            <button id="btnInStock">In Stock</button>
-            <button id="btnNewOrder">New Order</button>
+
+          <div class="pricing-actions">
+            <button data-mode="In Stock">In Stock</button>
+            <button data-mode="New Order">New Order</button>
           </div>
         </div>
       </div>
     `;
       document.body.appendChild(modal);
+
+      modal.querySelectorAll(".pricing-actions button").forEach(btn => {
+        btn.onclick = () => {
+          modal.remove();
+          onSelect(btn.dataset.mode);
+        };
+      });
     }
-
-    modal.querySelector("#btnInStock").onclick = () => {
-      modal.remove();
-      onSelect("In Stock");
-    };
-
-    modal.querySelector("#btnNewOrder").onclick = () => {
-      modal.remove();
-      onSelect("New Order");
-    };
   };
 
   // ----------------------------------------
@@ -211,12 +210,10 @@
     const btnSave = byId("btn_save");
     const btnHome = byId("home_btn");
 
-    let pricingModeHandled = false;
 
     if (btnNew) {
       btnNew.onclick = async () => {
         await window.resetFormToNew?.();
-        pricingModeHandled = false;
 
         showAlert(
           "success",
@@ -228,58 +225,44 @@
 
     if (btnSave) {
       btnSave.onclick = async () => {
-        const result = await window.callPythonSave?.();
 
-        if (result?.success) {
-          pricingModeHandled = false;
-          showAlert(
-            "success",
-            "Saved successfully");
-          window.resetFormToNew?.();
-          return;
-        }
+        const pricingInput = document.getElementById("Pricing_Mode");
 
-        if (result?.code === "SELECT_PRICING_MODE") {
-          if (pricingModeHandled) {
-            showAlert(
-              "error",
-              "Pricing mode selection failed.\nPlease try again."
-            );
-            return;
-          }
-
-          pricingModeHandled = true;
-
+        // 🧠 لو مفيش اختيار حالي → افتح المودال دايمًا
+        if (!pricingInput.value) {
           window.showPricingModeModal(async mode => {
-            const pricingInput = document.getElementById("Pricing_Mode");
             pricingInput.value = mode;
 
-            const retryResult = await window.callPythonSave?.();
+            const result = await window.callPythonSave?.();
 
-            if (retryResult?.success) {
-              pricingModeHandled = false;
-              window.showAlert(
-                "success",
-                "Saved successfully");
+            if (result?.success) {
+              showAlert("success", "Saved successfully");
               window.resetFormToNew?.();
-            } else if (retryResult?.message) {
-              pricingModeHandled = false;
-              showAlert(
-                "success",
-                retryResult.message);
+            } else if (result?.message) {
+              showAlert("error", result.message);
             }
           });
-
           return;
         }
 
-        if (result?.message) {
-          showAlert(
-            "error",
-            result.message);
-        }
+        // 🔁 لو فيه اختيار (كوتيشن قديم) → برضه اسأل اليوزر
+        pricingInput.value = "";
+
+        window.showPricingModeModal(async mode => {
+          pricingInput.value = mode;
+
+          const result = await window.callPythonSave?.();
+
+          if (result?.success) {
+            showAlert("success", "Saved successfully");
+            window.resetFormToNew?.();
+          } else if (result?.message) {
+            showAlert("error", result.message);
+          }
+        });
       };
     }
+
 
     // 🏠 Home Button
     if (btnHome) {

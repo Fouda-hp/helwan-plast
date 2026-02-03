@@ -254,7 +254,11 @@ class AdminPanel(AdminPanelTemplate):
     # =========================================================
     def get_all_settings(self):
         """الحصول على جميع الإعدادات"""
-        return anvil.server.call('get_all_settings', self.get_auth())
+        auth = self.get_auth()
+        print(f"get_all_settings called with auth: {auth}")
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated. Please login again.'}
+        return anvil.server.call('get_all_settings', auth)
 
     def update_setting(self, key, value):
         """تحديث إعداد معين"""

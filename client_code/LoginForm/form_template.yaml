@@ -1176,9 +1176,16 @@ container:
             setLoading(registerBtn, true);
 
             try {
+              // Check if bridge function is ready
+              if (!window.registerUser) {
+                showMessage('registerMessage', 'error', 'System is loading, please wait and try again...');
+                setLoading(registerBtn, false);
+                return;
+              }
+
               var result = await window.registerUser(email, password, name, phone || null);
 
-              if (result.success) {
+              if (result && result.success) {
                 if (result.requires_verification) {
                   // Show OTP form for email verification
                   pendingRegEmail = email;
@@ -1197,8 +1204,10 @@ container:
                   regConfirm.value = '';
                   strengthBar.className = 'password-strength-bar';
                 }
+              } else if (result) {
+                showMessage('registerMessage', 'error', result.message || 'Registration failed');
               } else {
-                showMessage('registerMessage', 'error', result.message);
+                showMessage('registerMessage', 'error', 'Registration failed - no response from server');
               }
 
             } catch (e) {

@@ -1351,9 +1351,15 @@ def is_admin_by_email(email):
     التحقق من أن المستخدم أدمن بالبريد الإلكتروني
     """
     if not email:
+        logger.warning("is_admin_by_email: No email provided")
         return False
     user = app_tables.users.get(email=email.lower())
-    return user and user['role'] == 'admin' and user['is_active'] and user['is_approved']
+    if not user:
+        logger.warning(f"is_admin_by_email: User not found for email: {email}")
+        return False
+    is_admin = user['role'] == 'admin' and user['is_active'] and user['is_approved']
+    logger.info(f"is_admin_by_email: {email} - role={user['role']}, is_active={user['is_active']}, is_approved={user['is_approved']}, result={is_admin}")
+    return is_admin
 
 
 def require_admin(token_or_email):

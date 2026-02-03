@@ -2007,9 +2007,23 @@ container:
                   container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
 
                   try {
+                    // Check if bridge function is ready
+                    if (!window.getAllSettings) {
+                      container.innerHTML = '<div class="empty-state"><h4>System is loading, please wait...</h4></div>';
+                      setTimeout(loadSettings, 1000);
+                      return;
+                    }
+
                     var result = await window.getAllSettings();
+                    console.log('Settings result:', result);
+
                     if (!result || !result.success) {
-                      container.innerHTML = '<div class="empty-state"><h4>' + (result ? result.message : 'Error loading settings') + '</h4></div>';
+                      var errorMsg = result ? result.message : 'Error loading settings';
+                      // Check if it's an admin access error
+                      if (errorMsg && errorMsg.indexOf('Admin access') !== -1) {
+                        errorMsg = 'Admin access required. Please make sure you are logged in as an admin.';
+                      }
+                      container.innerHTML = '<div class="empty-state"><h4>' + errorMsg + '</h4><p style="margin-top:10px;color:#666;">Try logging out and logging in again.</p></div>';
                       return;
                     }
 

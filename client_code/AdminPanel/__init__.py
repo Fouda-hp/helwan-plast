@@ -121,12 +121,26 @@ class AdminPanel(AdminPanelTemplate):
     # معلومات المستخدم
     # =========================================================
     def get_email(self):
-        """Get user email from session storage"""
-        return anvil.js.window.localStorage.getItem('user_email') or self.user_email
+        """Get user email from localStorage (with sessionStorage fallback)"""
+        email = anvil.js.window.localStorage.getItem('user_email')
+        if not email:
+            # Fallback to sessionStorage for backwards compatibility
+            email = anvil.js.window.sessionStorage.getItem('user_email')
+            if email:
+                # Migrate to localStorage
+                anvil.js.window.localStorage.setItem('user_email', email)
+        return email or self.user_email
 
     def get_token(self):
-        """Get auth token from session storage"""
-        return anvil.js.window.localStorage.getItem('auth_token')
+        """Get auth token from localStorage (with sessionStorage fallback)"""
+        token = anvil.js.window.localStorage.getItem('auth_token')
+        if not token:
+            # Fallback to sessionStorage for backwards compatibility
+            token = anvil.js.window.sessionStorage.getItem('auth_token')
+            if token:
+                # Migrate to localStorage
+                anvil.js.window.localStorage.setItem('auth_token', token)
+        return token
 
     def get_auth(self):
         """Get email for auth (more reliable than token)"""

@@ -1546,10 +1546,18 @@ def export_quotation_excel(quotation_number):
         from openpyxl import Workbook
         from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 
-        # Get quotation data
-        q_data = app_tables.quotations.get(quotation_number=quotation_number)
+        # Get quotation data - use correct field name 'Quotation#'
+        q_data = app_tables.quotations.get(**{'Quotation#': int(quotation_number)})
         if not q_data:
             return {'success': False, 'message': 'Quotation not found'}
+
+        # Helper function to safely get field value
+        def get_field(field_name, default=''):
+            try:
+                val = q_data[field_name]
+                return val if val is not None else default
+            except:
+                return default
 
         # Create workbook
         wb = Workbook()
@@ -1578,15 +1586,15 @@ def export_quotation_excel(quotation_number):
 
         # Client Info
         client_data = [
-            ('Client Name', q_data.get('Client Name', '')),
-            ('Company', q_data.get('Company', '')),
-            ('Phone', q_data.get('Phone', '')),
-            ('Date', str(q_data.get('Date', ''))),
+            ('Client Name', get_field('Client Name', '')),
+            ('Company', get_field('Company', '')),
+            ('Phone', get_field('Phone', '')),
+            ('Date', str(get_field('Date', ''))),
         ]
 
         for label, value in client_data:
             ws[f'A{row}'] = label
-            ws[f'B{row}'] = value
+            ws[f'B{row}'] = str(value) if value else ''
             ws[f'A{row}'].font = Font(name='Aptos Narrow', size=14, bold=True)
             ws[f'B{row}'].font = normal_font
             row += 1
@@ -1600,17 +1608,17 @@ def export_quotation_excel(quotation_number):
         row += 1
 
         machine_data = [
-            ('Model', q_data.get('Model', '')),
-            ('Machine Type', q_data.get('Machine type', '')),
-            ('Number of Colors', q_data.get('Number of colors', '')),
-            ('Machine Width', q_data.get('Machine width', '')),
-            ('Winder', q_data.get('Winder', '')),
-            ('Material', q_data.get('Material', '')),
+            ('Model', get_field('Model', '')),
+            ('Machine Type', get_field('Machine type', '')),
+            ('Number of Colors', get_field('Number of colors', '')),
+            ('Machine Width', get_field('Machine width', '')),
+            ('Winder', get_field('Winder', '')),
+            ('Material', get_field('Material', '')),
         ]
 
         for label, value in machine_data:
             ws[f'A{row}'] = label
-            ws[f'B{row}'] = str(value)
+            ws[f'B{row}'] = str(value) if value else ''
             ws[f'A{row}'].font = Font(name='Aptos Narrow', size=14, bold=True)
             ws[f'B{row}'].font = normal_font
             ws[f'A{row}'].border = thin_border
@@ -1625,13 +1633,13 @@ def export_quotation_excel(quotation_number):
         row += 1
 
         price_data = [
-            ('Given Price', q_data.get('Given Price', '')),
-            ('Agreed Price', q_data.get('Agreed Price', '')),
+            ('Given Price', get_field('Given Price', '')),
+            ('Agreed Price', get_field('Agreed Price', '')),
         ]
 
         for label, value in price_data:
             ws[f'A{row}'] = label
-            ws[f'B{row}'] = str(value)
+            ws[f'B{row}'] = str(value) if value else ''
             ws[f'A{row}'].font = Font(name='Aptos Narrow', size=14, bold=True)
             ws[f'B{row}'].font = normal_font
             row += 1
@@ -1655,6 +1663,8 @@ def export_quotation_excel(quotation_number):
 
     except Exception as e:
         logger.error(f"Error exporting Excel: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return {'success': False, 'message': str(e)}
 
 

@@ -315,7 +315,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         html += '</div>'  # End Page 1
 
         # ==================== PAGE 2 - Technical Table ====================
-        html += f'<div class="template-page {"" if is_ar else "ltr"}">'
+        html += f'<div class="template-page page-break-before {"" if is_ar else "ltr"}">'
 
         # Header (repeated)
         html += '<div class="header">'
@@ -450,7 +450,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         html += '</div>'  # End Page 2
 
         # ==================== PAGE 3 - Financial ====================
-        html += f'<div class="template-page {"" if is_ar else "ltr"}">'
+        html += f'<div class="template-page page-break-before {"" if is_ar else "ltr"}">'
 
         # Header (repeated)
         html += '<div class="header">'
@@ -563,12 +563,27 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
             function generatePDF() {{
                 var opt = {{
-                    margin: 10,
+                    margin: [10, 10, 10, 10],
                     filename: '{filename}',
-                    image: {{ type: 'jpeg', quality: 0.98 }},
-                    html2canvas: {{ scale: 2, useCORS: true }},
-                    jsPDF: {{ unit: 'mm', format: 'a4', orientation: 'portrait' }},
-                    pagebreak: {{ mode: ['css', 'legacy'] }}
+                    image: {{ type: 'jpeg', quality: 0.95 }},
+                    html2canvas: {{
+                        scale: 2,
+                        useCORS: true,
+                        logging: false,
+                        letterRendering: true
+                    }},
+                    jsPDF: {{
+                        unit: 'mm',
+                        format: 'a4',
+                        orientation: 'portrait',
+                        compress: true
+                    }},
+                    pagebreak: {{
+                        mode: ['css', 'legacy'],
+                        before: '.page-break-before',
+                        after: '.page-break-after',
+                        avoid: '.avoid-break'
+                    }}
                 }};
 
                 html2pdf().set(opt).from(element).save();

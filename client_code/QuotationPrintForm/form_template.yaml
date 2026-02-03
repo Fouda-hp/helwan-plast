@@ -136,7 +136,8 @@ container:
           background: white;
           border-radius: 12px;
           box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-          overflow: hidden;
+          overflow: auto;
+          max-height: calc(100vh - 150px);
         }
 
         .template-page {
@@ -499,6 +500,22 @@ container:
           100% { transform: rotate(360deg); }
         }
 
+        /* PDF Page Break Classes */
+        .page-break-before {
+          page-break-before: always;
+          break-before: page;
+        }
+
+        .page-break-after {
+          page-break-after: always;
+          break-after: page;
+        }
+
+        .avoid-break {
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+
         /* Print Styles */
         @media print {
           .controls-bar {
@@ -507,19 +524,27 @@ container:
 
           .template-preview {
             box-shadow: none;
+            overflow: visible !important;
           }
 
           .template-page {
-            page-break-after: auto;
+            page-break-after: always;
+            break-after: page;
             border-bottom: none;
             min-height: auto;
+            padding: 20px 40px;
           }
 
           .template-page:last-child {
             page-break-after: avoid;
+            break-after: avoid;
           }
 
           .specs-list {
+            page-break-inside: avoid;
+          }
+
+          .header, .financial-box, .info-grid, .notes-section {
             page-break-inside: avoid;
           }
         }

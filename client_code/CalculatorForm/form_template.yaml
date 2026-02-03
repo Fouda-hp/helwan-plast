@@ -146,7 +146,7 @@ container:
           grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
           gap: 16px;
 
-          margin-top: calc(var(--header-height) + 0px);
+          margin-top: calc(var(--header-height) + 30px);
           padding: 12px;
 
           align-items: stretch;
@@ -1027,24 +1027,31 @@ container:
         }
 
         /* ================= LANGUAGE SWITCHER ================= */
-        .calc-lang-btn {
+        .lang-switcher-container {
           position: fixed;
-          top: 80px;
-          left: 50%;
-          transform: translateX(-50%);
+          top: 72px;
+          left: 0;
+          right: 0;
+          display: flex;
+          justify-content: center;
+          z-index: 1001;
+          padding: 4px 0;
+        }
+
+        .calc-lang-btn {
           display: flex;
           align-items: center;
           gap: 6px;
-          padding: 8px 16px;
-          background: transparent;
+          padding: 5px 14px;
+          background: #fff;
           border: 2px solid #0057a3;
           border-radius: 20px;
           color: #0057a3;
           cursor: pointer;
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 600;
           transition: all 0.3s ease;
-          z-index: 1001;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .calc-lang-btn:hover {
@@ -1153,12 +1160,22 @@ container:
 
       </style>
 
-
       <div class="header">
         <img src="_/theme/helwan_logo.png">
         <div class="header-title" id="calcHeaderTitle">Helwan Plast & Flexo CH - Calculator</div>
         <img src="_/theme/flexo_logo.png" style="justify-self:end;">
       </div>
+
+      <!-- Language Switcher - Under Header -->
+      <div class="lang-switcher-container">
+        <button class="calc-lang-btn" id="calcLangBtn" onclick="toggleCalcLanguage()">
+          <span>🌐</span>
+          <span id="langAR">AR</span>
+          <span class="lang-divider">|</span>
+          <span id="langEN">EN</span>
+        </button>
+      </div>
+
       <!-- ===== QUOTATION OVERLAY ===== -->
       <div id="quotationOverlay" style="display:none;">
         <div class="qo-backdrop">

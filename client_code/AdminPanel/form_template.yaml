@@ -4,295 +4,295 @@ container:
     html: |
       <style>
         * {
-          box-sizing: border-box;
-          font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-          margin: 0;
-          padding: 0;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+        margin: 0;
+        padding: 0;
         }
 
         html, body {
-          margin: 0;
-          padding: 0;
-          background: #f5f7fa;
-          height: 100%;
-          width: 100%;
-          overflow: hidden;
+        margin: 0;
+        padding: 0;
+        background: #f5f7fa;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
         }
 
         /* نحسب ارتفاع هيدر Anvil */
         :root {
-          --anvil-header-height: 64px;
+        --anvil-header-height: 64px;
         }
 
 
         .anvil-root-container,
         .anvil-container,
         .column-panel {
-          padding: 0 !important;
-          margin: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
         }
 
         /* ================= LAYOUT ================= */
         .admin-container {
-          display: flex;
-          height: calc(100vh - var(--anvil-header-height));
-          width: 100vw;
-          position: fixed;
-          top: var(--anvil-header-height);
-          left: 0;
-          right: 0;
-          bottom: 0;
-          overflow: hidden;
+        display: flex;
+        height: calc(100vh - var(--anvil-header-height));
+        width: 100vw;
+        position: fixed;
+        top: var(--anvil-header-height);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overflow: hidden;
         }
 
         /* ================= SIDEBAR ================= */
         .sidebar {
-          width: 260px;
-          min-width: 260px;
-          max-width: 260px;
-          background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-          color: #fff;
-          padding: 0;
-          position: fixed;
-          left: 0;
-          top: var(--anvil-header-height);
-          height: calc(100vh - var(--anvil-header-height));
-          overflow: hidden;
-          z-index: 100;
-          transition: transform 0.3s ease;
-          display: flex;
-          flex-direction: column;
+        width: 260px;
+        min-width: 260px;
+        max-width: 260px;
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+        color: #fff;
+        padding: 0;
+        position: fixed;
+        left: 0;
+        top: var(--anvil-header-height);
+        height: calc(100vh - var(--anvil-header-height));
+        overflow: hidden;
+        z-index: 100;
+        transition: transform 0.3s ease;
+        display: flex;
+        flex-direction: column;
         }
 
         .sidebar-header {
-          padding: 20px 15px;
-          border-bottom: 1px solid rgba(255,255,255,0.1);
-          text-align: center;
-          flex-shrink: 0;
+        padding: 20px 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        text-align: center;
+        flex-shrink: 0;
         }
 
         .sidebar-header img {
-          height: 55px;
-          margin-bottom: 8px;
+        height: 55px;
+        margin-bottom: 8px;
         }
 
         .sidebar-header h2 {
-          margin: 0;
-          font-size: 16px;
-          font-weight: 600;
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
         }
 
         .sidebar-header p {
-          margin: 5px 0 0;
-          font-size: 11px;
-          opacity: 0.7;
+        margin: 5px 0 0;
+        font-size: 11px;
+        opacity: 0.7;
         }
 
         /* اسم المستخدم تحت اللوجو */
         .sidebar-user-welcome {
-          padding: 12px 15px;
-          background: rgba(102,126,234,0.15);
-          border-bottom: 1px solid rgba(255,255,255,0.1);
-          text-align: center;
-          flex-shrink: 0;
+        padding: 12px 15px;
+        background: rgba(102,126,234,0.15);
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        text-align: center;
+        flex-shrink: 0;
         }
 
         .sidebar-user-welcome .welcome-text {
-          font-size: 11px;
-          opacity: 0.7;
-          margin-bottom: 4px;
+        font-size: 11px;
+        opacity: 0.7;
+        margin-bottom: 4px;
         }
 
         .sidebar-user-welcome .user-name-display {
-          font-size: 14px;
-          font-weight: 600;
-          color: #667eea;
+        font-size: 14px;
+        font-weight: 600;
+        color: #667eea;
         }
 
         .sidebar-nav {
-          padding: 15px 0;
-          flex: 1;
-          overflow-y: auto;
-          min-height: 0;
+        padding: 15px 0;
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
         }
 
         .nav-section {
-          padding: 10px 20px 5px;
-          font-size: 11px;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          opacity: 0.5;
+        padding: 10px 20px 5px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.5;
         }
 
         .nav-item {
-          display: flex;
-          align-items: center;
-          padding: 12px 20px;
-          color: rgba(255,255,255,0.8);
-          text-decoration: none;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          border-left: 3px solid transparent;
+        display: flex;
+        align-items: center;
+        padding: 12px 20px;
+        color: rgba(255,255,255,0.8);
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
         }
 
         .nav-item:hover {
-          background: rgba(255,255,255,0.1);
-          color: #fff;
+        background: rgba(255,255,255,0.1);
+        color: #fff;
         }
 
         .nav-item.active {
-          background: rgba(102,126,234,0.2);
-          border-left-color: #667eea;
-          color: #fff;
+        background: rgba(102,126,234,0.2);
+        border-left-color: #667eea;
+        color: #fff;
         }
 
         .nav-item svg {
-          width: 20px;
-          height: 20px;
-          margin-right: 12px;
-          opacity: 0.8;
+        width: 20px;
+        height: 20px;
+        margin-right: 12px;
+        opacity: 0.8;
         }
 
         .nav-item .badge {
-          margin-left: auto;
-          background: #e74c3c;
-          color: #fff;
-          font-size: 11px;
-          padding: 2px 8px;
-          border-radius: 10px;
+        margin-left: auto;
+        background: #e74c3c;
+        color: #fff;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 10px;
         }
 
         .sidebar-footer {
-          padding: 12px 15px;
-          border-top: 1px solid rgba(255,255,255,0.1);
-          background: #16213e;
-          flex-shrink: 0;
-          margin-top: auto;
+        padding: 12px 15px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        background: #16213e;
+        flex-shrink: 0;
+        margin-top: auto;
         }
 
         .user-info {
-          display: flex;
-          align-items: center;
+        display: flex;
+        align-items: center;
         }
 
         .user-avatar {
-          width: 36px;
-          height: 36px;
-          background: linear-gradient(135deg, #667eea, #764ba2);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 14px;
-          font-weight: 600;
-          margin-right: 10px;
-          flex-shrink: 0;
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 600;
+        margin-right: 10px;
+        flex-shrink: 0;
         }
 
         .user-details {
-          overflow: hidden;
+        overflow: hidden;
         }
 
         .user-details h4 {
-          margin: 0;
-          font-size: 13px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+        margin: 0;
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         }
 
         .user-details p {
-          margin: 2px 0 0;
-          font-size: 11px;
-          opacity: 0.7;
+        margin: 2px 0 0;
+        font-size: 11px;
+        opacity: 0.7;
         }
 
         .logout-btn {
-          width: 100%;
-          margin-top: 12px;
-          padding: 10px;
-          background: rgba(231,76,60,0.2);
-          border: 1px solid rgba(231,76,60,0.3);
-          color: #e74c3c;
-          border-radius: 8px;
-          cursor: pointer;
-          font-size: 13px;
-          transition: all 0.2s ease;
+        width: 100%;
+        margin-top: 12px;
+        padding: 10px;
+        background: rgba(231,76,60,0.2);
+        border: 1px solid rgba(231,76,60,0.3);
+        color: #e74c3c;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: all 0.2s ease;
         }
 
         .logout-btn:hover {
-          background: #e74c3c;
-          color: #fff;
+        background: #e74c3c;
+        color: #fff;
         }
 
         /* ================= MAIN CONTENT ================= */
         .main-content {
-          position: fixed;
-          top: var(--anvil-header-height);
-          left: 260px;
-          right: 0;
-          bottom: 0;
-          padding: 24px 32px;
-          overflow-y: auto;
-          overflow-x: hidden;
-          box-sizing: border-box;
-          background: #f5f6fa;
+        position: fixed;
+        top: var(--anvil-header-height);
+        left: 260px;
+        right: 0;
+        bottom: 0;
+        padding: 24px 32px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        box-sizing: border-box;
+        background: #f5f6fa;
         }
 
 
         .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
         }
 
         .page-header h1 {
-          margin: 0;
-          font-size: 28px;
-          color: #1a1a2e;
+        margin: 0;
+        font-size: 28px;
+        color: #1a1a2e;
         }
 
         .page-header p {
-          margin: 5px 0 0;
-          color: #666;
-          font-size: 14px;
+        margin: 5px 0 0;
+        color: #666;
+        font-size: 14px;
         }
 
         /* ================= CARDS ================= */
         .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 20px;
-          margin-bottom: 30px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
         }
 
         .stat-card {
-          background: #fff;
-          border-radius: 16px;
-          padding: 24px;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: #fff;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
         .stat-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
         }
 
         .stat-card .icon {
-          width: 50px;
-          height: 50px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: 15px;
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 15px;
         }
 
         .stat-card .icon svg {
-          width: 24px;
-          height: 24px;
+        width: 24px;
+        height: 24px;
         }
 
         .stat-card .icon.blue { background: linear-gradient(135deg, #667eea, #764ba2); }
@@ -301,166 +301,166 @@ container:
         .stat-card .icon.red { background: linear-gradient(135deg, #eb3349, #f45c43); }
 
         .stat-card .value {
-          font-size: 32px;
-          font-weight: 700;
-          color: #1a1a2e;
-          margin-bottom: 5px;
+        font-size: 32px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 5px;
         }
 
         .stat-card .label {
-          font-size: 14px;
-          color: #666;
+        font-size: 14px;
+        color: #666;
         }
 
         /* ================= PANELS ================= */
         .panel {
-          background: #fff;
-          border-radius: 16px;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-          margin-bottom: 30px;
-          overflow: hidden;
-          display: none;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        margin-bottom: 30px;
+        overflow: hidden;
+        display: none;
         }
 
         .panel.active {
-          display: block;
-          animation: fadeIn 0.3s ease;
+        display: block;
+        animation: fadeIn 0.3s ease;
         }
 
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
         }
 
         .panel-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 20px 24px;
-          border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid #eee;
         }
 
         .panel-header h3 {
-          margin: 0;
-          font-size: 18px;
-          color: #1a1a2e;
+        margin: 0;
+        font-size: 18px;
+        color: #1a1a2e;
         }
 
         .panel-body {
-          padding: 24px;
+        padding: 24px;
         }
 
         /* ================= SEARCH & FILTERS ================= */
         .toolbar {
-          display: flex;
-          gap: 15px;
-          margin-bottom: 20px;
-          flex-wrap: wrap;
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
         }
 
         .search-box {
-          flex: 1;
-          min-width: 250px;
-          position: relative;
+        flex: 1;
+        min-width: 250px;
+        position: relative;
         }
 
         .search-box input {
-          width: 100%;
-          padding: 12px 16px 12px 44px;
-          border: 2px solid #e0e0e0;
-          border-radius: 10px;
-          font-size: 14px;
-          transition: all 0.2s ease;
+        width: 100%;
+        padding: 12px 16px 12px 44px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 14px;
+        transition: all 0.2s ease;
         }
 
         .search-box input:focus {
-          outline: none;
-          border-color: #667eea;
-          box-shadow: 0 0 0 4px rgba(102,126,234,0.15);
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 4px rgba(102,126,234,0.15);
         }
 
         .search-box svg {
-          position: absolute;
-          left: 14px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 20px;
-          height: 20px;
-          color: #999;
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 20px;
+        color: #999;
         }
 
         .filter-btn, .action-btn {
-          padding: 12px 20px;
-          border-radius: 10px;
-          border: none;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          transition: all 0.2s ease;
+        padding: 12px 20px;
+        border-radius: 10px;
+        border: none;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
         }
 
         .filter-btn {
-          background: #f0f2f5;
-          color: #444;
+        background: #f0f2f5;
+        color: #444;
         }
 
         .filter-btn:hover {
-          background: #e0e2e5;
+        background: #e0e2e5;
         }
 
         .action-btn {
-          background: linear-gradient(135deg, #667eea, #764ba2);
-          color: #fff;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
         }
 
         .action-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(102,126,234,0.4);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102,126,234,0.4);
         }
 
         .action-btn.green {
-          background: linear-gradient(135deg, #11998e, #38ef7d);
+        background: linear-gradient(135deg, #11998e, #38ef7d);
         }
 
         .action-btn.red {
-          background: linear-gradient(135deg, #eb3349, #f45c43);
+        background: linear-gradient(135deg, #eb3349, #f45c43);
         }
 
         /* ================= TABLE ================= */
         .data-table {
-          width: 100%;
-          border-collapse: collapse;
+        width: 100%;
+        border-collapse: collapse;
         }
 
         .data-table th,
         .data-table td {
-          padding: 14px 16px;
-          text-align: left;
-          border-bottom: 1px solid #eee;
+        padding: 14px 16px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
         }
 
         .data-table th {
-          background: #f8f9fa;
-          font-weight: 600;
-          font-size: 13px;
-          color: #666;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+        background: #f8f9fa;
+        font-weight: 600;
+        font-size: 13px;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
         }
 
         .data-table tr:hover {
-          background: #f8f9fa;
+        background: #f8f9fa;
         }
 
         .data-table .status {
-          display: inline-block;
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: 500;
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
         }
 
         .status.active { background: #e8f5e9; color: #2e7d32; }
@@ -469,17 +469,17 @@ container:
         .status.deleted { background: #fce4ec; color: #ad1457; }
 
         .data-table .actions {
-          display: flex;
-          gap: 8px;
+        display: flex;
+        gap: 8px;
         }
 
         .data-table .btn-sm {
-          padding: 6px 12px;
-          border: none;
-          border-radius: 6px;
-          font-size: 12px;
-          cursor: pointer;
-          transition: all 0.2s ease;
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
         }
 
         .btn-sm.approve { background: #e8f5e9; color: #2e7d32; }
@@ -489,361 +489,361 @@ container:
         .btn-sm.restore { background: #e8f5e9; color: #2e7d32; }
 
         .btn-sm:hover {
-          filter: brightness(0.95);
-          transform: translateY(-1px);
+        filter: brightness(0.95);
+        transform: translateY(-1px);
         }
 
         /* ================= PAGINATION ================= */
         .pagination {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 8px;
-          margin-top: 20px;
-          padding-top: 20px;
-          border-top: 1px solid #eee;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
         }
 
         .pagination button {
-          padding: 8px 14px;
-          border: 1px solid #ddd;
-          background: #fff;
-          border-radius: 8px;
-          cursor: pointer;
-          font-size: 14px;
-          transition: all 0.2s ease;
+        padding: 8px 14px;
+        border: 1px solid #ddd;
+        background: #fff;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s ease;
         }
 
         .pagination button:hover:not(:disabled) {
-          background: #667eea;
-          color: #fff;
-          border-color: #667eea;
+        background: #667eea;
+        color: #fff;
+        border-color: #667eea;
         }
 
         .pagination button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+        opacity: 0.5;
+        cursor: not-allowed;
         }
 
         .pagination .page-info {
-          padding: 8px 16px;
-          color: #666;
-          font-size: 14px;
+        padding: 8px 16px;
+        color: #666;
+        font-size: 14px;
         }
 
         /* ================= MODAL ================= */
         .modal-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0.5);
-          backdrop-filter: blur(4px);
-          display: none;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
         }
 
         .modal-overlay.show {
-          display: flex;
+        display: flex;
         }
 
         .modal-box {
-          background: #fff;
-          border-radius: 16px;
-          width: 90%;
-          max-width: 500px;
-          max-height: 90vh;
-          overflow-y: auto;
-          animation: modalIn 0.3s ease;
+        background: #fff;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        animation: modalIn 0.3s ease;
         }
 
         @keyframes modalIn {
-          from { opacity: 0; transform: scale(0.95) translateY(20px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
+        from { opacity: 0; transform: scale(0.95) translateY(20px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
         .modal-header {
-          padding: 20px 24px;
-          border-bottom: 1px solid #eee;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         }
 
         .modal-header h3 {
-          margin: 0;
-          font-size: 18px;
+        margin: 0;
+        font-size: 18px;
         }
 
         .modal-close {
-          background: none;
-          border: none;
-          font-size: 24px;
-          cursor: pointer;
-          color: #999;
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #999;
         }
 
         .modal-body {
-          padding: 24px;
+        padding: 24px;
         }
 
         .modal-footer {
-          padding: 16px 24px;
-          border-top: 1px solid #eee;
-          display: flex;
-          justify-content: flex-end;
-          gap: 12px;
+        padding: 16px 24px;
+        border-top: 1px solid #eee;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
         }
 
         .form-group {
-          margin-bottom: 20px;
+        margin-bottom: 20px;
         }
 
         .form-group label {
-          display: block;
-          font-size: 13px;
-          font-weight: 600;
-          color: #444;
-          margin-bottom: 6px;
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #444;
+        margin-bottom: 6px;
         }
 
         .form-group input,
         .form-group select {
-          width: 100%;
-          padding: 12px 14px;
-          border: 2px solid #e0e0e0;
-          border-radius: 10px;
-          font-size: 14px;
-          transition: all 0.2s ease;
+        width: 100%;
+        padding: 12px 14px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 14px;
+        transition: all 0.2s ease;
         }
 
         .form-group input:focus,
         .form-group select:focus {
-          outline: none;
-          border-color: #667eea;
+        outline: none;
+        border-color: #667eea;
         }
 
         /* ================= LOADING ================= */
         .loading-spinner {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          padding: 40px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 40px;
         }
 
         .spinner {
-          width: 40px;
-          height: 40px;
-          border: 4px solid #e0e0e0;
-          border-top-color: #667eea;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e0e0e0;
+        border-top-color: #667eea;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
         }
 
         @keyframes spin {
-          to { transform: rotate(360deg); }
+        to { transform: rotate(360deg); }
         }
 
         /* ================= EMPTY STATE ================= */
         .empty-state {
-          text-align: center;
-          padding: 60px 20px;
-          color: #666;
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
         }
 
         .empty-state svg {
-          width: 80px;
-          height: 80px;
-          margin-bottom: 20px;
-          opacity: 0.4;
+        width: 80px;
+        height: 80px;
+        margin-bottom: 20px;
+        opacity: 0.4;
         }
 
         .empty-state h4 {
-          margin: 0 0 10px;
-          color: #444;
+        margin: 0 0 10px;
+        color: #444;
         }
 
         /* ================= CHECKBOX ================= */
         .checkbox-label {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          cursor: pointer;
-          font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-size: 14px;
         }
 
         .checkbox-label input[type="checkbox"] {
-          width: 18px;
-          height: 18px;
-          cursor: pointer;
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
         }
 
         /* ================= RESPONSIVE ================= */
         @media (max-width: 768px) {
 
-          .mobile-menu-btn {
-            display: inline-block;
-          }
+        .mobile-menu-btn {
+        display: inline-block;
+        }
 
-          .sidebar {
-            transform: translateX(-100%);
-            top: var(--anvil-header-height);
-            height: calc(100vh - var(--anvil-header-height));
-          }
+        .sidebar {
+        transform: translateX(-100%);
+        top: var(--anvil-header-height);
+        height: calc(100vh - var(--anvil-header-height));
+        }
 
-          .sidebar.open {
-            transform: translateX(0);
-          }
+        .sidebar.open {
+        transform: translateX(0);
+        }
 
-          .main-content {
-            position: fixed;
-            top: var(--anvil-header-height);
-            left: 0;
-            right: 0;
-            bottom: 0;
-            padding: 15px;
-            overflow-y: auto;
-            overflow-x: hidden;
-          }
-          .stats-grid {
-            grid-template-columns: 1fr;
-          }
+        .main-content {
+        position: fixed;
+        top: var(--anvil-header-height);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 15px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        }
+        .stats-grid {
+        grid-template-columns: 1fr;
+        }
 
-          .toolbar {
-            flex-direction: column;
-          }
+        .toolbar {
+        flex-direction: column;
+        }
 
-          .search-box {
-            min-width: 100%;
-          }
+        .search-box {
+        min-width: 100%;
+        }
 
-          .data-table {
-            display: block;
-            overflow-x: auto;
-          }
+        .data-table {
+        display: block;
+        overflow-x: auto;
+        }
         }
 
         /* ================= AUTO-FIT FOR LAPTOPS 13"+ ================= */
         @media (min-width: 1024px) {
-          .main-content {
-            position: fixed;
-            top: var(--anvil-header-height);
-            left: 260px;
-            right: 0;
-            bottom: 0;
-            padding: 24px 32px;
-            overflow-y: auto;
-            overflow-x: hidden;
-          }
+        .main-content {
+        position: fixed;
+        top: var(--anvil-header-height);
+        left: 260px;
+        right: 0;
+        bottom: 0;
+        padding: 24px 32px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        }
 
-          .panel-body {
-            max-height: none;
-            overflow-y: visible;
-          }
+        .panel-body {
+        max-height: none;
+        overflow-y: visible;
+        }
 
-          .stats-grid {
-            grid-template-columns: repeat(4, 1fr);
-          }
+        .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+        }
 
-          .stat-card {
-            padding: 16px;
-          }
+        .stat-card {
+        padding: 16px;
+        }
 
-          .stat-card .value {
-            font-size: 24px;
-          }
+        .stat-card .value {
+        font-size: 24px;
+        }
 
-          .page-header {
-            flex-shrink: 0;
-          }
+        .page-header {
+        flex-shrink: 0;
+        }
         }
 
         /* ================= SMALL LAPTOP OPTIMIZATION ================= */
         @media (min-width: 1024px) and (max-height: 800px) {
-          .page-header {
-            margin-bottom: 15px;
-          }
+        .page-header {
+        margin-bottom: 15px;
+        }
 
-          .page-header h1 {
-            font-size: 22px;
-          }
+        .page-header h1 {
+        font-size: 22px;
+        }
 
-          .stats-grid {
-            gap: 12px;
-            margin-bottom: 15px;
-          }
+        .stats-grid {
+        gap: 12px;
+        margin-bottom: 15px;
+        }
 
-          .stat-card {
-            padding: 16px;
-          }
+        .stat-card {
+        padding: 16px;
+        }
 
-          .stat-card .value {
-            font-size: 24px;
-          }
+        .stat-card .value {
+        font-size: 24px;
+        }
 
-          .stat-card .icon {
-            width: 40px;
-            height: 40px;
-            margin-bottom: 10px;
-          }
+        .stat-card .icon {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 10px;
+        }
 
-          .panel-header {
-            padding: 15px 20px;
-          }
+        .panel-header {
+        padding: 15px 20px;
+        }
 
-          .panel-body {
-            padding: 15px;
-            max-height: calc(100vh - 280px);
-          }
+        .panel-body {
+        padding: 15px;
+        max-height: calc(100vh - 280px);
+        }
 
-          .data-table th,
-          .data-table td {
-            padding: 10px 12px;
-            font-size: 13px;
-          }
+        .data-table th,
+        .data-table td {
+        padding: 10px 12px;
+        font-size: 13px;
+        }
 
-          .sidebar-header {
-            padding: 12px;
-          }
+        .sidebar-header {
+        padding: 12px;
+        }
 
-          .sidebar-header img {
-            height: 40px;
-          }
+        .sidebar-header img {
+        height: 40px;
+        }
 
-          .nav-item {
-            padding: 10px 15px;
-            font-size: 13px;
-          }
+        .nav-item {
+        padding: 10px 15px;
+        font-size: 13px;
+        }
 
-          .sidebar-footer {
-            padding: 10px 12px;
-          }
+        .sidebar-footer {
+        padding: 10px 12px;
+        }
         }
         .mobile-menu-btn {
-          display: none;
-          background: #667eea;
-          color: #fff;
-          border: none;
-          padding: 10px 14px;
-          border-radius: 8px;
-          font-size: 18px;
-          cursor: pointer;
-          margin-bottom: 12px;
+        display: none;
+        background: #667eea;
+        color: #fff;
+        border: none;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 18px;
+        cursor: pointer;
+        margin-bottom: 12px;
         }
 
         /* ================= NOTIFICATION STYLES ================= */
         .notification-toast {
-          background: white;
-          padding: 15px 20px;
-          border-radius: 10px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          min-width: 300px;
-          max-width: 450px;
-          animation: slideIn 0.3s ease;
-          border-left: 4px solid #667eea;
+        background: white;
+        padding: 15px 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 300px;
+        max-width: 450px;
+        animation: slideIn 0.3s ease;
+        border-left: 4px solid #667eea;
         }
 
         .notification-toast.success { border-left-color: #4caf50; }
@@ -856,141 +856,141 @@ container:
         .notification-toast .title { font-weight: 600; margin-bottom: 3px; color: #333; }
         .notification-toast .message { font-size: 13px; color: #666; }
         .notification-toast .close-btn {
-          background: none;
-          border: none;
-          font-size: 18px;
-          cursor: pointer;
-          color: #999;
-          padding: 0;
+        background: none;
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        color: #999;
+        padding: 0;
         }
         .notification-toast .close-btn:hover { color: #333; }
 
         @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
         }
 
         @keyframes slideOut {
-          from { transform: translateX(0); opacity: 1; }
-          to { transform: translateX(100%); opacity: 0; }
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
         }
 
         /* ================= LANGUAGE SWITCHER IN SIDEBAR ================= */
         .sidebar-lang-switcher {
-          padding: 8px 15px;
-          border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding: 8px 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
         .lang-toggle-btn {
-          width: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          padding: 12px 16px;
-          background: linear-gradient(135deg, rgba(102,126,234,0.3) 0%, rgba(118,75,162,0.3) 100%);
-          border: 1px solid rgba(255,255,255,0.15);
-          border-radius: 10px;
-          color: #fff;
-          cursor: pointer;
-          font-size: 14px;
-          font-weight: 500;
-          transition: all 0.3s ease;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, rgba(102,126,234,0.3) 0%, rgba(118,75,162,0.3) 100%);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 10px;
+        color: #fff;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s ease;
         }
 
         .lang-toggle-btn:hover {
-          background: linear-gradient(135deg, rgba(102,126,234,0.5) 0%, rgba(118,75,162,0.5) 100%);
-          transform: translateY(-2px);
-          box-shadow: 0 4px 15px rgba(102,126,234,0.3);
+        background: linear-gradient(135deg, rgba(102,126,234,0.5) 0%, rgba(118,75,162,0.5) 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102,126,234,0.3);
         }
 
         .lang-toggle-btn .lang-flag {
-          font-size: 18px;
+        font-size: 18px;
         }
 
         /* RTL Specific Styles */
         body.rtl .sidebar {
-          left: auto;
-          right: 0;
+        left: auto;
+        right: 0;
         }
 
         body.rtl .main-content {
-          padding-left: 32px;
-          padding-right: calc(260px + 32px);
+        padding-left: 32px;
+        padding-right: calc(260px + 32px);
         }
 
         body.rtl .nav-item {
-          border-left: none;
-          border-right: 3px solid transparent;
-          flex-direction: row-reverse;
+        border-left: none;
+        border-right: 3px solid transparent;
+        flex-direction: row-reverse;
         }
 
         body.rtl .nav-item.active {
-          border-right-color: #667eea;
+        border-right-color: #667eea;
         }
 
         body.rtl .nav-item svg {
-          margin-right: 0;
-          margin-left: 12px;
+        margin-right: 0;
+        margin-left: 12px;
         }
 
         body.rtl .nav-item .badge {
-          margin-left: 0;
-          margin-right: auto;
+        margin-left: 0;
+        margin-right: auto;
         }
 
         body.rtl .user-avatar {
-          margin-right: 0;
-          margin-left: 10px;
+        margin-right: 0;
+        margin-left: 10px;
         }
 
         body.rtl .data-table th,
         body.rtl .data-table td {
-          text-align: right;
+        text-align: right;
         }
 
         body.rtl .page-header {
-          flex-direction: row-reverse;
+        flex-direction: row-reverse;
         }
 
         body.rtl .page-header div {
-          text-align: right;
+        text-align: right;
         }
 
         body.rtl .toolbar {
-          flex-direction: row-reverse;
+        flex-direction: row-reverse;
         }
 
         body.rtl .search-box svg {
-          left: auto;
-          right: 14px;
+        left: auto;
+        right: 14px;
         }
 
         body.rtl .search-box input {
-          padding-left: 16px;
-          padding-right: 44px;
-          text-align: right;
+        padding-left: 16px;
+        padding-right: 44px;
+        text-align: right;
         }
 
         body.rtl .modal-header,
         body.rtl .modal-footer {
-          flex-direction: row-reverse;
+        flex-direction: row-reverse;
         }
 
         body.rtl .form-group label {
-          text-align: right;
+        text-align: right;
         }
 
         body.rtl #notificationContainer {
-          right: auto;
-          left: 20px;
+        right: auto;
+        left: 20px;
         }
 
         body.rtl .notification-toast {
-          border-left: none;
-          border-right: 4px solid #667eea;
-          flex-direction: row-reverse;
-          text-align: right;
+        border-left: none;
+        border-right: 4px solid #667eea;
+        flex-direction: row-reverse;
+        text-align: right;
         }
 
         body.rtl .notification-toast.success { border-right-color: #4caf50; }
@@ -999,79 +999,31 @@ container:
         body.rtl .notification-toast.info { border-right-color: #2196f3; }
 
         body.rtl .stat-card {
-          text-align: right;
+        text-align: right;
         }
 
         body.rtl .pagination {
-          flex-direction: row-reverse;
+        flex-direction: row-reverse;
         }
 
-
-        /* ================= SETTINGS LAYOUT ================= */
-        .settings-layout {
-          display: grid;
-          grid-template-columns: 2fr 1fr; /* شمال كبير | يمين صغير */
-          gap: 20px;
-          width: 100%;
+        @media (min-width: 1024px) {
+        body.rtl .main-content {
+        margin-left: 0;
+        margin-right: 260px;
         }
-
-
-        .settings-left {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
         }
-
-        .settings-right {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .settings-full {
-          grid-column: 1 / -1; /* ياخد العرض كله */
-        }
-
-        /* Responsive */
-        @media (max-width: 992px) {
-          .settings-layout {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        .tech-table-card {
-          background: #fff;
-          padding: 20px;
-          border-radius: 12px;
-          width: 100%;
-        }
-
-        .table-wrapper {
-          width: 100%;
-          overflow-x: auto;
-        }
-
-        .settings-left,
-        .settings-right {
-          width: 100%;
-        }
-        :root {
-          --section-gap: 20px;
-          --card-padding: 20px;
-        }
-
       </style>
 
       <!-- Load i18n Script with inline fallback -->
       <script>
         // Inline i18n to avoid 404 issues
         (function(){
-          'use strict';
-          if(window.i18n) return;
-          const translations={en:{save:'Save',cancel:'Cancel',delete:'Delete',edit:'Edit',add:'Add',search:'Search',refresh:'Refresh',export:'Export',loading:'Loading...',error:'Error',success:'Success',warning:'Warning',yes:'Yes',no:'No',confirm:'Confirm',close:'Close',actions:'Actions',status:'Status',name:'Name',email:'Email',phone:'Phone',role:'Role',active:'Active',inactive:'Inactive',admin_title:'Admin Panel',nav_dashboard:'Dashboard',nav_pending_approvals:'Pending Approvals',nav_all_users:'All Users',nav_clients:'Clients',nav_quotations:'Quotations',nav_settings:'Settings',nav_audit_log:'Audit Log',nav_logout:'Logout',dashboard_total_clients:'Total Clients',dashboard_total_quotations:'Total Quotations',pending_title:'Pending User Approvals',pending_approve:'Approve',pending_reject:'Reject',users_title:'All Users',clients_title:'Clients Management',quotations_title:'Quotations Management',settings_title:'System Settings'},ar:{save:'حفظ',cancel:'إلغاء',delete:'حذف',edit:'تعديل',add:'إضافة',search:'بحث',refresh:'تحديث',export:'تصدير',loading:'جاري التحميل...',error:'خطأ',success:'نجاح',warning:'تحذير',yes:'نعم',no:'لا',confirm:'تأكيد',close:'إغلاق',actions:'الإجراءات',status:'الحالة',name:'الاسم',email:'البريد الإلكتروني',phone:'الهاتف',role:'الدور',active:'نشط',inactive:'غير نشط',admin_title:'لوحة التحكم',nav_dashboard:'لوحة المعلومات',nav_pending_approvals:'طلبات الانتظار',nav_all_users:'جميع المستخدمين',nav_clients:'العملاء',nav_quotations:'عروض الأسعار',nav_settings:'الإعدادات',nav_audit_log:'سجل العمليات',nav_logout:'تسجيل الخروج',dashboard_total_clients:'إجمالي العملاء',dashboard_total_quotations:'إجمالي عروض الأسعار',pending_title:'طلبات تسجيل المستخدمين',pending_approve:'موافقة',pending_reject:'رفض',users_title:'جميع المستخدمين',clients_title:'إدارة العملاء',quotations_title:'إدارة عروض الأسعار',settings_title:'إعدادات النظام'}};
-          class I18n{constructor(){this.currentLang=localStorage.getItem('hp_language')||'en';this.listeners=[]}getLang(){return this.currentLang}setLang(lang){if(lang!=='en'&&lang!=='ar')return;this.currentLang=lang;localStorage.setItem('hp_language',lang);document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.documentElement.lang=lang;if(lang==='ar'){document.body.classList.add('rtl')}else{document.body.classList.remove('rtl')}this.listeners.forEach(fn=>fn(lang));window.dispatchEvent(new CustomEvent('languageChanged',{detail:{lang}}))}toggleLang(){this.setLang(this.currentLang==='en'?'ar':'en')}t(key,replacements={}){let text=translations[this.currentLang][key]||translations['en'][key]||key;Object.keys(replacements).forEach(k=>{text=text.replace(new RegExp(`\\{${k}\\}`,'g'),replacements[k])});return text}isRTL(){return this.currentLang==='ar'}onLangChange(callback){this.listeners.push(callback)}init(){this.setLang(this.currentLang)}}
-          window.i18n=new I18n();
-          if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>window.i18n.init())}else{window.i18n.init()}
+        'use strict';
+        if(window.i18n) return;
+        const translations={en:{save:'Save',cancel:'Cancel',delete:'Delete',edit:'Edit',add:'Add',search:'Search',refresh:'Refresh',export:'Export',loading:'Loading...',error:'Error',success:'Success',warning:'Warning',yes:'Yes',no:'No',confirm:'Confirm',close:'Close',actions:'Actions',status:'Status',name:'Name',email:'Email',phone:'Phone',role:'Role',active:'Active',inactive:'Inactive',admin_title:'Admin Panel',nav_dashboard:'Dashboard',nav_pending_approvals:'Pending Approvals',nav_all_users:'All Users',nav_clients:'Clients',nav_quotations:'Quotations',nav_settings:'Settings',nav_audit_log:'Audit Log',nav_logout:'Logout',dashboard_total_clients:'Total Clients',dashboard_total_quotations:'Total Quotations',pending_title:'Pending User Approvals',pending_approve:'Approve',pending_reject:'Reject',users_title:'All Users',clients_title:'Clients Management',quotations_title:'Quotations Management',settings_title:'System Settings'},ar:{save:'حفظ',cancel:'إلغاء',delete:'حذف',edit:'تعديل',add:'إضافة',search:'بحث',refresh:'تحديث',export:'تصدير',loading:'جاري التحميل...',error:'خطأ',success:'نجاح',warning:'تحذير',yes:'نعم',no:'لا',confirm:'تأكيد',close:'إغلاق',actions:'الإجراءات',status:'الحالة',name:'الاسم',email:'البريد الإلكتروني',phone:'الهاتف',role:'الدور',active:'نشط',inactive:'غير نشط',admin_title:'لوحة التحكم',nav_dashboard:'لوحة المعلومات',nav_pending_approvals:'طلبات الانتظار',nav_all_users:'جميع المستخدمين',nav_clients:'العملاء',nav_quotations:'عروض الأسعار',nav_settings:'الإعدادات',nav_audit_log:'سجل العمليات',nav_logout:'تسجيل الخروج',dashboard_total_clients:'إجمالي العملاء',dashboard_total_quotations:'إجمالي عروض الأسعار',pending_title:'طلبات تسجيل المستخدمين',pending_approve:'موافقة',pending_reject:'رفض',users_title:'جميع المستخدمين',clients_title:'إدارة العملاء',quotations_title:'إدارة عروض الأسعار',settings_title:'إعدادات النظام'}};
+        class I18n{constructor(){this.currentLang=localStorage.getItem('hp_language')||'en';this.listeners=[]}getLang(){return this.currentLang}setLang(lang){if(lang!=='en'&&lang!=='ar')return;this.currentLang=lang;localStorage.setItem('hp_language',lang);document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.documentElement.lang=lang;if(lang==='ar'){document.body.classList.add('rtl')}else{document.body.classList.remove('rtl')}this.listeners.forEach(fn=>fn(lang));window.dispatchEvent(new CustomEvent('languageChanged',{detail:{lang}}))}toggleLang(){this.setLang(this.currentLang==='en'?'ar':'en')}t(key,replacements={}){let text=translations[this.currentLang][key]||translations['en'][key]||key;Object.keys(replacements).forEach(k=>{text=text.replace(new RegExp(`\\{${k}\\}`,'g'),replacements[k])});return text}isRTL(){return this.currentLang==='ar'}onLangChange(callback){this.listeners.push(callback)}init(){this.setLang(this.currentLang)}}
+        window.i18n=new I18n();
+        if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>window.i18n.init())}else{window.i18n.init()}
         })();
       </script>
 
@@ -1279,1444 +1231,1490 @@ container:
                 </label>
                 <button class="action-btn green" onclick="exportQuotations()">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                  Export Excel
-                </button>
+                        Export Excel
+                      </button>
+                    </div>
+                    <div id="quotationsContent">
+                      <div class="loading-spinner"><div class="spinner"></div></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Audit Log Panel -->
+                <div class="panel" id="audit-panel">
+                  <div class="panel-header">
+                    <h3>Audit Log</h3>
+                    <button class="action-btn" onclick="loadAuditLogs()">Refresh</button>
+                  </div>
+                  <div class="panel-body">
+                    <div id="auditContent">
+                      <div class="loading-spinner"><div class="spinner"></div></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Settings Panel -->
+                <div class="panel" id="settings-panel">
+                  <div class="panel-header">
+                    <h3>System Settings</h3>
+                    <button class="action-btn" onclick="loadSettings()">Refresh</button>
+                  </div>
+                  <div class="panel-body">
+                    <div id="settingsContent">
+                      <div class="loading-spinner"><div class="spinner"></div></div>
+                    </div>
+                  </div>
+                </div>
+
+              </main>
+            </div>
+
+            <!-- Role Modal -->
+            <div class="modal-overlay" id="roleModal">
+              <div class="modal-box">
+                <div class="modal-header">
+                  <h3>Change User Role</h3>
+                  <button class="modal-close" onclick="closeModal('roleModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <div class="form-group">
+                    <label>Select Role</label>
+                    <select id="newRole">
+                      <option value="admin">Admin</option>
+                      <option value="manager">Manager</option>
+                      <option value="sales">Sales</option>
+                      <option value="viewer">Viewer</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button class="filter-btn" onclick="closeModal('roleModal')">Cancel</button>
+                  <button class="action-btn" onclick="confirmRoleChange()">Save Changes</button>
+                </div>
               </div>
-              <div id="quotationsContent">
-                <div class="loading-spinner"><div class="spinner"></div></div>
+            </div>
+
+            <!-- Password Reset Modal -->
+            <div class="modal-overlay" id="passwordModal">
+              <div class="modal-box">
+                <div class="modal-header">
+                  <h3>Reset Password</h3>
+                  <button class="modal-close" onclick="closeModal('passwordModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter new password (min 6 characters)">
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button class="filter-btn" onclick="closeModal('passwordModal')">Cancel</button>
+                  <button class="action-btn" onclick="confirmPasswordReset()">Reset Password</button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Audit Log Panel -->
-          <div class="panel" id="audit-panel">
-            <div class="panel-header">
-              <h3>Audit Log</h3>
-              <button class="action-btn" onclick="loadAuditLogs()">Refresh</button>
-            </div>
-            <div class="panel-body">
-              <div id="auditContent">
-                <div class="loading-spinner"><div class="spinner"></div></div>
+            <!-- Approval Modal with Role Selection -->
+            <div class="modal-overlay" id="approvalModal">
+              <div class="modal-box">
+                <div class="modal-header">
+                  <h3>✅ Approve User</h3>
+                  <button class="modal-close" onclick="closeModal('approvalModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="margin: 5px 0;"><strong>Name:</strong> <span id="approvalUserName">-</span></p>
+                    <p style="margin: 5px 0;"><strong>Email:</strong> <span id="approvalUserEmail">-</span></p>
+                    <p style="margin: 5px 0;"><strong>Phone:</strong> <span id="approvalUserPhone">-</span></p>
+                    <p style="margin: 5px 0;"><strong>Registered:</strong> <span id="approvalUserDate">-</span></p>
+                  </div>
+                  <div class="form-group">
+                    <label>Select Role for this User</label>
+                    <select id="approvalRole" onchange="updateRolePermissions()">
+                      <option value="viewer">Viewer (Read Only)</option>
+                      <option value="sales" selected>Sales (Create & Edit Own)</option>
+                      <option value="manager">Manager (Full except Admin)</option>
+                      <option value="admin">Admin (Full Access)</option>
+                    </select>
+                  </div>
+                  <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; font-size: 13px;">
+                    <strong>Role Permissions:</strong>
+                    <ul id="rolePermissionsList" style="margin: 5px 0 0 0; padding-left: 20px;">
+                      <li>View, Create, Edit own records</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button class="filter-btn" onclick="closeModal('approvalModal')">Cancel</button>
+                  <button class="action-btn" onclick="confirmApproval()" style="background: linear-gradient(135deg, #4caf50, #45a049);">✓ Approve User</button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Settings Panel -->
-          <div class="panel" id="settings-panel">
-            <div class="panel-header">
-              <h3>System Settings</h3>
-              <button class="action-btn" onclick="loadSettings()">Refresh</button>
-            </div>
-            <div class="panel-body">
-              <div id="settingsContent">
-                <div class="loading-spinner"><div class="spinner"></div></div>
-              </div>
-            </div>
-          </div>
-
-        </main>
-      </div>
-
-      <!-- Role Modal -->
-      <div class="modal-overlay" id="roleModal">
-        <div class="modal-box">
-          <div class="modal-header">
-            <h3>Change User Role</h3>
-            <button class="modal-close" onclick="closeModal('roleModal')">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>Select Role</label>
-              <select id="newRole">
-                <option value="admin">Admin</option>
-                <option value="manager">Manager</option>
-                <option value="sales">Sales</option>
-                <option value="viewer">Viewer</option>
-              </select>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="filter-btn" onclick="closeModal('roleModal')">Cancel</button>
-            <button class="action-btn" onclick="confirmRoleChange()">Save Changes</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Password Reset Modal -->
-      <div class="modal-overlay" id="passwordModal">
-        <div class="modal-box">
-          <div class="modal-header">
-            <h3>Reset Password</h3>
-            <button class="modal-close" onclick="closeModal('passwordModal')">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>New Password</label>
-              <input type="password" id="newPassword" placeholder="Enter new password (min 6 characters)">
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="filter-btn" onclick="closeModal('passwordModal')">Cancel</button>
-            <button class="action-btn" onclick="confirmPasswordReset()">Reset Password</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Approval Modal with Role Selection -->
-      <div class="modal-overlay" id="approvalModal">
-        <div class="modal-box">
-          <div class="modal-header">
-            <h3>✅ Approve User</h3>
-            <button class="modal-close" onclick="closeModal('approvalModal')">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-              <p style="margin: 5px 0;"><strong>Name:</strong> <span id="approvalUserName">-</span></p>
-              <p style="margin: 5px 0;"><strong>Email:</strong> <span id="approvalUserEmail">-</span></p>
-              <p style="margin: 5px 0;"><strong>Phone:</strong> <span id="approvalUserPhone">-</span></p>
-              <p style="margin: 5px 0;"><strong>Registered:</strong> <span id="approvalUserDate">-</span></p>
-            </div>
-            <div class="form-group">
-              <label>Select Role for this User</label>
-              <select id="approvalRole" onchange="updateRolePermissions()">
-                <option value="viewer">Viewer (Read Only)</option>
-                <option value="sales" selected>Sales (Create & Edit Own)</option>
-                <option value="manager">Manager (Full except Admin)</option>
-                <option value="admin">Admin (Full Access)</option>
-              </select>
-            </div>
-            <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; font-size: 13px;">
-              <strong>Role Permissions:</strong>
-              <ul id="rolePermissionsList" style="margin: 5px 0 0 0; padding-left: 20px;">
-                <li>View, Create, Edit own records</li>
-              </ul>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="filter-btn" onclick="closeModal('approvalModal')">Cancel</button>
-            <button class="action-btn" onclick="confirmApproval()" style="background: linear-gradient(135deg, #4caf50, #45a049);">✓ Approve User</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Notification Toast Container -->
-      <div id="notificationContainer" style="position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px;"></div>
-
-      <script>
-        (function() {
-
-          // State
-          var currentPanel = 'dashboard';
-          var clientsPage = 1;
-          var quotationsPage = 1;
-          var auditPage = 1;
-          var selectedUserId = null;
-          var searchTimeout = null;
-          var pendingUsersData = {};
-
-          // ============================================
-          // NOTIFICATION SYSTEM
-          // ============================================
-          window.showNotification = function(type, title, message, duration) {
-            duration = duration || 5000;
-            var container = document.getElementById('notificationContainer');
-            if (!container) return;
-
-            var icons = { 'success': '✓', 'error': '✕', 'warning': '⚠', 'info': 'ℹ' };
-
-            var toast = document.createElement('div');
-            toast.className = 'notification-toast ' + type;
-            toast.innerHTML =
-              '<span class="icon">' + icons[type] + '</span>' +
-              '<div class="content">' +
-                '<div class="title">' + title + '</div>' +
-                '<div class="message">' + message + '</div>' +
-              '</div>' +
-              '<button class="close-btn" onclick="this.parentElement.remove()">×</button>';
-
-            container.appendChild(toast);
-
-            setTimeout(function() {
-              if (toast.parentElement) {
-                toast.style.animation = 'slideOut 0.3s ease';
-                setTimeout(function() { if (toast.parentElement) toast.remove(); }, 300);
-              }
-            }, duration);
-          };
-
-          // ============================================
-          // INIT - Will be called at the end of script
-          // ============================================
-          function init() {
-            console.log('Initializing Admin Panel...');
-            initUser();
-            initNavigation();
-            // Wait a bit for Python bridge functions then load dashboard
-            setTimeout(function() {
-              if (window.loadDashboard) {
-                window.loadDashboard();
-              }
-            }, 500);
-          }
-
-          function initUser() {
-            var name = sessionStorage.getItem('user_name') || 'Admin';
-            var role = sessionStorage.getItem('user_role') || 'admin';
-
-            document.getElementById('userName').textContent = name;
-            document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
-            document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
-
-            // تحديث اسم المستخدم تحت اللوجو
-            var sidebarUserName = document.getElementById('sidebarUserName');
-            if (sidebarUserName) {
-              sidebarUserName.textContent = name;
-            }
-          }
-
-          // ============================================
-          // NAVIGATION
-          // ============================================
-          function initNavigation() {
-            console.log('Setting up navigation...');
-            var navItems = document.querySelectorAll('.nav-item[data-panel]');
-            console.log('Found nav items:', navItems.length);
-
-            navItems.forEach(function(item) {
-              item.style.cursor = 'pointer';
-              item.onclick = function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                var panel = item.dataset.panel;
-                console.log('Nav clicked:', panel);
-                if (!panel) return;
-
-                // Update active state
-                document.querySelectorAll('.nav-item').forEach(function(i) { i.classList.remove('active'); });
-                item.classList.add('active');
-
-                // Show panel
-                document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
-                var panelEl = document.getElementById(panel + '-panel');
-                if (panelEl) {
-                  panelEl.classList.add('active');
-                  console.log('Activated panel:', panel + '-panel');
-                }
-
-                currentPanel = panel;
-
-                // Load data
-                if (panel === 'dashboard') loadDashboard();
-                else if (panel === 'pending') loadPendingUsers();
-                else if (panel === 'users') loadAllUsers();
-                else if (panel === 'clients') loadClients();
-                else if (panel === 'quotations') loadQuotations();
-                else if (panel === 'audit') loadAuditLogs();
-                else if (panel === 'settings') loadSettings();
-              };
-            });
-
-            // Go to Launcher
-            var launcherBtn = document.getElementById('goToLauncher');
-            if (launcherBtn) {
-              console.log('Setting up Launcher button');
-              launcherBtn.style.cursor = 'pointer';
-              launcherBtn.onclick = function(e) {
-                e.preventDefault();
-                console.log('Going to Launcher');
-                window.location.hash = '#launcher';
-              };
-            }
-
-            // Go to Data Import
-            var importBtn = document.getElementById('goToDataImport');
-            if (importBtn) {
-              importBtn.style.cursor = 'pointer';
-              importBtn.onclick = function(e) {
-                e.preventDefault();
-                if (window.openDataImport) {
-                  window.openDataImport();
-                }
-              };
-            }
-
-            // Logout
-            var logoutBtn = document.getElementById('logoutBtn');
-            if (logoutBtn) {
-              logoutBtn.onclick = async function() {
-                console.log('Logging out...');
-                if (window.logoutUser) {
-                  await window.logoutUser();
-                }
-                sessionStorage.clear();
-                window.location.hash = '#login';
-              };
-            }
-          }
-
-          // ============================================
-          // DASHBOARD
-          // ============================================
-          window.loadDashboard = async function() {
-            // Helper function to safely set text content
-            function setStatText(id, value) {
-              var el = document.getElementById(id);
-              if (el) el.textContent = value;
-            }
-
-            try {
-              // Wait for Python bridge to be ready
-              if (!window.getDashboardStats) {
-                console.log('Waiting for bridge functions...');
-                setTimeout(loadDashboard, 500);
-                return;
-              }
-
-              var stats = await window.getDashboardStats();
-              if (stats) {
-                setStatText('statClients', (stats.total_clients || 0).toLocaleString());
-                setStatText('statQuotations', (stats.total_quotations || 0).toLocaleString());
-                setStatText('statValue', (stats.total_value || 0).toLocaleString());
-                setStatText('statMonthly', (stats.this_month_quotations || 0).toLocaleString());
-              }
-
-              // Update pending badge
-              if (window.getPendingUsers) {
-                var pending = await window.getPendingUsers();
-                if (pending && pending.success && pending.users) {
-                  setStatText('pendingBadge', pending.users.length);
-                }
-              }
-            } catch (e) {
-              console.error('Dashboard error:', e);
-              // Show zeros on error (safely)
-              setStatText('statClients', '0');
-              setStatText('statQuotations', '0');
-              setStatText('statValue', '0');
-              setStatText('statMonthly', '0');
-            }
-          };
-
-          // ============================================
-          // PENDING USERS
-          // ============================================
-          window.loadPendingUsers = async function() {
-            var container = document.getElementById('pendingContent');
-            container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
-
-            try {
-              var result = await window.getPendingUsers();
-              if (!result.success) {
-                container.innerHTML = '<div class="empty-state"><h4>' + result.message + '</h4></div>';
-                return;
-              }
-
-              if (result.users.length === 0) {
-                container.innerHTML = '<div class="empty-state"><h4>No pending approvals</h4><p>All users have been reviewed</p></div>';
-                pendingUsersData = {};
-                return;
-              }
-
-              // Store user data for modal
-              pendingUsersData = {};
-              result.users.forEach(function(u) { pendingUsersData[u.user_id] = u; });
-
-              var html = '<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th><th>Actions</th></tr></thead><tbody>';
-              result.users.forEach(function(u) {
-                html += '<tr>';
-                html += '<td>' + u.full_name + '</td>';
-                html += '<td>' + u.email + '</td>';
-                html += '<td>' + (u.phone || '-') + '</td>';
-                html += '<td>' + u.created_at.split('T')[0] + '</td>';
-                html += '<td class="actions">';
-                html += '<button class="btn-sm approve" onclick="showApprovalModal(\'' + u.user_id + '\')" style="background:#e8f5e9;color:#2e7d32;">✓ Approve</button>';
-                html += '<button class="btn-sm reject" onclick="rejectUserAction(\'' + u.user_id + '\')">✕ Reject</button>';
-                html += '</td></tr>';
-              });
-              html += '</tbody></table>';
-              container.innerHTML = html;
-
-              document.getElementById('pendingBadge').textContent = result.users.length;
-            } catch (e) {
-              container.innerHTML = '<div class="empty-state"><h4>Error loading users</h4></div>';
-            }
-          };
-
-          // ============================================
-          // APPROVAL MODAL FUNCTIONS
-          // ============================================
-          window.showApprovalModal = function(userId) {
-            var user = pendingUsersData[userId];
-            if (!user) {
-              showNotification('error', 'Error', 'User data not found');
-              return;
-            }
-            selectedUserId = userId;
-            document.getElementById('approvalUserName').textContent = user.full_name;
-            document.getElementById('approvalUserEmail').textContent = user.email;
-            document.getElementById('approvalUserPhone').textContent = user.phone || 'Not provided';
-            document.getElementById('approvalUserDate').textContent = user.created_at.split('T')[0];
-            document.getElementById('approvalRole').value = 'sales';
-            updateRolePermissions();
-            document.getElementById('approvalModal').classList.add('show');
-          };
-
-          window.updateRolePermissions = function() {
-            var role = document.getElementById('approvalRole').value;
-            var permissions = {
-              'viewer': ['View all records'],
-              'sales': ['View all records', 'Create new records', 'Edit own records'],
-              'manager': ['View all records', 'Create records', 'Edit all records', 'Export data', 'Delete own records'],
-              'admin': ['Full access to all features', 'Manage users', 'System settings', 'Audit logs']
-            };
-            var list = document.getElementById('rolePermissionsList');
-            list.innerHTML = '';
-            (permissions[role] || []).forEach(function(perm) {
-              list.innerHTML += '<li>' + perm + '</li>';
-            });
-          };
-
-          window.confirmApproval = async function() {
-            var role = document.getElementById('approvalRole').value;
-            closeModal('approvalModal');
-            showNotification('info', 'Processing', 'Approving user...');
-
-            try {
-              var result = await window.approveUserWithRole(selectedUserId, role);
-              if (result.success) {
-                showNotification('success', 'User Approved! ✓', 'Role: ' + role.charAt(0).toUpperCase() + role.slice(1));
-                loadPendingUsers();
-                loadDashboard();
-              } else {
-                showNotification('error', 'Error', result.message);
-              }
-            } catch (e) {
-              showNotification('error', 'Error', 'Failed to approve user');
-            }
-          };
-
-          window.rejectUserAction = async function(userId) {
-            var user = pendingUsersData[userId];
-            var userName = user ? user.full_name : 'this user';
-            if (!confirm('Are you sure you want to reject ' + userName + '?\\nThis action cannot be undone.')) return;
-
-            showNotification('info', 'Processing', 'Rejecting user...');
-            try {
-              var result = await window.rejectUserAPI(userId);
-              if (result.success) {
-                showNotification('success', 'User Rejected', userName + ' has been removed');
-                loadPendingUsers();
-                loadDashboard();
-              } else {
-                showNotification('error', 'Error', result.message);
-              }
-            } catch (e) {
-              showNotification('error', 'Error', 'Failed to reject user');
-            }
-          };
-
-          // ============================================
-          // ALL USERS
-          // ============================================
-          window.loadAllUsers = async function() {
-            var container = document.getElementById('usersContent');
-            container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
-
-            try {
-              var result = await window.getAllUsers();
-              if (!result.success) {
-                container.innerHTML = '<div class="empty-state"><h4>' + result.message + '</h4></div>';
-                return;
-              }
-
-              if (result.users.length === 0) {
-                container.innerHTML = '<div class="empty-state"><h4>No users found</h4></div>';
-                return;
-              }
-
-              var html = '<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead><tbody>';
-              result.users.forEach(function(u) {
-                var status = u.is_approved ? (u.is_active ? 'active' : 'inactive') : 'pending';
-                html += '<tr>';
-                html += '<td>' + u.full_name + '</td>';
-                html += '<td>' + u.email + '</td>';
-                html += '<td>' + u.role + '</td>';
-                html += '<td><span class="status ' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
-                html += '<td>' + (u.last_login === 'Never' ? 'Never' : u.last_login.split('T')[0]) + '</td>';
-                html += '<td class="actions">';
-                html += '<button class="btn-sm edit" onclick="showRoleModal(\'' + u.user_id + '\', \'' + u.role + '\')">Role</button>';
-                html += '<button class="btn-sm edit" onclick="showPasswordModal(\'' + u.user_id + '\')">Password</button>';
-                if (u.is_approved) {
-                  html += '<button class="btn-sm ' + (u.is_active ? 'reject' : 'approve') + '" onclick="toggleActive(\'' + u.user_id + '\')">' + (u.is_active ? 'Disable' : 'Enable') + '</button>';
-                }
-                html += '<button class="btn-sm reject" onclick="confirmDeleteUser(\'' + u.user_id + '\', \'' + u.full_name + '\')">Delete</button>';
-                html += '</td></tr>';
-              });
-              html += '</tbody></table>';
-              container.innerHTML = html;
-            } catch (e) {
-              container.innerHTML = '<div class="empty-state"><h4>Error loading users</h4></div>';
-            }
-          };
-
-          window.showRoleModal = function(userId, currentRole) {
-            selectedUserId = userId;
-            document.getElementById('newRole').value = currentRole;
-            document.getElementById('roleModal').classList.add('show');
-          };
-
-          window.showPasswordModal = function(userId) {
-            selectedUserId = userId;
-            document.getElementById('newPassword').value = '';
-            document.getElementById('passwordModal').classList.add('show');
-          };
-
-          window.closeModal = function(id) {
-            document.getElementById(id).classList.remove('show');
-          };
-
-          window.confirmRoleChange = async function() {
-            var role = document.getElementById('newRole').value;
-            var result = await window.updateUserRole(selectedUserId, role);
-            closeModal('roleModal');
-            if (result.success) {
-              loadAllUsers();
-            } else {
-              alert(result.message);
-            }
-          };
-
-          window.confirmPasswordReset = async function() {
-            var password = document.getElementById('newPassword').value;
-            if (password.length < 6) {
-              alert('Password must be at least 6 characters');
-              return;
-            }
-            var result = await window.resetUserPassword(selectedUserId, password);
-            closeModal('passwordModal');
-            if (result.success) {
-              alert('Password reset successfully');
-            } else {
-              alert(result.message);
-            }
-          };
-
-          window.toggleActive = async function(userId) {
-            var result = await window.toggleUserActive(userId);
-            if (result.success) {
-              loadAllUsers();
-            } else {
-              alert(result.message);
-            }
-          };
-
-          window.confirmDeleteUser = function(userId, userName) {
-            if (confirm('⚠️ Are you sure you want to DELETE user "' + userName + '"?\n\nThis will permanently remove the user and all their data. This action cannot be undone!')) {
-              deleteUserPermanently(userId);
-            }
-          };
-
-          window.deleteUserPermanently = async function(userId) {
-            try {
-              var result = await window.deleteUser(userId);
-              if (result.success) {
-                showNotification('success', 'User Deleted', 'User has been permanently deleted');
-                loadAllUsers();
-                loadDashboard();
-              } else {
-                alert(result.message);
-              }
-            } catch (e) {
-              alert('Error deleting user: ' + e.message);
-            }
-          };
-
-          // ============================================
-          // CLIENTS
-          // ============================================
-          window.loadClients = async function(page) {
-            clientsPage = page || 1;
-            var container = document.getElementById('clientsContent');
-            container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
-
-            var search = document.getElementById('clientSearch').value;
-            var showDeleted = document.getElementById('showDeletedClients').checked;
-
-            try {
-              var result = await window.getAllClients(clientsPage, 15, search, showDeleted);
-              renderClientsTable(result, container);
-            } catch (e) {
-              container.innerHTML = '<div class="empty-state"><h4>Error loading clients</h4></div>';
-            }
-          };
-
-          function renderClientsTable(result, container) {
-            // ✅ SORT ASCENDING BY CLIENT CODE
-            result.data.sort(function(a, b) {
-              return Number(a['Client Code']) - Number(b['Client Code']);
-            });
-            if (result.data.length === 0) {
-              container.innerHTML = '<div class="empty-state"><h4>No clients found</h4></div>';
-              return;
-            }
-
-            var html = '<table class="data-table"><thead><tr><th>Code</th><th>Name</th><th>Company</th><th>Phone</th><th>Country</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-            result.data.forEach(function(c) {
-              var status = c.is_deleted ? 'deleted' : 'active';
-              html += '<tr>';
-              html += '<td>' + c['Client Code'] + '</td>';
-              html += '<td>' + c['Client Name'] + '</td>';
-              html += '<td>' + c['Company'] + '</td>';
-              html += '<td>' + c['Phone'] + '</td>';
-              html += '<td>' + (c['Country'] || '-') + '</td>';
-              html += '<td><span class="status ' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
-              html += '<td class="actions">';
-              if (c.is_deleted) {
-                html += '<button class="btn-sm restore" onclick="restoreClient(\'' + c['Client Code'] + '\')">Restore</button>';
-              } else {
-                html += '<button class="btn-sm delete" onclick="deleteClient(\'' + c['Client Code'] + '\')">Delete</button>';
-              }
-              html += '</td></tr>';
-            });
-            html += '</tbody></table>';
-
-            // Pagination
-            html += '<div class="pagination">';
-            html += '<button ' + (result.page <= 1 ? 'disabled' : '') + ' onclick="loadClients(' + (result.page - 1) + ')">Previous</button>';
-            html += '<span class="page-info">Page ' + result.page + ' of ' + result.total_pages + ' (' + result.total + ' items)</span>';
-            html += '<button ' + (result.page >= result.total_pages ? 'disabled' : '') + ' onclick="loadClients(' + (result.page + 1) + ')">Next</button>';
-            html += '</div>';
-
-            container.innerHTML = html;
-          }
-
-          window.searchClients = function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(function() { loadClients(1); }, 300);
-          };
-
-          window.deleteClient = async function(code) {
-            if (!confirm('Delete this client?')) return;
-            var result = await window.softDeleteClient(code);
-            if (result.success) {
-              loadClients(clientsPage);
-            } else {
-              alert(result.message);
-            }
-          };
-
-          window.restoreClient = async function(code) {
-            var result = await window.restoreClient(code);
-            if (result.success) {
-              loadClients(clientsPage);
-            } else {
-              alert(result.message);
-            }
-          };
-
-          window.exportClients = async function() {
-            var showDeleted = document.getElementById('showDeletedClients').checked;
-            var data = await window.exportClientsData(showDeleted);
-            downloadCSV(data, 'clients_export.csv');
-          };
-
-          // ============================================
-          // QUOTATIONS
-          // ============================================
-          window.loadQuotations = async function(page) {
-            quotationsPage = page || 1;
-            var container = document.getElementById('quotationsContent');
-            container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
-
-            var search = document.getElementById('quotationSearch').value;
-            var showDeleted = document.getElementById('showDeletedQuotations').checked;
-
-            try {
-              var result = await window.getAllQuotations(quotationsPage, 15, search, showDeleted);
-              renderQuotationsTable(result, container);
-            } catch (e) {
-              container.innerHTML = '<div class="empty-state"><h4>Error loading quotations</h4></div>';
-            }
-          };
-
-          function renderQuotationsTable(result, container) {
-            if (result.data.length === 0) {
-              container.innerHTML = '<div class="empty-state"><h4>No quotations found</h4></div>';
-              return;
-            }
-
-            var html = '<table class="data-table"><thead><tr><th>#</th><th>Date</th><th>Client</th><th>Model</th><th>Agreed Price</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-            result.data.forEach(function(q) {
-              var status = q.is_deleted ? 'deleted' : 'active';
-              html += '<tr>';
-              html += '<td>' + q['Quotation#'] + '</td>';
-              html += '<td>' + q['Date'] + '</td>';
-              html += '<td>' + q['Client Name'] + '</td>';
-              html += '<td>' + (q['Model'] || '-') + '</td>';
-              html += '<td>' + (q['Agreed Price'] ? q['Agreed Price'].toLocaleString() : '-') + '</td>';
-              html += '<td><span class="status ' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
-              html += '<td class="actions">';
-              if (q.is_deleted) {
-                html += '<button class="btn-sm restore" onclick="restoreQuotation(' + q['Quotation#'] + ')">Restore</button>';
-              } else {
-                html += '<button class="btn-sm delete" onclick="deleteQuotation(' + q['Quotation#'] + ')">Delete</button>';
-              }
-              html += '</td></tr>';
-            });
-            html += '</tbody></table>';
-
-            // Pagination
-            html += '<div class="pagination">';
-            html += '<button ' + (result.page <= 1 ? 'disabled' : '') + ' onclick="loadQuotations(' + (result.page - 1) + ')">Previous</button>';
-            html += '<span class="page-info">Page ' + result.page + ' of ' + result.total_pages + ' (' + result.total + ' items)</span>';
-            html += '<button ' + (result.page >= result.total_pages ? 'disabled' : '') + ' onclick="loadQuotations(' + (result.page + 1) + ')">Next</button>';
-            html += '</div>';
-
-            container.innerHTML = html;
-          }
-
-          window.searchQuotations = function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(function() { loadQuotations(1); }, 300);
-          };
-
-          window.deleteQuotation = async function(num) {
-            if (!confirm('Delete this quotation?')) return;
-            var result = await window.softDeleteQuotation(num);
-            if (result.success) {
-              loadQuotations(quotationsPage);
-            } else {
-              alert(result.message);
-            }
-          };
-
-          window.restoreQuotation = async function(num) {
-            var result = await window.restoreQuotation(num);
-            if (result.success) {
-              loadQuotations(quotationsPage);
-            } else {
-              alert(result.message);
-            }
-          };
-
-          window.exportQuotations = async function() {
-            var showDeleted = document.getElementById('showDeletedQuotations').checked;
-            var data = await window.exportQuotationsData(showDeleted);
-            downloadCSV(data, 'quotations_export.csv');
-          };
-
-          // ============================================
-          // AUDIT LOG
-          // ============================================
-          window.loadAuditLogs = async function(page) {
-            auditPage = page || 1;
-            var container = document.getElementById('auditContent');
-            container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
-
-            try {
-              var result = await window.getAuditLogs(50, (auditPage - 1) * 50, null);
-              if (!result.success) {
-                container.innerHTML = '<div class="empty-state"><h4>' + result.message + '</h4></div>';
-                return;
-              }
-
-              if (result.logs.length === 0) {
-                container.innerHTML = '<div class="empty-state"><h4>No audit logs found</h4></div>';
-                return;
-              }
-
-              var html = '<table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Table</th><th>Record ID</th></tr></thead><tbody>';
-              result.logs.forEach(function(l) {
-                html += '<tr>';
-                html += '<td>' + l.timestamp.replace('T', ' ').substring(0, 19) + '</td>';
-                html += '<td>' + l.user_email + '</td>';
-                html += '<td>' + l.action + '</td>';
-                html += '<td>' + l.table_name + '</td>';
-                html += '<td>' + (l.record_id || '-') + '</td>';
-                html += '</tr>';
-              });
-              html += '</tbody></table>';
-
-              container.innerHTML = html;
-            } catch (e) {
-              container.innerHTML = '<div class="empty-state"><h4>Error loading audit logs</h4></div>';
-            }
-          };
-
-          // ============================================
-          // SETTINGS
-          // ============================================
-          window.loadSettings = async function() {
-            var container = document.getElementById('settingsContent');
-            container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
-
-            try {
-              var result = await window.getAllSettings();
-              if (!result || !result.success) {
-                container.innerHTML = '<div class="empty-state"><h4>' + (result ? result.message : 'Error loading settings') + '</h4></div>';
-                return;
-              }
-
-              var settings = result.settings || {};
-
-              var html = '<div>';
-
-
-              /* =====================================================
-         TOP SECTION: Exchange Rate + Shipping (Vertical)
-      ===================================================== */
-
-              html += '<div style="display:flex;flex-direction:column;gap:var(--section-gap);margin-bottom:var(--section-gap);">';
-
-              /* Exchange Rate */
-              html += '<div style="background:#f8f9fa;padding:var(--card-padding);border-radius:12px;">';
-              html += '<h4>💱 Exchange Rate</h4>';
-              html += '<div class="form-group" style="margin-bottom:0;">';
-              html += '<label>USD to EGP Rate</label>';
-              html += '<div style="display:flex;gap:10px;">';
-              html += '<input type="number" step="0.01" id="setting_exchange_rate" value="' + (settings.exchange_rate || 47.5) + '">';
-              html += '<button class="action-btn" onclick="saveSetting(\'exchange_rate\')">Save</button>';
-              html += '</div></div></div>';
-
-              /* Shipping & Expenses */
-              html += '<div style="background:#f8f9fa;padding:var(--card-padding);border-radius:12px;">';
-              html += '<h4 style="margin:0 0 15px;">🚢 Shipping & Expenses (USD)</h4>';
-
-              const shipFields = [
-                {key:'shipping_sea', label:'Sea Shipping Cost', def:3200},
-                {key:'ths_cost', label:'THS Cost', def:1000},
-                {key:'clearance_expenses', label:'Clearance Expenses', def:1400}
-              ];
-
-              shipFields.forEach(f=>{
-                html += '<div class="form-group">';
-                html += '<label>'+f.label+'</label>';
-                html += '<div style="display:flex;gap:10px;">';
-                html += '<input type="number" id="setting_'+f.key+'" value="'+(settings[f.key]||f.def)+'">';
-                html += '<button class="action-btn" onclick="saveSetting(\''+f.key+'\')">Save</button>';
-                html += '</div></div>';
-              });
-
-              html += '<div class="form-group">';
-              html += '<label>Tax Rate (%)</label>';
-              html += '<div style="display:flex;gap:10px;">';
-              html += '<input type="number" id="setting_tax_rate" value="'+((settings.tax_rate||0.15)*100)+'">';
-              html += '<button class="action-btn" onclick="saveSetting(\'tax_rate\',true)">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group" style="margin-bottom:0;">';
-              html += '<label>Bank Commission (%)</label>';
-              html += '<div style="display:flex;gap:10px;">';
-              html += '<input type="number" id="setting_bank_commission" value="'+((settings.bank_commission||0.0132)*100)+'">';
-              html += '<button class="action-btn" onclick="saveSetting(\'bank_commission\',true)">Save</button>';
-              html += '</div></div>';
-
-              html += '</div>'; // Shipping
-              html += '</div>'; // Top stack
-
-
-              /* =====================================================
-         BOTTOM GRID: Template LEFT | Cylinder RIGHT
-      ===================================================== */
-
-              html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">';
-
-              /* ================= LEFT : QUOTATION TEMPLATE ================= */
-              html += '<div style="background:#e8f5e9;padding:var(--card-padding);border-radius:12px;border:2px solid #4caf50;">';
-              html += '<h4 style="margin:0 0 15px;">📄 Quotation PDF Template Settings</h4>';
-
-              /* Company Info */
-              html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
-              html += '<h5>🏢 Company Information</h5>';
-
-              [
-                ['company_name_ar','Company Name (Arabic)','شركة حلوان بلاست ذ.م.م','rtl'],
-                ['company_name_en','Company Name (English)','Helwan Plast LLC'],
-                ['company_address_ar','Company Address (Arabic)','المنطقة الصناعية','rtl'],
-                ['company_address_en','Company Address (English)','Industrial Zone'],
-                ['company_email','Company Email','sales@helwanplast.com'],
-                ['company_website','Company Website','www.helwanplast.com']
-              ].forEach(f=>{
-                html += '<div class="form-group">';
-                html += '<label>'+f[1]+'</label>';
-                html += '<div style="display:flex;gap:10px;">';
-                html += '<input type="text" id="setting_'+f[0]+'" value="'+(settings[f[0]]||f[2])+'" '+(f[3]?'dir="rtl"':'')+'>';
-                html += '<button class="action-btn" onclick="saveSettingText(\''+f[0]+'\')">Save</button>';
-                html += '</div></div>';
-              });
-
-              html += '</div>'; // company box
-              html += '</div>'; // LEFT
-
-
-              /* ================= RIGHT : CYLINDER PRICES ================= */
-              html += '<div style="background:#f8f9fa;padding:var(--card-padding);border-radius:12px;">';
-              html += '<h4 style="margin:0 0 15px;">🔧 Cylinder Prices (USD per cm)</h4>';
-
-              const cyl = {80:3.49,100:3.59,120:4.05,130:4.5,140:5.026,160:5.4};
-              Object.keys(cyl).forEach(w=>{
-                html += '<div class="form-group">';
-                html += '<label>Width '+w+' cm</label>';
-                html += '<div style="display:flex;gap:10px;">';
-                html += '<input type="number" step="0.001" id="setting_cylinder_price_'+w+'" value="'+(settings['cylinder_price_'+w]||cyl[w])+'">';
-                html += '<button class="action-btn" onclick="saveSetting(\'cylinder_price_'+w+'\')">Save</button>';
-                html += '</div></div>';
-              });
-
-              html += '</div>'; // RIGHT
-              html += '</div>'; // GRID
-
-              // ==========================================
-              // Quotation Template Settings Section
-              // ==========================================
-              html += '<div style="background:#e8f5e9;padding:var(--card-padding);border-radius:12px;margin-bottom:20px;border:2px solid #4caf50;">';
-              html += '<h4 style="margin:0 0 15px;color:#2e7d32;">📄 Quotation PDF Template Settings</h4>';
-
-              // Company Info
-              html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
-              html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">🏢 Company Information</h5>';
-
-              html += '<div class="form-group">';
-              html += '<label>Company Name (Arabic)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="text" id="setting_company_name_ar" value="' + (settings.company_name_ar || 'شركة حلوان بلاست ذ.م.م') + '" style="flex:1;" dir="rtl">';
-              html += '<button class="action-btn" onclick="saveSettingText(\'company_name_ar\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Company Name (English)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="text" id="setting_company_name_en" value="' + (settings.company_name_en || 'Helwan Plast LLC') + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSettingText(\'company_name_en\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Company Address (Arabic)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="text" id="setting_company_address_ar" value="' + (settings.company_address_ar || 'المنطقة الصناعية الثانية - قطعة ٢٠') + '" style="flex:1;" dir="rtl">';
-              html += '<button class="action-btn" onclick="saveSettingText(\'company_address_ar\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Company Address (English)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="text" id="setting_company_address_en" value="' + (settings.company_address_en || 'Second Industrial Zone – Plot 20') + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSettingText(\'company_address_en\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Company Email</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="email" id="setting_company_email" value="' + (settings.company_email || 'sales@helwanplast.com') + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSettingText(\'company_email\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Company Website</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="text" id="setting_company_website" value="' + (settings.company_website || 'www.helwanplast.com') + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSettingText(\'company_website\')">Save</button>';
-              html += '</div></div>';
-
-              html += '</div>'; // End Company Info
-
-              // Quotation Defaults
-              html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
-              html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">📋 Quotation Defaults</h5>';
-
-              html += '<div class="form-group">';
-              html += '<label>Quotation Location (Arabic)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="text" id="setting_quotation_location_ar" value="' + (settings.quotation_location_ar || 'القاهرة') + '" style="flex:1;" dir="rtl">';
-              html += '<button class="action-btn" onclick="saveSettingText(\'quotation_location_ar\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Quotation Location (English)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="text" id="setting_quotation_location_en" value="' + (settings.quotation_location_en || 'Cairo') + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSettingText(\'quotation_location_en\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Warranty Period (months)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="number" id="setting_warranty_months" value="' + (settings.warranty_months || 12) + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSetting(\'warranty_months\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Quotation Validity (days)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="number" id="setting_validity_days" value="' + (settings.validity_days || 15) + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSetting(\'validity_days\')">Save</button>';
-              html += '</div></div>';
-
-              html += '</div>'; // End Quotation Defaults
-
-              // Payment Terms
-              html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
-              html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">💰 Payment Terms (%)</h5>';
-
-              html += '<div class="form-group">';
-              html += '<label>Down Payment %</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="number" id="setting_down_payment_percent" value="' + (settings.down_payment_percent || 40) + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSetting(\'down_payment_percent\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Before Shipping %</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="number" id="setting_before_shipping_percent" value="' + (settings.before_shipping_percent || 30) + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSetting(\'before_shipping_percent\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Before Delivery %</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="number" id="setting_before_delivery_percent" value="' + (settings.before_delivery_percent || 30) + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSetting(\'before_delivery_percent\')">Save</button>';
-              html += '</div></div>';
-
-              html += '</div>'; // End Payment Terms
-
-              // Machine Defaults
-              html += '<div style="background:#fff;padding:15px;border-radius:8px;">';
-              html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">⚙️ Machine Defaults</h5>';
-
-              html += '<div class="form-group">';
-              html += '<label>Country of Origin (Arabic)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="text" id="setting_country_origin_ar" value="' + (settings.country_origin_ar || 'الصين') + '" style="flex:1;" dir="rtl">';
-              html += '<button class="action-btn" onclick="saveSettingText(\'country_origin_ar\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Country of Origin (English)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="text" id="setting_country_origin_en" value="' + (settings.country_origin_en || 'China') + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSettingText(\'country_origin_en\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Anilox Type (Arabic)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="text" id="setting_anilox_type_ar" value="' + (settings.anilox_type_ar || 'انيلوكس سيراميك') + '" style="flex:1;" dir="rtl">';
-              html += '<button class="action-btn" onclick="saveSettingText(\'anilox_type_ar\')">Save</button>';
-              html += '</div></div>';
-
-              html += '<div class="form-group">';
-              html += '<label>Anilox Type (English)</label>';
-              html += '<div style="display:flex;gap:10px;align-items:center;">';
-              html += '<input type="text" id="setting_anilox_type_en" value="' + (settings.anilox_type_en || 'Ceramic anilox') + '" style="flex:1;">';
-              html += '<button class="action-btn" onclick="saveSettingText(\'anilox_type_en\')">Save</button>';
-              html += '</div></div>';
-
-              html += '</div>'; // End Machine Defaults
-
-              html += '</div>'; // End Quotation Template Settings
-
-              html += '</div>';
-
-              container.innerHTML = html;
-            } catch (e) {
-              console.error('Settings error:', e);
-              container.innerHTML = '<div class="empty-state"><h4>Error loading settings</h4></div>';
-            }
-          };
-
-          // Toggle custom value input visibility
-          window.toggleCustomValue = function(specNum) {
-            var sourceSelect = document.getElementById('tech_' + specNum + '_source');
-            var customInput = document.getElementById('tech_' + specNum + '_custom');
-            if (sourceSelect && customInput) {
-              customInput.style.display = sourceSelect.value === 'custom' ? 'block' : 'none';
-            }
-          };
-
-          // Save all technical specs
-          window.saveTechSpecs = async function() {
-            var specsData = {};
-
-            for (var i = 1; i <= 20; i++) {
-              var labelAr = document.getElementById('tech_' + i + '_label_ar');
-              var labelEn = document.getElementById('tech_' + i + '_label_en');
-              var source = document.getElementById('tech_' + i + '_source');
-              var customValue = document.getElementById('tech_' + i + '_custom');
-              var active = document.getElementById('tech_' + i + '_active');
-
-              if (labelAr && labelEn && source && active) {
-                specsData['tech_spec_' + i] = {
-                  label_ar: labelAr.value,
-                  label_en: labelEn.value,
-                  source: source.value,
-                  custom_value: customValue ? customValue.value : '',
-                  active: active.checked
+            <!-- Notification Toast Container -->
+            <div id="notificationContainer" style="position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px;"></div>
+
+            <script>
+              (function() {
+
+                // State
+                var currentPanel = 'dashboard';
+                var clientsPage = 1;
+                var quotationsPage = 1;
+                var auditPage = 1;
+                var selectedUserId = null;
+                var searchTimeout = null;
+                var pendingUsersData = {};
+
+                // ============================================
+                // NOTIFICATION SYSTEM
+                // ============================================
+                window.showNotification = function(type, title, message, duration) {
+                  duration = duration || 5000;
+                  var container = document.getElementById('notificationContainer');
+                  if (!container) return;
+
+                  var icons = { 'success': '✓', 'error': '✕', 'warning': '⚠', 'info': 'ℹ' };
+
+                  var toast = document.createElement('div');
+                  toast.className = 'notification-toast ' + type;
+                  toast.innerHTML =
+                    '<span class="icon">' + icons[type] + '</span>' +
+                    '<div class="content">' +
+                      '<div class="title">' + title + '</div>' +
+                      '<div class="message">' + message + '</div>' +
+                    '</div>' +
+                    '<button class="close-btn" onclick="this.parentElement.remove()">×</button>';
+
+                  container.appendChild(toast);
+
+                  setTimeout(function() {
+                    if (toast.parentElement) {
+                      toast.style.animation = 'slideOut 0.3s ease';
+                      setTimeout(function() { if (toast.parentElement) toast.remove(); }, 300);
+                    }
+                  }, duration);
                 };
-              }
-            }
 
-            try {
-              var result = await window.updateSetting('technical_specs', JSON.stringify(specsData));
-              if (result && result.success) {
-                alert('Technical Specifications saved successfully!');
-              } else {
-                alert(result ? result.message : 'Error saving settings');
-              }
-            } catch (e) {
-              alert('Error saving: ' + e);
-            }
-          };
-
-          // Save text setting (not percentage)
-          window.saveSettingText = async function(key) {
-            var input = document.getElementById('setting_' + key);
-            if (!input) return;
-
-            var value = input.value.trim();
-            if (!value) {
-              alert('Please enter a value');
-              return;
-            }
-
-            try {
-              var result = await window.updateSetting(key, value);
-              if (result && result.success) {
-                alert('Setting saved successfully!');
-              } else {
-                alert(result ? result.message : 'Error saving setting');
-              }
-            } catch (e) {
-              alert('Error saving setting: ' + e);
-            }
-          };
-
-          window.saveSetting = async function(key, isPercent) {
-            var input = document.getElementById('setting_' + key);
-            if (!input) return;
-
-            var value = parseFloat(input.value);
-            if (isNaN(value)) {
-              alert('Please enter a valid number');
-              return;
-            }
-
-            // تحويل النسبة المئوية
-            if (isPercent) {
-              value = value / 100;
-            }
-
-            try {
-              var result = await window.updateSetting(key, value);
-              if (result && result.success) {
-                alert('Setting saved successfully!');
-              } else {
-                alert(result ? result.message : 'Error saving setting');
-              }
-            } catch (e) {
-              alert('Error saving setting: ' + e);
-            }
-          };
-
-          // ============================================
-          // CSV EXPORT
-          // ============================================
-          function downloadCSV(data, filename) {
-            if (!data || data.length === 0) {
-              alert('No data to export');
-              return;
-            }
-
-            var headers = Object.keys(data[0]);
-            var csv = headers.join(',') + '\n';
-
-            data.forEach(function(row) {
-              var values = headers.map(function(h) {
-                var val = row[h] || '';
-                if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
-                  val = '"' + val.replace(/"/g, '""') + '"';
+                // ============================================
+                // INIT - Will be called at the end of script
+                // ============================================
+                function init() {
+                  console.log('Initializing Admin Panel...');
+                  initUser();
+                  initNavigation();
+                  // Wait a bit for Python bridge functions then load dashboard
+                  setTimeout(function() {
+                    if (window.loadDashboard) {
+                      window.loadDashboard();
+                    }
+                  }, 500);
                 }
-                return val;
-              });
-              csv += values.join(',') + '\n';
-            });
 
-            var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-            var link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-            link.click();
-          }
+                function initUser() {
+                  var name = localStorage.getItem('user_name') || 'Admin';
+                  var role = localStorage.getItem('user_role') || 'admin';
 
-          // ============================================
-          // LANGUAGE SYSTEM
-          // ============================================
-          var adminLang = localStorage.getItem('hp_language') || 'en';
+                  document.getElementById('userName').textContent = name;
+                  document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+                  document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
 
-          var adminTranslations = {
-            en: {
-              sidebarTitle: 'Admin Panel',
-              sidebarSubtitle: 'Helwan Plast System',
-              welcomeText: 'Welcome back,',
-              adminLangText: 'العربية',
-              navMain: 'Main',
-              navDashboard: 'Dashboard',
-              navUserMgmt: 'User Management',
-              navPending: 'Pending Approvals',
-              navAllUsers: 'All Users',
-              navDataMgmt: 'Data Management',
-              navClients: 'Clients',
-              navQuotations: 'Quotations',
-              navSystem: 'System',
-              navSettings: 'Settings',
-              navAudit: 'Audit Log',
-              navTools: 'Tools',
-              navDataImport: 'Data Import',
-              navApplication: 'Application',
-              navGoToLauncher: 'Go to Launcher',
-              navLogout: 'Logout',
-              dashboardTitle: 'Dashboard',
-              dashboardSubtitle: "Welcome back! Here's what's happening today.",
-              statClients: 'Total Clients',
-              statQuotations: 'Total Quotations',
-              statValue: 'Total Value (EGP)',
-              statMonthly: 'This Month Quotations',
-              pendingTitle: 'Pending User Approvals',
-              usersTitle: 'All Users',
-              clientsTitle: 'Clients Management',
-              quotationsTitle: 'Quotations Management',
-              settingsTitle: 'System Settings',
-              auditTitle: 'Audit Log',
-              refresh: 'Refresh',
-              approve: 'Approve',
-              reject: 'Reject',
-              approvalTitle: 'Approve User',
-              selectRole: 'Select Role for this User',
-              roleViewer: 'Viewer (Read Only)',
-              roleSales: 'Sales (Create & Edit Own)',
-              roleManager: 'Manager (Full except Admin)',
-              roleAdmin: 'Admin (Full Access)',
-              rolePermissions: 'Role Permissions:',
-              approveUser: 'Approve User',
-              processing: 'Processing',
-              userApproved: 'User Approved!',
-              userRejected: 'User Rejected',
-              searchClients: 'Search clients...',
-              searchQuotations: 'Search quotations...',
-              showDeleted: 'Show Deleted',
-              exportExcel: 'Export',
-              // Dashboard Labels
-              lblTotalClients: 'Total Clients',
-              lblTotalQuotations: 'Total Quotations',
-              lblTotalValue: 'Total Value (EGP)',
-              lblThisMonth: 'This Month Quotations',
-              // Buttons
-              btnRefresh: 'Refresh',
-              txtShowDeleted: 'Show Deleted',
-              txtExportExcel: 'Export'
-            },
-            ar: {
-              sidebarTitle: 'لوحة التحكم',
-              sidebarSubtitle: 'نظام حلوان بلاست',
-              welcomeText: 'مرحباً بعودتك،',
-              adminLangText: 'English',
-              navMain: 'الرئيسية',
-              navDashboard: 'لوحة المعلومات',
-              navUserMgmt: 'إدارة المستخدمين',
-              navPending: 'طلبات الانتظار',
-              navAllUsers: 'جميع المستخدمين',
-              navDataMgmt: 'إدارة البيانات',
-              navClients: 'العملاء',
-              navQuotations: 'عروض الأسعار',
-              navSystem: 'النظام',
-              navSettings: 'الإعدادات',
-              navAudit: 'سجل العمليات',
-              navTools: 'الأدوات',
-              navDataImport: 'استيراد البيانات',
-              navApplication: 'التطبيق',
-              navGoToLauncher: 'الذهاب للقائمة',
-              navLogout: 'تسجيل الخروج',
-              dashboardTitle: 'لوحة المعلومات',
-              dashboardSubtitle: 'مرحباً بعودتك! إليك ما يحدث اليوم.',
-              statClients: 'إجمالي العملاء',
-              statQuotations: 'إجمالي العروض',
-              statValue: 'إجمالي القيمة (ج.م)',
-              statMonthly: 'عروض هذا الشهر',
-              pendingTitle: 'طلبات تسجيل المستخدمين',
-              usersTitle: 'جميع المستخدمين',
-              clientsTitle: 'إدارة العملاء',
-              quotationsTitle: 'إدارة عروض الأسعار',
-              settingsTitle: 'إعدادات النظام',
-              auditTitle: 'سجل العمليات',
-              refresh: 'تحديث',
-              approve: 'موافقة',
-              reject: 'رفض',
-              approvalTitle: 'الموافقة على المستخدم',
-              selectRole: 'اختر الدور لهذا المستخدم',
-              roleViewer: 'مشاهد (قراءة فقط)',
-              roleSales: 'مبيعات (إنشاء وتعديل)',
-              roleManager: 'مدير (كل شيء ما عدا الإدارة)',
-              roleAdmin: 'مسؤول (صلاحيات كاملة)',
-              rolePermissions: 'صلاحيات الدور:',
-              approveUser: 'الموافقة على المستخدم',
-              processing: 'جاري المعالجة',
-              userApproved: 'تمت الموافقة!',
-              userRejected: 'تم الرفض',
-              searchClients: 'البحث في العملاء...',
-              searchQuotations: 'البحث في العروض...',
-              showDeleted: 'عرض المحذوفين',
-              exportExcel: 'تصدير',
-              // Dashboard Labels
-              dashboardTitle: 'لوحة المعلومات',
-              dashboardSubtitle: 'مرحباً بعودتك! إليك ما يحدث اليوم.',
-              lblTotalClients: 'إجمالي العملاء',
-              lblTotalQuotations: 'إجمالي العروض',
-              lblTotalValue: 'إجمالي القيمة (ج.م)',
-              lblThisMonth: 'عروض هذا الشهر',
-              // Panel Titles
-              pendingTitle: 'طلبات تسجيل المستخدمين',
-              usersTitle: 'جميع المستخدمين',
-              clientsTitle: 'إدارة العملاء',
-              quotationsTitle: 'إدارة عروض الأسعار',
-              settingsTitle: 'إعدادات النظام',
-              auditTitle: 'سجل العمليات',
-              // Buttons
-              btnRefresh: 'تحديث',
-              txtShowDeleted: 'عرض المحذوفين',
-              txtExportExcel: 'تصدير',
-              // Table Headers
-              thName: 'الاسم',
-              thEmail: 'البريد الإلكتروني',
-              thPhone: 'الهاتف',
-              thRegistered: 'تاريخ التسجيل',
-              thActions: 'الإجراءات',
-              thRole: 'الدور',
-              thStatus: 'الحالة',
-              thLastLogin: 'آخر دخول',
-              thCode: 'الكود',
-              thCompany: 'الشركة',
-              thCountry: 'الدولة',
-              thDate: 'التاريخ',
-              thClient: 'العميل',
-              thModel: 'الموديل',
-              thAgreedPrice: 'السعر المتفق',
-              // Status
-              statusActive: 'نشط',
-              statusInactive: 'غير نشط',
-              statusPending: 'قيد الانتظار',
-              statusDeleted: 'محذوف',
-              // Actions
-              approve: 'موافقة',
-              reject: 'رفض',
-              restore: 'استعادة',
-              disable: 'تعطيل',
-              enable: 'تفعيل',
-              // Empty States
-              noData: 'لا توجد بيانات',
-              noPendingApprovals: 'لا توجد طلبات انتظار',
-              allReviewed: 'تمت مراجعة جميع المستخدمين',
-              noUsersFound: 'لا يوجد مستخدمين',
-              noClientsFound: 'لا يوجد عملاء',
-              noQuotationsFound: 'لا توجد عروض أسعار',
-              // Pagination
-              page: 'صفحة',
-              of: 'من',
-              items: 'عنصر'
-            }
-          };
+                  // تحديث اسم المستخدم تحت اللوجو
+                  var sidebarUserName = document.getElementById('sidebarUserName');
+                  if (sidebarUserName) {
+                    sidebarUserName.textContent = name;
+                  }
+                }
 
-          function tAdmin(key) {
-            return adminTranslations[adminLang][key] || adminTranslations['en'][key] || key;
-          }
+                // ============================================
+                // NAVIGATION
+                // ============================================
+                function initNavigation() {
+                  console.log('Setting up navigation...');
+                  var navItems = document.querySelectorAll('.nav-item[data-panel]');
+                  console.log('Found nav items:', navItems.length);
 
-          function applyAdminTranslations() {
-            // Apply RTL/LTR
-            if (adminLang === 'ar') {
-              document.body.classList.add('rtl');
-              document.documentElement.dir = 'rtl';
-              document.documentElement.lang = 'ar';
-            } else {
-              document.body.classList.remove('rtl');
-              document.documentElement.dir = 'ltr';
-              document.documentElement.lang = 'en';
-            }
+                  navItems.forEach(function(item) {
+                    item.style.cursor = 'pointer';
+                    item.onclick = function(e) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      var panel = item.dataset.panel;
+                      console.log('Nav clicked:', panel);
+                      if (!panel) return;
 
-            // ALL translatable elements
-            var textElements = [
-              // Sidebar
-              'sidebarTitle', 'sidebarSubtitle', 'welcomeText', 'adminLangText',
-              'navMain', 'navDashboard', 'navUserMgmt', 'navPending', 'navAllUsers',
-              'navDataMgmt', 'navClients', 'navQuotations', 'navSystem', 'navSettings',
-              'navAudit', 'navTools',
-              // Dashboard
-              'dashboardTitle', 'dashboardSubtitle',
-              'lblTotalClients', 'lblTotalQuotations', 'lblTotalValue', 'lblThisMonth',
-              // Panel Titles
-              'pendingTitle', 'usersTitle', 'clientsTitle', 'quotationsTitle',
-              // Buttons & Labels
-              'txtShowDeleted', 'txtExportExcel'
-            ];
+                      // Update active state
+                      document.querySelectorAll('.nav-item').forEach(function(i) { i.classList.remove('active'); });
+                      item.classList.add('active');
 
-            textElements.forEach(function(id) {
-              var el = document.getElementById(id);
-              if (el) el.textContent = tAdmin(id);
-            });
+                      // Show panel
+                      document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+                      var panelEl = document.getElementById(panel + '-panel');
+                      if (panelEl) {
+                        panelEl.classList.add('active');
+                        console.log('Activated panel:', panel + '-panel');
+                      }
 
-            // Update language flag
-            var langFlag = document.getElementById('langFlag');
-            if (langFlag) {
-              langFlag.textContent = adminLang === 'ar' ? '🇬🇧' : '🇸🇦';
-            }
+                      currentPanel = panel;
 
-            // Update placeholders
-            var clientSearch = document.getElementById('clientSearch');
-            var quotationSearch = document.getElementById('quotationSearch');
-            if (clientSearch) clientSearch.placeholder = tAdmin('searchClients');
-            if (quotationSearch) quotationSearch.placeholder = tAdmin('searchQuotations');
+                      // Load data
+                      if (panel === 'dashboard') loadDashboard();
+                      else if (panel === 'pending') loadPendingUsers();
+                      else if (panel === 'users') loadAllUsers();
+                      else if (panel === 'clients') loadClients();
+                      else if (panel === 'quotations') loadQuotations();
+                      else if (panel === 'audit') loadAuditLogs();
+                      else if (panel === 'settings') loadSettings();
+                    };
+                  });
 
-            // Update refresh buttons
-            document.querySelectorAll('.action-btn').forEach(function(btn) {
-              if (btn.textContent.trim() === 'Refresh' || btn.textContent.trim() === 'تحديث') {
-                btn.textContent = tAdmin('btnRefresh');
-              }
-            });
-          }
+                  // Go to Launcher
+                  var launcherBtn = document.getElementById('goToLauncher');
+                  if (launcherBtn) {
+                    console.log('Setting up Launcher button');
+                    launcherBtn.style.cursor = 'pointer';
+                    launcherBtn.onclick = function(e) {
+                      e.preventDefault();
+                      console.log('Going to Launcher');
+                      window.location.hash = '#launcher';
+                    };
+                  }
 
-          window.toggleAdminLanguage = function() {
-            adminLang = adminLang === 'en' ? 'ar' : 'en';
-            localStorage.setItem('hp_language', adminLang);
-            applyAdminTranslations();
-            // Reload current panel to update dynamic content with new language
-            if (currentPanel === 'dashboard') loadDashboard();
-            else if (currentPanel === 'pending') loadPendingUsers();
-            else if (currentPanel === 'users') loadAllUsers();
-            else if (currentPanel === 'clients') loadClients();
-            else if (currentPanel === 'quotations') loadQuotations();
-            else if (currentPanel === 'settings') loadSettings();
-            else if (currentPanel === 'audit') loadAuditLogs();
-          };
+                  // Go to Data Import
+                  var importBtn = document.getElementById('goToDataImport');
+                  if (importBtn) {
+                    importBtn.style.cursor = 'pointer';
+                    importBtn.onclick = function(e) {
+                      e.preventDefault();
+                      if (window.openDataImport) {
+                        window.openDataImport();
+                      }
+                    };
+                  }
 
-          // ============================================
-          // RUN INIT at the end after all functions are defined
-          // ============================================
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-              init();
-              setTimeout(applyAdminTranslations, 200);
-            });
-          } else {
-            // Small delay to ensure everything is ready
-            setTimeout(function() {
-              init();
-              applyAdminTranslations();
-            }, 100);
-          }
-          window.toggleSidebar = function () {
-            document.getElementById('sidebar').classList.toggle('open');
-          };
+                  // Logout
+                  var logoutBtn = document.getElementById('logoutBtn');
+                  if (logoutBtn) {
+                    logoutBtn.onclick = async function() {
+                      console.log('Logging out...');
+                      if (window.logoutUser) {
+                        await window.logoutUser();
+                      }
+                      // Clear auth data from localStorage on logout
+                      localStorage.removeItem('auth_token');
+                      localStorage.removeItem('user_email');
+                      localStorage.removeItem('user_name');
+                      localStorage.removeItem('user_role');
+                      window.location.hash = '#login';
+                    };
+                  }
+                }
 
-        })();
-      </script>
+                // ============================================
+                // DASHBOARD
+                // ============================================
+                window.loadDashboard = async function() {
+                  // Helper function to safely set text content
+                  function setStatText(id, value) {
+                    var el = document.getElementById(id);
+                    if (el) el.textContent = value;
+                  }
+
+                  try {
+                    // Wait for Python bridge to be ready
+                    if (!window.getDashboardStats) {
+                      console.log('Waiting for bridge functions...');
+                      setTimeout(loadDashboard, 500);
+                      return;
+                    }
+
+                    var stats = await window.getDashboardStats();
+                    if (stats) {
+                      setStatText('statClients', (stats.total_clients || 0).toLocaleString());
+                      setStatText('statQuotations', (stats.total_quotations || 0).toLocaleString());
+                      setStatText('statValue', (stats.total_value || 0).toLocaleString());
+                      setStatText('statMonthly', (stats.this_month_quotations || 0).toLocaleString());
+                    }
+
+                    // Update pending badge
+                    if (window.getPendingUsers) {
+                      var pending = await window.getPendingUsers();
+                      if (pending && pending.success && pending.users) {
+                        setStatText('pendingBadge', pending.users.length);
+                      }
+                    }
+                  } catch (e) {
+                    console.error('Dashboard error:', e);
+                    // Show zeros on error (safely)
+                    setStatText('statClients', '0');
+                    setStatText('statQuotations', '0');
+                    setStatText('statValue', '0');
+                    setStatText('statMonthly', '0');
+                  }
+                };
+
+                // ============================================
+                // PENDING USERS
+                // ============================================
+                window.loadPendingUsers = async function() {
+                  var container = document.getElementById('pendingContent');
+                  container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+                  try {
+                    var result = await window.getPendingUsers();
+                    if (!result.success) {
+                      container.innerHTML = '<div class="empty-state"><h4>' + result.message + '</h4></div>';
+                      return;
+                    }
+
+                    if (result.users.length === 0) {
+                      container.innerHTML = '<div class="empty-state"><h4>No pending approvals</h4><p>All users have been reviewed</p></div>';
+                      pendingUsersData = {};
+                      return;
+                    }
+
+                    // Store user data for modal
+                    pendingUsersData = {};
+                    result.users.forEach(function(u) { pendingUsersData[u.user_id] = u; });
+
+                    var html = '<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th><th>Actions</th></tr></thead><tbody>';
+                    result.users.forEach(function(u) {
+                      html += '<tr>';
+                      html += '<td>' + u.full_name + '</td>';
+                      html += '<td>' + u.email + '</td>';
+                      html += '<td>' + (u.phone || '-') + '</td>';
+                      html += '<td>' + u.created_at.split('T')[0] + '</td>';
+                      html += '<td class="actions">';
+                      html += '<button class="btn-sm approve" onclick="showApprovalModal(\'' + u.user_id + '\')" style="background:#e8f5e9;color:#2e7d32;">✓ Approve</button>';
+                      html += '<button class="btn-sm reject" onclick="rejectUserAction(\'' + u.user_id + '\')">✕ Reject</button>';
+                      html += '</td></tr>';
+                    });
+                    html += '</tbody></table>';
+                    container.innerHTML = html;
+
+                    document.getElementById('pendingBadge').textContent = result.users.length;
+                  } catch (e) {
+                    container.innerHTML = '<div class="empty-state"><h4>Error loading users</h4></div>';
+                  }
+                };
+
+                // ============================================
+                // APPROVAL MODAL FUNCTIONS
+                // ============================================
+                window.showApprovalModal = function(userId) {
+                  var user = pendingUsersData[userId];
+                  if (!user) {
+                    showNotification('error', 'Error', 'User data not found');
+                    return;
+                  }
+                  selectedUserId = userId;
+                  document.getElementById('approvalUserName').textContent = user.full_name;
+                  document.getElementById('approvalUserEmail').textContent = user.email;
+                  document.getElementById('approvalUserPhone').textContent = user.phone || 'Not provided';
+                  document.getElementById('approvalUserDate').textContent = user.created_at.split('T')[0];
+                  document.getElementById('approvalRole').value = 'sales';
+                  updateRolePermissions();
+                  document.getElementById('approvalModal').classList.add('show');
+                };
+
+                window.updateRolePermissions = function() {
+                  var role = document.getElementById('approvalRole').value;
+                  var permissions = {
+                    'viewer': ['View all records'],
+                    'sales': ['View all records', 'Create new records', 'Edit own records'],
+                    'manager': ['View all records', 'Create records', 'Edit all records', 'Export data', 'Delete own records'],
+                    'admin': ['Full access to all features', 'Manage users', 'System settings', 'Audit logs']
+                  };
+                  var list = document.getElementById('rolePermissionsList');
+                  list.innerHTML = '';
+                  (permissions[role] || []).forEach(function(perm) {
+                    list.innerHTML += '<li>' + perm + '</li>';
+                  });
+                };
+
+                window.confirmApproval = async function() {
+                  var role = document.getElementById('approvalRole').value;
+                  closeModal('approvalModal');
+                  showNotification('info', 'Processing', 'Approving user...');
+
+                  try {
+                    var result = await window.approveUserWithRole(selectedUserId, role);
+                    if (result.success) {
+                      showNotification('success', 'User Approved! ✓', 'Role: ' + role.charAt(0).toUpperCase() + role.slice(1));
+                      loadPendingUsers();
+                      loadDashboard();
+                    } else {
+                      showNotification('error', 'Error', result.message);
+                    }
+                  } catch (e) {
+                    showNotification('error', 'Error', 'Failed to approve user');
+                  }
+                };
+
+                window.rejectUserAction = async function(userId) {
+                  var user = pendingUsersData[userId];
+                  var userName = user ? user.full_name : 'this user';
+                  if (!confirm('Are you sure you want to reject ' + userName + '?\\nThis action cannot be undone.')) return;
+
+                  showNotification('info', 'Processing', 'Rejecting user...');
+                  try {
+                    var result = await window.rejectUserAPI(userId);
+                    if (result.success) {
+                      showNotification('success', 'User Rejected', userName + ' has been removed');
+                      loadPendingUsers();
+                      loadDashboard();
+                    } else {
+                      showNotification('error', 'Error', result.message);
+                    }
+                  } catch (e) {
+                    showNotification('error', 'Error', 'Failed to reject user');
+                  }
+                };
+
+                // ============================================
+                // ALL USERS
+                // ============================================
+                window.loadAllUsers = async function() {
+                  var container = document.getElementById('usersContent');
+                  container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+                  try {
+                    var result = await window.getAllUsers();
+                    if (!result.success) {
+                      container.innerHTML = '<div class="empty-state"><h4>' + result.message + '</h4></div>';
+                      return;
+                    }
+
+                    if (result.users.length === 0) {
+                      container.innerHTML = '<div class="empty-state"><h4>No users found</h4></div>';
+                      return;
+                    }
+
+                    var html = '<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead><tbody>';
+                    result.users.forEach(function(u) {
+                      var status = u.is_approved ? (u.is_active ? 'active' : 'inactive') : 'pending';
+                      html += '<tr>';
+                      html += '<td>' + u.full_name + '</td>';
+                      html += '<td>' + u.email + '</td>';
+                      html += '<td>' + u.role + '</td>';
+                      html += '<td><span class="status ' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
+                      html += '<td>' + (u.last_login === 'Never' ? 'Never' : u.last_login.split('T')[0]) + '</td>';
+                      html += '<td class="actions">';
+                      html += '<button class="btn-sm edit" onclick="showRoleModal(\'' + u.user_id + '\', \'' + u.role + '\')">Role</button>';
+                      html += '<button class="btn-sm edit" onclick="showPasswordModal(\'' + u.user_id + '\')">Password</button>';
+                      if (u.is_approved) {
+                        html += '<button class="btn-sm ' + (u.is_active ? 'reject' : 'approve') + '" onclick="toggleActive(\'' + u.user_id + '\')">' + (u.is_active ? 'Disable' : 'Enable') + '</button>';
+                      }
+                      html += '<button class="btn-sm reject" onclick="confirmDeleteUser(\'' + u.user_id + '\', \'' + u.full_name + '\')">Delete</button>';
+                      html += '</td></tr>';
+                    });
+                    html += '</tbody></table>';
+                    container.innerHTML = html;
+                  } catch (e) {
+                    container.innerHTML = '<div class="empty-state"><h4>Error loading users</h4></div>';
+                  }
+                };
+
+                window.showRoleModal = function(userId, currentRole) {
+                  selectedUserId = userId;
+                  document.getElementById('newRole').value = currentRole;
+                  document.getElementById('roleModal').classList.add('show');
+                };
+
+                window.showPasswordModal = function(userId) {
+                  selectedUserId = userId;
+                  document.getElementById('newPassword').value = '';
+                  document.getElementById('passwordModal').classList.add('show');
+                };
+
+                window.closeModal = function(id) {
+                  document.getElementById(id).classList.remove('show');
+                };
+
+                window.confirmRoleChange = async function() {
+                  var role = document.getElementById('newRole').value;
+                  var result = await window.updateUserRole(selectedUserId, role);
+                  closeModal('roleModal');
+                  if (result.success) {
+                    loadAllUsers();
+                  } else {
+                    alert(result.message);
+                  }
+                };
+
+                window.confirmPasswordReset = async function() {
+                  var password = document.getElementById('newPassword').value;
+                  if (password.length < 6) {
+                    alert('Password must be at least 6 characters');
+                    return;
+                  }
+                  var result = await window.resetUserPassword(selectedUserId, password);
+                  closeModal('passwordModal');
+                  if (result.success) {
+                    alert('Password reset successfully');
+                  } else {
+                    alert(result.message);
+                  }
+                };
+
+                window.toggleActive = async function(userId) {
+                  var result = await window.toggleUserActive(userId);
+                  if (result.success) {
+                    loadAllUsers();
+                  } else {
+                    alert(result.message);
+                  }
+                };
+
+                window.confirmDeleteUser = function(userId, userName) {
+                  if (confirm('⚠️ Are you sure you want to DELETE user "' + userName + '"?\n\nThis will permanently remove the user and all their data. This action cannot be undone!')) {
+                    deleteUserPermanently(userId);
+                  }
+                };
+
+                window.deleteUserPermanently = async function(userId) {
+                  try {
+                    var result = await window.deleteUser(userId);
+                    if (result.success) {
+                      showNotification('success', 'User Deleted', 'User has been permanently deleted');
+                      loadAllUsers();
+                      loadDashboard();
+                    } else {
+                      alert(result.message);
+                    }
+                  } catch (e) {
+                    alert('Error deleting user: ' + e.message);
+                  }
+                };
+
+                // ============================================
+                // CLIENTS
+                // ============================================
+                window.loadClients = async function(page) {
+                  clientsPage = page || 1;
+                  var container = document.getElementById('clientsContent');
+                  container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+                  var search = document.getElementById('clientSearch').value;
+                  var showDeleted = document.getElementById('showDeletedClients').checked;
+
+                  try {
+                    var result = await window.getAllClients(clientsPage, 15, search, showDeleted);
+                    renderClientsTable(result, container);
+                  } catch (e) {
+                    container.innerHTML = '<div class="empty-state"><h4>Error loading clients</h4></div>';
+                  }
+                };
+
+                function renderClientsTable(result, container) {
+                  // ✅ SORT ASCENDING BY CLIENT CODE
+                  result.data.sort(function(a, b) {
+                    return Number(a['Client Code']) - Number(b['Client Code']);
+                  });
+                  if (result.data.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><h4>No clients found</h4></div>';
+                    return;
+                  }
+
+                  var html = '<table class="data-table"><thead><tr><th>Code</th><th>Name</th><th>Company</th><th>Phone</th><th>Country</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+                  result.data.forEach(function(c) {
+                    var status = c.is_deleted ? 'deleted' : 'active';
+                    html += '<tr>';
+                    html += '<td>' + c['Client Code'] + '</td>';
+                    html += '<td>' + c['Client Name'] + '</td>';
+                    html += '<td>' + c['Company'] + '</td>';
+                    html += '<td>' + c['Phone'] + '</td>';
+                    html += '<td>' + (c['Country'] || '-') + '</td>';
+                    html += '<td><span class="status ' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
+                    html += '<td class="actions">';
+                    if (c.is_deleted) {
+                      html += '<button class="btn-sm restore" onclick="restoreClient(\'' + c['Client Code'] + '\')">Restore</button>';
+                    } else {
+                      html += '<button class="btn-sm delete" onclick="deleteClient(\'' + c['Client Code'] + '\')">Delete</button>';
+                    }
+                    html += '</td></tr>';
+                  });
+                  html += '</tbody></table>';
+
+                  // Pagination
+                  html += '<div class="pagination">';
+                  html += '<button ' + (result.page <= 1 ? 'disabled' : '') + ' onclick="loadClients(' + (result.page - 1) + ')">Previous</button>';
+                  html += '<span class="page-info">Page ' + result.page + ' of ' + result.total_pages + ' (' + result.total + ' items)</span>';
+                  html += '<button ' + (result.page >= result.total_pages ? 'disabled' : '') + ' onclick="loadClients(' + (result.page + 1) + ')">Next</button>';
+                  html += '</div>';
+
+                  container.innerHTML = html;
+                }
+
+                window.searchClients = function() {
+                  clearTimeout(searchTimeout);
+                  searchTimeout = setTimeout(function() { loadClients(1); }, 300);
+                };
+
+                window.deleteClient = async function(code) {
+                  if (!confirm('Delete this client?')) return;
+                  var result = await window.softDeleteClient(code);
+                  if (result.success) {
+                    loadClients(clientsPage);
+                  } else {
+                    alert(result.message);
+                  }
+                };
+
+                window.restoreClient = async function(code) {
+                  var result = await window.restoreClient(code);
+                  if (result.success) {
+                    loadClients(clientsPage);
+                  } else {
+                    alert(result.message);
+                  }
+                };
+
+                window.exportClients = async function() {
+                  var showDeleted = document.getElementById('showDeletedClients').checked;
+                  var data = await window.exportClientsData(showDeleted);
+                  downloadCSV(data, 'clients_export.csv');
+                };
+
+                // ============================================
+                // QUOTATIONS
+                // ============================================
+                window.loadQuotations = async function(page) {
+                  quotationsPage = page || 1;
+                  var container = document.getElementById('quotationsContent');
+                  container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+                  var search = document.getElementById('quotationSearch').value;
+                  var showDeleted = document.getElementById('showDeletedQuotations').checked;
+
+                  try {
+                    var result = await window.getAllQuotations(quotationsPage, 15, search, showDeleted);
+                    renderQuotationsTable(result, container);
+                  } catch (e) {
+                    container.innerHTML = '<div class="empty-state"><h4>Error loading quotations</h4></div>';
+                  }
+                };
+
+                function renderQuotationsTable(result, container) {
+                  if (result.data.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><h4>No quotations found</h4></div>';
+                    return;
+                  }
+
+                  var html = '<table class="data-table"><thead><tr><th>#</th><th>Date</th><th>Client</th><th>Model</th><th>Agreed Price</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+                  result.data.forEach(function(q) {
+                    var status = q.is_deleted ? 'deleted' : 'active';
+                    html += '<tr>';
+                    html += '<td>' + q['Quotation#'] + '</td>';
+                    html += '<td>' + q['Date'] + '</td>';
+                    html += '<td>' + q['Client Name'] + '</td>';
+                    html += '<td>' + (q['Model'] || '-') + '</td>';
+                    html += '<td>' + (q['Agreed Price'] ? q['Agreed Price'].toLocaleString() : '-') + '</td>';
+                    html += '<td><span class="status ' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
+                    html += '<td class="actions">';
+                    if (q.is_deleted) {
+                      html += '<button class="btn-sm restore" onclick="restoreQuotation(' + q['Quotation#'] + ')">Restore</button>';
+                    } else {
+                      html += '<button class="btn-sm delete" onclick="deleteQuotation(' + q['Quotation#'] + ')">Delete</button>';
+                    }
+                    html += '</td></tr>';
+                  });
+                  html += '</tbody></table>';
+
+                  // Pagination
+                  html += '<div class="pagination">';
+                  html += '<button ' + (result.page <= 1 ? 'disabled' : '') + ' onclick="loadQuotations(' + (result.page - 1) + ')">Previous</button>';
+                  html += '<span class="page-info">Page ' + result.page + ' of ' + result.total_pages + ' (' + result.total + ' items)</span>';
+                  html += '<button ' + (result.page >= result.total_pages ? 'disabled' : '') + ' onclick="loadQuotations(' + (result.page + 1) + ')">Next</button>';
+                  html += '</div>';
+
+                  container.innerHTML = html;
+                }
+
+                window.searchQuotations = function() {
+                  clearTimeout(searchTimeout);
+                  searchTimeout = setTimeout(function() { loadQuotations(1); }, 300);
+                };
+
+                window.deleteQuotation = async function(num) {
+                  if (!confirm('Delete this quotation?')) return;
+                  var result = await window.softDeleteQuotation(num);
+                  if (result.success) {
+                    loadQuotations(quotationsPage);
+                  } else {
+                    alert(result.message);
+                  }
+                };
+
+                window.restoreQuotation = async function(num) {
+                  var result = await window.restoreQuotation(num);
+                  if (result.success) {
+                    loadQuotations(quotationsPage);
+                  } else {
+                    alert(result.message);
+                  }
+                };
+
+                window.exportQuotations = async function() {
+                  var showDeleted = document.getElementById('showDeletedQuotations').checked;
+                  var data = await window.exportQuotationsData(showDeleted);
+                  downloadCSV(data, 'quotations_export.csv');
+                };
+
+                // ============================================
+                // AUDIT LOG
+                // ============================================
+                window.loadAuditLogs = async function(page) {
+                  auditPage = page || 1;
+                  var container = document.getElementById('auditContent');
+                  container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+                  try {
+                    var result = await window.getAuditLogs(50, (auditPage - 1) * 50, null);
+                    if (!result.success) {
+                      container.innerHTML = '<div class="empty-state"><h4>' + result.message + '</h4></div>';
+                      return;
+                    }
+
+                    if (result.logs.length === 0) {
+                      container.innerHTML = '<div class="empty-state"><h4>No audit logs found</h4></div>';
+                      return;
+                    }
+
+                    var html = '<table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Table</th><th>Record ID</th></tr></thead><tbody>';
+                    result.logs.forEach(function(l) {
+                      html += '<tr>';
+                      html += '<td>' + l.timestamp.replace('T', ' ').substring(0, 19) + '</td>';
+                      html += '<td>' + l.user_email + '</td>';
+                      html += '<td>' + l.action + '</td>';
+                      html += '<td>' + l.table_name + '</td>';
+                      html += '<td>' + (l.record_id || '-') + '</td>';
+                      html += '</tr>';
+                    });
+                    html += '</tbody></table>';
+
+                    container.innerHTML = html;
+                  } catch (e) {
+                    container.innerHTML = '<div class="empty-state"><h4>Error loading audit logs</h4></div>';
+                  }
+                };
+
+                // ============================================
+                // SETTINGS
+                // ============================================
+                window.loadSettings = async function() {
+                  var container = document.getElementById('settingsContent');
+                  container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+                  try {
+                    var result = await window.getAllSettings();
+                    if (!result || !result.success) {
+                      container.innerHTML = '<div class="empty-state"><h4>' + (result ? result.message : 'Error loading settings') + '</h4></div>';
+                      return;
+                    }
+
+                    var settings = result.settings || {};
+
+                    var html = '<div style="max-width: 800px;">';
+
+                    // Exchange Rate Section
+                    html += '<div style="background:#f8f9fa;padding:20px;border-radius:12px;margin-bottom:20px;">';
+                    html += '<h4 style="margin:0 0 15px;color:#1a1a2e;">💱 Exchange Rate</h4>';
+                    html += '<div class="form-group" style="margin-bottom:0;">';
+                    html += '<label>USD to EGP Rate</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" step="0.01" id="setting_exchange_rate" value="' + (settings.exchange_rate || 47.5) + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSetting(\'exchange_rate\')">Save</button>';
+                    html += '</div></div></div>';
+
+                    // ==========================================
+                    // Technical Specifications Table Settings
+                    // ==========================================
+                    html += '<div style="background:#e3f2fd;padding:20px;border-radius:12px;margin-bottom:20px;border:2px solid #2196f3;">';
+                    html += '<h4 style="margin:0 0 15px;color:#1565c0;">📋 Technical Specifications Table Settings</h4>';
+                    html += '<p style="margin:0 0 15px;color:#666;font-size:13px;">Configure which fields appear in the Technical Specifications table on the quotation PDF. Each row can show data from the quotation or a fixed value.</p>';
+
+                    html += '<div style="background:#fff;padding:15px;border-radius:8px;overflow-x:auto;">';
+                    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+                    html += '<thead><tr style="background:#f5f5f5;">';
+                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:center;width:40px;">#</th>';
+                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:right;">Label (Arabic)</th>';
+                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:left;">Label (English)</th>';
+                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:center;">Value Source</th>';
+                    html += '<th style="padding:10px;border:1px solid #ddd;text-align:center;width:80px;">Active</th>';
+                    html += '</tr></thead><tbody>';
+
+                    // Define the 20 technical specs rows
+                    var techSpecs = [
+                      {num: 1, ar: 'الموديل', en: 'Model', field: 'model'},
+                      {num: 2, ar: 'عدد الألوان', en: 'Number of Colors', field: 'colors_count'},
+                      {num: 3, ar: 'نوع الطباعة', en: 'Printing Sides', field: 'printing_sides'},
+                      {num: 4, ar: 'وحدات التحكم في الشد', en: 'Tension Control Units', field: 'tension_control'},
+                      {num: 5, ar: 'وحدات الكورونا', en: 'Corona Units', field: 'corona_units'},
+                      {num: 6, ar: 'نظام التحكم في مسجل الطباعة', en: 'Print Register Control System', field: 'print_register'},
+                      {num: 7, ar: 'سكاكين الدكتور', en: 'Doctor Blades', field: 'doctor_blades'},
+                      {num: 8, ar: 'نوع رولات الانيلوكس', en: 'Anilox Type', field: 'anilox_type'},
+                      {num: 9, ar: 'مراقبة الطباعة بالفيديو', en: 'Video Inspection', field: 'video_inspection'},
+                      {num: 10, ar: 'PLC', en: 'PLC', field: 'plc'},
+                      {num: 11, ar: 'HMI شاشة', en: 'HMI Screen', field: 'hmi_screen'},
+                      {num: 12, ar: 'سليتر', en: 'Slitter', field: 'slitter'},
+                      {num: 13, ar: 'نظام تجفيف الحبر', en: 'Ink Drying System', field: 'ink_drying'},
+                      {num: 14, ar: 'الموتورات', en: 'Motors', field: 'motors'},
+                      {num: 15, ar: 'سرعة الماكينة', en: 'Machine Speed', field: 'machine_speed'},
+                      {num: 16, ar: 'عرض الطباعة', en: 'Printing Width', field: 'printing_width'},
+                      {num: 17, ar: 'قطر الرول الأم', en: 'Parent Roll Diameter', field: 'roll_diameter'},
+                      {num: 18, ar: 'قطر البوبينة', en: 'Bobbin Diameter', field: 'bobbin_diameter'},
+                      {num: 19, ar: 'سمك المادة', en: 'Material Thickness', field: 'material_thickness'},
+                      {num: 20, ar: 'الوندر', en: 'Winder', field: 'winder'}
+                    ];
+
+                    techSpecs.forEach(function(spec) {
+                      var key = 'tech_spec_' + spec.num;
+                      var savedSpec = settings[key] || {};
+                      var isActive = savedSpec.active !== false;
+                      var valueSource = savedSpec.source || spec.field;
+                      var customValue = savedSpec.custom_value || '';
+                      var labelAr = savedSpec.label_ar || spec.ar;
+                      var labelEn = savedSpec.label_en || spec.en;
+
+                      html += '<tr>';
+                      html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;">' + spec.num + '</td>';
+                      html += '<td style="padding:8px;border:1px solid #ddd;"><input type="text" id="tech_' + spec.num + '_label_ar" value="' + labelAr + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;" dir="rtl"></td>';
+                      html += '<td style="padding:8px;border:1px solid #ddd;"><input type="text" id="tech_' + spec.num + '_label_en" value="' + labelEn + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;"></td>';
+                      html += '<td style="padding:8px;border:1px solid #ddd;">';
+                      html += '<select id="tech_' + spec.num + '_source" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;" onchange="toggleCustomValue(' + spec.num + ')">';
+                      html += '<option value="' + spec.field + '"' + (valueSource === spec.field ? ' selected' : '') + '>From Quotation: ' + spec.field + '</option>';
+                      html += '<option value="custom"' + (valueSource === 'custom' ? ' selected' : '') + '>Custom Fixed Value</option>';
+                      html += '<option value="yes_no"' + (valueSource === 'yes_no' ? ' selected' : '') + '>Yes/No from Quotation</option>';
+                      html += '</select>';
+                      html += '<input type="text" id="tech_' + spec.num + '_custom" value="' + customValue + '" placeholder="Enter custom value..." style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;margin-top:5px;display:' + (valueSource === 'custom' ? 'block' : 'none') + ';">';
+                      html += '</td>';
+                      html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;">';
+                      html += '<input type="checkbox" id="tech_' + spec.num + '_active"' + (isActive ? ' checked' : '') + ' style="width:20px;height:20px;cursor:pointer;">';
+                      html += '</td>';
+                      html += '</tr>';
+                    });
+
+                    html += '</tbody></table>';
+                    html += '</div>';
+
+                    html += '<div style="margin-top:15px;text-align:center;">';
+                    html += '<button class="action-btn green" onclick="saveTechSpecs()" style="padding:12px 30px;">💾 Save All Technical Specs</button>';
+                    html += '</div>';
+
+                    html += '</div>'; // End Technical Specs Section
+
+                    // Shipping & Expenses Section
+                    html += '<div style="background:#f8f9fa;padding:20px;border-radius:12px;margin-bottom:20px;">';
+                    html += '<h4 style="margin:0 0 15px;color:#1a1a2e;">🚢 Shipping & Expenses (USD)</h4>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Sea Shipping Cost</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" step="1" id="setting_shipping_sea" value="' + (settings.shipping_sea || 3200) + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSetting(\'shipping_sea\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>THS Cost</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" step="1" id="setting_ths_cost" value="' + (settings.ths_cost || 1000) + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSetting(\'ths_cost\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Clearance Expenses</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" step="1" id="setting_clearance_expenses" value="' + (settings.clearance_expenses || 1400) + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSetting(\'clearance_expenses\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Tax Rate (%)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" step="0.01" id="setting_tax_rate" value="' + ((settings.tax_rate || 0.15) * 100) + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSetting(\'tax_rate\', true)">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group" style="margin-bottom:0;">';
+                    html += '<label>Bank Commission (%)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" step="0.001" id="setting_bank_commission" value="' + ((settings.bank_commission || 0.0132) * 100) + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSetting(\'bank_commission\', true)">Save</button>';
+                    html += '</div></div>';
+
+                    html += '</div>';
+
+                    // Cylinder Prices Section
+                    html += '<div style="background:#f8f9fa;padding:20px;border-radius:12px;margin-bottom:20px;">';
+                    html += '<h4 style="margin:0 0 15px;color:#1a1a2e;">🔧 Cylinder Prices (USD per cm)</h4>';
+
+                    var widths = [80, 100, 120, 130, 140, 160];
+                    var defaultPrices = {80:3.49, 100:3.59, 120:4.05, 130:4.5, 140:5.026, 160:5.4};
+
+                    widths.forEach(function(w, i) {
+                      var isLast = (i === widths.length - 1);
+                      html += '<div class="form-group"' + (isLast ? ' style="margin-bottom:0;"' : '') + '>';
+                      html += '<label>Width ' + w + ' cm</label>';
+                      html += '<div style="display:flex;gap:10px;align-items:center;">';
+                      html += '<input type="number" step="0.001" id="setting_cylinder_price_' + w + '" value="' + (settings['cylinder_price_' + w] || defaultPrices[w]) + '" style="flex:1;">';
+                      html += '<button class="action-btn" onclick="saveSetting(\'cylinder_price_' + w + '\')">Save</button>';
+                      html += '</div></div>';
+                    });
+
+                    html += '</div>';
+
+                    // ==========================================
+                    // Quotation Template Settings Section
+                    // ==========================================
+                    html += '<div style="background:#e8f5e9;padding:20px;border-radius:12px;margin-bottom:20px;border:2px solid #4caf50;">';
+                    html += '<h4 style="margin:0 0 15px;color:#2e7d32;">📄 Quotation PDF Template Settings</h4>';
+
+                    // Company Info
+                    html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
+                    html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">🏢 Company Information</h5>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Company Name (Arabic)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_company_name_ar" value="' + (settings.company_name_ar || 'شركة حلوان بلاست ذ.م.م') + '" style="flex:1;" dir="rtl">';
+                    html += '<button class="action-btn" onclick="saveSettingText(\'company_name_ar\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Company Name (English)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_company_name_en" value="' + (settings.company_name_en || 'Helwan Plast LLC') + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSettingText(\'company_name_en\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Company Address (Arabic)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_company_address_ar" value="' + (settings.company_address_ar || 'المنطقة الصناعية الثانية - قطعة ٢٠') + '" style="flex:1;" dir="rtl">';
+                    html += '<button class="action-btn" onclick="saveSettingText(\'company_address_ar\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Company Address (English)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_company_address_en" value="' + (settings.company_address_en || 'Second Industrial Zone – Plot 20') + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSettingText(\'company_address_en\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Company Email</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="email" id="setting_company_email" value="' + (settings.company_email || 'sales@helwanplast.com') + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSettingText(\'company_email\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Company Website</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_company_website" value="' + (settings.company_website || 'www.helwanplast.com') + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSettingText(\'company_website\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '</div>'; // End Company Info
+
+                    // Quotation Defaults
+                    html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
+                    html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">📋 Quotation Defaults</h5>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Quotation Location (Arabic)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_quotation_location_ar" value="' + (settings.quotation_location_ar || 'القاهرة') + '" style="flex:1;" dir="rtl">';
+                    html += '<button class="action-btn" onclick="saveSettingText(\'quotation_location_ar\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Quotation Location (English)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_quotation_location_en" value="' + (settings.quotation_location_en || 'Cairo') + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSettingText(\'quotation_location_en\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Warranty Period (months)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" id="setting_warranty_months" value="' + (settings.warranty_months || 12) + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSetting(\'warranty_months\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Quotation Validity (days)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" id="setting_validity_days" value="' + (settings.validity_days || 15) + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSetting(\'validity_days\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '</div>'; // End Quotation Defaults
+
+                    // Payment Terms
+                    html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
+                    html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">💰 Payment Terms (%)</h5>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Down Payment %</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" id="setting_down_payment_percent" value="' + (settings.down_payment_percent || 40) + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSetting(\'down_payment_percent\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Before Shipping %</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" id="setting_before_shipping_percent" value="' + (settings.before_shipping_percent || 30) + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSetting(\'before_shipping_percent\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Before Delivery %</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="number" id="setting_before_delivery_percent" value="' + (settings.before_delivery_percent || 30) + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSetting(\'before_delivery_percent\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '</div>'; // End Payment Terms
+
+                    // Machine Defaults
+                    html += '<div style="background:#fff;padding:15px;border-radius:8px;">';
+                    html += '<h5 style="margin:0 0 10px;color:#1a1a2e;">⚙️ Machine Defaults</h5>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Country of Origin (Arabic)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_country_origin_ar" value="' + (settings.country_origin_ar || 'الصين') + '" style="flex:1;" dir="rtl">';
+                    html += '<button class="action-btn" onclick="saveSettingText(\'country_origin_ar\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Country of Origin (English)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_country_origin_en" value="' + (settings.country_origin_en || 'China') + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSettingText(\'country_origin_en\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Anilox Type (Arabic)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_anilox_type_ar" value="' + (settings.anilox_type_ar || 'انيلوكس سيراميك') + '" style="flex:1;" dir="rtl">';
+                    html += '<button class="action-btn" onclick="saveSettingText(\'anilox_type_ar\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '<div class="form-group">';
+                    html += '<label>Anilox Type (English)</label>';
+                    html += '<div style="display:flex;gap:10px;align-items:center;">';
+                    html += '<input type="text" id="setting_anilox_type_en" value="' + (settings.anilox_type_en || 'Ceramic anilox') + '" style="flex:1;">';
+                    html += '<button class="action-btn" onclick="saveSettingText(\'anilox_type_en\')">Save</button>';
+                    html += '</div></div>';
+
+                    html += '</div>'; // End Machine Defaults
+
+                    html += '</div>'; // End Quotation Template Settings
+
+                    html += '</div>';
+
+                    container.innerHTML = html;
+                  } catch (e) {
+                    console.error('Settings error:', e);
+                    container.innerHTML = '<div class="empty-state"><h4>Error loading settings</h4></div>';
+                  }
+                };
+
+                // Toggle custom value input visibility
+                window.toggleCustomValue = function(specNum) {
+                  var sourceSelect = document.getElementById('tech_' + specNum + '_source');
+                  var customInput = document.getElementById('tech_' + specNum + '_custom');
+                  if (sourceSelect && customInput) {
+                    customInput.style.display = sourceSelect.value === 'custom' ? 'block' : 'none';
+                  }
+                };
+
+                // Save all technical specs
+                window.saveTechSpecs = async function() {
+                  var specsData = {};
+
+                  for (var i = 1; i <= 20; i++) {
+                    var labelAr = document.getElementById('tech_' + i + '_label_ar');
+                    var labelEn = document.getElementById('tech_' + i + '_label_en');
+                    var source = document.getElementById('tech_' + i + '_source');
+                    var customValue = document.getElementById('tech_' + i + '_custom');
+                    var active = document.getElementById('tech_' + i + '_active');
+
+                    if (labelAr && labelEn && source && active) {
+                      specsData['tech_spec_' + i] = {
+                        label_ar: labelAr.value,
+                        label_en: labelEn.value,
+                        source: source.value,
+                        custom_value: customValue ? customValue.value : '',
+                        active: active.checked
+                      };
+                    }
+                  }
+
+                  try {
+                    var result = await window.updateSetting('technical_specs', JSON.stringify(specsData));
+                    if (result && result.success) {
+                      alert('Technical Specifications saved successfully!');
+                    } else {
+                      alert(result ? result.message : 'Error saving settings');
+                    }
+                  } catch (e) {
+                    alert('Error saving: ' + e);
+                  }
+                };
+
+                // Save text setting (not percentage)
+                window.saveSettingText = async function(key) {
+                  var input = document.getElementById('setting_' + key);
+                  if (!input) return;
+
+                  var value = input.value.trim();
+                  if (!value) {
+                    alert('Please enter a value');
+                    return;
+                  }
+
+                  try {
+                    var result = await window.updateSetting(key, value);
+                    if (result && result.success) {
+                      alert('Setting saved successfully!');
+                    } else {
+                      alert(result ? result.message : 'Error saving setting');
+                    }
+                  } catch (e) {
+                    alert('Error saving setting: ' + e);
+                  }
+                };
+
+                window.saveSetting = async function(key, isPercent) {
+                  var input = document.getElementById('setting_' + key);
+                  if (!input) return;
+
+                  var value = parseFloat(input.value);
+                  if (isNaN(value)) {
+                    alert('Please enter a valid number');
+                    return;
+                  }
+
+                  // تحويل النسبة المئوية
+                  if (isPercent) {
+                    value = value / 100;
+                  }
+
+                  try {
+                    var result = await window.updateSetting(key, value);
+                    if (result && result.success) {
+                      alert('Setting saved successfully!');
+                    } else {
+                      alert(result ? result.message : 'Error saving setting');
+                    }
+                  } catch (e) {
+                    alert('Error saving setting: ' + e);
+                  }
+                };
+
+                // ============================================
+                // CSV EXPORT
+                // ============================================
+                function downloadCSV(data, filename) {
+                  if (!data || data.length === 0) {
+                    alert('No data to export');
+                    return;
+                  }
+
+                  var headers = Object.keys(data[0]);
+                  var csv = headers.join(',') + '\n';
+
+                  data.forEach(function(row) {
+                    var values = headers.map(function(h) {
+                      var val = row[h] || '';
+                      if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
+                        val = '"' + val.replace(/"/g, '""') + '"';
+                      }
+                      return val;
+                    });
+                    csv += values.join(',') + '\n';
+                  });
+
+                  var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+                  var link = document.createElement('a');
+                  link.href = URL.createObjectURL(blob);
+                  link.download = filename;
+                  link.click();
+                }
+
+                // ============================================
+                // LANGUAGE SYSTEM
+                // ============================================
+                var adminLang = localStorage.getItem('hp_language') || 'en';
+
+                var adminTranslations = {
+                  en: {
+                    sidebarTitle: 'Admin Panel',
+                    sidebarSubtitle: 'Helwan Plast System',
+                    welcomeText: 'Welcome back,',
+                    adminLangText: 'العربية',
+                    navMain: 'Main',
+                    navDashboard: 'Dashboard',
+                    navUserMgmt: 'User Management',
+                    navPending: 'Pending Approvals',
+                    navAllUsers: 'All Users',
+                    navDataMgmt: 'Data Management',
+                    navClients: 'Clients',
+                    navQuotations: 'Quotations',
+                    navSystem: 'System',
+                    navSettings: 'Settings',
+                    navAudit: 'Audit Log',
+                    navTools: 'Tools',
+                    navDataImport: 'Data Import',
+                    navApplication: 'Application',
+                    navGoToLauncher: 'Go to Launcher',
+                    navLogout: 'Logout',
+                    dashboardTitle: 'Dashboard',
+                    dashboardSubtitle: "Welcome back! Here's what's happening today.",
+                    statClients: 'Total Clients',
+                    statQuotations: 'Total Quotations',
+                    statValue: 'Total Value (EGP)',
+                    statMonthly: 'This Month Quotations',
+                    pendingTitle: 'Pending User Approvals',
+                    usersTitle: 'All Users',
+                    clientsTitle: 'Clients Management',
+                    quotationsTitle: 'Quotations Management',
+                    settingsTitle: 'System Settings',
+                    auditTitle: 'Audit Log',
+                    refresh: 'Refresh',
+                    approve: 'Approve',
+                    reject: 'Reject',
+                    approvalTitle: 'Approve User',
+                    selectRole: 'Select Role for this User',
+                    roleViewer: 'Viewer (Read Only)',
+                    roleSales: 'Sales (Create & Edit Own)',
+                    roleManager: 'Manager (Full except Admin)',
+                    roleAdmin: 'Admin (Full Access)',
+                    rolePermissions: 'Role Permissions:',
+                    approveUser: 'Approve User',
+                    processing: 'Processing',
+                    userApproved: 'User Approved!',
+                    userRejected: 'User Rejected',
+                    searchClients: 'Search clients...',
+                    searchQuotations: 'Search quotations...',
+                    showDeleted: 'Show Deleted',
+                    exportExcel: 'Export',
+                    // Dashboard Labels
+                    lblTotalClients: 'Total Clients',
+                    lblTotalQuotations: 'Total Quotations',
+                    lblTotalValue: 'Total Value (EGP)',
+                    lblThisMonth: 'This Month Quotations',
+                    // Buttons
+                    btnRefresh: 'Refresh',
+                    txtShowDeleted: 'Show Deleted',
+                    txtExportExcel: 'Export'
+                  },
+                  ar: {
+                    sidebarTitle: 'لوحة التحكم',
+                    sidebarSubtitle: 'نظام حلوان بلاست',
+                    welcomeText: 'مرحباً بعودتك،',
+                    adminLangText: 'English',
+                    navMain: 'الرئيسية',
+                    navDashboard: 'لوحة المعلومات',
+                    navUserMgmt: 'إدارة المستخدمين',
+                    navPending: 'طلبات الانتظار',
+                    navAllUsers: 'جميع المستخدمين',
+                    navDataMgmt: 'إدارة البيانات',
+                    navClients: 'العملاء',
+                    navQuotations: 'عروض الأسعار',
+                    navSystem: 'النظام',
+                    navSettings: 'الإعدادات',
+                    navAudit: 'سجل العمليات',
+                    navTools: 'الأدوات',
+                    navDataImport: 'استيراد البيانات',
+                    navApplication: 'التطبيق',
+                    navGoToLauncher: 'الذهاب للقائمة',
+                    navLogout: 'تسجيل الخروج',
+                    dashboardTitle: 'لوحة المعلومات',
+                    dashboardSubtitle: 'مرحباً بعودتك! إليك ما يحدث اليوم.',
+                    statClients: 'إجمالي العملاء',
+                    statQuotations: 'إجمالي العروض',
+                    statValue: 'إجمالي القيمة (ج.م)',
+                    statMonthly: 'عروض هذا الشهر',
+                    pendingTitle: 'طلبات تسجيل المستخدمين',
+                    usersTitle: 'جميع المستخدمين',
+                    clientsTitle: 'إدارة العملاء',
+                    quotationsTitle: 'إدارة عروض الأسعار',
+                    settingsTitle: 'إعدادات النظام',
+                    auditTitle: 'سجل العمليات',
+                    refresh: 'تحديث',
+                    approve: 'موافقة',
+                    reject: 'رفض',
+                    approvalTitle: 'الموافقة على المستخدم',
+                    selectRole: 'اختر الدور لهذا المستخدم',
+                    roleViewer: 'مشاهد (قراءة فقط)',
+                    roleSales: 'مبيعات (إنشاء وتعديل)',
+                    roleManager: 'مدير (كل شيء ما عدا الإدارة)',
+                    roleAdmin: 'مسؤول (صلاحيات كاملة)',
+                    rolePermissions: 'صلاحيات الدور:',
+                    approveUser: 'الموافقة على المستخدم',
+                    processing: 'جاري المعالجة',
+                    userApproved: 'تمت الموافقة!',
+                    userRejected: 'تم الرفض',
+                    searchClients: 'البحث في العملاء...',
+                    searchQuotations: 'البحث في العروض...',
+                    showDeleted: 'عرض المحذوفين',
+                    exportExcel: 'تصدير',
+                    // Dashboard Labels
+                    dashboardTitle: 'لوحة المعلومات',
+                    dashboardSubtitle: 'مرحباً بعودتك! إليك ما يحدث اليوم.',
+                    lblTotalClients: 'إجمالي العملاء',
+                    lblTotalQuotations: 'إجمالي العروض',
+                    lblTotalValue: 'إجمالي القيمة (ج.م)',
+                    lblThisMonth: 'عروض هذا الشهر',
+                    // Panel Titles
+                    pendingTitle: 'طلبات تسجيل المستخدمين',
+                    usersTitle: 'جميع المستخدمين',
+                    clientsTitle: 'إدارة العملاء',
+                    quotationsTitle: 'إدارة عروض الأسعار',
+                    settingsTitle: 'إعدادات النظام',
+                    auditTitle: 'سجل العمليات',
+                    // Buttons
+                    btnRefresh: 'تحديث',
+                    txtShowDeleted: 'عرض المحذوفين',
+                    txtExportExcel: 'تصدير',
+                    // Table Headers
+                    thName: 'الاسم',
+                    thEmail: 'البريد الإلكتروني',
+                    thPhone: 'الهاتف',
+                    thRegistered: 'تاريخ التسجيل',
+                    thActions: 'الإجراءات',
+                    thRole: 'الدور',
+                    thStatus: 'الحالة',
+                    thLastLogin: 'آخر دخول',
+                    thCode: 'الكود',
+                    thCompany: 'الشركة',
+                    thCountry: 'الدولة',
+                    thDate: 'التاريخ',
+                    thClient: 'العميل',
+                    thModel: 'الموديل',
+                    thAgreedPrice: 'السعر المتفق',
+                    // Status
+                    statusActive: 'نشط',
+                    statusInactive: 'غير نشط',
+                    statusPending: 'قيد الانتظار',
+                    statusDeleted: 'محذوف',
+                    // Actions
+                    approve: 'موافقة',
+                    reject: 'رفض',
+                    restore: 'استعادة',
+                    disable: 'تعطيل',
+                    enable: 'تفعيل',
+                    // Empty States
+                    noData: 'لا توجد بيانات',
+                    noPendingApprovals: 'لا توجد طلبات انتظار',
+                    allReviewed: 'تمت مراجعة جميع المستخدمين',
+                    noUsersFound: 'لا يوجد مستخدمين',
+                    noClientsFound: 'لا يوجد عملاء',
+                    noQuotationsFound: 'لا توجد عروض أسعار',
+                    // Pagination
+                    page: 'صفحة',
+                    of: 'من',
+                    items: 'عنصر'
+                  }
+                };
+
+                function tAdmin(key) {
+                  return adminTranslations[adminLang][key] || adminTranslations['en'][key] || key;
+                }
+
+                function applyAdminTranslations() {
+                  // Apply RTL/LTR
+                  if (adminLang === 'ar') {
+                    document.body.classList.add('rtl');
+                    document.documentElement.dir = 'rtl';
+                    document.documentElement.lang = 'ar';
+                  } else {
+                    document.body.classList.remove('rtl');
+                    document.documentElement.dir = 'ltr';
+                    document.documentElement.lang = 'en';
+                  }
+
+                  // ALL translatable elements
+                  var textElements = [
+                    // Sidebar
+                    'sidebarTitle', 'sidebarSubtitle', 'welcomeText', 'adminLangText',
+                    'navMain', 'navDashboard', 'navUserMgmt', 'navPending', 'navAllUsers',
+                    'navDataMgmt', 'navClients', 'navQuotations', 'navSystem', 'navSettings',
+                    'navAudit', 'navTools',
+                    // Dashboard
+                    'dashboardTitle', 'dashboardSubtitle',
+                    'lblTotalClients', 'lblTotalQuotations', 'lblTotalValue', 'lblThisMonth',
+                    // Panel Titles
+                    'pendingTitle', 'usersTitle', 'clientsTitle', 'quotationsTitle',
+                    // Buttons & Labels
+                    'txtShowDeleted', 'txtExportExcel'
+                  ];
+
+                  textElements.forEach(function(id) {
+                    var el = document.getElementById(id);
+                    if (el) el.textContent = tAdmin(id);
+                  });
+
+                  // Update language flag
+                  var langFlag = document.getElementById('langFlag');
+                  if (langFlag) {
+                    langFlag.textContent = adminLang === 'ar' ? '🇬🇧' : '🇸🇦';
+                  }
+
+                  // Update placeholders
+                  var clientSearch = document.getElementById('clientSearch');
+                  var quotationSearch = document.getElementById('quotationSearch');
+                  if (clientSearch) clientSearch.placeholder = tAdmin('searchClients');
+                  if (quotationSearch) quotationSearch.placeholder = tAdmin('searchQuotations');
+
+                  // Update refresh buttons
+                  document.querySelectorAll('.action-btn').forEach(function(btn) {
+                    if (btn.textContent.trim() === 'Refresh' || btn.textContent.trim() === 'تحديث') {
+                      btn.textContent = tAdmin('btnRefresh');
+                    }
+                  });
+                }
+
+                window.toggleAdminLanguage = function() {
+                  adminLang = adminLang === 'en' ? 'ar' : 'en';
+                  localStorage.setItem('hp_language', adminLang);
+                  applyAdminTranslations();
+                  // Reload current panel to update dynamic content with new language
+                  if (currentPanel === 'dashboard') loadDashboard();
+                  else if (currentPanel === 'pending') loadPendingUsers();
+                  else if (currentPanel === 'users') loadAllUsers();
+                  else if (currentPanel === 'clients') loadClients();
+                  else if (currentPanel === 'quotations') loadQuotations();
+                  else if (currentPanel === 'settings') loadSettings();
+                  else if (currentPanel === 'audit') loadAuditLogs();
+                };
+
+                // ============================================
+                // RUN INIT at the end after all functions are defined
+                // ============================================
+                if (document.readyState === 'loading') {
+                  document.addEventListener('DOMContentLoaded', function() {
+                    init();
+                    setTimeout(applyAdminTranslations, 200);
+                  });
+                } else {
+                  // Small delay to ensure everything is ready
+                  setTimeout(function() {
+                    init();
+                    applyAdminTranslations();
+                  }, 100);
+                }
+                window.toggleSidebar = function () {
+                  document.getElementById('sidebar').classList.toggle('open');
+                };
+
+              })();
+            </script>
   type: HtmlTemplate
 is_package: true

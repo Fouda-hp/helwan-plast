@@ -467,6 +467,10 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
         html += f'<div class="section-title">{"العرض المالي:" if is_ar else "Financial Offer:"}</div>'
 
+        # Get pricing mode
+        pricing_mode = str(data.get('pricing_mode', '')).upper()
+        is_in_stock = 'STOCK' in pricing_mode
+
         html += '<div class="financial-box">'
         html += f'<div class="total-price">{data.get("total_price", "")} {"ج.م" if is_ar else "EGP"}</div>'
         price_note = 'السعر شامل التوريد والتركيب والضمان' if is_ar else 'The price includes: supply, installation, and warranty'
@@ -474,9 +478,17 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
         html += f'<div class="section-title">{"طريقة الدفع:" if is_ar else "Payment Terms:"}</div>'
         html += '<table class="payment-table">'
-        html += f'<tr><th>{"مقدم تعاقد" if is_ar else "Down Payment"}</th><td>{data.get("down_payment_percent", "")}%</td><td class="amount">{data.get("down_payment_amount", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
-        html += f'<tr><th>{"قبل الشحن" if is_ar else "Before Shipping"}</th><td>{data.get("before_shipping_percent", "")}%</td><td class="amount">{data.get("before_shipping_amount", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
-        html += f'<tr><th>{"قبل التسليم" if is_ar else "Before Delivery"}</th><td>{data.get("before_delivery_percent", "")}%</td><td class="amount">{data.get("before_delivery_amount", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
+
+        if is_in_stock:
+            # In Stock mode: 2 rows only - Down Payment with total amount, Before Shipping without amounts
+            html += f'<tr><th>{"مقدم تعاقد" if is_ar else "Down Payment"}</th><td colspan="2" class="amount">{data.get("total_price", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
+            html += f'<tr><th>{"الدفع قبل الشحن" if is_ar else "Payment before shipping"}</th><td colspan="2"></td></tr>'
+        else:
+            # New Order mode: 3 rows with percentages and amounts
+            html += f'<tr><th>{"مقدم تعاقد" if is_ar else "Down Payment"}</th><td>{data.get("down_payment_percent", "")}%</td><td class="amount">{data.get("down_payment_amount", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
+            html += f'<tr><th>{"قبل الشحن" if is_ar else "Before Shipping"}</th><td>{data.get("before_shipping_percent", "")}%</td><td class="amount">{data.get("before_shipping_amount", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
+            html += f'<tr><th>{"قبل التسليم" if is_ar else "Before Delivery"}</th><td>{data.get("before_delivery_percent", "")}%</td><td class="amount">{data.get("before_delivery_amount", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
+
         html += '</table>'
         html += '</div>'
 
@@ -485,7 +497,14 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         html += '<div class="info-box">'
         html += f'<h4>{"التسليم :" if is_ar else "Delivery:"}</h4>'
         html += f'<p>{"مكان التسليم :" if is_ar else "Place of delivery:"} <span class="highlight">{data.get("delivery_location", "-")}</span></p>'
-        html += f'<p>{"وقت التسليم المتوقع :" if is_ar else "Expected delivery time:"} <span class="highlight">{data.get("expected_delivery_formatted", "-")}</span></p>'
+
+        # Delivery time based on pricing mode
+        if is_in_stock:
+            delivery_time = "بضاعه حاضره" if is_ar else "In Stock"
+        else:
+            delivery_time = data.get("expected_delivery_formatted", "-")
+
+        html += f'<p>{"وقت التسليم المتوقع :" if is_ar else "Expected delivery time:"} <span class="highlight">{delivery_time}</span></p>'
         html += '</div>'
 
         html += '<div class="info-box">'

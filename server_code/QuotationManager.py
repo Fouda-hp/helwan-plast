@@ -1472,6 +1472,7 @@ def get_quotation_pdf_data(quotation_number, user_email):
             # المعلومات المالية
             'total_price': format_number(total_price),
             'total_price_raw': total_price,
+            'pricing_mode': q_data.get('Pricing Mode', ''),
             'down_payment_percent': down_percent,
             'down_payment_amount': format_number(down_amount),
             'before_shipping_percent': shipping_percent,

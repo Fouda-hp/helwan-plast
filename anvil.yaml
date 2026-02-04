@@ -89,6 +89,71 @@ db_schema:
       type: datetime
     server: full
     title: CLIENTS
+  contracts:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: contract_number
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      name: quotation_number
+      type: number
+    - admin_ui: {order: 2, width: 200}
+      name: client_name
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      name: company
+      type: string
+    - admin_ui: {order: 4, width: 200}
+      name: phone
+      type: string
+    - admin_ui: {order: 5, width: 200}
+      name: country
+      type: string
+    - admin_ui: {order: 6, width: 200}
+      name: address
+      type: string
+    - admin_ui: {order: 7, width: 200}
+      name: model
+      type: string
+    - admin_ui: {order: 8, width: 200}
+      name: colors_count
+      type: string
+    - admin_ui: {order: 9, width: 200}
+      name: machine_width
+      type: string
+    - admin_ui: {order: 10, width: 200}
+      name: material
+      type: string
+    - admin_ui: {order: 11, width: 200}
+      name: winder_type
+      type: string
+    - admin_ui: {order: 12, width: 200}
+      name: price_mode
+      type: string
+    - admin_ui: {order: 13, width: 200}
+      name: total_price
+      type: string
+    - admin_ui: {order: 14, width: 200}
+      name: payment_method
+      type: string
+    - admin_ui: {order: 15, width: 200}
+      name: num_payments
+      type: number
+    - admin_ui: {order: 16, width: 200}
+      name: payments_json
+      type: string
+    - admin_ui: {order: 17, width: 200}
+      name: delivery_date
+      type: string
+    - admin_ui: {order: 18, width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {order: 19, width: 200}
+      name: updated_at
+      type: datetime
+    server: full
+    title: CONTRACTS
   machine_specs:
     client: none
     columns:

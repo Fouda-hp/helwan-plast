@@ -707,13 +707,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
         dryer_capacity = c.get('dryer_capacity', '2.2kw air blower × 2 units')
         main_motor_power = c.get('main_motor_power', '5 HP')
 
-        # Calculate values
+        # Calculate values - Number of Colors format (same as Quotation)
         if colors_count == 8:
-            colors_display = "8+0, 7+1, 6+2, 5+3, 4+4" if not is_ar else "8+0، 7+1، 6+2، 5+3، 4+4"
+            colors_display = "8+0, 7+1, 6+2, 5+3, 4+4 reverse printing" if not is_ar else "8+0، 7+1، 6+2، 5+3، 4+4 طباعة عكسية"
         elif colors_count == 6:
-            colors_display = "6+0, 5+1, 4+2, 3+3" if not is_ar else "6+0، 5+1، 4+2، 3+3"
+            colors_display = "6+0, 5+1, 4+2, 3+3 reverse printing" if not is_ar else "6+0، 5+1، 4+2، 3+3 طباعة عكسية"
         elif colors_count == 4:
-            colors_display = "4+0, 3+1, 2+2" if not is_ar else "4+0، 3+1، 2+2"
+            colors_display = "4+0, 3+1, 2+2 reverse printing" if not is_ar else "4+0، 3+1، 2+2 طباعة عكسية"
         else:
             colors_display = str(colors_count)
 
@@ -787,11 +787,15 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         def normalize_specs(raw):
             defaults = default_specs()
+            
+            # If raw is a valid list with proper structure, use it (supports reordering)
             if isinstance(raw, list) and len(raw) > 0:
+                # Validate that the list has proper label structure
                 first_item = raw[0] if raw else {}
                 if first_item.get('label_en') or first_item.get('label_ar'):
                     specs = []
                     for spec in raw:
+                        # Skip invalid items
                         if not spec.get('label_en') and not spec.get('label_ar'):
                             continue
                         specs.append({
@@ -800,9 +804,39 @@ class ContractPrintForm(ContractPrintFormTemplate):
                             'source': spec.get('source', 'field'),
                             'values': normalize_values(spec.get('values')),
                             'active': spec.get('active', True) is not False,
+                            'condition_field': spec.get('condition_field', ''),
+                            'condition_value': spec.get('condition_value', ''),
+                            'then_value': spec.get('then_value', ''),
+                            'else_value': spec.get('else_value', ''),
                         })
                     return specs if specs else defaults
+                # Invalid structure, use defaults
                 return defaults
+
+            # If raw is a dict with tech_spec_N keys (old format)
+            if isinstance(raw, dict) and len(raw) > 0:
+                first_key = next(iter(raw.keys()), None)
+                if first_key and first_key.startswith('tech_spec_'):
+                    specs = []
+                    for i, default in enumerate(defaults, 1):
+                        saved = raw.get(f'tech_spec_{i}', {})
+                        if isinstance(saved, dict):
+                            specs.append({
+                                'label_ar': saved.get('label_ar', default['label_ar']),
+                                'label_en': saved.get('label_en', default['label_en']),
+                                'source': saved.get('source', default['source']),
+                                'values': normalize_values(saved.get('values') or saved.get('value_keys') or default['values']),
+                                'active': saved.get('active', True) is not False,
+                                'condition_field': saved.get('condition_field', ''),
+                                'condition_value': saved.get('condition_value', ''),
+                                'then_value': saved.get('then_value', ''),
+                                'else_value': saved.get('else_value', ''),
+                            })
+                        else:
+                            specs.append(default)
+                    return specs
+            
+            # Default: return hardcoded defaults
             return defaults
 
         # Get tech_specs_settings from database

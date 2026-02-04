@@ -110,6 +110,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
             self.render_contract()
             # Update total in payment modal
             total = self.current_data.get('total_price', 0)
+            try:
+                total = float(total) if total else 0
+            except:
+                total = 0
             total_el = anvil.js.window.document.getElementById('totalContractAmount')
             if total_el:
                 total_el.textContent = f"{total:,.2f}"
@@ -370,11 +374,14 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # Add tech specs similar to quotation (simplified)
         html += '<table class="tech-table">'
         
-        winder_type = str(data.get('winder_type', '')).upper()
+        winder_type = str(data.get('winder_type', '') or '').upper()
         is_double_winder = 'DOUBLE' in winder_type
-        model = str(data.get('model', '')).upper()
+        model = str(data.get('model', '') or '').upper()
         is_belt_drive = 'METAL' not in model
-        machine_width = float(data.get('machine_width', 0) or 0)
+        try:
+            machine_width = float(data.get('machine_width', 0) or 0)
+        except:
+            machine_width = 0
         
         specs = [
             ('أوجه الطباعة' if is_ar else 'Printing Sides', '2'),
@@ -412,6 +419,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
         
         html += '<div class="financial-box">'
         total_price = data.get('total_price', 0)
+        try:
+            total_price = float(total_price) if total_price else 0
+        except:
+            total_price = 0
         currency = 'ج.م' if is_ar else 'EGP'
         html += f'<div class="total-price">{total_price:,.0f} {currency}</div>'
         

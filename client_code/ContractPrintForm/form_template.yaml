@@ -28,6 +28,12 @@ container:
           box-shadow: 0 2px 10px rgba(0,0,0,0.1);
           margin-bottom: 20px;
           display: flex;
+          flex-direction: column;
+          gap: 15px;
+        }
+
+        .controls-row {
+          display: flex;
           gap: 15px;
           align-items: center;
           flex-wrap: wrap;
@@ -46,7 +52,7 @@ container:
           border: 2px solid #e0e0e0;
           border-radius: 8px;
           font-size: 14px;
-          min-width: 200px;
+          min-width: 300px;
           cursor: pointer;
         }
 
@@ -56,6 +62,14 @@ container:
           border: 2px solid #e0e0e0;
           border-radius: 8px;
           font-size: 14px;
+        }
+
+        .buttons-row {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          flex-wrap: wrap;
+          justify-content: center;
         }
 
         .lang-toggle {
@@ -404,28 +418,31 @@ container:
       <div class="print-container" dir="rtl">
         <!-- Controls Bar -->
         <div class="controls-bar">
-          <button class="btn btn-back" onclick="window.goBackToLauncher()">← Back</button>
-
-          <div class="search-section">
-            <select id="quotationSelect" onchange="window.loadSelectedQuotation()">
-              <option value="">-- Select Quotation --</option>
-            </select>
-            <input type="text" id="searchInput" placeholder="Search..." oninput="window.filterQuotations()">
+          <!-- Row 1: Back + Dropdown + Search -->
+          <div class="controls-row">
+            <button class="btn btn-back" onclick="window.goBackToLauncher()">← Back</button>
+            <div class="search-section">
+              <select id="quotationSelect" onchange="window.loadSelectedQuotation()">
+                <option value="">-- Select Quotation --</option>
+              </select>
+              <input type="text" id="searchInput" placeholder="Search..." oninput="window.filterQuotations()">
+            </div>
           </div>
 
-          <button class="btn btn-warning" onclick="window.openPaymentModal()">
-            💰 Manage Payment
-          </button>
+          <!-- Row 2: All Buttons -->
+          <div class="buttons-row">
+            <button class="btn btn-warning" onclick="window.openPaymentModal()">
+              💰 Manage Payment
+            </button>
 
-          <div class="lang-toggle">
-            <button class="lang-btn active" id="btnArabic" onclick="window.switchLanguage('ar')">عربي</button>
-            <button class="lang-btn" id="btnEnglish" onclick="window.switchLanguage('en')">English</button>
-          </div>
+            <div class="lang-toggle">
+              <button class="lang-btn active" id="btnArabic" onclick="window.switchLanguage('ar')">عربي</button>
+              <button class="lang-btn" id="btnEnglish" onclick="window.switchLanguage('en')">English</button>
+            </div>
 
-          <div class="action-buttons">
-            <button class="btn btn-primary" onclick="window.printContract()">Print</button>
-            <button class="btn btn-success" onclick="window.exportPDF()">Export PDF</button>
-            <button class="btn" onclick="window.exportExcel()" style="background: #217346; color: white;">Export Excel</button>
+            <button class="btn btn-primary" onclick="window.printContract()">🖨️ Print</button>
+            <button class="btn btn-success" onclick="window.exportPDF()">📄 Export PDF</button>
+            <button class="btn" onclick="window.exportExcel()" style="background: #217346; color: white;">📊 Export Excel</button>
           </div>
         </div>
 

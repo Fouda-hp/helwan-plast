@@ -64,6 +64,8 @@ class LauncherForm(LauncherFormTemplate):
             open_form('DataImportForm')
         elif hash_val == "#quotation-print":
             open_form('QuotationPrintForm')
+        elif hash_val == "#contract-print":
+            open_form('ContractPrintForm')
 
     def form_show(self, **event_args):
         """عند عرض النموذج"""
@@ -117,6 +119,13 @@ class LauncherForm(LauncherFormTemplate):
                 open_form("QuotationPrintForm")
             except Exception as e:
                 alert(f"Error opening QuotationPrintForm: {e}")
+
+        elif h == "#contract-print":
+            # فتح صفحة طباعة العقود
+            try:
+                open_form("ContractPrintForm")
+            except Exception as e:
+                alert(f"Error opening ContractPrintForm: {e}")
 
         # لا نفتح LauncherForm مرة أخرى لتجنب الحلقة اللانهائية
 

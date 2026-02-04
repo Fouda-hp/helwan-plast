@@ -250,7 +250,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
         # ==================== 17 SPECIFICATIONS ====================
         html += f'<div class="section-title">{"المواصفات الفنية:" if is_ar else "Technical Specifications:"}</div>'
-        html += '<ol class="specs-list" style="font-size: 11px; line-height: 1.6; padding-right: 18px; padding-left: 18px;">'
+        html += '<ol class="specs-list" style="font-size: 13px; line-height: 1.7; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
 
         # Helper function to determine Belt/Gear drive for item 13
         def get_drive_type():
@@ -340,7 +340,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         html += '</div>'
         html += '</div>'
 
-        html += f'<div class="section-title">{"جدول المواصفات الفنية:" if is_ar else "Technical Specifications Table:"}</div>'
+        html += f'<div class="section-title">{"جدول المواصفات الفنية:" if is_ar else "General Specifications:"}</div>'
 
         # ==================== CALCULATE TABLE VALUES ====================
         # Get values from quotation data
@@ -404,40 +404,140 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         drive_display = ("Belt Drive" if not is_ar else "سيور") if is_belt_drive else ("Gear Drive" if not is_ar else "جيربوكس")
 
         # Yes/No fields
-        def yes_no(field_name):
+        def yes_no_value(field_name):
             val = str(data.get(field_name, '')).upper()
             if val in ['YES', 'TRUE', '1', 'نعم']:
                 return 'Yes' if not is_ar else 'نعم'
             return 'No' if not is_ar else 'لا'
 
-        # Build specs table with calculated values
-        table_specs = [
-            {'en': 'Model', 'ar': 'الموديل', 'value': data.get('model', '-')},
-            {'en': 'Number of Colors', 'ar': 'عدد الألوان', 'value': colors_display},
-            {'en': 'Printing Sides', 'ar': 'أوجه الطباعة', 'value': '2'},
-            {'en': 'Tension Control Units', 'ar': 'وحدات التحكم في الشد', 'value': str(tension_units)},
-            {'en': 'Brake System', 'ar': 'نظام الفرامل', 'value': str(brake_system)},
-            {'en': 'Brake Power', 'ar': 'قوة الفرامل', 'value': str(brake_power)},
-            {'en': 'Web Guiding System (Oscillating Type)', 'ar': 'نظام توجيه الخامة (النوع المتأرجح)', 'value': str(web_guiding)},
-            {'en': 'Maximum Film Width', 'ar': 'أقصى عرض للفيلم', 'value': f"{max_film_width} mm"},
-            {'en': 'Maximum Printing Width', 'ar': 'أقصى عرض للطباعة', 'value': f"{max_print_width} mm"},
-            {'en': 'Minimum and Maximum Printing Length', 'ar': 'الحد الأدنى والأقصى لطول الطباعة', 'value': print_length},
-            {'en': 'Maximum Roll Diameter', 'ar': 'أقصى قطر للرول', 'value': f"{max_roll_diameter} mm"},
-            {'en': 'Anilox Type', 'ar': 'نوع الأنيلوكس', 'value': anilox_display},
-            {'en': 'Maximum Machine Speed', 'ar': 'أقصى سرعة للماكينة', 'value': f"{max_machine_speed} m/min"},
-            {'en': 'Maximum Printing Speed', 'ar': 'أقصى سرعة للطباعة', 'value': f"{max_print_speed} m/min"},
-            {'en': 'Dryer Capacity', 'ar': 'قدرة المجفف', 'value': dryer_capacity},
-            {'en': 'Power Transmission Method', 'ar': 'طريقة نقل القدرة', 'value': drive_display},
-            {'en': 'Main Motor Power', 'ar': 'قدرة الموتور الرئيسي', 'value': main_motor_power},
-            {'en': 'Video Inspection', 'ar': 'الفحص بالفيديو', 'value': yes_no('video_inspection')},
-            {'en': 'PLC', 'ar': 'PLC', 'value': yes_no('plc')},
-            {'en': 'Slitter', 'ar': 'السليتر', 'value': yes_no('slitter')},
-        ]
+        def is_yes_value(field_name):
+            val = str(data.get(field_name, '')).upper()
+            return val in ['YES', 'TRUE', '1', 'نعم']
+
+        def normalize_values(values):
+            if values is None:
+                return []
+            if isinstance(values, list):
+                return [str(v).strip() for v in values if str(v).strip()]
+            if isinstance(values, str):
+                parts = []
+                for chunk in values.replace(',', '\n').split('\n'):
+                    chunk = chunk.strip()
+                    if chunk:
+                        parts.append(chunk)
+                return parts
+            return []
+
+        def default_specs():
+            return [
+                {'label_ar': 'الموديل', 'label_en': 'Model', 'source': 'field', 'values': ['model'], 'active': True},
+                {'label_ar': 'عدد الألوان', 'label_en': 'Number of Colors', 'source': 'field', 'values': ['colors_display'], 'active': True},
+                {'label_ar': 'أوجه الطباعة', 'label_en': 'Printing Sides', 'source': 'field', 'values': ['printing_sides'], 'active': True},
+                {'label_ar': 'وحدات التحكم في الشد', 'label_en': 'Tension Control Units', 'source': 'field', 'values': ['tension_units'], 'active': True},
+                {'label_ar': 'نظام الفرامل', 'label_en': 'Brake System', 'source': 'field', 'values': ['brake_system'], 'active': True},
+                {'label_ar': 'قوة الفرامل', 'label_en': 'Brake Power', 'source': 'field', 'values': ['brake_power'], 'active': True},
+                {'label_ar': 'نظام توجيه الخامة', 'label_en': 'Web Guiding System', 'source': 'field', 'values': ['web_guiding'], 'active': True},
+                {'label_ar': 'أقصى عرض للفيلم', 'label_en': 'Maximum Film Width', 'source': 'field', 'values': ['max_film_width'], 'active': True},
+                {'label_ar': 'أقصى عرض للطباعة', 'label_en': 'Maximum Printing Width', 'source': 'field', 'values': ['max_print_width'], 'active': True},
+                {'label_ar': 'طول الطباعة', 'label_en': 'Printing Length', 'source': 'field', 'values': ['print_length'], 'active': True},
+                {'label_ar': 'أقصى قطر للرول', 'label_en': 'Maximum Roll Diameter', 'source': 'field', 'values': ['max_roll_diameter'], 'active': True},
+                {'label_ar': 'نوع الأنيلوكس', 'label_en': 'Anilox Type', 'source': 'field', 'values': ['anilox_display'], 'active': True},
+                {'label_ar': 'أقصى سرعة للماكينة', 'label_en': 'Maximum Machine Speed', 'source': 'field', 'values': ['max_machine_speed'], 'active': True},
+                {'label_ar': 'أقصى سرعة للطباعة', 'label_en': 'Maximum Printing Speed', 'source': 'field', 'values': ['max_print_speed'], 'active': True},
+                {'label_ar': 'قدرة المجفف', 'label_en': 'Dryer Capacity', 'source': 'field', 'values': ['dryer_capacity'], 'active': True},
+                {'label_ar': 'طريقة نقل القدرة', 'label_en': 'Power Transmission Method', 'source': 'field', 'values': ['drive_display'], 'active': True},
+                {'label_ar': 'قدرة الموتور الرئيسي', 'label_en': 'Main Motor Power', 'source': 'field', 'values': ['main_motor_power'], 'active': True},
+                {'label_ar': 'الفحص بالفيديو', 'label_en': 'Video Inspection', 'source': 'yes_no', 'values': ['video_inspection'], 'active': True},
+                {'label_ar': 'PLC', 'label_en': 'PLC', 'source': 'yes_no', 'values': ['plc'], 'active': True},
+                {'label_ar': 'سليتر', 'label_en': 'Slitter', 'source': 'yes_no', 'values': ['slitter'], 'active': True},
+            ]
+
+        def normalize_specs(raw):
+            if isinstance(raw, list):
+                specs = []
+                for spec in raw:
+                    specs.append({
+                        'label_ar': spec.get('label_ar', ''),
+                        'label_en': spec.get('label_en', ''),
+                        'source': spec.get('source', 'field'),
+                        'values': normalize_values(spec.get('values')),
+                        'active': spec.get('active', True) is not False,
+                    })
+                return specs
+
+            defaults = default_specs()
+            if isinstance(raw, dict):
+                specs = []
+                for i, default in enumerate(defaults, 1):
+                    saved = raw.get(f'tech_spec_{i}', {})
+                    specs.append({
+                        'label_ar': saved.get('label_ar', default['label_ar']),
+                        'label_en': saved.get('label_en', default['label_en']),
+                        'source': saved.get('source', default['source']),
+                        'values': normalize_values(saved.get('values') or saved.get('value_keys') or default['values']),
+                        'active': saved.get('active', True) is not False,
+                    })
+                return specs
+            return defaults
+
+        tech_specs_settings = data.get('tech_specs_settings', {})
+        specs_list = normalize_specs(tech_specs_settings)
+
+        value_map = {
+            'model': data.get('model', '-'),
+            'colors_display': colors_display,
+            'printing_sides': '2',
+            'tension_units': str(tension_units),
+            'brake_system': str(brake_system),
+            'brake_power': str(brake_power),
+            'web_guiding': str(web_guiding),
+            'max_film_width': f"{max_film_width} mm",
+            'max_print_width': f"{max_print_width} mm",
+            'print_length': print_length,
+            'max_roll_diameter': f"{max_roll_diameter} mm",
+            'anilox_display': anilox_display,
+            'max_machine_speed': f"{max_machine_speed} m/min",
+            'max_print_speed': f"{max_print_speed} m/min",
+            'dryer_capacity': dryer_capacity,
+            'drive_display': drive_display,
+            'main_motor_power': main_motor_power,
+        }
+
+        def resolve_value(key):
+            if key in value_map:
+                return value_map[key]
+            return data.get(key, '')
 
         html += '<table class="tech-table">'
-        for i, spec in enumerate(table_specs, 1):
-            label = spec['ar'] if is_ar else spec['en']
-            html += f'<tr><td class="row-num">{i}</td><th>{label}</th><td class="value">{spec["value"]}</td></tr>'
+        row_num = 1
+        for spec in specs_list:
+            if not spec.get('active', True):
+                continue
+
+            label = spec.get('label_ar', '') if is_ar else spec.get('label_en', '')
+            source = spec.get('source', 'field')
+            values = normalize_values(spec.get('values'))
+
+            if source == 'fixed':
+                value_parts = values or ['-']
+                value_text = '<br>'.join(value_parts)
+            elif source == 'yes_no':
+                if not values:
+                    continue
+                show_row = any(is_yes_value(v) for v in values)
+                if not show_row:
+                    continue
+                value_text = 'نعم' if is_ar else 'Yes'
+            else:
+                value_parts = []
+                for key in values:
+                    resolved = resolve_value(key)
+                    if resolved not in [None, '']:
+                        value_parts.append(str(resolved))
+                value_text = '<br>'.join(value_parts) if value_parts else '-'
+
+            html += f'<tr><td class="row-num">{row_num}</td><th>{label}</th><td class="value">{value_text}</td></tr>'
+            row_num += 1
         html += '</table>'
 
         # Cylinders - 2 columns, 12 rows fixed (border only on filled rows)
@@ -487,14 +587,12 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         html += f'<div class="price-notes">{price_note}</div>'
 
         html += f'<div class="section-title">{"طريقة الدفع:" if is_ar else "Payment Terms:"}</div>'
-        html += '<table class="payment-table">'
-
         if is_in_stock:
-            # In Stock mode: 2 rows only - Down Payment (no amount), Before Shipping (no amount)
-            html += f'<tr><th>{"مقدم تعاقد" if is_ar else "Down Payment"}</th><td colspan="2"></td></tr>'
-            html += f'<tr><th>{"الدفع قبل الشحن" if is_ar else "Payment before shipping"}</th><td colspan="2"></td></tr>'
+            html += '<table class="payment-table payment-table-simple">'
+            html += f'<tr><th>{"مقدم تعاقد" if is_ar else "Down Payment"}</th><td></td></tr>'
+            html += f'<tr><th>{"الدفع قبل الشحن" if is_ar else "Payment before shipping"}</th><td></td></tr>'
         else:
-            # New Order mode: 3 rows with percentages and amounts
+            html += '<table class="payment-table">'
             html += f'<tr><th>{"مقدم تعاقد" if is_ar else "Down Payment"}</th><td>{data.get("down_payment_percent", "")}%</td><td class="amount">{data.get("down_payment_amount", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
             html += f'<tr><th>{"قبل الشحن" if is_ar else "Before Shipping"}</th><td>{data.get("before_shipping_percent", "")}%</td><td class="amount">{data.get("before_shipping_amount", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
             html += f'<tr><th>{"قبل التسليم" if is_ar else "Before Delivery"}</th><td>{data.get("before_delivery_percent", "")}%</td><td class="amount">{data.get("before_delivery_amount", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
@@ -567,9 +665,17 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
             alert('Please select a quotation first')
             return
 
-        q_num = self.current_data.get('quotation_number', 'quotation')
-        client_name = self.current_data.get('client_name', '').replace(' ', '_').replace('/', '_')
-        filename = f"Quotation_{q_num}_{client_name}.pdf"
+        def sanitize_filename(value):
+            value = str(value or '').strip()
+            value = value.replace('/', '-').replace('\\', '-').replace(':', '-')
+            value = value.replace('*', '-').replace('?', '').replace('"', '')
+            value = value.replace('<', '').replace('>', '').replace('|', '-')
+            return value or 'unknown'
+
+        q_num = sanitize_filename(self.current_data.get('quotation_number', 'quotation'))
+        client_name = sanitize_filename(self.current_data.get('client_name', 'Client'))
+        model_name = sanitize_filename(self.current_data.get('model', 'Model'))
+        filename = f"{q_num} - {client_name} - {model_name}.pdf"
 
         js_code = f"""
         (async function() {{

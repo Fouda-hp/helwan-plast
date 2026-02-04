@@ -239,13 +239,26 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         # Machine Details
         html += f'<div class="section-title">{"تفاصيل الماكينة :" if is_ar else "Machine Details"}</div>'
         html += '<table class="details-table">'
-        html += f'<tr><th>{"نوع الماكينة :" if is_ar else "Machine Type:"}</th><td>{machine_type_display}</td></tr>'
-        html += f'<tr><th>{"الموديل :" if is_ar else "Model:"}</th><td>{data.get("model", "")}</td></tr>'
-        html += f'<tr><th>{"بلد المنشأ :" if is_ar else "Country of Origin:"}</th><td>{c.get("country_origin_ar" if is_ar else "country_origin_en", "")}</td></tr>'
-        html += f'<tr><th>{"عدد الألوان :" if is_ar else "Number of Colors:"}</th><td>{data.get("colors_count", "")}</td></tr>'
-        html += f'<tr><th>{"الوندر :" if is_ar else "Winder:"}</th><td>{data.get("winder", "")}</td></tr>'
-        html += f'<tr><th>{"نوع الوندر :" if is_ar else "Winder Type:"}</th><td>{winder_type_display}</td></tr>'
-        html += f'<tr><th>{"عرض الماكينة :" if is_ar else "Machine Width:"}</th><td>{data.get("machine_width", "")} {"سم" if is_ar else "CM"}</td></tr>'
+        
+        # For Arabic: label first (th), then value (td) - RTL
+        # For English: value first (td), then label (th) - LTR with swapped columns
+        if is_ar:
+            html += f'<tr><th>نوع الماكينة :</th><td>{machine_type_display}</td></tr>'
+            html += f'<tr><th>الموديل :</th><td>{data.get("model", "")}</td></tr>'
+            html += f'<tr><th>بلد المنشأ :</th><td>{c.get("country_origin_ar", "")}</td></tr>'
+            html += f'<tr><th>عدد الألوان :</th><td>{data.get("colors_count", "")}</td></tr>'
+            html += f'<tr><th>الوندر :</th><td>{data.get("winder", "")}</td></tr>'
+            html += f'<tr><th>نوع الوندر :</th><td>{winder_type_display}</td></tr>'
+            html += f'<tr><th>عرض الماكينة :</th><td>{data.get("machine_width", "")} سم</td></tr>'
+        else:
+            # English: swap columns - value on left, label on right
+            html += f'<tr><td>{machine_type_display}</td><th>Machine Type:</th></tr>'
+            html += f'<tr><td>{data.get("model", "")}</td><th>Model:</th></tr>'
+            html += f'<tr><td>{c.get("country_origin_en", "")}</td><th>Country of Origin:</th></tr>'
+            html += f'<tr><td>{data.get("colors_count", "")}</td><th>Number of Colors:</th></tr>'
+            html += f'<tr><td>{data.get("winder", "")}</td><th>Winder:</th></tr>'
+            html += f'<tr><td>{winder_type_display}</td><th>Winder Type:</th></tr>'
+            html += f'<tr><td>{data.get("machine_width", "")} CM</td><th>Machine Width:</th></tr>'
         html += '</table>'
 
         # ==================== 17 SPECIFICATIONS ====================

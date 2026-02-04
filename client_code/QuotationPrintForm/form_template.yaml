@@ -612,9 +612,9 @@ container:
 
           .details-table th,
           .details-table td {
-            padding: 4px 6px !important;   /* مربعات أصغر */
-            font-size: 14px !important;    /* خط أكبر */
-            line-height: 1.4 !important;
+            padding: 3px 5px !important;   /* مربعات أصغر */
+            font-size: 13px !important;    /* خط أكبر */
+            line-height: 1.3 !important;
           }
           .financial-box {
             padding: 15px !important;
@@ -663,12 +663,17 @@ container:
           /* Keep columns balanced */
           .details-table th {
             width: 35% !important;
-            font-size: 11.5px !important;
+            font-size: 12px !important;
           }
 
           .details-table td {
             width: 65% !important;
-            font-size: 14px !important;
+            font-size: 12px !important;
+          }
+          
+          /* English: smaller table */
+          .ltr .details-table {
+            width: 75% !important;
           }
         }
 
@@ -688,10 +693,12 @@ container:
 
         .ltr .details-table th {
           text-align: left;
+          width: 35%;
         }
 
         .ltr .details-table td {
           text-align: left;
+          width: 65%;
         }
 
         .ltr .tech-table th {
@@ -727,8 +734,8 @@ container:
 
         .details-table th,
         .details-table td {
-          padding: 4px 8px !important;
-          font-size: 14px !important;
+          padding: 3px 6px !important;
+          font-size: 13px !important;
         }
 
         .tech-table th,
@@ -746,15 +753,22 @@ container:
 
         #templateContent .details-table th,
         #templateContent .details-table td {
-          padding: 4px 6px !important;
-          font-size: 14px !important;
-          line-height: 1.4 !important;
+          padding: 3px 5px !important;
+          font-size: 13px !important;
+          line-height: 1.3 !important;
           text-align: right;
         }
 
         .ltr #templateContent .details-table th,
         .ltr #templateContent .details-table td {
           text-align: left;
+        }
+        
+        /* English version: smaller table width */
+        .ltr .details-table {
+          width: 80% !important;
+          margin-left: auto;
+          margin-right: auto;
         }
 
 

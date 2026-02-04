@@ -1,0 +1,35 @@
+# =========================================
+# robots.txt - منع أرشفة محركات البحث
+# Helwan Plast System
+# =========================================
+
+# منع جميع محركات البحث من أرشفة الموقع
+User-agent: *
+Disallow: /
+
+# منع محركات بحث محددة
+User-agent: Googlebot
+Disallow: /
+
+User-agent: Bingbot
+Disallow: /
+
+User-agent: Slurp
+Disallow: /
+
+User-agent: DuckDuckBot
+Disallow: /
+
+User-agent: Baiduspider
+Disallow: /
+
+User-agent: YandexBot
+Disallow: /
+
+# منع أرشفة الصور
+User-agent: Googlebot-Image
+Disallow: /
+
+# منع أرشفة الفيديو
+User-agent: Googlebot-Video
+Disallow: /

@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nMajor Update: Security System, Admin Panel & Database Improvements\n\nFeatures Added:\n- Secure authentication system with password hashing \\(SHA-256 + Salt\\)\n- User registration with admin approval workflow\n- Role-based access control \\(admin, manager, sales, viewer\\)\n- Account lockout after 5 failed login attempts\n- Admin Panel with dashboard, user management, audit logs\n- Soft delete for clients and quotations \\(admin only\\)\n- Audit trail for all data changes\n- Search, filter and pagination for overlays\n- Export to CSV/Excel functionality\n- Professional loading indicators\n\nFiles Changed:\n- anvil.yaml: New users and audit_log tables, updated schema\n- AuthManager.py: New authentication module\n- QuotationManager.py: Added audit trail and soft delete\n- LoginForm: New secure login with registration\n- AdminPanel: New professional admin interface\n- clients.js, quotations.js: Added search, pagination, loading\n- cylinders.js: Fixed duplicate event listener\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git commit:*)",
+      "Bash(tree:*)",
+      "Bash(python -c:*)",
+      "Bash(python3:*)",
+      "Bash(where:*)",
+      "Bash(\"C:\\\\Users\\\\moham_ub2xpub\\\\AppData\\\\Local\\\\Microsoft\\\\WindowsApps\\\\python.exe\" -c \"\nimport yaml\n\nwith open\\(''client_code/CalculatorForm/form_template.yaml'', ''r'', encoding=''utf-8''\\) as f:\n    data = yaml.safe_load\\(f\\)\n\nhtml = data[''container''][''properties''][''html'']\n\n# Find quotationOverlay section\nstart = html.find\\(''quotationOverlay''\\)\nend = html.find\\(''clientOverlay''\\)\n\nprint\\(''=== QUOTATION OVERLAY HTML ===''\\)\nprint\\(html[start:end][:1500]\\)\n\")",
+      "Bash(pip:*)",
+      "Bash(git stash:*)",
+      "Bash(git fetch:*)",
+      "Bash(dir \"E:\\\\One Drive\\\\OneDrive - Helwan Plast\\\\2026\\\\المطابع\\\\Mohamed\\\\Backup\\\\anvil\\\\Backup\\\\Helwan_Plast\" /s /b)",
+      "Bash(py -3:*)",
+      "Bash(C:/Users/Fouda/AppData/Local/Programs/Python/Python312/python.exe:*)",
+      "Bash(C:/Python312/python.exe:*)",
+      "Bash(C:/Python311/python.exe:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell:*)",
+      "Bash(find:*)",
+      "Bash(py -c \"import hashlib; print\\(''HP_EMERGENCY_'' + hashlib.sha256\\(b''helwan_plast_2024''\\).hexdigest\\(\\)[:16]\\)\")"
+    ]
+  }
+}

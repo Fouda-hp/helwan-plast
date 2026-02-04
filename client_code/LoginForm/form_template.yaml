@@ -1,0 +1,1673 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        * {
+          box-sizing: border-box;
+          font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+        }
+
+        body {
+          margin: 0;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+        }
+
+        /* ================= WRAPPER ================= */
+        .login-wrapper {
+          min-height: 100vh;
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 30px;
+          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+
+        /* ================= BOX ================= */
+        .login-box {
+          width: 100%;
+          max-width: 440px;
+          background: rgba(255, 255, 255, 0.95);
+          border-radius: 20px;
+          padding: 50px 45px;
+          box-shadow:
+            0 25px 50px rgba(0,0,0,0.3),
+            0 0 0 1px rgba(255,255,255,0.1);
+          animation: cardIn 0.8s cubic-bezier(.2,.8,.2,1);
+          backdrop-filter: blur(10px);
+        }
+
+        @keyframes cardIn {
+          from {
+            opacity: 0;
+            transform: translateY(40px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        /* ================= LOGO ================= */
+        .logo {
+          text-align: center;
+          margin-bottom: 35px;
+          animation: logoDrop 0.8s ease-out 0.3s both;
+        }
+
+        @keyframes logoDrop {
+          from { opacity: 0; transform: translateY(-20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo img {
+          height: 90px;
+          margin-bottom: 15px;
+          filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+        }
+
+        .logo h2 {
+          margin: 0;
+          color: #1a1a2e;
+          font-size: 26px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+        }
+
+        .logo p {
+          margin: 8px 0 0;
+          font-size: 14px;
+          color: #666;
+        }
+
+        /* ================= TABS ================= */
+        .auth-tabs {
+          display: flex;
+          margin-bottom: 30px;
+          background: #f0f2f5;
+          border-radius: 12px;
+          padding: 4px;
+        }
+
+        .auth-tab {
+          flex: 1;
+          padding: 12px;
+          text-align: center;
+          border: none;
+          background: transparent;
+          color: #666;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          border-radius: 10px;
+          transition: all 0.3s ease;
+        }
+
+        .auth-tab.active {
+          background: #fff;
+          color: #1a1a2e;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .auth-tab:hover:not(.active) {
+          color: #1a1a2e;
+        }
+
+        /* ================= FORMS ================= */
+        .auth-form {
+          display: none;
+        }
+
+        .auth-form.active {
+          display: block;
+          animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ================= FIELDS ================= */
+        .field {
+          margin-bottom: 20px;
+        }
+
+        .field label {
+          display: block;
+          font-size: 13px;
+          margin-bottom: 6px;
+          color: #444;
+          font-weight: 600;
+        }
+
+        .field input {
+          width: 100%;
+          height: 48px;
+          padding: 0 16px;
+          border: 2px solid #e0e0e0;
+          border-radius: 10px;
+          font-size: 15px;
+          transition: all 0.3s ease;
+          background: #fafafa;
+        }
+
+        .field input:focus {
+          outline: none;
+          border-color: #667eea;
+          background: #fff;
+          box-shadow: 0 0 0 4px rgba(102,126,234,0.15);
+        }
+
+        .field input::placeholder {
+          color: #aaa;
+        }
+
+        /* ================= BUTTON ================= */
+        .auth-btn {
+          width: 100%;
+          height: 52px;
+          border: none;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: #fff;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          margin-top: 10px;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .auth-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 30px rgba(102,126,234,0.4);
+        }
+
+        .auth-btn:active:not(:disabled) {
+          transform: translateY(0);
+        }
+
+        .auth-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
+        .auth-btn .btn-text {
+          transition: opacity 0.3s ease;
+        }
+
+        .auth-btn.loading .btn-text {
+          opacity: 0;
+        }
+
+        .auth-btn .btn-loader {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 24px;
+          height: 24px;
+          border: 3px solid rgba(255,255,255,0.3);
+          border-top-color: #fff;
+          border-radius: 50%;
+          opacity: 0;
+          animation: none;
+        }
+
+        .auth-btn.loading .btn-loader {
+          opacity: 1;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* ================= MESSAGES ================= */
+        .message {
+          padding: 14px 16px;
+          border-radius: 10px;
+          font-size: 14px;
+          margin-bottom: 20px;
+          display: none;
+          animation: shake 0.4s ease;
+        }
+
+        .message.error {
+          background: #fdecea;
+          color: #d32f2f;
+          border: 1px solid #f5c6cb;
+        }
+
+        .message.success {
+          background: #e8f5e9;
+          color: #2e7d32;
+          border: 1px solid #c8e6c9;
+        }
+
+        .message.info {
+          background: #e3f2fd;
+          color: #1565c0;
+          border: 1px solid #bbdefb;
+        }
+
+        .message.show {
+          display: block;
+        }
+
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+
+        /* ================= PASSWORD STRENGTH ================= */
+        .password-strength {
+          margin-top: 8px;
+          height: 4px;
+          background: #e0e0e0;
+          border-radius: 2px;
+          overflow: hidden;
+        }
+
+        .password-strength-bar {
+          height: 100%;
+          width: 0;
+          transition: all 0.3s ease;
+          border-radius: 2px;
+        }
+
+        .password-strength-bar.weak { width: 33%; background: #f44336; }
+        .password-strength-bar.medium { width: 66%; background: #ff9800; }
+        .password-strength-bar.strong { width: 100%; background: #4caf50; }
+
+        /* ================= FOOTER ================= */
+        .footer {
+          margin-top: 30px;
+          font-size: 12px;
+          color: #888;
+          text-align: center;
+        }
+
+        .footer a {
+          color: #667eea;
+          text-decoration: none;
+        }
+
+        /* ================= SETUP ADMIN LINK ================= */
+        .setup-link {
+          text-align: center;
+          margin-top: 20px;
+          font-size: 13px;
+        }
+
+        .setup-link a {
+          color: #667eea;
+          text-decoration: none;
+          cursor: pointer;
+        }
+
+        .setup-link a:hover {
+          text-decoration: underline;
+        }
+
+        /* ================= LOADING OVERLAY ================= */
+        .loading-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(26,26,46,0.9);
+          backdrop-filter: blur(8px);
+          display: none;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+        }
+
+        .loading-overlay.show {
+          display: flex;
+        }
+
+        .loader-box {
+          text-align: center;
+          color: #fff;
+        }
+
+        .loader-spinner {
+          width: 50px;
+          height: 50px;
+          border: 4px solid rgba(255,255,255,0.2);
+          border-top-color: #667eea;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+          margin: 0 auto 16px;
+        }
+
+        .loader-text {
+          font-size: 15px;
+          font-weight: 500;
+        }
+
+        /* ================= MOBILE ================= */
+        @media (max-width: 600px) {
+          .login-wrapper {
+            padding: 0;
+          }
+
+          .login-box {
+            min-height: 100vh;
+            border-radius: 0;
+            padding: 40px 25px;
+            max-width: none;
+          }
+
+          .logo img {
+            height: 75px;
+          }
+
+          .logo h2 {
+            font-size: 22px;
+          }
+        }
+
+        /* ================= LANGUAGE SWITCHER ================= */
+        .login-lang-switcher {
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          z-index: 100;
+        }
+
+        .lang-btn {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 20px;
+          background: linear-gradient(135deg, rgba(102,126,234,0.8) 0%, rgba(118,75,162,0.8) 100%);
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 12px;
+          color: #fff;
+          cursor: pointer;
+          font-size: 15px;
+          font-weight: 600;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(10px);
+          box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .lang-btn:hover {
+          background: linear-gradient(135deg, rgba(102,126,234,1) 0%, rgba(118,75,162,1) 100%);
+          transform: translateY(-3px);
+          box-shadow: 0 8px 25px rgba(102,126,234,0.4);
+        }
+
+        .lang-btn .lang-flag {
+          font-size: 20px;
+        }
+
+        /* ================= RTL SUPPORT ================= */
+        body.rtl .login-lang-switcher {
+          right: auto;
+          left: 20px;
+        }
+
+        body.rtl .login-box {
+          direction: rtl;
+          text-align: right;
+        }
+
+        body.rtl .field label {
+          text-align: right;
+        }
+
+        body.rtl .field input {
+          text-align: right;
+        }
+
+        body.rtl .auth-tabs {
+          direction: rtl;
+        }
+
+        body.rtl .footer {
+          direction: rtl;
+        }
+      </style>
+
+      <!-- Load i18n Script with fallback -->
+      <script>
+        // Inline i18n to avoid 404 issues
+        (function(){
+          'use strict';
+          if(window.i18n) return;
+          const translations={en:{save:'Save',cancel:'Cancel',delete:'Delete',edit:'Edit',add:'Add',search:'Search',loading:'Loading...',error:'Error',success:'Success',login_title:'Welcome Back',login_subtitle:'Sign in to your account',login_email_placeholder:'Enter your email',login_password_placeholder:'Enter your password',login_button:'Sign In',login_register_link:"Don't have an account? Register",login_forgot_password:'Forgot Password?',register_title:'Create Account',register_subtitle:'Join Helwan Plast System',register_name_placeholder:'Full Name',register_email_placeholder:'Email Address',register_phone_placeholder:'Phone Number (optional)',register_password_placeholder:'Password (min 8 characters)',register_confirm_placeholder:'Confirm Password',register_button:'Create Account',register_login_link:'Already have an account? Sign In'},ar:{save:'حفظ',cancel:'إلغاء',delete:'حذف',edit:'تعديل',add:'إضافة',search:'بحث',loading:'جاري التحميل...',error:'خطأ',success:'نجاح',login_title:'مرحباً بعودتك',login_subtitle:'سجّل دخولك للمتابعة',login_email_placeholder:'أدخل بريدك الإلكتروني',login_password_placeholder:'أدخل كلمة المرور',login_button:'تسجيل الدخول',login_register_link:'ليس لديك حساب؟ سجّل الآن',login_forgot_password:'نسيت كلمة المرور؟',register_title:'إنشاء حساب',register_subtitle:'انضم لنظام حلوان بلاست',register_name_placeholder:'الاسم بالكامل',register_email_placeholder:'البريد الإلكتروني',register_phone_placeholder:'رقم الهاتف (اختياري)',register_password_placeholder:'كلمة المرور (8 أحرف على الأقل)',register_confirm_placeholder:'تأكيد كلمة المرور',register_button:'إنشاء الحساب',register_login_link:'لديك حساب بالفعل؟ سجّل دخولك'}};
+          class I18n{constructor(){this.currentLang=localStorage.getItem('hp_language')||'en';this.listeners=[]}getLang(){return this.currentLang}setLang(lang){if(lang!=='en'&&lang!=='ar')return;this.currentLang=lang;localStorage.setItem('hp_language',lang);document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.documentElement.lang=lang;if(lang==='ar'){document.body.classList.add('rtl')}else{document.body.classList.remove('rtl')}this.listeners.forEach(fn=>fn(lang));window.dispatchEvent(new CustomEvent('languageChanged',{detail:{lang}}))}toggleLang(){this.setLang(this.currentLang==='en'?'ar':'en')}t(key,replacements={}){let text=translations[this.currentLang][key]||translations['en'][key]||key;Object.keys(replacements).forEach(k=>{text=text.replace(new RegExp(`\\{${k}\\}`,'g'),replacements[k])});return text}isRTL(){return this.currentLang==='ar'}onLangChange(callback){this.listeners.push(callback)}init(){this.setLang(this.currentLang)}}
+          window.i18n=new I18n();
+          if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>window.i18n.init())}else{window.i18n.init()}
+        })();
+      </script>
+
+      <div class="login-wrapper">
+        <!-- Language Switcher -->
+        <div class="login-lang-switcher">
+          <button class="lang-btn" id="langSwitchBtn" onclick="toggleLanguage()">
+            <span class="lang-flag" id="loginLangFlag">🇸🇦</span>
+            <span id="langBtnText">العربية</span>
+          </button>
+        </div>
+
+        <div class="login-box">
+
+          <div class="logo">
+            <img src="_/theme/helwan_logo.png" alt="Helwan Plast">
+            <h2 id="logoTitle">Helwan Plast</h2>
+            <p id="logoSubtitle">Secure Authentication</p>
+          </div>
+
+          <!-- Auth Tabs -->
+          <div class="auth-tabs">
+            <button class="auth-tab active" data-tab="login" id="tabLogin">Login</button>
+            <button class="auth-tab" data-tab="register" id="tabRegister">Register</button>
+          </div>
+
+          <!-- Login Form -->
+          <div id="loginForm" class="auth-form active">
+            <div id="loginMessage" class="message"></div>
+
+            <div class="field">
+              <label id="lblLoginEmail">Email Address</label>
+              <input type="email" id="loginEmail" placeholder="Enter your email">
+            </div>
+
+            <div class="field">
+              <label id="lblLoginPassword">Password</label>
+              <input type="password" id="loginPassword" placeholder="Enter your password">
+            </div>
+
+            <button class="auth-btn" id="loginBtn">
+              <span class="btn-text" id="btnLoginText">LOGIN</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="forgotPasswordLink">Forgot Password?</a>
+            </div>
+
+
+
+          </div>
+
+          <!-- Register Form -->
+          <div id="registerForm" class="auth-form">
+            <div id="registerMessage" class="message"></div>
+
+            <div class="field">
+              <label id="lblRegName">Full Name</label>
+              <input type="text" id="regName" placeholder="Enter your full name">
+            </div>
+
+            <div class="field">
+              <label id="lblRegEmail">Email Address</label>
+              <input type="email" id="regEmail" placeholder="Enter your email">
+            </div>
+
+            <div class="field">
+              <label id="lblRegPhone">Phone Number (Optional)</label>
+              <input type="tel" id="regPhone" placeholder="Enter your phone number">
+            </div>
+
+            <div class="field">
+              <label id="lblRegPassword">Password</label>
+              <input type="password" id="regPassword" placeholder="Min 8 characters">
+              <div class="password-strength">
+                <div class="password-strength-bar" id="strengthBar"></div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label id="lblRegConfirm">Confirm Password</label>
+              <input type="password" id="regConfirm" placeholder="Confirm your password">
+            </div>
+
+            <button class="auth-btn" id="registerBtn">
+              <span class="btn-text" id="btnRegisterText">CREATE ACCOUNT</span>
+              <div class="btn-loader"></div>
+            </button>
+          </div>
+
+          <!-- OTP Verification Form (for 2FA Login) -->
+          <div id="otpLoginForm" class="auth-form">
+            <div id="otpLoginMessage" class="message"></div>
+
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="font-size:48px;margin-bottom:10px;">🔐</div>
+              <h3 style="color:#1976d2;margin:0 0 8px;" id="otpLoginTitle">Two-Factor Authentication</h3>
+              <p style="color:#666;font-size:14px;" id="otpLoginSubtitle">Enter the verification code sent to your email</p>
+            </div>
+
+            <div class="field">
+              <label id="lblOtpLoginCode">Verification Code</label>
+              <input type="text" id="otpLoginCode" placeholder="000000" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:8px;font-weight:bold;">
+            </div>
+
+            <button class="auth-btn" id="verifyOtpLoginBtn">
+              <span class="btn-text" id="btnVerifyOtpLogin">VERIFY & LOGIN</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="resendOtpLogin">Didn't receive code? Resend</a>
+            </div>
+
+            <div class="setup-link" style="margin-top:10px;">
+              <a id="backFromOtpLogin">← Back to Login</a>
+            </div>
+          </div>
+
+          <!-- OTP Verification Form (for Registration) -->
+          <div id="otpRegForm" class="auth-form">
+            <div id="otpRegMessage" class="message"></div>
+
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="font-size:48px;margin-bottom:10px;">📧</div>
+              <h3 style="color:#1976d2;margin:0 0 8px;" id="otpRegTitle">Verify Your Email</h3>
+              <p style="color:#666;font-size:14px;" id="otpRegSubtitle">Enter the verification code sent to your email</p>
+            </div>
+
+            <div class="field">
+              <label id="lblOtpRegCode">Verification Code</label>
+              <input type="text" id="otpRegCode" placeholder="000000" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:8px;font-weight:bold;">
+            </div>
+
+            <button class="auth-btn" id="verifyOtpRegBtn" style="background:linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);">
+              <span class="btn-text" id="btnVerifyOtpReg">VERIFY EMAIL</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="resendOtpReg">Didn't receive code? Resend</a>
+            </div>
+
+            <div class="setup-link" style="margin-top:10px;">
+              <a id="backFromOtpReg">← Back to Registration</a>
+            </div>
+          </div>
+
+          <!-- Setup Admin Form (Hidden) -->
+          <div id="setupForm" class="auth-form">
+            <div id="setupMessage" class="message"></div>
+
+            <div class="field">
+              <label>Admin Full Name</label>
+              <input type="text" id="adminName" placeholder="Administrator name">
+            </div>
+
+            <div class="field">
+              <label>Admin Email</label>
+              <input type="email" id="adminEmail" placeholder="admin@company.com">
+            </div>
+
+            <div class="field">
+              <label>Admin Phone (Optional)</label>
+              <input type="tel" id="adminPhone" placeholder="Admin phone number">
+            </div>
+
+            <div class="field">
+              <label>Admin Password</label>
+              <input type="password" id="adminPassword" placeholder="Strong password (min 6 chars)">
+            </div>
+
+            <button class="auth-btn" id="setupBtn">
+              <span class="btn-text">CREATE ADMIN ACCOUNT</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="backToLogin">Back to Login</a>
+            </div>
+          </div>
+
+          <!-- Forgot Password Form (Step 1 - Enter Email) -->
+          <div id="forgotPasswordForm" class="auth-form">
+            <div id="forgotMessage" class="message"></div>
+
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="font-size:48px;margin-bottom:10px;">🔑</div>
+              <h3 style="color:#1976d2;margin:0 0 8px;" id="forgotTitle">Reset Password</h3>
+              <p style="color:#666;font-size:14px;" id="forgotSubtitle">Enter your email to receive a verification code</p>
+            </div>
+
+            <div class="field">
+              <label id="lblForgotEmail">Email Address</label>
+              <input type="email" id="forgotEmail" placeholder="Enter your email">
+            </div>
+
+            <button class="auth-btn" id="sendResetCodeBtn">
+              <span class="btn-text" id="btnSendResetCode">SEND VERIFICATION CODE</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="backFromForgot">← Back to Login</a>
+            </div>
+          </div>
+
+          <!-- Forgot Password OTP Form (Step 2 - Enter OTP) -->
+          <div id="forgotOtpForm" class="auth-form">
+            <div id="forgotOtpMessage" class="message"></div>
+
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="font-size:48px;margin-bottom:10px;">🔐</div>
+              <h3 style="color:#1976d2;margin:0 0 8px;" id="forgotOtpTitle">Enter Verification Code</h3>
+              <p style="color:#666;font-size:14px;" id="forgotOtpSubtitle">Enter the code sent to your email</p>
+            </div>
+
+            <div class="field">
+              <label id="lblForgotOtp">Verification Code</label>
+              <input type="text" id="forgotOtpCode" placeholder="000000" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:8px;font-weight:bold;">
+            </div>
+
+            <button class="auth-btn" id="verifyForgotOtpBtn">
+              <span class="btn-text" id="btnVerifyForgotOtp">VERIFY CODE</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="resendForgotOtp">Didn't receive code? Resend</a>
+            </div>
+
+            <div class="setup-link" style="margin-top:10px;">
+              <a id="backFromForgotOtp">← Back</a>
+            </div>
+          </div>
+
+          <!-- Set New Password Form (Step 3) -->
+          <div id="newPasswordForm" class="auth-form">
+            <div id="newPasswordMessage" class="message"></div>
+
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="font-size:48px;margin-bottom:10px;">🔒</div>
+              <h3 style="color:#1976d2;margin:0 0 8px;" id="newPasswordTitle">Set New Password</h3>
+              <p style="color:#666;font-size:14px;" id="newPasswordSubtitle">Enter your new password</p>
+            </div>
+
+            <div class="field">
+              <label id="lblNewPassword">New Password</label>
+              <input type="password" id="newPassword" placeholder="Min 8 characters">
+              <div class="password-strength">
+                <div class="password-strength-bar" id="newPasswordStrengthBar"></div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label id="lblConfirmNewPassword">Confirm New Password</label>
+              <input type="password" id="confirmNewPassword" placeholder="Confirm your password">
+            </div>
+
+            <button class="auth-btn" id="setNewPasswordBtn" style="background:linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);">
+              <span class="btn-text" id="btnSetNewPassword">SET NEW PASSWORD</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="backFromNewPassword">← Back to Login</a>
+            </div>
+          </div>
+
+          <!-- Emergency Password Reset Form (Hidden) -->
+          <div id="resetForm" class="auth-form">
+            <div id="resetMessage" class="message"></div>
+
+            <div style="background:#fff3cd;padding:12px;border-radius:8px;margin-bottom:20px;font-size:13px;color:#856404;">
+              ⚠️ This is for emergency admin password reset only. You need the secret key.
+            </div>
+
+            <div class="field">
+              <label>Admin Email</label>
+              <input type="email" id="resetEmail" placeholder="admin@company.com">
+            </div>
+
+            <div class="field">
+              <label>New Password</label>
+              <input type="password" id="resetNewPassword" placeholder="New password (min 6 chars)">
+            </div>
+
+            <div class="field">
+              <label>Secret Key</label>
+              <input type="password" id="resetSecretKey" placeholder="Enter emergency secret key">
+            </div>
+
+            <button class="auth-btn" id="resetBtn" style="background:linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
+              <span class="btn-text">RESET PASSWORD</span>
+              <div class="btn-loader"></div>
+            </button>
+
+            <div class="setup-link">
+              <a id="backFromReset">Back to Login</a>
+            </div>
+          </div>
+
+          <div class="footer">
+            Design And Developed By Helwan Plast
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Loading Overlay -->
+      <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader-box">
+          <div class="loader-spinner"></div>
+          <div class="loader-text">Please wait...</div>
+        </div>
+      </div>
+
+      <script>
+        (function() {
+
+          // ============================================
+          // LANGUAGE SYSTEM
+          // ============================================
+          var currentLang = localStorage.getItem('hp_language') || 'en';
+
+          var translations = {
+            en: {
+              logoTitle: 'Helwan Plast',
+              logoSubtitle: 'Secure Authentication',
+              tabLogin: 'Login',
+              tabRegister: 'Register',
+              lblLoginEmail: 'Email Address',
+              lblLoginPassword: 'Password',
+              btnLoginText: 'LOGIN',
+              setupAdminLink: 'First time? Setup Admin Account',
+              lblRegName: 'Full Name',
+              lblRegEmail: 'Email Address',
+              lblRegPhone: 'Phone Number (Optional)',
+              lblRegPassword: 'Password',
+              lblRegConfirm: 'Confirm Password',
+              btnRegisterText: 'CREATE ACCOUNT',
+              loginEmailPlaceholder: 'Enter your email',
+              loginPasswordPlaceholder: 'Enter your password',
+              regNamePlaceholder: 'Enter your full name',
+              regEmailPlaceholder: 'Enter your email',
+              regPhonePlaceholder: 'Enter your phone number',
+              regPasswordPlaceholder: 'Min 8 characters',
+              regConfirmPlaceholder: 'Confirm your password',
+              langBtnText: 'العربية',
+              errorFillFields: 'Please enter email and password',
+              errorFillAllFields: 'Please fill all required fields',
+              errorPasswordMatch: 'Passwords do not match',
+              errorPasswordMin: 'Password must be at least 8 characters',
+              successLogin: 'Login successful! Redirecting...',
+              footer: 'Design And Developed By Helwan Plast'
+            },
+            ar: {
+              logoTitle: 'حلوان بلاست',
+              logoSubtitle: 'تسجيل دخول آمن',
+              tabLogin: 'تسجيل الدخول',
+              tabRegister: 'تسجيل جديد',
+              lblLoginEmail: 'البريد الإلكتروني',
+              lblLoginPassword: 'كلمة المرور',
+              btnLoginText: 'دخول',
+              setupAdminLink: 'أول مرة؟ إنشاء حساب المسؤول',
+              lblRegName: 'الاسم بالكامل',
+              lblRegEmail: 'البريد الإلكتروني',
+              lblRegPhone: 'رقم الهاتف (اختياري)',
+              lblRegPassword: 'كلمة المرور',
+              lblRegConfirm: 'تأكيد كلمة المرور',
+              btnRegisterText: 'إنشاء الحساب',
+              loginEmailPlaceholder: 'أدخل بريدك الإلكتروني',
+              loginPasswordPlaceholder: 'أدخل كلمة المرور',
+              regNamePlaceholder: 'أدخل اسمك بالكامل',
+              regEmailPlaceholder: 'أدخل بريدك الإلكتروني',
+              regPhonePlaceholder: 'أدخل رقم هاتفك',
+              regPasswordPlaceholder: '8 أحرف على الأقل',
+              regConfirmPlaceholder: 'أعد كتابة كلمة المرور',
+              langBtnText: 'English',
+              errorFillFields: 'الرجاء إدخال البريد وكلمة المرور',
+              errorFillAllFields: 'الرجاء ملء جميع الحقول المطلوبة',
+              errorPasswordMatch: 'كلمتا المرور غير متطابقتين',
+              errorPasswordMin: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+              successLogin: 'تم تسجيل الدخول بنجاح! جاري التحويل...',
+              footer: 'تصميم وتطوير حلوان بلاست'
+            }
+          };
+
+          function t(key) {
+            return translations[currentLang][key] || translations['en'][key] || key;
+          }
+
+          function applyTranslations() {
+            // Apply RTL/LTR
+            if (currentLang === 'ar') {
+              document.body.classList.add('rtl');
+              document.documentElement.dir = 'rtl';
+            } else {
+              document.body.classList.remove('rtl');
+              document.documentElement.dir = 'ltr';
+            }
+
+            // Update text elements
+            var elements = ['logoTitle', 'logoSubtitle', 'tabLogin', 'tabRegister',
+              'lblLoginEmail', 'lblLoginPassword', 'btnLoginText', 'setupAdminLink',
+              'lblRegName', 'lblRegEmail', 'lblRegPhone', 'lblRegPassword',
+              'lblRegConfirm', 'btnRegisterText', 'langBtnText'];
+
+            elements.forEach(function(id) {
+              var el = document.getElementById(id);
+              if (el) el.textContent = t(id);
+            });
+
+            // Update placeholders
+            var loginEmail = document.getElementById('loginEmail');
+            var loginPassword = document.getElementById('loginPassword');
+            var regName = document.getElementById('regName');
+            var regEmail = document.getElementById('regEmail');
+            var regPhone = document.getElementById('regPhone');
+            var regPassword = document.getElementById('regPassword');
+            var regConfirm = document.getElementById('regConfirm');
+
+            if (loginEmail) loginEmail.placeholder = t('loginEmailPlaceholder');
+            if (loginPassword) loginPassword.placeholder = t('loginPasswordPlaceholder');
+            if (regName) regName.placeholder = t('regNamePlaceholder');
+            if (regEmail) regEmail.placeholder = t('regEmailPlaceholder');
+            if (regPhone) regPhone.placeholder = t('regPhonePlaceholder');
+            if (regPassword) regPassword.placeholder = t('regPasswordPlaceholder');
+            if (regConfirm) regConfirm.placeholder = t('regConfirmPlaceholder');
+          }
+
+          window.toggleLanguage = function() {
+            currentLang = currentLang === 'en' ? 'ar' : 'en';
+            localStorage.setItem('hp_language', currentLang);
+            applyTranslations();
+          };
+
+          // Apply on load
+          setTimeout(applyTranslations, 100);
+
+          // ============================================
+          // CHECK IF ADMIN EXISTS (Hide setup link if admin exists)
+          // ============================================
+          async function checkAndHideSetupLink() {
+            // Wait for bridge function
+            if (!window.checkAdminExists) {
+              setTimeout(checkAndHideSetupLink, 300);
+              return;
+            }
+
+            try {
+              var result = await window.checkAdminExists();
+              if (result && result.exists) {
+                // Hide setup admin link
+                var setupLink = document.getElementById('setupLink');
+                if (setupLink) setupLink.style.display = 'none';
+              }
+            } catch (e) {
+              console.log('Error checking admin:', e);
+              // Hide for safety
+              var setupLink = document.getElementById('setupLink');
+              if (setupLink) setupLink.style.display = 'none';
+            }
+          }
+
+          // Run check after a short delay
+          setTimeout(checkAndHideSetupLink, 500);
+
+          // ============================================
+          // TAB SWITCHING
+          // ============================================
+          var tabs = document.querySelectorAll('.auth-tab');
+          var loginForm = document.getElementById('loginForm');
+          var registerForm = document.getElementById('registerForm');
+          var setupForm = document.getElementById('setupForm');
+
+          tabs.forEach(function(tab) {
+            tab.onclick = function() {
+              tabs.forEach(function(t) { t.classList.remove('active'); });
+              tab.classList.add('active');
+
+              loginForm.classList.remove('active');
+              registerForm.classList.remove('active');
+              setupForm.classList.remove('active');
+
+              if (tab.dataset.tab === 'login') {
+                loginForm.classList.add('active');
+              } else {
+                registerForm.classList.add('active');
+              }
+
+              clearMessages();
+            };
+          });
+
+          // Setup admin link
+          var setupAdminLink = document.getElementById('setupAdminLink');
+          if (setupAdminLink) {
+            setupAdminLink.onclick = function() {
+              loginForm.classList.remove('active');
+              registerForm.classList.remove('active');
+              setupForm.classList.add('active');
+              document.querySelector('.auth-tabs').style.display = 'none';
+            };
+          }
+
+          var backToLogin = document.getElementById('backToLogin');
+          if (backToLogin) {
+            backToLogin.onclick = function() {
+              setupForm.classList.remove('active');
+              loginForm.classList.add('active');
+              document.querySelector('.auth-tabs').style.display = 'flex';
+            };
+          }
+
+          // ============================================
+          // MESSAGE HELPERS
+          // ============================================
+          function showMessage(id, type, text, isHtml) {
+            var el = document.getElementById(id);
+            el.className = 'message ' + type + ' show';
+            if (isHtml) {
+              el.innerHTML = text;
+            } else {
+              el.textContent = text;
+            }
+          }
+
+          function clearMessages() {
+            document.querySelectorAll('.message').forEach(function(m) {
+              m.classList.remove('show');
+            });
+          }
+
+          function setLoading(btn, loading) {
+            if (loading) {
+              btn.classList.add('loading');
+              btn.disabled = true;
+            } else {
+              btn.classList.remove('loading');
+              btn.disabled = false;
+            }
+          }
+
+          // ============================================
+          // PASSWORD STRENGTH
+          // ============================================
+          var regPassword = document.getElementById('regPassword');
+          var strengthBar = document.getElementById('strengthBar');
+
+          regPassword.oninput = function() {
+            var pass = regPassword.value;
+            strengthBar.className = 'password-strength-bar';
+
+            if (pass.length < 6) {
+              strengthBar.classList.add('weak');
+            } else if (pass.length < 10 || !/[A-Z]/.test(pass) || !/[0-9]/.test(pass)) {
+              strengthBar.classList.add('medium');
+            } else {
+              strengthBar.classList.add('strong');
+            }
+          };
+
+          // ============================================
+          // LOGIN (with 2FA)
+          // ============================================
+          var loginBtn = document.getElementById('loginBtn');
+          var loginEmail = document.getElementById('loginEmail');
+          var loginPassword = document.getElementById('loginPassword');
+          var otpLoginForm = document.getElementById('otpLoginForm');
+          var pendingLoginEmail = ''; // Store email for OTP verification
+
+          loginBtn.onclick = async function() {
+            clearMessages();
+
+            var email = loginEmail.value.trim();
+            var password = loginPassword.value;
+
+            if (!email || !password) {
+              showMessage('loginMessage', 'error', 'Please enter email and password');
+              return;
+            }
+
+            setLoading(loginBtn, true);
+
+            try {
+              var result = await window.loginUser(email, password);
+
+              if (result.success) {
+                if (result.requires_2fa) {
+                  // Show OTP form for 2FA
+                  pendingLoginEmail = email;
+                  loginForm.classList.remove('active');
+                  otpLoginForm.classList.add('active');
+                  document.querySelector('.auth-tabs').style.display = 'none';
+                  showMessage('otpLoginMessage', 'success', result.message);
+                  document.getElementById('otpLoginCode').focus();
+                } else {
+                  // Direct login (email service down)
+                  completeLogin(result);
+                }
+              } else {
+                // Check if rate limit error and offer to clear
+                if (result.message && result.message.indexOf('Too many') !== -1) {
+                  showMessage('loginMessage', 'error', result.message + ' <a href="#" onclick="clearRateLimitAndRetry(); return false;" style="color:#667eea;text-decoration:underline;">Click here to reset</a>', true);
+                } else {
+                  showMessage('loginMessage', 'error', result.message);
+                }
+              }
+              setLoading(loginBtn, false);
+
+            } catch (e) {
+              console.error('Login error:', e);
+              var errorMsg = e.message || e.toString() || 'Connection error';
+              showMessage('loginMessage', 'error', 'Error: ' + errorMsg);
+              setLoading(loginBtn, false);
+            }
+          };
+
+          // Clear rate limit and retry login
+          window.clearRateLimitAndRetry = async function() {
+            showMessage('loginMessage', 'info', 'Clearing rate limit...');
+            try {
+              if (window.clearRateLimit) {
+                var result = await window.clearRateLimit();
+                if (result && result.success) {
+                  showMessage('loginMessage', 'success', 'Rate limit cleared! Please try again.');
+                } else {
+                  showMessage('loginMessage', 'error', 'Could not clear rate limit. Please wait 15 minutes.');
+                }
+              } else {
+                showMessage('loginMessage', 'error', 'System is loading, please refresh the page.');
+              }
+            } catch (e) {
+              showMessage('loginMessage', 'error', 'Error clearing rate limit.');
+            }
+          };
+
+          function completeLogin(result) {
+            // Store session in localStorage to persist across browser restarts
+            localStorage.setItem('auth_token', result.token);
+            localStorage.setItem('user_email', result.user.email);
+            localStorage.setItem('user_name', result.user.full_name);
+            localStorage.setItem('user_role', result.user.role);
+
+            showMessage('loginMessage', 'success', 'Login successful! Redirecting...');
+
+            setTimeout(function() {
+              if (result.user.role === 'admin') {
+                location.hash = '#admin';
+              } else {
+                location.hash = '#launcher';
+              }
+            }, 800);
+          }
+
+          // Enter key for login
+          loginPassword.onkeypress = function(e) {
+            if (e.key === 'Enter') loginBtn.click();
+          };
+
+          // ============================================
+          // OTP LOGIN VERIFICATION (2FA)
+          // ============================================
+          var verifyOtpLoginBtn = document.getElementById('verifyOtpLoginBtn');
+          var otpLoginCode = document.getElementById('otpLoginCode');
+
+          verifyOtpLoginBtn.onclick = async function() {
+            clearMessages();
+            var otp = otpLoginCode.value.trim();
+
+            if (!otp || otp.length !== 6) {
+              showMessage('otpLoginMessage', 'error', 'Please enter the 6-digit code');
+              return;
+            }
+
+            setLoading(verifyOtpLoginBtn, true);
+
+            try {
+              var result = await window.verifyLoginOtp(pendingLoginEmail, otp);
+
+              if (result.success) {
+                completeLogin(result);
+              } else {
+                showMessage('otpLoginMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              console.error('OTP verify error:', e);
+              showMessage('otpLoginMessage', 'error', 'Verification failed');
+            }
+
+            setLoading(verifyOtpLoginBtn, false);
+          };
+
+          // Enter key for OTP login
+          otpLoginCode.onkeypress = function(e) {
+            if (e.key === 'Enter') verifyOtpLoginBtn.click();
+          };
+
+          // Resend OTP for login
+          document.getElementById('resendOtpLogin').onclick = async function() {
+            try {
+              var result = await window.resendLoginOtp(pendingLoginEmail);
+              showMessage('otpLoginMessage', result.success ? 'success' : 'error', result.message);
+            } catch (e) {
+              showMessage('otpLoginMessage', 'error', 'Failed to resend code');
+            }
+          };
+
+          // Back from OTP login
+          document.getElementById('backFromOtpLogin').onclick = function() {
+            otpLoginForm.classList.remove('active');
+            loginForm.classList.add('active');
+            document.querySelector('.auth-tabs').style.display = 'flex';
+            otpLoginCode.value = '';
+            clearMessages();
+          };
+
+          // ============================================
+          // REGISTER (with Email Verification)
+          // ============================================
+          var registerBtn = document.getElementById('registerBtn');
+          var regName = document.getElementById('regName');
+          var regEmail = document.getElementById('regEmail');
+          var regPhone = document.getElementById('regPhone');
+          var regConfirm = document.getElementById('regConfirm');
+          var otpRegForm = document.getElementById('otpRegForm');
+          var pendingRegEmail = ''; // Store email for OTP verification
+
+          registerBtn.onclick = async function() {
+            clearMessages();
+
+            var name = regName.value.trim();
+            var email = regEmail.value.trim();
+            var phone = regPhone.value.trim();
+            var password = regPassword.value;
+            var confirm = regConfirm.value;
+
+            if (!name || !email || !password || !confirm) {
+              showMessage('registerMessage', 'error', 'Please fill all required fields');
+              return;
+            }
+
+            if (password !== confirm) {
+              showMessage('registerMessage', 'error', 'Passwords do not match');
+              return;
+            }
+
+            if (password.length < 8) {
+              showMessage('registerMessage', 'error', 'Password must be at least 8 characters');
+              return;
+            }
+
+            setLoading(registerBtn, true);
+
+            try {
+              // Check if bridge function is ready
+              if (!window.registerUser) {
+                showMessage('registerMessage', 'error', 'System is loading, please wait and try again...');
+                setLoading(registerBtn, false);
+                return;
+              }
+
+              var result = await window.registerUser(email, password, name, phone || null);
+
+              if (result && result.success) {
+                if (result.requires_verification) {
+                  // Show OTP form for email verification
+                  pendingRegEmail = email;
+                  registerForm.classList.remove('active');
+                  otpRegForm.classList.add('active');
+                  document.querySelector('.auth-tabs').style.display = 'none';
+                  showMessage('otpRegMessage', 'success', result.message);
+                  document.getElementById('otpRegCode').focus();
+                } else {
+                  // Direct registration (email service down)
+                  showMessage('registerMessage', 'success', result.message);
+                  regName.value = '';
+                  regEmail.value = '';
+                  regPhone.value = '';
+                  regPassword.value = '';
+                  regConfirm.value = '';
+                  strengthBar.className = 'password-strength-bar';
+                }
+              } else if (result) {
+                showMessage('registerMessage', 'error', result.message || 'Registration failed');
+              } else {
+                showMessage('registerMessage', 'error', 'Registration failed - no response from server');
+              }
+
+            } catch (e) {
+              console.error('Register error:', e);
+              var errorMsg = e.message || e.toString() || 'Connection error';
+              showMessage('registerMessage', 'error', 'Error: ' + errorMsg);
+            }
+
+            setLoading(registerBtn, false);
+          };
+
+          // ============================================
+          // OTP REGISTRATION VERIFICATION
+          // ============================================
+          var verifyOtpRegBtn = document.getElementById('verifyOtpRegBtn');
+          var otpRegCode = document.getElementById('otpRegCode');
+
+          verifyOtpRegBtn.onclick = async function() {
+            clearMessages();
+            var otp = otpRegCode.value.trim();
+
+            if (!otp || otp.length !== 6) {
+              showMessage('otpRegMessage', 'error', 'Please enter the 6-digit code');
+              return;
+            }
+
+            setLoading(verifyOtpRegBtn, true);
+
+            try {
+              var result = await window.verifyRegistrationOtp(pendingRegEmail, otp);
+
+              if (result.success) {
+                showMessage('otpRegMessage', 'success', result.message);
+                // Clear form and go back to login after 2 seconds
+                setTimeout(function() {
+                  otpRegForm.classList.remove('active');
+                  loginForm.classList.add('active');
+                  document.querySelector('.auth-tabs').style.display = 'flex';
+                  tabs[0].classList.add('active');
+                  tabs[1].classList.remove('active');
+                  otpRegCode.value = '';
+                  regName.value = '';
+                  regEmail.value = '';
+                  regPhone.value = '';
+                  regPassword.value = '';
+                  regConfirm.value = '';
+                  strengthBar.className = 'password-strength-bar';
+                  showMessage('loginMessage', 'success', 'Email verified! Please wait for admin approval.');
+                }, 2000);
+              } else {
+                showMessage('otpRegMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              console.error('OTP verify error:', e);
+              showMessage('otpRegMessage', 'error', 'Verification failed');
+            }
+
+            setLoading(verifyOtpRegBtn, false);
+          };
+
+          // Enter key for OTP registration
+          otpRegCode.onkeypress = function(e) {
+            if (e.key === 'Enter') verifyOtpRegBtn.click();
+          };
+
+          // Resend OTP for registration
+          document.getElementById('resendOtpReg').onclick = async function() {
+            try {
+              var result = await window.resendVerificationOtp(pendingRegEmail);
+              showMessage('otpRegMessage', result.success ? 'success' : 'error', result.message);
+            } catch (e) {
+              showMessage('otpRegMessage', 'error', 'Failed to resend code');
+            }
+          };
+
+          // Back from OTP registration
+          document.getElementById('backFromOtpReg').onclick = function() {
+            otpRegForm.classList.remove('active');
+            registerForm.classList.add('active');
+            document.querySelector('.auth-tabs').style.display = 'flex';
+            otpRegCode.value = '';
+            clearMessages();
+          };
+
+          // ============================================
+          // SETUP ADMIN
+          // ============================================
+          var setupBtn = document.getElementById('setupBtn');
+          var adminName = document.getElementById('adminName');
+          var adminEmail = document.getElementById('adminEmail');
+          var adminPhone = document.getElementById('adminPhone');
+          var adminPassword = document.getElementById('adminPassword');
+
+          setupBtn.onclick = async function() {
+            clearMessages();
+
+            var name = adminName.value.trim();
+            var email = adminEmail.value.trim();
+            var phone = adminPhone.value.trim();
+            var password = adminPassword.value;
+
+            if (!name || !email || !password) {
+              showMessage('setupMessage', 'error', 'Please fill all required fields');
+              return;
+            }
+
+            if (password.length < 6) {
+              showMessage('setupMessage', 'error', 'Password must be at least 6 characters');
+              return;
+            }
+
+            setLoading(setupBtn, true);
+
+            try {
+              var result = await window.setupAdmin(email, password, name, phone || null);
+
+              if (result.success) {
+                showMessage('setupMessage', 'success', result.message + ' You can now login.');
+
+                setTimeout(function() {
+                  setupForm.classList.remove('active');
+                  loginForm.classList.add('active');
+                  document.querySelector('.auth-tabs').style.display = 'flex';
+                  document.getElementById('setupLink').style.display = 'none';
+                  loginEmail.value = email;
+                }, 2000);
+
+              } else {
+                showMessage('setupMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              console.error('Setup admin error:', e);
+              var errorMsg = e.message || e.toString() || 'Connection error';
+              showMessage('setupMessage', 'error', 'Error: ' + errorMsg);
+            }
+
+            setLoading(setupBtn, false);
+          };
+
+          // ============================================
+          // FORGOT PASSWORD (User Password Reset)
+          // ============================================
+          var forgotPasswordLink = document.getElementById('forgotPasswordLink');
+          var forgotPasswordForm = document.getElementById('forgotPasswordForm');
+          var forgotOtpForm = document.getElementById('forgotOtpForm');
+          var newPasswordForm = document.getElementById('newPasswordForm');
+          var pendingResetEmail = ''; // Store email for password reset
+
+          // Show forgot password form
+          if (forgotPasswordLink) {
+            forgotPasswordLink.onclick = function() {
+              loginForm.classList.remove('active');
+              registerForm.classList.remove('active');
+              setupForm.classList.remove('active');
+              forgotPasswordForm.classList.add('active');
+              document.querySelector('.auth-tabs').style.display = 'none';
+              clearMessages();
+            };
+          }
+
+          // Back from forgot password
+          document.getElementById('backFromForgot').onclick = function() {
+            forgotPasswordForm.classList.remove('active');
+            loginForm.classList.add('active');
+            document.querySelector('.auth-tabs').style.display = 'flex';
+            clearMessages();
+          };
+
+          // Send reset code
+          var sendResetCodeBtn = document.getElementById('sendResetCodeBtn');
+          var forgotEmailInput = document.getElementById('forgotEmail');
+
+          sendResetCodeBtn.onclick = async function() {
+            clearMessages();
+            var email = forgotEmailInput.value.trim();
+
+            if (!email) {
+              showMessage('forgotMessage', 'error', 'Please enter your email address');
+              return;
+            }
+
+            setLoading(sendResetCodeBtn, true);
+
+            try {
+              var result = await window.requestPasswordReset(email);
+
+              if (result.success) {
+                pendingResetEmail = email;
+                forgotPasswordForm.classList.remove('active');
+                forgotOtpForm.classList.add('active');
+                showMessage('forgotOtpMessage', 'success', result.message);
+                document.getElementById('forgotOtpCode').focus();
+              } else {
+                showMessage('forgotMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              console.error('Password reset error:', e);
+              showMessage('forgotMessage', 'error', 'Error: ' + (e.message || 'Connection error'));
+            }
+
+            setLoading(sendResetCodeBtn, false);
+          };
+
+          // Enter key for forgot password email
+          forgotEmailInput.onkeypress = function(e) {
+            if (e.key === 'Enter') sendResetCodeBtn.click();
+          };
+
+          // Verify forgot password OTP
+          var verifyForgotOtpBtn = document.getElementById('verifyForgotOtpBtn');
+          var forgotOtpCode = document.getElementById('forgotOtpCode');
+
+          verifyForgotOtpBtn.onclick = async function() {
+            clearMessages();
+            var otp = forgotOtpCode.value.trim();
+
+            if (!otp || otp.length !== 6) {
+              showMessage('forgotOtpMessage', 'error', 'Please enter the 6-digit code');
+              return;
+            }
+
+            setLoading(verifyForgotOtpBtn, true);
+
+            try {
+              var result = await window.verifyPasswordResetOtp(pendingResetEmail, otp);
+
+              if (result.success) {
+                forgotOtpForm.classList.remove('active');
+                newPasswordForm.classList.add('active');
+                showMessage('newPasswordMessage', 'success', 'Code verified! Enter your new password.');
+                document.getElementById('newPassword').focus();
+              } else {
+                showMessage('forgotOtpMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              console.error('OTP verify error:', e);
+              showMessage('forgotOtpMessage', 'error', 'Verification failed');
+            }
+
+            setLoading(verifyForgotOtpBtn, false);
+          };
+
+          // Enter key for forgot OTP
+          forgotOtpCode.onkeypress = function(e) {
+            if (e.key === 'Enter') verifyForgotOtpBtn.click();
+          };
+
+          // Resend forgot password OTP
+          document.getElementById('resendForgotOtp').onclick = async function() {
+            try {
+              var result = await window.requestPasswordReset(pendingResetEmail);
+              showMessage('forgotOtpMessage', result.success ? 'success' : 'error', result.message);
+            } catch (e) {
+              showMessage('forgotOtpMessage', 'error', 'Failed to resend code');
+            }
+          };
+
+          // Back from forgot OTP
+          document.getElementById('backFromForgotOtp').onclick = function() {
+            forgotOtpForm.classList.remove('active');
+            forgotPasswordForm.classList.add('active');
+            forgotOtpCode.value = '';
+            clearMessages();
+          };
+
+          // Set new password
+          var setNewPasswordBtn = document.getElementById('setNewPasswordBtn');
+          var newPasswordInput = document.getElementById('newPassword');
+          var confirmNewPasswordInput = document.getElementById('confirmNewPassword');
+          var newPasswordStrengthBar = document.getElementById('newPasswordStrengthBar');
+
+          // Password strength for new password
+          newPasswordInput.oninput = function() {
+            var pass = newPasswordInput.value;
+            newPasswordStrengthBar.className = 'password-strength-bar';
+
+            if (pass.length < 6) {
+              newPasswordStrengthBar.classList.add('weak');
+            } else if (pass.length < 10 || !/[A-Z]/.test(pass) || !/[0-9]/.test(pass)) {
+              newPasswordStrengthBar.classList.add('medium');
+            } else {
+              newPasswordStrengthBar.classList.add('strong');
+            }
+          };
+
+          setNewPasswordBtn.onclick = async function() {
+            clearMessages();
+            var newPass = newPasswordInput.value;
+            var confirmPass = confirmNewPasswordInput.value;
+
+            if (!newPass || newPass.length < 8) {
+              showMessage('newPasswordMessage', 'error', 'Password must be at least 8 characters');
+              return;
+            }
+
+            if (newPass !== confirmPass) {
+              showMessage('newPasswordMessage', 'error', 'Passwords do not match');
+              return;
+            }
+
+            setLoading(setNewPasswordBtn, true);
+
+            try {
+              var result = await window.completePasswordReset(pendingResetEmail, newPass);
+
+              if (result.success) {
+                showMessage('newPasswordMessage', 'success', result.message);
+
+                setTimeout(function() {
+                  newPasswordForm.classList.remove('active');
+                  loginForm.classList.add('active');
+                  document.querySelector('.auth-tabs').style.display = 'flex';
+                  loginEmail.value = pendingResetEmail;
+                  newPasswordInput.value = '';
+                  confirmNewPasswordInput.value = '';
+                  forgotOtpCode.value = '';
+                  forgotEmailInput.value = '';
+                  newPasswordStrengthBar.className = 'password-strength-bar';
+                  showMessage('loginMessage', 'success', 'Password reset successfully! Please login.');
+                }, 2000);
+              } else {
+                showMessage('newPasswordMessage', 'error', result.message);
+              }
+
+            } catch (e) {
+              console.error('Password reset error:', e);
+              showMessage('newPasswordMessage', 'error', 'Error: ' + (e.message || 'Connection error'));
+            }
+
+            setLoading(setNewPasswordBtn, false);
+          };
+
+          // Enter key for new password
+          confirmNewPasswordInput.onkeypress = function(e) {
+            if (e.key === 'Enter') setNewPasswordBtn.click();
+          };
+
+          // Back from new password
+          document.getElementById('backFromNewPassword').onclick = function() {
+            newPasswordForm.classList.remove('active');
+            loginForm.classList.add('active');
+            document.querySelector('.auth-tabs').style.display = 'flex';
+            newPasswordInput.value = '';
+            confirmNewPasswordInput.value = '';
+            newPasswordStrengthBar.className = 'password-strength-bar';
+            clearMessages();
+          };
+
+          // ============================================
+          // EMERGENCY PASSWORD RESET
+          // ============================================
+          var resetForm = document.getElementById('resetForm');
+          var resetBtn = document.getElementById('resetBtn');
+          var resetEmail = document.getElementById('resetEmail');
+          var resetNewPassword = document.getElementById('resetNewPassword');
+          var resetSecretKey = document.getElementById('resetSecretKey');
+          var emergencyResetLink = document.getElementById('emergencyResetLink');
+          var backFromReset = document.getElementById('backFromReset');
+
+          // Show reset form
+          if (emergencyResetLink) {
+            emergencyResetLink.onclick = function() {
+              loginForm.classList.remove('active');
+              registerForm.classList.remove('active');
+              setupForm.classList.remove('active');
+              resetForm.classList.add('active');
+              document.querySelector('.auth-tabs').style.display = 'none';
+            };
+          }
+
+          // Back to login from reset
+          if (backFromReset) {
+            backFromReset.onclick = function() {
+              resetForm.classList.remove('active');
+              loginForm.classList.add('active');
+              document.querySelector('.auth-tabs').style.display = 'flex';
+            };
+          }
+
+          // Reset password action
+          if (resetBtn) {
+            resetBtn.onclick = async function() {
+              clearMessages();
+
+              var email = resetEmail.value.trim();
+              var newPassword = resetNewPassword.value;
+              var secretKey = resetSecretKey.value;
+
+              if (!email || !newPassword || !secretKey) {
+                showMessage('resetMessage', 'error', 'Please fill all fields');
+                return;
+              }
+
+              if (newPassword.length < 6) {
+                showMessage('resetMessage', 'error', 'Password must be at least 6 characters');
+                return;
+              }
+
+              setLoading(resetBtn, true);
+
+              try {
+                var result = await window.resetAdminPassword(email, newPassword, secretKey);
+
+                if (result.success) {
+                  showMessage('resetMessage', 'success', result.message);
+
+                  setTimeout(function() {
+                    resetForm.classList.remove('active');
+                    loginForm.classList.add('active');
+                    document.querySelector('.auth-tabs').style.display = 'flex';
+                    loginEmail.value = email;
+                  }, 2000);
+
+                } else {
+                  showMessage('resetMessage', 'error', result.message);
+                }
+
+              } catch (e) {
+                console.error('Reset password error:', e);
+                var errorMsg = e.message || e.toString() || 'Connection error';
+                showMessage('resetMessage', 'error', 'Error: ' + errorMsg);
+              }
+
+              setLoading(resetBtn, false);
+            };
+          }
+
+        })();
+      </script>
+  type: HtmlTemplate
+is_package: true

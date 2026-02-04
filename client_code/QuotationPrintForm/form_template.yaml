@@ -1,0 +1,805 @@
+components: []
+container:
+  event_bindings: {show: form_show}
+  layout_properties: {}
+  properties:
+    html: |
+      <style>
+        :root {
+          --primary-color: #1a1a2e;
+          --accent-color: #667eea;
+          --highlight-color: transparent;
+          --success-color: #4caf50;
+          --border-color: #ddd;
+        }
+
+        .print-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 20px;
+          font-family: 'Segoe UI', 'Arial', 'Helvetica Neue', sans-serif;
+          font-size: 16px;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-rendering: optimizeLegibility;
+        }
+
+        /* Top Controls */
+        .controls-bar {
+          background: white;
+          padding: 20px;
+          border-radius: 12px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          margin-bottom: 20px;
+          display: flex;
+          gap: 15px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+
+        .search-section {
+          flex: 1;
+          min-width: 300px;
+          display: flex;
+          gap: 10px;
+          align-items: center;
+        }
+
+        .search-section input {
+          flex: 1;
+          padding: 12px 15px;
+          border: 2px solid #e0e0e0;
+          border-radius: 8px;
+          font-size: 14px;
+          transition: border-color 0.3s;
+        }
+
+        .search-section input:focus {
+          outline: none;
+          border-color: var(--accent-color);
+        }
+
+        .search-section select {
+          padding: 12px 15px;
+          border: 2px solid #e0e0e0;
+          border-radius: 8px;
+          font-size: 14px;
+          min-width: 200px;
+          cursor: pointer;
+        }
+
+        .lang-toggle {
+          display: flex;
+          gap: 5px;
+        }
+
+        .lang-btn {
+          padding: 10px 20px;
+          border: 2px solid #e0e0e0;
+          background: white;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: all 0.3s;
+        }
+
+        .lang-btn.active {
+          background: var(--accent-color);
+          color: white;
+          border-color: var(--accent-color);
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 10px;
+        }
+
+        .btn {
+          padding: 12px 24px;
+          border: none;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          transition: all 0.3s;
+        }
+
+        .btn-primary {
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+        }
+
+        .btn-primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+          background: linear-gradient(135deg, #4caf50, #45a049);
+          color: white;
+        }
+
+        .btn-back {
+          background: #f5f5f5;
+          color: #333;
+          border: 2px solid #e0e0e0;
+        }
+
+        /* Template Preview */
+        .template-preview {
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          overflow: auto;
+          max-height: calc(100vh - 150px);
+        }
+
+        .template-page {
+          padding: 20px 30px;
+          min-height: auto;
+          position: relative;
+          border-bottom: 2px dashed #e0e0e0;
+          margin-bottom: 15px;
+          font-family: Arial, 'Segoe UI', 'Helvetica Neue', sans-serif;
+        }
+
+        .template-page:last-child {
+          border-bottom: none;
+          margin-bottom: 0;
+        }
+
+        /* Specs List Style */
+        .specs-list {
+          margin: 0;
+          padding-right: 20px;
+          padding-left: 20px;
+          font-size: 12px;
+          line-height: 1.6;
+        }
+
+        .specs-list li {
+          margin-bottom: 4px;
+          text-align: justify;
+        }
+
+        /* Header */
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 20px;
+          padding-bottom: 12px;
+          border-bottom: 2px solid var(--accent-color);
+        }
+
+        .header-right {
+          text-align: right;
+        }
+
+        .header-right .location-date {
+          font-size: 14px;
+          color: #333;
+          margin-bottom: 5px;
+        }
+
+        .header-right .address {
+          font-size: 13px;
+          color: #666;
+          margin-bottom: 3px;
+        }
+
+        .header-right .contact {
+          font-size: 13px;
+          color: #666;
+        }
+
+        .header-left {
+          text-align: left;
+        }
+
+        .header-left .logo {
+          width: 100px;
+          margin-bottom: 8px;
+        }
+
+        .header-left .company-name {
+          font-size: 14px;
+          font-weight: bold;
+          color: var(--primary-color);
+        }
+
+        .header-left .website {
+          font-size: 12px;
+          color: var(--accent-color);
+        }
+
+        /* Quotation Info */
+        .quotation-info {
+          margin-bottom: 15px;
+        }
+
+        .quotation-number {
+          font-size: 16px;
+          font-weight: bold;
+          color: var(--primary-color);
+          margin-bottom: 8px;
+        }
+
+        .quotation-number span {
+          background: var(--highlight-color);
+          padding: 5px 15px;
+          border-radius: 5px;
+          margin-right: 10px;
+        }
+
+        .client-info {
+          font-size: 14px;
+          margin-bottom: 10px;
+        }
+
+        .client-info span {
+          background: var(--highlight-color);
+          padding: 3px 10px;
+          border-radius: 3px;
+        }
+
+        .greeting {
+          font-size: 13px;
+          color: #333;
+          margin-bottom: 6px;
+        }
+
+        .intro-text {
+          font-size: 12px;
+          color: #555;
+          line-height: 1.5;
+        }
+
+        /* Section Title */
+        .section-title {
+          font-size: 14px;
+          font-weight: bold;
+          color: var(--primary-color);
+          padding: 6px 0;
+          border-bottom: 2px solid var(--accent-color);
+          margin: 12px 0 10px;
+        }
+
+        /* Machine Details Table */
+        .details-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 12px;
+        }
+
+        .details-table th,
+        .details-table td {
+          padding: 6px 12px;
+          border: 1px solid #ddd;
+          font-size: 12px;
+        }
+
+        .details-table th {
+          background: #f5f5f5;
+          text-align: right;
+          width: 40%;
+          font-weight: 600;
+        }
+
+        .details-table td {
+          background: var(--highlight-color);
+          text-align: left;
+        }
+
+        /* Technical Specs Table */
+        .tech-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 12px;
+        }
+
+        .tech-table th,
+        .tech-table td {
+          padding: 5px 10px;
+          border: 1px solid #ddd;
+          font-size: 11px;
+        }
+
+        .tech-table th {
+          background: #f5f5f5;
+          text-align: right;
+        }
+
+        .tech-table td.value {
+          background: var(--highlight-color);
+          text-align: left;
+        }
+
+        .tech-table .row-num {
+          width: 40px;
+          text-align: center;
+          background: #f5f5f5;
+        }
+
+        /* Cylinders Table */
+        .cylinders-table {
+          width: 50%;
+          border-collapse: collapse;
+          margin: 0 auto 12px;
+        }
+
+        .cylinders-table th,
+        .cylinders-table td {
+          padding: 4px 10px;
+          border: 1px solid #ddd;
+          text-align: center;
+          font-size: 11px;
+        }
+
+        .cylinders-table th {
+          background: #f5f5f5;
+        }
+
+        .cylinders-table td {
+          background: var(--highlight-color);
+        }
+
+        /* Financial Section */
+        .financial-box {
+          background: #f9f9f9;
+          padding: 15px;
+          border-radius: 10px;
+          margin-bottom: 15px;
+        }
+
+        .total-price {
+          font-size: 24px;
+          font-weight: bold;
+          color: var(--primary-color);
+          text-align: center;
+          background: var(--highlight-color);
+          padding: 12px;
+          border-radius: 8px;
+          margin-bottom: 10px;
+        }
+
+        .price-notes {
+          font-size: 11px;
+          color: #666;
+          margin-bottom: 10px;
+        }
+
+        .payment-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .payment-table th,
+        .payment-table td {
+          padding: 6px 10px;
+          border: 1px solid #ddd;
+          font-size: 12px;
+        }
+
+        .payment-table th {
+          background: #f5f5f5;
+        }
+
+        .payment-table td.amount {
+          background: var(--highlight-color);
+          font-weight: bold;
+        }
+
+        /* Delivery & Warranty */
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+
+        .info-box {
+          background: #f9f9f9;
+          padding: 10px;
+          border-radius: 8px;
+        }
+
+        .info-box h4 {
+          font-size: 12px;
+          color: var(--primary-color);
+          margin-bottom: 6px;
+          border-bottom: 1px solid #ddd;
+          padding-bottom: 4px;
+        }
+
+        .info-box p {
+          font-size: 11px;
+          margin-bottom: 4px;
+        }
+
+        .info-box .highlight {
+          background: var(--highlight-color);
+          padding: 2px 8px;
+          border-radius: 3px;
+        }
+
+        /* Notes */
+        .notes-section {
+          margin-top: 12px;
+        }
+
+        .notes-section h4 {
+          font-size: 12px;
+          color: var(--primary-color);
+          margin-bottom: 6px;
+        }
+
+        .notes-list {
+          font-size: 10px;
+          color: #555;
+          line-height: 1.5;
+        }
+
+        /* Footer */
+        .template-footer {
+          text-align: center;
+          margin-top: 15px;
+          padding-top: 12px;
+          border-top: 1px solid #ddd;
+        }
+
+        .template-footer .regards {
+          font-size: 11px;
+          margin-bottom: 6px;
+        }
+
+        .template-footer .company {
+          font-size: 13px;
+          font-weight: bold;
+          color: var(--primary-color);
+        }
+
+        /* Empty State */
+        .empty-state {
+          text-align: center;
+          padding: 100px 20px;
+          color: #999;
+        }
+
+        .empty-state svg {
+          width: 80px;
+          height: 80px;
+          margin-bottom: 20px;
+          opacity: 0.5;
+        }
+
+        .empty-state h3 {
+          font-size: 20px;
+          margin-bottom: 10px;
+        }
+
+        /* Loading */
+        .loading {
+          text-align: center;
+          padding: 50px;
+        }
+
+        .spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid #f3f3f3;
+          border-top: 4px solid var(--accent-color);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        /* PDF Page Break Classes */
+        .page-break-before {
+          page-break-before: always;
+          break-before: page;
+        }
+
+        .page-break-after {
+          page-break-after: always;
+          break-after: page;
+        }
+
+        .avoid-break {
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+
+        /* Print Styles */
+        @media print {
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          body {
+            margin: 0;
+            padding: 0;
+          }
+
+          .controls-bar {
+            display: none !important;
+          }
+
+          .print-container {
+            padding: 0;
+            max-width: none;
+          }
+
+          .template-preview {
+            box-shadow: none;
+            overflow: visible !important;
+            max-height: none !important;
+            border-radius: 0;
+          }
+
+          .template-page {
+            page-break-after: always !important;
+            break-after: page !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            border-bottom: none !important;
+            margin-bottom: 0 !important;
+            padding: 8mm 10mm !important;
+            min-height: auto;
+            max-height: none;
+            overflow: visible;
+          }
+
+          .template-page:last-child {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+          }
+
+          .page-break-before {
+            page-break-before: always !important;
+            break-before: page !important;
+          }
+
+          .header {
+            margin-bottom: 15px !important;
+            padding-bottom: 10px !important;
+          }
+
+          .specs-list {
+            font-size: 11px !important;
+            line-height: 1.6 !important;
+          }
+
+          .specs-list li {
+            margin-bottom: 4px !important;
+          }
+
+          .tech-table th, .tech-table td {
+            padding: 5px 8px !important;
+            font-size: 10px !important;
+          }
+
+          .cylinders-table th, .cylinders-table td {
+            padding: 4px 10px !important;
+            font-size: 11px !important;
+          }
+
+          .section-title {
+            font-size: 14px !important;
+            margin: 10px 0 8px !important;
+            padding: 5px 0 !important;
+          }
+
+          .details-table th,
+          .details-table td {
+            padding: 4px 6px !important;   /* مربعات أصغر */
+            font-size: 14px !important;    /* خط أكبر */
+            line-height: 1.4 !important;
+          }
+          .financial-box {
+            padding: 15px !important;
+          }
+
+          .total-price {
+            font-size: 22px !important;
+            padding: 10px !important;
+          }
+
+          .info-grid {
+            gap: 10px !important;
+          }
+
+          .info-box {
+            padding: 10px !important;
+          }
+
+          .info-box h4 {
+            font-size: 12px !important;
+            margin-bottom: 5px !important;
+          }
+
+          .info-box p {
+            font-size: 11px !important;
+            margin-bottom: 3px !important;
+          }
+
+          .notes-list {
+            font-size: 10px !important;
+            line-height: 1.5 !important;
+          }
+
+          .template-footer {
+            margin-top: 15px !important;
+            padding-top: 10px !important;
+          }
+          /* Shrink Machine Details table as a whole */
+          .details-table {
+            width: 85% !important;      /* كان 100% */
+            margin-left: auto;
+            margin-right: auto;
+            table-layout: fixed;
+          }
+
+          /* Keep columns balanced */
+          .details-table th {
+            width: 35% !important;
+            font-size: 11.5px !important;
+          }
+
+          .details-table td {
+            width: 65% !important;
+            font-size: 14px !important;
+          }
+        }
+
+        /* LTR for English */
+        .ltr {
+          direction: ltr;
+          text-align: left;
+        }
+
+        .ltr .header-right {
+          text-align: left;
+        }
+
+        .ltr .header-left {
+          text-align: right;
+        }
+
+        .ltr .details-table th {
+          text-align: left;
+        }
+
+        .ltr .details-table td {
+          text-align: right;
+        }
+
+        .ltr .tech-table th {
+          text-align: left;
+        }
+        /* ===== Compact Boxes – Bigger Text ===== */
+
+        /* تفاصيل الماكينة */
+        .details-table th,
+        .details-table td {
+          padding: 4px 8px;      /* كان 6px 12px */
+          font-size: 13px;       /* كان 12px */
+        }
+
+        /* المواصفات الفنية */
+        .tech-table th,
+        .tech-table td {
+          padding: 4px 6px;      /* كان 5px 10px */
+          font-size: 12px;       /* كان 11px */
+        }
+
+        /* جدول السلندرات */
+        .cylinders-table th,
+        .cylinders-table td {
+          padding: 3px 8px;      /* كان 4px 10px */
+          font-size: 12px;       /* كان 11px */
+        }
+        .info-box p,
+        .notes-list {
+          font-size: 11.5px;   /* كان 11px / 10px */
+        }
+        /* FORCE compact boxes + bigger text */
+
+        .details-table th,
+        .details-table td {
+          padding: 4px 8px !important;
+          font-size: 14px !important;
+        }
+
+        .tech-table th,
+        .tech-table td {
+          padding: 4px 6px !important;
+          font-size: 13px !important;
+        }
+
+        .cylinders-table th,
+        .cylinders-table td {
+          padding: 3px 8px !important;
+          font-size: 13px !important;
+        }
+        /* === FORCE machine details table only === */
+
+        #templateContent .details-table th,
+        #templateContent .details-table td {
+          padding: 4px 6px !important;   /* يصغر المربعات */
+          font-size: 15px !important;    /* يكبر الخط */
+          line-height: 1.4 !important;
+        }
+
+
+      </style>
+
+      <div class="print-container" dir="rtl">
+        <!-- Controls Bar -->
+        <div class="controls-bar">
+          <button class="btn btn-back" onclick="window.goBackToLauncher()">
+            ← Back
+          </button>
+
+          <div class="search-section">
+            <select id="quotationSelect" onchange="window.loadSelectedQuotation()">
+              <option value="">-- Select Quotation --</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="Search by number or client..." oninput="window.filterQuotations()">
+          </div>
+
+          <div class="delivery-date-section" style="display: flex; align-items: center; gap: 8px;">
+            <label for="deliveryDateInput" style="font-size: 13px; white-space: nowrap;">Delivery Date:</label>
+            <input type="text" id="deliveryDateInput" placeholder="e.g. 3 months" oninput="window.updateDeliveryDate()" style="padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; width: 150px;">
+          </div>
+
+          <div class="lang-toggle">
+            <button class="lang-btn active" id="btnArabic" onclick="window.switchLanguage('ar')">عربي</button>
+            <button class="lang-btn" id="btnEnglish" onclick="window.switchLanguage('en')">English</button>
+          </div>
+
+          <div class="action-buttons">
+            <button class="btn btn-primary" onclick="window.printQuotation()">
+              Print
+            </button>
+            <button class="btn btn-success" onclick="window.exportPDF()">
+              Export PDF
+            </button>
+            <button class="btn" onclick="window.exportExcel()" style="background: linear-gradient(135deg, #217346, #1e6b3e); color: white;">
+              Export Excel
+            </button>
+          </div>
+        </div>
+
+        <!-- Template Preview -->
+        <div class="template-preview" id="templatePreview">
+          <div class="empty-state" id="emptyState">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+            </svg>
+            <h3>Select a Quotation</h3>
+            <p>Choose a quotation from the dropdown to preview</p>
+          </div>
+
+          <div id="templateContent" style="display:none;">
+            <!-- Content will be loaded here -->
+          </div>
+        </div>
+      </div>
+  type: HtmlTemplate
+custom_component: false
+is_package: true
+item_type:
+  accepts: {}
+  properties: []
+  type: ColumnPanel
+toolbox_item: component

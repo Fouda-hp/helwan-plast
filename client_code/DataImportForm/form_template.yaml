@@ -1,0 +1,542 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+
+        .import-wrapper {
+          max-width: 900px;
+          margin: 0 auto;
+          padding: 30px 20px;
+        }
+
+        .import-header {
+          text-align: center;
+          margin-bottom: 30px;
+        }
+
+        .import-header h1 {
+          font-size: 28px;
+          color: #1a1a2e;
+          margin: 0;
+        }
+
+        .type-selector {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 15px;
+          margin-bottom: 25px;
+        }
+
+        .type-selector label {
+          font-weight: 600;
+          color: #333;
+        }
+
+        .tab-btn {
+          padding: 12px 24px;
+          border: 2px solid #667eea;
+          background: white;
+          color: #667eea;
+          font-size: 14px;
+          font-weight: 600;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+          background: #667eea;
+          color: white;
+        }
+
+        .tab-btn.quotations {
+          border-color: #764ba2;
+          color: #764ba2;
+        }
+
+        .tab-btn.quotations.active {
+          background: #764ba2;
+          color: white;
+        }
+
+        .template-info {
+          padding: 20px;
+          border-radius: 12px;
+          margin-bottom: 25px;
+        }
+
+        .template-info.clients {
+          background: #e3f2fd;
+        }
+
+        .template-info.quotations {
+          background: #f3e5f5;
+        }
+
+        .template-info h4 {
+          margin: 0 0 12px 0;
+          color: #1a1a2e;
+        }
+
+        .template-info p {
+          margin: 5px 0;
+          font-size: 13px;
+          color: #666;
+        }
+
+        .template-info code {
+          display: block;
+          background: white;
+          padding: 12px;
+          border-radius: 6px;
+          font-size: 12px;
+          margin: 10px 0;
+          overflow-x: auto;
+        }
+
+        .upload-section {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 15px;
+          flex-wrap: wrap;
+          margin-bottom: 25px;
+        }
+
+        .file-input {
+          display: none;
+        }
+
+        .file-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 24px;
+          background: #667eea;
+          color: white;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .file-label:hover {
+          background: #5a6fd6;
+          transform: translateY(-2px);
+        }
+
+        .action-btn {
+          padding: 12px 20px;
+          border: none;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .action-btn.secondary {
+          background: #f0f2f5;
+          color: #333;
+        }
+
+        .action-btn.primary {
+          background: #2e7d32;
+          color: white;
+        }
+
+        .action-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .action-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .status-message {
+          text-align: center;
+          padding: 12px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+          font-size: 14px;
+          display: none;
+        }
+
+        .status-message.show {
+          display: block;
+        }
+
+        .status-message.success {
+          background: #e8f5e9;
+          color: #2e7d32;
+        }
+
+        .status-message.error {
+          background: #ffebee;
+          color: #c62828;
+        }
+
+        .status-message.loading {
+          background: #fff3e0;
+          color: #ef6c00;
+        }
+
+        .preview-section {
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+          padding: 20px;
+          margin-bottom: 20px;
+          display: none;
+        }
+
+        .preview-section.show {
+          display: block;
+        }
+
+        .preview-section h4 {
+          margin: 0 0 15px 0;
+          color: #1a1a2e;
+        }
+
+        .preview-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 12px;
+        }
+
+        .preview-table th {
+          background: #667eea;
+          color: white;
+          padding: 10px 8px;
+          text-align: left;
+        }
+
+        .preview-table td {
+          padding: 8px;
+          border-bottom: 1px solid #eee;
+        }
+
+        .preview-table tr:hover {
+          background: #f8f9fa;
+        }
+
+        .result-section {
+          padding: 20px;
+          border-radius: 12px;
+          margin-bottom: 20px;
+          display: none;
+          background: #e8f5e9;
+        }
+
+        .result-section.show {
+          display: block;
+        }
+
+        .result-section h4 {
+          margin: 0 0 10px 0;
+          color: #2e7d32;
+        }
+
+        .error-list {
+          background: white;
+          padding: 12px;
+          border-radius: 6px;
+          margin-top: 15px;
+          max-height: 200px;
+          overflow-y: auto;
+        }
+
+        .error-list ul {
+          margin: 0;
+          padding-left: 20px;
+        }
+
+        .error-list li {
+          color: #c62828;
+          font-size: 12px;
+          margin: 4px 0;
+        }
+
+        .import-btn-wrapper {
+          text-align: center;
+          margin-top: 20px;
+        }
+      </style>
+
+      <div class="import-wrapper">
+        <div class="import-header">
+          <h1>📤 Data Import (Admin Only)</h1>
+        </div>
+
+        <div class="type-selector">
+          <label>Select import type:</label>
+          <button class="tab-btn active" id="btnClients" onclick="selectType('clients')">👥 Clients</button>
+          <button class="tab-btn quotations" id="btnQuotations" onclick="selectType('quotations')">📊 Quotations</button>
+        </div>
+
+        <div class="template-info clients" id="templateInfo">
+          <h4>📋 Clients CSV Template</h4>
+          <p>Required columns:</p>
+          <code>Client Name, Company, Phone, Country, Address, Email, Sales Rep, Source</code>
+          <p>* Client Code will be auto-generated if not provided</p>
+          <p>* Phone must be unique</p>
+        </div>
+
+        <div class="upload-section">
+          <input type="file" class="file-input" id="fileInput" accept=".csv" onchange="handleFile(this)">
+          <label class="file-label" for="fileInput">📁 Choose CSV File</label>
+          <button class="action-btn secondary" onclick="downloadTemplate()">📥 Download Template</button>
+          <button class="action-btn secondary" onclick="goBack()">🔙 Back</button>
+        </div>
+
+        <div class="status-message" id="statusMessage"></div>
+
+        <div class="preview-section" id="previewSection">
+          <h4>📋 Preview (first 5 rows)</h4>
+          <div style="overflow-x:auto;">
+            <table class="preview-table">
+              <thead id="previewHeader"></thead>
+              <tbody id="previewBody"></tbody>
+            </table>
+          </div>
+          <p id="rowCount" style="color:#666;font-size:12px;margin-top:10px;"></p>
+        </div>
+
+        <div class="import-btn-wrapper">
+          <button class="action-btn primary" id="btnImport" onclick="startImport()" disabled style="padding:15px 40px;font-size:16px;">🚀 Start Import</button>
+        </div>
+
+        <div class="result-section" id="resultSection">
+          <h4>✅ Import Complete</h4>
+          <p id="resultMessage"></p>
+          <div class="error-list" id="errorList" style="display:none;">
+            <p style="margin:0 0 5px 0;color:#c62828;">⚠️ Errors:</p>
+            <ul id="errorItems"></ul>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        (function() {
+          var importType = 'clients';
+          var importData = [];
+
+          window.selectType = function(type) {
+            importType = type;
+
+            document.getElementById('btnClients').classList.toggle('active', type === 'clients');
+            document.getElementById('btnQuotations').classList.toggle('active', type === 'quotations');
+
+            var info = document.getElementById('templateInfo');
+            info.className = 'template-info ' + type;
+
+            if (type === 'clients') {
+              info.innerHTML = '<h4>📋 Clients CSV Template</h4><p>Required columns:</p><code>Client Name, Company, Phone, Country, Address, Email, Sales Rep, Source</code><p>* Client Code will be auto-generated if not provided</p><p>* Phone must be unique</p>';
+            } else {
+              info.innerHTML = '<h4>📊 Quotations CSV Template</h4><p>Required columns:</p><code>Client Code, Client Name, Model, Machine type, Number of colors, Machine width, Material, Winder, Given Price, Agreed Price</code><p>* Quotation# will be auto-generated if not provided</p><p>* Client Code must exist in clients table</p>';
+            }
+
+            importData = [];
+            document.getElementById('previewSection').classList.remove('show');
+            document.getElementById('resultSection').classList.remove('show');
+            document.getElementById('btnImport').disabled = true;
+            showStatus('', '');
+          };
+
+          window.handleFile = function(input) {
+            var file = input.files[0];
+            if (!file) return;
+
+            var reader = new FileReader();
+            reader.onload = function(e) {
+              try {
+                var content = e.target.result;
+                importData = parseCSV(content);
+
+                if (!importData || importData.length === 0) {
+                  showStatus('No valid data found in file', 'error');
+                  return;
+                }
+
+                showPreview();
+                document.getElementById('btnImport').disabled = false;
+                showStatus('Loaded ' + importData.length + ' rows', 'success');
+              } catch (err) {
+                showStatus('Error reading file: ' + err, 'error');
+              }
+            };
+            reader.readAsText(file, 'UTF-8');
+          };
+
+          function parseCSV(content) {
+            var lines = content.trim().split('\n');
+            if (lines.length < 2) return [];
+
+            var headers = lines[0].split(',').map(function(h) {
+              return h.trim().replace(/^"|"$/g, '');
+            });
+
+            var data = [];
+            for (var i = 1; i < lines.length; i++) {
+              var line = lines[i].trim();
+              if (!line) continue;
+
+              var values = parseCSVLine(line);
+              var row = {};
+              for (var j = 0; j < headers.length; j++) {
+                row[headers[j]] = values[j] || '';
+              }
+              data.push(row);
+            }
+            return data;
+          }
+
+          function parseCSVLine(line) {
+            var values = [];
+            var current = '';
+            var inQuotes = false;
+
+            for (var i = 0; i < line.length; i++) {
+              var char = line[i];
+              if (char === '"') {
+                inQuotes = !inQuotes;
+              } else if (char === ',' && !inQuotes) {
+                values.push(current.trim().replace(/^"|"$/g, ''));
+                current = '';
+              } else {
+                current += char;
+              }
+            }
+            values.push(current.trim().replace(/^"|"$/g, ''));
+            return values;
+          }
+
+          function showPreview() {
+            var preview = importData.slice(0, 5);
+            var headers = Object.keys(preview[0]).slice(0, 8);
+
+            var headerHtml = '<tr>';
+            headers.forEach(function(h) {
+              headerHtml += '<th>' + h + '</th>';
+            });
+            headerHtml += '</tr>';
+
+            var bodyHtml = '';
+            preview.forEach(function(row) {
+              bodyHtml += '<tr>';
+              headers.forEach(function(h) {
+                var val = (row[h] || '').toString().substring(0, 30);
+                bodyHtml += '<td>' + val + '</td>';
+              });
+              bodyHtml += '</tr>';
+            });
+
+            document.getElementById('previewHeader').innerHTML = headerHtml;
+            document.getElementById('previewBody').innerHTML = bodyHtml;
+            document.getElementById('rowCount').textContent = 'Total rows: ' + importData.length;
+            document.getElementById('previewSection').classList.add('show');
+          }
+
+          function showStatus(message, type) {
+            var el = document.getElementById('statusMessage');
+            if (!message) {
+              el.classList.remove('show');
+              return;
+            }
+            el.textContent = (type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : '⏳ ') + message;
+            el.className = 'status-message show ' + type;
+          }
+
+          window.startImport = async function() {
+            if (!importData || importData.length === 0) {
+              alert('No data to import');
+              return;
+            }
+
+            if (!confirm('Import ' + importData.length + ' rows to ' + importType + '?')) {
+              return;
+            }
+
+            showStatus('Importing...', 'loading');
+            document.getElementById('btnImport').disabled = true;
+
+            try {
+              var result;
+              if (importType === 'clients') {
+                result = await window.pyImportClients(importData);
+              } else {
+                result = await window.pyImportQuotations(importData);
+              }
+
+              if (result && result.success) {
+                var imported = result.imported || 0;
+                var errors = result.errors || [];
+
+                document.getElementById('resultMessage').textContent = 'Successfully imported: ' + imported + ' rows';
+
+                if (errors.length > 0) {
+                  var errorHtml = '';
+                  errors.slice(0, 20).forEach(function(err) {
+                    errorHtml += '<li>' + err + '</li>';
+                  });
+                  if (errors.length > 20) {
+                    errorHtml += '<li>... and ' + (errors.length - 20) + ' more errors</li>';
+                  }
+                  document.getElementById('errorItems').innerHTML = errorHtml;
+                  document.getElementById('errorList').style.display = 'block';
+                } else {
+                  document.getElementById('errorList').style.display = 'none';
+                }
+
+                document.getElementById('resultSection').classList.add('show');
+                showStatus('Imported ' + imported + ' rows', 'success');
+              } else {
+                showStatus(result ? result.message : 'Import failed', 'error');
+              }
+            } catch (err) {
+              showStatus('Import error: ' + err, 'error');
+            }
+
+            document.getElementById('btnImport').disabled = false;
+          };
+
+          window.downloadTemplate = function() {
+            var headers, sample, filename;
+
+            if (importType === 'clients') {
+              headers = 'Client Code,Client Name,Company,Phone,Country,Address,Email,Sales Rep,Source';
+              sample = ',John Doe,ABC Company,01234567890,Egypt,Cairo Address,john@email.com,Sales Person,Website';
+              filename = 'clients_template.csv';
+            } else {
+              headers = 'Client Code,Client Name,Model,Machine type,Number of colors,Machine width,Material,Winder,Given Price,Agreed Price,Notes';
+              sample = '1,John Doe,SH4-600M/S,Metal anilox,4,60,PE,Single,100000,95000,Sample note';
+              filename = 'quotations_template.csv';
+            }
+
+            var csv = headers + '\n' + sample;
+            var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+          };
+
+          window.goBack = function() {
+            if (window.pyGoBack) {
+              window.pyGoBack();
+            } else {
+              window.location.hash = '#admin';
+            }
+          };
+        })();
+      </script>
+  type: HtmlTemplate
+is_package: true

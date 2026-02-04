@@ -1,0 +1,128 @@
+/* ================= SEARCH ================= */
+.qo-body {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center;
+}
+
+
+.qo-search-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 10px 0 18px;
+}
+
+.qo-search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f6f8fb; 
+  border: 1px solid #d6deea;
+  border-radius: 14px;
+  padding: 10px 14px;
+  width: 90%;
+  max-width: 650px; /* نفس عرض الجدول */
+  box-shadow: 0 8px 20px rgba(0,0,0,.08);
+    transition: all .25s ease;
+}
+
+.qo-search-box:hover {
+  border-color: #b7c8e8;
+}
+
+.qo-search-box input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 15px;
+}
+
+.qo-search-icon {
+  font-size: 14px;
+  color: #7a8ca5;
+}
+
+.qo-search-clear {
+  font-size: 14px;
+  color: #9aa7bb;
+  cursor: pointer;
+  display: none;
+}
+
+.qo-search-box.has-value .qo-search-clear {
+  display: block;
+}
+
+/* ================= TABLE ================= */
+.qo-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.qo-table th,
+.qo-table td {
+  padding: 14px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+.qo-table thead {
+  background: #f5f8fc;
+  font-weight: 600;
+}
+
+.qo-table tbody tr:hover {
+  background: #f7faff;
+  cursor: pointer;
+}
+
+/* ================= PAGINATION ================= */
+.qo-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 0;
+}
+
+.qo-page-btn {
+  padding: 8px 22px;
+  background: #4a90d9;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.qo-page-btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.qo-page-info {
+  font-size: 14px;
+  color: #555;
+}
+/* wrapper يظبط المحاذاة */
+.qo-table-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* الجدول نفسه */
+.qo-table {
+  width: 90%;
+  max-width: 650px;
+  border-collapse: collapse;
+}
+
+.qo-search-box {
+  animation: fadeSlide .3s ease;
+}
+
+@keyframes fadeSlide {
+  from { opacity:0; transform:translateY(-6px); }
+  to   { opacity:1; transform:translateY(0); }
+}

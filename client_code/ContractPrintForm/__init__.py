@@ -265,8 +265,17 @@ class ContractPrintForm(ContractPrintFormTemplate):
             val = float(inp.value or 0)
             total_entered += val
         
-        # Get total contract amount
-        total_contract = float(self.current_data.get('total_price', 0) or 0) if self.current_data else 0
+        # Get total contract amount (remove commas from formatted numbers)
+        def safe_float(val):
+            if val is None:
+                return 0.0
+            val_str = str(val).replace(',', '').replace('،', '').strip()
+            try:
+                return float(val_str) if val_str else 0.0
+            except:
+                return 0.0
+        
+        total_contract = safe_float(self.current_data.get('total_price', 0)) if self.current_data else 0
         
         total_el = anvil.js.window.document.getElementById('totalPercentage')
         total_unit = anvil.js.window.document.getElementById('totalUnit')
@@ -342,7 +351,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
         value_inputs = anvil.js.window.document.querySelectorAll('.payment-value')
         date_inputs = anvil.js.window.document.querySelectorAll('.payment-date')
         
-        total_price = float(self.current_data.get('total_price', 0) or 0)
+        # Remove commas from formatted price
+        price_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
+        try:
+            total_price = float(price_str) if price_str else 0
+        except:
+            total_price = 0
         dates_used = []
         total_value = 0
         today = date.today()
@@ -398,7 +412,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
         date_inputs = anvil.js.window.document.querySelectorAll('.payment-date')
         
         self.payment_data = []
-        total_price = float(self.current_data.get('total_price', 0) or 0)
+        # Remove commas from formatted price
+        price_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
+        try:
+            total_price = float(price_str) if price_str else 0
+        except:
+            total_price = 0
         
         labels_ar = ['مقدم تعاقد', 'الدفعة الثانية', 'الدفعة الثالثة', 'الدفعة الرابعة', 
                      'الدفعة الخامسة', 'الدفعة السادسة', 'الدفعة السابعة', 'الدفعة الثامنة',

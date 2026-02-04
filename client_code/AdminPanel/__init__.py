@@ -95,6 +95,8 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.getSetting = self.get_setting
         anvil.js.window.getMachinePrices = self.get_machine_prices
         anvil.js.window.saveMachinePrices = self.save_machine_prices
+        anvil.js.window.getMachineConfig = self.get_machine_config
+        anvil.js.window.saveMachineConfig = self.save_machine_config
 
         # Navigation
         anvil.js.window.openDataImport = self.open_data_import
@@ -618,6 +620,7 @@ class AdminPanel(AdminPanelTemplate):
               await original();
               setTimeout(enhanceTechSpecsSettings, 50);
               setTimeout(addMachinePricesSection, 100);
+              setTimeout(addMachineConfigSection, 200);
             };
             window.loadSettings.__patched = true;
           }
@@ -741,10 +744,353 @@ class AdminPanel(AdminPanelTemplate):
             }
           };
 
+          // ==========================================
+          // Audit Log Filters Enhancement
+          // ==========================================
+          function enhanceAuditLogPanel() {
+            var auditPanel = document.getElementById('audit-panel');
+            if (!auditPanel) return;
+            
+            var panelBody = auditPanel.querySelector('.panel-body');
+            if (!panelBody) return;
+            
+            // Check if filters already added
+            if (document.getElementById('auditFilters')) return;
+            
+            // Create filters HTML
+            var filtersHtml = '<div id="auditFilters" style="margin-bottom:20px;background:#f8f9fa;padding:15px;border-radius:10px;">';
+            filtersHtml += '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;align-items:end;">';
+            
+            // Date From
+            filtersHtml += '<div class="form-group" style="margin:0;">';
+            filtersHtml += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">From Date</label>';
+            filtersHtml += '<input type="date" id="auditDateFrom" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
+            filtersHtml += '</div>';
+            
+            // Date To
+            filtersHtml += '<div class="form-group" style="margin:0;">';
+            filtersHtml += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">To Date</label>';
+            filtersHtml += '<input type="date" id="auditDateTo" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
+            filtersHtml += '</div>';
+            
+            // User Filter
+            filtersHtml += '<div class="form-group" style="margin:0;">';
+            filtersHtml += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">User</label>';
+            filtersHtml += '<input type="text" id="auditUserFilter" placeholder="Filter by user..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
+            filtersHtml += '</div>';
+            
+            // Action Filter
+            filtersHtml += '<div class="form-group" style="margin:0;">';
+            filtersHtml += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Action</label>';
+            filtersHtml += '<select id="auditActionFilter" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
+            filtersHtml += '<option value="">All Actions</option>';
+            filtersHtml += '<option value="CREATE">CREATE</option>';
+            filtersHtml += '<option value="UPDATE">UPDATE</option>';
+            filtersHtml += '<option value="SOFT_DELETE">DELETE</option>';
+            filtersHtml += '<option value="RESTORE">RESTORE</option>';
+            filtersHtml += '<option value="LOGIN">LOGIN</option>';
+            filtersHtml += '<option value="LOGOUT">LOGOUT</option>';
+            filtersHtml += '<option value="IMPORT">IMPORT</option>';
+            filtersHtml += '</select>';
+            filtersHtml += '</div>';
+            
+            // Table Filter
+            filtersHtml += '<div class="form-group" style="margin:0;">';
+            filtersHtml += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Table</label>';
+            filtersHtml += '<select id="auditTableFilter" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
+            filtersHtml += '<option value="">All Tables</option>';
+            filtersHtml += '<option value="clients">Clients</option>';
+            filtersHtml += '<option value="quotations">Quotations</option>';
+            filtersHtml += '<option value="contracts">Contracts</option>';
+            filtersHtml += '<option value="users">Users</option>';
+            filtersHtml += '<option value="settings">Settings</option>';
+            filtersHtml += '</select>';
+            filtersHtml += '</div>';
+            
+            filtersHtml += '</div>'; // End grid
+            
+            // Filter buttons
+            filtersHtml += '<div style="margin-top:12px;display:flex;gap:10px;">';
+            filtersHtml += '<button class="action-btn" onclick="applyAuditFilters()" style="padding:8px 20px;">🔍 Apply Filters</button>';
+            filtersHtml += '<button class="filter-btn" onclick="clearAuditFilters()" style="padding:8px 20px;">Clear</button>';
+            filtersHtml += '</div>';
+            
+            filtersHtml += '</div>'; // End filters container
+            
+            // Insert filters before content
+            var auditContent = document.getElementById('auditContent');
+            if (auditContent) {
+              panelBody.insertAdjacentHTML('afterbegin', filtersHtml);
+            }
+          }
+          
+          window.applyAuditFilters = async function() {
+            var dateFrom = document.getElementById('auditDateFrom').value;
+            var dateTo = document.getElementById('auditDateTo').value;
+            var userFilter = document.getElementById('auditUserFilter').value.toLowerCase();
+            var actionFilter = document.getElementById('auditActionFilter').value;
+            var tableFilter = document.getElementById('auditTableFilter').value;
+            
+            var container = document.getElementById('auditContent');
+            container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            
+            try {
+              var filters = {};
+              if (dateFrom) filters.date_from = dateFrom;
+              if (dateTo) filters.date_to = dateTo;
+              if (actionFilter) filters.action = actionFilter;
+              if (tableFilter) filters.table_name = tableFilter;
+              if (userFilter) filters.user_email = userFilter;
+              
+              var result = await window.getAuditLogs(100, 0, filters);
+              if (!result.success) {
+                container.innerHTML = '<div class="empty-state"><h4>' + result.message + '</h4></div>';
+                return;
+              }
+              
+              var logs = result.logs || [];
+              
+              // Client-side filtering for user (partial match)
+              if (userFilter) {
+                logs = logs.filter(function(l) {
+                  return l.user_email && l.user_email.toLowerCase().includes(userFilter);
+                });
+              }
+              
+              if (logs.length === 0) {
+                container.innerHTML = '<div class="empty-state"><h4>No logs found</h4><p>Try different filters</p></div>';
+                return;
+              }
+              
+              var html = '<table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Table</th><th>Record ID</th></tr></thead><tbody>';
+              logs.forEach(function(l) {
+                var actionClass = '';
+                if (l.action === 'CREATE') actionClass = 'style="color:#2e7d32;"';
+                else if (l.action === 'UPDATE') actionClass = 'style="color:#1565c0;"';
+                else if (l.action === 'SOFT_DELETE') actionClass = 'style="color:#c62828;"';
+                else if (l.action === 'RESTORE') actionClass = 'style="color:#f57f17;"';
+                
+                html += '<tr>';
+                html += '<td>' + l.timestamp.replace('T', ' ').substring(0, 19) + '</td>';
+                html += '<td>' + l.user_email + '</td>';
+                html += '<td ' + actionClass + '><strong>' + l.action + '</strong></td>';
+                html += '<td>' + l.table_name + '</td>';
+                html += '<td>' + (l.record_id || '-') + '</td>';
+                html += '</tr>';
+              });
+              html += '</tbody></table>';
+              container.innerHTML = html;
+            } catch (e) {
+              container.innerHTML = '<div class="empty-state"><h4>Error loading logs</h4></div>';
+            }
+          };
+          
+          window.clearAuditFilters = function() {
+            document.getElementById('auditDateFrom').value = '';
+            document.getElementById('auditDateTo').value = '';
+            document.getElementById('auditUserFilter').value = '';
+            document.getElementById('auditActionFilter').value = '';
+            document.getElementById('auditTableFilter').value = '';
+            window.loadAuditLogs();
+          };
+
+          // ==========================================
+          // Dynamic Machine Configuration
+          // ==========================================
+          async function addMachineConfigSection() {
+            var container = document.getElementById('settingsContent');
+            if (!container) return;
+            
+            // Check if already added
+            if (document.getElementById('machineConfigSection')) return;
+            
+            // Find the machine prices section
+            var machinePricesSection = document.getElementById('machinePricesSection');
+            if (!machinePricesSection) return;
+            
+            // Create config section HTML
+            var html = '<div id="machineConfigSection" style="background:#e8f5e9;padding:20px;border-radius:12px;margin-top:20px;border:2px solid #4caf50;">';
+            html += '<h4 style="margin:0 0 15px;color:#2e7d32;">⚙️ Machine Configuration (Add New Types/Sizes)</h4>';
+            
+            // Add new machine type
+            html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
+            html += '<h5 style="margin:0 0 10px;">➕ Add New Machine Type</h5>';
+            html += '<div style="display:flex;gap:10px;align-items:end;">';
+            html += '<div style="flex:1;">';
+            html += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Machine Type Name</label>';
+            html += '<input type="text" id="newMachineTypeName" placeholder="e.g. Ceramic anilox Double Doctor Blade" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
+            html += '</div>';
+            html += '<button class="action-btn" onclick="addNewMachineType()" style="padding:8px 16px;white-space:nowrap;">➕ Add Type</button>';
+            html += '</div>';
+            html += '</div>';
+            
+            // Add new color count
+            html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;">';
+            html += '<h5 style="margin:0 0 10px;">🎨 Add New Color Count</h5>';
+            html += '<div style="display:flex;gap:10px;align-items:end;">';
+            html += '<div style="flex:1;">';
+            html += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Color Count</label>';
+            html += '<input type="number" id="newColorCount" placeholder="e.g. 10" min="1" max="20" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
+            html += '</div>';
+            html += '<button class="action-btn" onclick="addNewColorCount()" style="padding:8px 16px;white-space:nowrap;">➕ Add Color</button>';
+            html += '</div>';
+            html += '</div>';
+            
+            // Add new width
+            html += '<div style="background:#fff;padding:15px;border-radius:8px;">';
+            html += '<h5 style="margin:0 0 10px;">📐 Add New Machine Width</h5>';
+            html += '<div style="display:flex;gap:10px;align-items:end;">';
+            html += '<div style="flex:1;">';
+            html += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Width (cm)</label>';
+            html += '<input type="number" id="newMachineWidth" placeholder="e.g. 140" min="50" max="300" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
+            html += '</div>';
+            html += '<button class="action-btn" onclick="addNewMachineWidth()" style="padding:8px 16px;white-space:nowrap;">➕ Add Width</button>';
+            html += '</div>';
+            html += '</div>';
+            
+            html += '</div>';
+            
+            // Insert after machine prices section
+            machinePricesSection.insertAdjacentHTML('afterend', html);
+          }
+          
+          window.addNewMachineType = async function() {
+            var nameInput = document.getElementById('newMachineTypeName');
+            var name = nameInput.value.trim();
+            
+            if (!name) {
+              alert('Please enter a machine type name');
+              return;
+            }
+            
+            // Get current machine config
+            var result = await window.getMachineConfig ? await window.getMachineConfig() : {success: false};
+            var config = result.success ? result.config : {
+              types: ["Metal anilox", "Ceramic anilox Single Doctor Blade", "Ceramic anilox Chamber Doctor Blade"],
+              colors: ["4", "6", "8"],
+              widths: ["80", "100", "120"]
+            };
+            
+            // Check if already exists
+            if (config.types.indexOf(name) !== -1) {
+              alert('This machine type already exists');
+              return;
+            }
+            
+            // Add new type
+            config.types.push(name);
+            
+            // Save config
+            if (window.saveMachineConfig) {
+              var saveResult = await window.saveMachineConfig(config);
+              if (saveResult.success) {
+                nameInput.value = '';
+                window.showNotification('success', 'Added!', 'New machine type added. Refresh Settings to see changes.');
+                // Reload settings panel
+                setTimeout(function() { window.loadSettings(); }, 500);
+              } else {
+                alert(saveResult.message || 'Error saving');
+              }
+            }
+          };
+          
+          window.addNewColorCount = async function() {
+            var input = document.getElementById('newColorCount');
+            var count = input.value.trim();
+            
+            if (!count || isNaN(count)) {
+              alert('Please enter a valid color count');
+              return;
+            }
+            
+            // Get current config
+            var result = await window.getMachineConfig ? await window.getMachineConfig() : {success: false};
+            var config = result.success ? result.config : {
+              types: ["Metal anilox", "Ceramic anilox Single Doctor Blade", "Ceramic anilox Chamber Doctor Blade"],
+              colors: ["4", "6", "8"],
+              widths: ["80", "100", "120"]
+            };
+            
+            // Check if already exists
+            if (config.colors.indexOf(count) !== -1) {
+              alert('This color count already exists');
+              return;
+            }
+            
+            // Add and sort
+            config.colors.push(count);
+            config.colors.sort(function(a, b) { return parseInt(a) - parseInt(b); });
+            
+            // Save config
+            if (window.saveMachineConfig) {
+              var saveResult = await window.saveMachineConfig(config);
+              if (saveResult.success) {
+                input.value = '';
+                window.showNotification('success', 'Added!', 'New color count added. Refresh Settings to see changes.');
+                setTimeout(function() { window.loadSettings(); }, 500);
+              } else {
+                alert(saveResult.message || 'Error saving');
+              }
+            }
+          };
+          
+          window.addNewMachineWidth = async function() {
+            var input = document.getElementById('newMachineWidth');
+            var width = input.value.trim();
+            
+            if (!width || isNaN(width)) {
+              alert('Please enter a valid width');
+              return;
+            }
+            
+            // Get current config
+            var result = await window.getMachineConfig ? await window.getMachineConfig() : {success: false};
+            var config = result.success ? result.config : {
+              types: ["Metal anilox", "Ceramic anilox Single Doctor Blade", "Ceramic anilox Chamber Doctor Blade"],
+              colors: ["4", "6", "8"],
+              widths: ["80", "100", "120"]
+            };
+            
+            // Check if already exists
+            if (config.widths.indexOf(width) !== -1) {
+              alert('This width already exists');
+              return;
+            }
+            
+            // Add and sort
+            config.widths.push(width);
+            config.widths.sort(function(a, b) { return parseInt(a) - parseInt(b); });
+            
+            // Save config
+            if (window.saveMachineConfig) {
+              var saveResult = await window.saveMachineConfig(config);
+              if (saveResult.success) {
+                input.value = '';
+                window.showNotification('success', 'Added!', 'New width added. Refresh Settings to see changes.');
+                setTimeout(function() { window.loadSettings(); }, 500);
+              } else {
+                alert(saveResult.message || 'Error saving');
+              }
+            }
+          };
+
+          // Patch loadAuditLogs to add filters
+          function patchLoadAuditLogs() {
+            var origAuditLogs = window.loadAuditLogs;
+            if (!origAuditLogs || origAuditLogs.__patched) return;
+            
+            window.loadAuditLogs = async function(page) {
+              await origAuditLogs(page);
+              setTimeout(enhanceAuditLogPanel, 100);
+            };
+            window.loadAuditLogs.__patched = true;
+          }
+
           function run() {
             insertDataImportNav();
             patchSaveSetting();
             patchLoadSettings();
+            patchLoadAuditLogs();
           }
 
           if (document.readyState === 'loading') {
@@ -931,6 +1277,14 @@ class AdminPanel(AdminPanelTemplate):
     def save_machine_prices(self, prices):
         """حفظ أسعار المكن"""
         return anvil.server.call('save_machine_prices', self.get_auth(), prices)
+
+    def get_machine_config(self):
+        """الحصول على إعدادات المكن (الأنواع، الألوان، العروض)"""
+        return anvil.server.call('get_machine_config')
+
+    def save_machine_config(self, config):
+        """حفظ إعدادات المكن"""
+        return anvil.server.call('save_machine_config', self.get_auth(), config)
 
     # =========================================================
     # Navigation

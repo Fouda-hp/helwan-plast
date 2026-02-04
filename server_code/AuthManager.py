@@ -2596,6 +2596,125 @@ def save_machine_prices(token_or_email, prices):
         return {'success': False, 'message': str(e)}
 
 
+@anvil.server.callable
+def get_machine_config():
+    """
+    الحصول على إعدادات المكن (الأنواع، الألوان، العروض)
+    """
+    default_config = {
+        'types': [
+            "Metal anilox",
+            "Ceramic anilox Single Doctor Blade",
+            "Ceramic anilox Chamber Doctor Blade"
+        ],
+        'colors': ["4", "6", "8"],
+        'widths': ["80", "100", "120"]
+    }
+    
+    try:
+        setting = app_tables.settings.get(setting_key='machine_config')
+        if setting and setting['setting_value']:
+            try:
+                config = json.loads(setting['setting_value'])
+                return {'success': True, 'config': config}
+            except json.JSONDecodeError:
+                pass
+        
+        return {'success': True, 'config': default_config}
+    except Exception as e:
+        logger.error(f"Error getting machine config: {e}")
+        return {'success': True, 'config': default_config}
+
+
+@anvil.server.callable
+def save_machine_config(token_or_email, config):
+    """
+    حفظ إعدادات المكن (الأنواع، الألوان، العروض)
+    """
+    is_authorized, error = require_admin(token_or_email)
+    if not is_authorized:
+        return error
+    
+    try:
+        ip_address = get_client_ip()
+        admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
+        
+        setting = app_tables.settings.get(setting_key='machine_config')
+        old_value = None
+        
+        if setting:
+            old_value = setting['setting_value']
+            setting.update(
+                setting_value=json.dumps(config),
+                setting_type='json',
+                updated_by=admin_email,
+                updated_at=datetime.now()
+            )
+        else:
+            app_tables.settings.add_row(
+                setting_key='machine_config',
+                setting_value=json.dumps(config),
+                setting_type='json',
+                description='Machine configuration (types, colors, widths)',
+                updated_by=admin_email,
+                updated_at=datetime.now()
+            )
+        
+        # Also update machine prices to include new types/colors/widths
+        prices_setting = app_tables.settings.get(setting_key='machine_prices')
+        if prices_setting and prices_setting['setting_value']:
+            try:
+                prices = json.loads(prices_setting['setting_value'])
+                updated = False
+                
+                # Add new types with default prices
+                for machine_type in config.get('types', []):
+                    if machine_type not in prices:
+                        prices[machine_type] = {}
+                        updated = True
+                    
+                    # Add new colors for each type
+                    for color in config.get('colors', []):
+                        if color not in prices[machine_type]:
+                            prices[machine_type][color] = {}
+                            updated = True
+                        
+                        # Add new widths for each color
+                        for width in config.get('widths', []):
+                            if width not in prices[machine_type][color]:
+                                # Default price based on type and size
+                                base_price = 15000
+                                if 'Ceramic' in machine_type:
+                                    base_price = 18000
+                                    if 'Chamber' in machine_type:
+                                        base_price = 21000
+                                
+                                color_mult = 1 + (int(color) - 4) * 0.3
+                                width_mult = 1 + (int(width) - 80) * 0.01
+                                default_price = int(base_price * color_mult * width_mult)
+                                prices[machine_type][color][width] = default_price
+                                updated = True
+                
+                if updated:
+                    prices_setting.update(
+                        setting_value=json.dumps(prices),
+                        updated_by=admin_email,
+                        updated_at=datetime.now()
+                    )
+            except json.JSONDecodeError:
+                pass
+        
+        log_audit('UPDATE_SETTING', 'settings', 'machine_config',
+                  {'value': old_value} if old_value else None,
+                  {'value': 'machine_config_updated', 'updated_by': admin_email},
+                  admin_email, ip_address)
+        
+        return {'success': True, 'message': 'Machine configuration saved successfully'}
+    except Exception as e:
+        logger.error(f"Error saving machine config: {e}")
+        return {'success': False, 'message': str(e)}
+
+
 # =========================================================
 # سجل التدقيق
 # =========================================================
@@ -2618,9 +2737,24 @@ def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
         if filters.get('action'):
             all_logs = [l for l in all_logs if l['action'] == filters['action']]
         if filters.get('user_email'):
-            all_logs = [l for l in all_logs if l['user_email'] == filters['user_email']]
+            user_filter = filters['user_email'].lower()
+            all_logs = [l for l in all_logs if l['user_email'] and user_filter in l['user_email'].lower()]
         if filters.get('table_name'):
             all_logs = [l for l in all_logs if l['table_name'] == filters['table_name']]
+        if filters.get('date_from'):
+            try:
+                date_from = datetime.strptime(filters['date_from'], '%Y-%m-%d')
+                all_logs = [l for l in all_logs if l['timestamp'] and l['timestamp'] >= date_from]
+            except ValueError:
+                pass
+        if filters.get('date_to'):
+            try:
+                date_to = datetime.strptime(filters['date_to'], '%Y-%m-%d')
+                # Add one day to include the entire end date
+                date_to = date_to.replace(hour=23, minute=59, second=59)
+                all_logs = [l for l in all_logs if l['timestamp'] and l['timestamp'] <= date_to]
+            except ValueError:
+                pass
 
     total = len(all_logs)
     page_logs = all_logs[offset:offset + limit]

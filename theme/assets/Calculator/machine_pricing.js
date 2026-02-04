@@ -213,9 +213,182 @@
       console.warn('Could not load machine prices from server, using defaults:', e);
     }
   }
+
+  // Load machine configuration (types, colors, widths) from server
+  async function loadMachineConfigFromServer() {
+    try {
+      const result = await window.anvil?.server?.call('get_machine_config');
+      if (result && result.success && result.config) {
+        const config = result.config;
+        console.log('⚙️ Machine config loaded from server:', config);
+        
+        // Update machine type dropdown
+        if (config.types && config.types.length > 0) {
+          updateMachineTypeDropdown(config.types);
+        }
+        
+        // Update colors dropdown
+        if (config.colors && config.colors.length > 0) {
+          updateColorsDropdown(config.colors);
+        }
+        
+        // Update widths dropdown
+        if (config.widths && config.widths.length > 0) {
+          updateWidthsDropdown(config.widths);
+        }
+      }
+    } catch(e) {
+      console.warn('Could not load machine config from server, using defaults:', e);
+    }
+  }
+
+  function updateMachineTypeDropdown(types) {
+    // Update hidden select
+    const select = document.getElementById('machine_type');
+    if (select) {
+      const currentValue = select.value;
+      select.innerHTML = '<option value=""></option>';
+      types.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type;
+        option.textContent = type;
+        select.appendChild(option);
+      });
+      // Restore value if it still exists
+      if (types.includes(currentValue)) {
+        select.value = currentValue;
+      }
+    }
+    
+    // Update custom UI select
+    const uiSelect = document.querySelector('.ui-select[data-target="machine_type"]');
+    if (uiSelect) {
+      const menu = uiSelect.querySelector('.ui-select-menu');
+      if (menu) {
+        menu.innerHTML = '';
+        types.forEach(type => {
+          const div = document.createElement('div');
+          div.className = 'ui-option';
+          div.setAttribute('data-value', type);
+          div.textContent = type;
+          menu.appendChild(div);
+        });
+        // Rebind click handlers
+        rebindUiSelectHandlers(uiSelect, 'machine_type');
+      }
+    }
+  }
+
+  function updateColorsDropdown(colors) {
+    // Update hidden select
+    const select = document.getElementById('Number of colors');
+    if (select) {
+      const currentValue = select.value;
+      select.innerHTML = '<option value=""></option>';
+      colors.forEach(color => {
+        const option = document.createElement('option');
+        option.value = color;
+        option.textContent = color;
+        select.appendChild(option);
+      });
+      if (colors.includes(currentValue)) {
+        select.value = currentValue;
+      }
+    }
+    
+    // Update custom UI select
+    const uiSelect = document.querySelector('.ui-select[data-target="Number of colors"]');
+    if (uiSelect) {
+      const menu = uiSelect.querySelector('.ui-select-menu');
+      if (menu) {
+        menu.innerHTML = '';
+        colors.forEach(color => {
+          const div = document.createElement('div');
+          div.className = 'ui-option';
+          div.setAttribute('data-value', color);
+          div.textContent = color;
+          menu.appendChild(div);
+        });
+        rebindUiSelectHandlers(uiSelect, 'Number of colors');
+      }
+    }
+  }
+
+  function updateWidthsDropdown(widths) {
+    // Update hidden select
+    const select = document.getElementById('Machine width');
+    if (select) {
+      const currentValue = select.value;
+      select.innerHTML = '<option value=""></option>';
+      widths.forEach(width => {
+        const option = document.createElement('option');
+        option.value = width;
+        option.textContent = width;
+        select.appendChild(option);
+      });
+      if (widths.includes(currentValue)) {
+        select.value = currentValue;
+      }
+    }
+    
+    // Update custom UI select
+    const uiSelect = document.querySelector('.ui-select[data-target="Machine width"]');
+    if (uiSelect) {
+      const menu = uiSelect.querySelector('.ui-select-menu');
+      if (menu) {
+        menu.innerHTML = '';
+        widths.forEach(width => {
+          const div = document.createElement('div');
+          div.className = 'ui-option';
+          div.setAttribute('data-value', width);
+          div.textContent = width;
+          menu.appendChild(div);
+        });
+        rebindUiSelectHandlers(uiSelect, 'Machine width');
+      }
+    }
+  }
+
+  function rebindUiSelectHandlers(uiSelect, targetId) {
+    const trigger = uiSelect.querySelector('.ui-select-trigger');
+    const menu = uiSelect.querySelector('.ui-select-menu');
+    const valueSpan = uiSelect.querySelector('.ui-select-value');
+    const hiddenSelect = document.getElementById(targetId);
+    
+    // Toggle menu
+    trigger.onclick = (e) => {
+      e.stopPropagation();
+      // Close other open selects
+      document.querySelectorAll('.ui-select.open').forEach(s => {
+        if (s !== uiSelect) s.classList.remove('open');
+      });
+      uiSelect.classList.toggle('open');
+    };
+    
+    // Option selection
+    menu.querySelectorAll('.ui-option').forEach(opt => {
+      opt.onclick = () => {
+        const value = opt.getAttribute('data-value');
+        valueSpan.textContent = opt.textContent;
+        if (hiddenSelect) {
+          hiddenSelect.value = value;
+          hiddenSelect.dispatchEvent(new Event('change'));
+        }
+        menu.querySelectorAll('.ui-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        uiSelect.classList.remove('open');
+      };
+    });
+  }
+
+  // Close dropdowns on outside click
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.ui-select.open').forEach(s => s.classList.remove('open'));
+  });
   
-  // Load after settings are loaded
+  // Load config and prices after settings
   setTimeout(loadMachinePricesFromServer, 1000);
+  setTimeout(loadMachineConfigFromServer, 1200);
 
   function getMachineBasePrice() {
     return MACHINE_PRICES?.[machineType.value]?.[colors.value]?.[width.value] || 0;

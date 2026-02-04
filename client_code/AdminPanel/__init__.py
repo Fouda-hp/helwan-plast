@@ -252,26 +252,52 @@ class AdminPanel(AdminPanelTemplate):
 
           function getDefaultSpecs() {
             return [
-              { label_ar: 'الموديل', label_en: 'Model', source: 'field', values: ['model'], active: true },
-              { label_ar: 'عدد الألوان', label_en: 'Number of Colors', source: 'field', values: ['colors_display'], active: true },
-              { label_ar: 'أوجه الطباعة', label_en: 'Printing Sides', source: 'field', values: ['printing_sides'], active: true },
-              { label_ar: 'وحدات التحكم في الشد', label_en: 'Tension Control Units', source: 'field', values: ['tension_units'], active: true },
-              { label_ar: 'نظام الفرامل', label_en: 'Brake System', source: 'field', values: ['brake_system'], active: true },
-              { label_ar: 'قوة الفرامل', label_en: 'Brake Power', source: 'field', values: ['brake_power'], active: true },
-              { label_ar: 'نظام توجيه الخامة', label_en: 'Web Guiding System', source: 'field', values: ['web_guiding'], active: true },
-              { label_ar: 'أقصى عرض للفيلم', label_en: 'Maximum Film Width', source: 'field', values: ['max_film_width'], active: true },
-              { label_ar: 'أقصى عرض للطباعة', label_en: 'Maximum Printing Width', source: 'field', values: ['max_print_width'], active: true },
-              { label_ar: 'طول الطباعة', label_en: 'Printing Length', source: 'field', values: ['print_length'], active: true },
-              { label_ar: 'أقصى قطر للرول', label_en: 'Maximum Roll Diameter', source: 'field', values: ['max_roll_diameter'], active: true },
-              { label_ar: 'نوع الأنيلوكس', label_en: 'Anilox Type', source: 'field', values: ['anilox_display'], active: true },
-              { label_ar: 'أقصى سرعة للماكينة', label_en: 'Maximum Machine Speed', source: 'field', values: ['max_machine_speed'], active: true },
-              { label_ar: 'أقصى سرعة للطباعة', label_en: 'Maximum Printing Speed', source: 'field', values: ['max_print_speed'], active: true },
-              { label_ar: 'قدرة المجفف', label_en: 'Dryer Capacity', source: 'field', values: ['dryer_capacity'], active: true },
-              { label_ar: 'طريقة نقل القدرة', label_en: 'Power Transmission Method', source: 'field', values: ['drive_display'], active: true },
-              { label_ar: 'قدرة الموتور الرئيسي', label_en: 'Main Motor Power', source: 'field', values: ['main_motor_power'], active: true },
-              { label_ar: 'الفحص بالفيديو', label_en: 'Video Inspection', source: 'yes_no', values: ['video_inspection'], active: true },
-              { label_ar: 'PLC', label_en: 'PLC', source: 'yes_no', values: ['plc'], active: true },
-              { label_ar: 'سليتر', label_en: 'Slitter', source: 'yes_no', values: ['slitter'], active: true }
+              { id: '1', label_ar: 'الموديل', label_en: 'Model', source: 'field', values: ['model'], active: true },
+              { id: '2', label_ar: 'عدد الألوان', label_en: 'Number of Colors', source: 'field', values: ['colors_display'], active: true },
+              { id: '3', label_ar: 'أوجه الطباعة', label_en: 'Printing Sides', source: 'field', values: ['printing_sides'], active: true },
+              { id: '4', label_ar: 'وحدات التحكم في الشد', label_en: 'Tension Control Units', source: 'field', values: ['tension_units'], active: true },
+              { id: '5', label_ar: 'نظام الفرامل', label_en: 'Brake System', source: 'field', values: ['brake_system'], active: true },
+              { id: '6', label_ar: 'قوة الفرامل', label_en: 'Brake Power', source: 'field', values: ['brake_power'], active: true },
+              { id: '7', label_ar: 'نظام توجيه الخامة (النوع المتأرجح)', label_en: 'Web Guiding System (Oscillating Type)', source: 'field', values: ['web_guiding'], active: true },
+              { id: '8', label_ar: 'أقصى عرض للفيلم', label_en: 'Maximum Film Width', source: 'field', values: ['max_film_width'], active: true },
+              { id: '9', label_ar: 'أقصى عرض للطباعة', label_en: 'Maximum Printing Width', source: 'field', values: ['max_print_width'], active: true },
+              { id: '10', label_ar: 'الحد الأدنى والأقصى لطول الطباعة', label_en: 'Minimum and Maximum Printing Length', source: 'field', values: ['print_length'], active: true },
+              { id: '11', label_ar: 'أقصى قطر للرول', label_en: 'Maximum Roll Diameter', source: 'field', values: ['max_roll_diameter'], active: true },
+              { id: '12', label_ar: 'نوع الأنيلوكس', label_en: 'Anilox Type', source: 'field', values: ['anilox_display'], active: true },
+              { id: '13', label_ar: 'أقصى سرعة للماكينة', label_en: 'Maximum Machine Speed', source: 'field', values: ['max_machine_speed'], active: true },
+              { id: '14', label_ar: 'أقصى سرعة للطباعة', label_en: 'Maximum Printing Speed', source: 'field', values: ['max_print_speed'], active: true },
+              { id: '15', label_ar: 'قدرة المجفف', label_en: 'Dryer Capacity', source: 'field', values: ['dryer_capacity'], active: true },
+              { id: '16', label_ar: 'طريقة نقل القدرة', label_en: 'Power Transmission Method', source: 'field', values: ['drive_display'], active: true },
+              { id: '17', label_ar: 'قدرة الموتور الرئيسي', label_en: 'Main Motor Power', source: 'field', values: ['main_motor_power'], active: true },
+              { id: '18', label_ar: 'الفحص بالفيديو', label_en: 'Video Inspection', source: 'yes_no', values: ['video_inspection'], active: true },
+              { id: '19', label_ar: 'PLC', label_en: 'PLC', source: 'yes_no', values: ['plc'], active: true },
+              { id: '20', label_ar: 'سليتر', label_en: 'Slitter', source: 'yes_no', values: ['slitter'], active: true }
+            ];
+          }
+          
+          // Available field keys for dropdown
+          function getAvailableFields() {
+            return [
+              { key: 'model', label: 'Model (from quotation)' },
+              { key: 'colors_display', label: 'Number of Colors (calculated)' },
+              { key: 'printing_sides', label: 'Printing Sides (fixed: 2)' },
+              { key: 'tension_units', label: 'Tension Control Units (winder based)' },
+              { key: 'brake_system', label: 'Brake System (winder based)' },
+              { key: 'brake_power', label: 'Brake Power (winder based)' },
+              { key: 'web_guiding', label: 'Web Guiding (winder based)' },
+              { key: 'max_film_width', label: 'Max Film Width (width*10+50)' },
+              { key: 'max_print_width', label: 'Max Print Width (width*10-40)' },
+              { key: 'print_length', label: 'Print Length (belt/gear)' },
+              { key: 'max_roll_diameter', label: 'Max Roll Diameter (winder based)' },
+              { key: 'anilox_display', label: 'Anilox Type (metal/ceramic)' },
+              { key: 'max_machine_speed', label: 'Max Machine Speed (belt/gear)' },
+              { key: 'max_print_speed', label: 'Max Print Speed (belt/gear)' },
+              { key: 'dryer_capacity', label: 'Dryer Capacity (from settings)' },
+              { key: 'drive_display', label: 'Power Transmission (belt/gear)' },
+              { key: 'main_motor_power', label: 'Main Motor Power (from settings)' },
+              { key: 'video_inspection', label: 'Video Inspection (yes/no)' },
+              { key: 'plc', label: 'PLC (yes/no)' },
+              { key: 'slitter', label: 'Slitter (yes/no)' }
             ];
           }
 
@@ -307,26 +333,41 @@ class AdminPanel(AdminPanelTemplate):
 
           function buildSpecRow(spec, index) {
             var valuesText = (spec.values || []).join('\\n');
+            var fieldOptions = getAvailableFields().map(function(f) {
+              var selected = (spec.values && spec.values.indexOf(f.key) !== -1) ? ' selected' : '';
+              return '<option value=\"' + f.key + '\"' + selected + '>' + f.label + '</option>';
+            }).join('');
+            
             return '' +
-              '<tr data-tech-spec-row data-spec-id=\"' + spec.id + '\">' +
-              '<td style=\"padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;\">' + (index + 1) + '</td>' +
+              '<tr data-tech-spec-row data-spec-id=\"' + spec.id + '\" data-index=\"' + index + '\">' +
+              '<td style=\"padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;min-width:40px;\" class=\"spec-row-num\">' + (index + 1) + '</td>' +
+              '<td style=\"padding:8px;border:1px solid #ddd;text-align:center;min-width:80px;\">' +
+                '<div style=\"display:flex;flex-direction:column;gap:4px;align-items:center;\">' +
+                  '<button class=\"move-btn\" onclick=\"moveSpecRow(\\'' + spec.id + '\\', -1)\" title=\"Move Up\" style=\"padding:4px 8px;font-size:12px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fff;\">⬆️</button>' +
+                  '<button class=\"move-btn\" onclick=\"moveSpecRow(\\'' + spec.id + '\\', 1)\" title=\"Move Down\" style=\"padding:4px 8px;font-size:12px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fff;\">⬇️</button>' +
+                '</div>' +
+              '</td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;\"><input type=\"text\" class=\"tech-label-ar\" value=\"' + (spec.label_ar || '') + '\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;\" dir=\"rtl\"></td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;\"><input type=\"text\" class=\"tech-label-en\" value=\"' + (spec.label_en || '') + '\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;\"></td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;\">' +
                 '<select class=\"tech-source\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;\">' +
                   '<option value=\"field\"' + (spec.source === 'field' ? ' selected' : '') + '>From Field</option>' +
                   '<option value=\"fixed\"' + (spec.source === 'fixed' ? ' selected' : '') + '>Fixed Value</option>' +
-                  '<option value=\"yes_no\"' + (spec.source === 'yes_no' ? ' selected' : '') + '>Yes/No Field</option>' +
+                  '<option value=\"yes_no\"' + (spec.source === 'yes_no' ? ' selected' : '') + '>Yes/No Field (hidden if No)</option>' +
                 '</select>' +
               '</td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;\">' +
-                '<textarea class=\"tech-values\" rows=\"2\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;\" placeholder=\"Multiple values, one per line\">' + valuesText + '</textarea>' +
+                '<select class=\"tech-field-select\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;margin-bottom:4px;\">' +
+                  '<option value=\"\">-- Select Field --</option>' +
+                  fieldOptions +
+                '</select>' +
+                '<textarea class=\"tech-values\" rows=\"2\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;\" placeholder=\"Field key or fixed value\">' + valuesText + '</textarea>' +
               '</td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;text-align:center;\">' +
                 '<input type=\"checkbox\" class=\"tech-active\"' + (spec.active ? ' checked' : '') + ' style=\"width:20px;height:20px;\">' +
               '</td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;text-align:center;\">' +
-                '<button class=\"btn-sm delete\" onclick=\"removeTechSpecRow(\\'' + spec.id + '\\')\">Delete</button>' +
+                '<button class=\"btn-sm delete\" onclick=\"removeTechSpecRow(\\'' + spec.id + '\\')\" style=\"padding:6px 12px;background:#f44336;color:#fff;border:none;border-radius:4px;cursor:pointer;\">🗑️</button>' +
               '</td>' +
               '</tr>';
           }
@@ -352,41 +393,108 @@ class AdminPanel(AdminPanelTemplate):
 
             var tableHtml = '' +
               '<h4 style=\"margin:0 0 10px;color:#1565c0;\">📋 Technical Specifications Table Settings</h4>' +
-              '<p style=\"margin:0 0 15px;color:#666;font-size:13px;\">Configure labels, sources, and multiple values per row.</p>' +
+              '<p style=\"margin:0 0 15px;color:#666;font-size:13px;\">Configure, reorder, add or delete rows. Items with Yes/No source will be hidden from quotation if value is No.</p>' +
               '<div style=\"background:#fff;padding:15px;border-radius:8px;overflow-x:auto;\">' +
-                '<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">' +
+                '<table style=\"width:100%;border-collapse:collapse;font-size:13px;\" id=\"techSpecsTable\">' +
                   '<thead><tr style=\"background:#f5f5f5;\">' +
-                    '<th style=\"padding:10px;border:1px solid #ddd;text-align:center;\">#</th>' +
+                    '<th style=\"padding:10px;border:1px solid #ddd;text-align:center;width:40px;\">#</th>' +
+                    '<th style=\"padding:10px;border:1px solid #ddd;text-align:center;width:80px;\">Order</th>' +
                     '<th style=\"padding:10px;border:1px solid #ddd;\">Label (AR)</th>' +
                     '<th style=\"padding:10px;border:1px solid #ddd;\">Label (EN)</th>' +
                     '<th style=\"padding:10px;border:1px solid #ddd;\">Value Source</th>' +
-                    '<th style=\"padding:10px;border:1px solid #ddd;\">Values</th>' +
+                    '<th style=\"padding:10px;border:1px solid #ddd;\">Field / Values</th>' +
                     '<th style=\"padding:10px;border:1px solid #ddd;text-align:center;\">Active</th>' +
-                    '<th style=\"padding:10px;border:1px solid #ddd;text-align:center;\">Actions</th>' +
+                    '<th style=\"padding:10px;border:1px solid #ddd;text-align:center;\">Delete</th>' +
                   '</tr></thead>' +
                   '<tbody id=\"techSpecsBody\">' +
                     specsList.map(buildSpecRow).join('') +
                   '</tbody>' +
                 '</table>' +
               '</div>' +
-              '<div style=\"margin-top:15px;display:flex;gap:10px;justify-content:center;\">' +
-                '<button class=\"action-btn\" onclick=\"addTechSpecRow()\">➕ Add Row</button>' +
-                '<button class=\"action-btn green\" onclick=\"saveTechSpecs()\" style=\"padding:12px 30px;background:#4caf50;\">💾 Save All Technical Specs</button>' +
+              '<div style=\"margin-top:15px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;\">' +
+                '<button class=\"action-btn\" onclick=\"addTechSpecRow()\" style=\"padding:10px 20px;background:#2196f3;color:#fff;border:none;border-radius:6px;cursor:pointer;\">➕ Add New Row</button>' +
+                '<button class=\"action-btn\" onclick=\"resetTechSpecs()\" style=\"padding:10px 20px;background:#ff9800;color:#fff;border:none;border-radius:6px;cursor:pointer;\">🔄 Reset to Defaults</button>' +
+                '<button class=\"action-btn green\" onclick=\"saveTechSpecs()\" style=\"padding:12px 30px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;\">💾 Save All</button>' +
               '</div>';
 
             section.innerHTML = tableHtml;
 
+            // Function to update row numbers after reorder
+            function updateRowNumbers() {
+              var rows = document.querySelectorAll('#techSpecsBody tr[data-tech-spec-row]');
+              rows.forEach(function(row, index) {
+                var numCell = row.querySelector('.spec-row-num');
+                if (numCell) numCell.textContent = String(index + 1);
+                row.setAttribute('data-index', index);
+              });
+            }
+            
             window.addTechSpecRow = function() {
               var tbody = document.getElementById('techSpecsBody');
               if (!tbody) return;
               var spec = { id: String(Date.now()), label_ar: '', label_en: '', source: 'field', values: [], active: true };
               tbody.insertAdjacentHTML('beforeend', buildSpecRow(spec, tbody.children.length));
+              updateRowNumbers();
+              
+              // Scroll to new row
+              var newRow = tbody.lastElementChild;
+              if (newRow) newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
             };
 
             window.removeTechSpecRow = function(id) {
               var row = container.querySelector('[data-spec-id=\"' + id + '\"]');
-              if (row && row.parentNode) row.parentNode.removeChild(row);
+              if (row && row.parentNode) {
+                if (confirm('Are you sure you want to delete this row?')) {
+                  row.parentNode.removeChild(row);
+                  updateRowNumbers();
+                }
+              }
             };
+            
+            window.moveSpecRow = function(id, direction) {
+              var tbody = document.getElementById('techSpecsBody');
+              if (!tbody) return;
+              
+              var row = tbody.querySelector('[data-spec-id=\"' + id + '\"]');
+              if (!row) return;
+              
+              if (direction === -1 && row.previousElementSibling) {
+                // Move up
+                tbody.insertBefore(row, row.previousElementSibling);
+              } else if (direction === 1 && row.nextElementSibling) {
+                // Move down
+                tbody.insertBefore(row.nextElementSibling, row);
+              }
+              
+              updateRowNumbers();
+            };
+            
+            window.resetTechSpecs = function() {
+              if (!confirm('Reset to default specifications? This will overwrite your current settings.')) return;
+              
+              var tbody = document.getElementById('techSpecsBody');
+              if (!tbody) return;
+              
+              var defaults = getDefaultSpecs();
+              tbody.innerHTML = defaults.map(buildSpecRow).join('');
+              
+              if (window.showNotification) {
+                window.showNotification('info', 'Reset', 'Specifications reset to defaults. Click Save to apply.');
+              }
+            };
+            
+            // Auto-fill value from dropdown selection
+            document.addEventListener('change', function(e) {
+              if (e.target && e.target.classList.contains('tech-field-select')) {
+                var row = e.target.closest('tr');
+                if (row) {
+                  var textarea = row.querySelector('.tech-values');
+                  if (textarea && e.target.value) {
+                    textarea.value = e.target.value;
+                  }
+                }
+              }
+            });
 
             window.saveTechSpecs = async function() {
               var rows = container.querySelectorAll('[data-tech-spec-row]');

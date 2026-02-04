@@ -448,10 +448,10 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                 {'label_ar': 'وحدات التحكم في الشد', 'label_en': 'Tension Control Units', 'source': 'field', 'values': ['tension_units'], 'active': True},
                 {'label_ar': 'نظام الفرامل', 'label_en': 'Brake System', 'source': 'field', 'values': ['brake_system'], 'active': True},
                 {'label_ar': 'قوة الفرامل', 'label_en': 'Brake Power', 'source': 'field', 'values': ['brake_power'], 'active': True},
-                {'label_ar': 'نظام توجيه الخامة', 'label_en': 'Web Guiding System', 'source': 'field', 'values': ['web_guiding'], 'active': True},
+                {'label_ar': 'نظام توجيه الخامة (النوع المتأرجح)', 'label_en': 'Web Guiding System (Oscillating Type)', 'source': 'field', 'values': ['web_guiding'], 'active': True},
                 {'label_ar': 'أقصى عرض للفيلم', 'label_en': 'Maximum Film Width', 'source': 'field', 'values': ['max_film_width'], 'active': True},
                 {'label_ar': 'أقصى عرض للطباعة', 'label_en': 'Maximum Printing Width', 'source': 'field', 'values': ['max_print_width'], 'active': True},
-                {'label_ar': 'طول الطباعة', 'label_en': 'Printing Length', 'source': 'field', 'values': ['print_length'], 'active': True},
+                {'label_ar': 'الحد الأدنى والأقصى لطول الطباعة', 'label_en': 'Minimum and Maximum Printing Length', 'source': 'field', 'values': ['print_length'], 'active': True},
                 {'label_ar': 'أقصى قطر للرول', 'label_en': 'Maximum Roll Diameter', 'source': 'field', 'values': ['max_roll_diameter'], 'active': True},
                 {'label_ar': 'نوع الأنيلوكس', 'label_en': 'Anilox Type', 'source': 'field', 'values': ['anilox_display'], 'active': True},
                 {'label_ar': 'أقصى سرعة للماكينة', 'label_en': 'Maximum Machine Speed', 'source': 'field', 'values': ['max_machine_speed'], 'active': True},
@@ -467,13 +467,16 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         def normalize_specs(raw):
             defaults = default_specs()
             
-            # If raw is a valid list with proper structure, use it
+            # If raw is a valid list with proper structure, use it (supports reordering)
             if isinstance(raw, list) and len(raw) > 0:
                 # Validate that the list has proper label structure
                 first_item = raw[0] if raw else {}
-                if first_item.get('label_en') and first_item.get('values'):
+                if first_item.get('label_en') or first_item.get('label_ar'):
                     specs = []
                     for spec in raw:
+                        # Skip invalid items
+                        if not spec.get('label_en') and not spec.get('label_ar'):
+                            continue
                         specs.append({
                             'label_ar': spec.get('label_ar', ''),
                             'label_en': spec.get('label_en', ''),
@@ -481,13 +484,12 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                             'values': normalize_values(spec.get('values')),
                             'active': spec.get('active', True) is not False,
                         })
-                    return specs
+                    return specs if specs else defaults
                 # Invalid structure, use defaults
                 return defaults
 
-            # If raw is a dict with tech_spec_N keys
+            # If raw is a dict with tech_spec_N keys (old format)
             if isinstance(raw, dict) and len(raw) > 0:
-                # Check if it has the expected structure
                 first_key = next(iter(raw.keys()), None)
                 if first_key and first_key.startswith('tech_spec_'):
                     specs = []
@@ -508,7 +510,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
             # Default: return hardcoded defaults
             return defaults
 
-        # Get tech_specs_settings, default to empty to use hardcoded defaults
+        # Get tech_specs_settings from database
         tech_specs_settings = data.get('tech_specs_settings', None)
         specs_list = normalize_specs(tech_specs_settings)
 

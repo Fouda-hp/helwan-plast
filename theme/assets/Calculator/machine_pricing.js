@@ -19,6 +19,14 @@
     BANK_COMMISSION: 0.0132
   };
 
+  function getStoredExchangeRate() {
+    const stored = window.localStorage?.getItem('exchange_rate');
+    if (stored && !isNaN(stored)) {
+      return parseFloat(stored);
+    }
+    return null;
+  }
+
   // تحميل الإعدادات من السيرفر
   async function loadSettingsFromServer() {
     try {
@@ -27,6 +35,9 @@
       if (exchangeRate && !isNaN(exchangeRate)) {
         EXCHANGE_RATE = parseFloat(exchangeRate);
         console.log('📈 Exchange rate loaded from server:', EXCHANGE_RATE);
+        if (window.localStorage) {
+          window.localStorage.setItem('exchange_rate', String(EXCHANGE_RATE));
+        }
       }
 
       // تحميل باقي الإعدادات
@@ -56,6 +67,10 @@
   }
 
   // تحميل الإعدادات عند بدء التشغيل
+  const storedRate = getStoredExchangeRate();
+  if (storedRate) {
+    EXCHANGE_RATE = storedRate;
+  }
   loadSettingsFromServer();
 
   // ----------------------------------------
@@ -245,8 +260,23 @@
       const exchangeInput = document.getElementById("exchange_rate");
       if (exchangeInput) exchangeInput.value = EXCHANGE_RATE.toFixed(2);
       console.log('📈 Exchange rate updated to:', EXCHANGE_RATE);
+      if (isModelReady()) {
+        calculateAll();
+      }
     }
   };
+
+  window.addEventListener('storage', function(event) {
+    if (event.key === 'exchange_rate') {
+      window.updateExchangeRate(event.newValue);
+    }
+  });
+
+  setInterval(function() {
+    if (window.anvil?.server?.call) {
+      loadSettingsFromServer();
+    }
+  }, 60000);
 
   // ----------------------------------------
   // الحسابات الأساسية

@@ -1394,6 +1394,16 @@ def get_quotation_pdf_data(quotation_number, user_email):
             'country_origin_en': get_setting_value('country_origin_en', 'China'),
             'anilox_type_ar': get_setting_value('anilox_type_ar', 'انيلوكس سيراميك'),
             'anilox_type_en': get_setting_value('anilox_type_en', 'Ceramic anilox'),
+            'belt_max_machine_speed': get_setting_value('belt_max_machine_speed', 120),
+            'belt_max_print_speed': get_setting_value('belt_max_print_speed', 120),
+            'belt_print_length': get_setting_value('belt_print_length', '300mm - 1300mm'),
+            'gear_max_machine_speed': get_setting_value('gear_max_machine_speed', 100),
+            'gear_max_print_speed': get_setting_value('gear_max_print_speed', 80),
+            'gear_print_length': get_setting_value('gear_print_length', '240mm - 1000mm'),
+            'single_winder_roll_dia': get_setting_value('single_winder_roll_dia', 1200),
+            'double_winder_roll_dia': get_setting_value('double_winder_roll_dia', 800),
+            'dryer_capacity': get_setting_value('dryer_capacity', '2.2kw air blower × 2 units'),
+            'main_motor_power': get_setting_value('main_motor_power', '5 HP'),
         }
 
         # جلب إعدادات جدول المواصفات الفنية
@@ -1544,7 +1554,7 @@ def export_quotation_excel(quotation_number):
     """Export quotation data as Excel file"""
     try:
         import io
-        import csv
+        import xlsxwriter
 
         # Get quotation data - use correct field name 'Quotation#'
         q_data = app_tables.quotations.get(**{'Quotation#': int(quotation_number)})
@@ -1559,56 +1569,72 @@ def export_quotation_excel(quotation_number):
             except:
                 return default
 
-        # Create CSV content
-        output = io.StringIO()
-        writer = csv.writer(output)
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Quotation')
 
-        # Header
-        writer.writerow([f"Quotation #{quotation_number}", '', ''])
-        writer.writerow(['', '', ''])
+        title_fmt = workbook.add_format({'bold': True, 'font_size': 14})
+        section_fmt = workbook.add_format({'bold': True, 'bg_color': '#F2F2F2'})
+        label_fmt = workbook.add_format({'bold': True, 'border': 1})
+        value_fmt = workbook.add_format({'border': 1})
 
-        # Client Info
-        writer.writerow(['=== Client Information ===', '', ''])
-        writer.writerow(['Client Name', get_field('Client Name', '')])
-        writer.writerow(['Company', get_field('Company', '')])
-        writer.writerow(['Phone', get_field('Phone', '')])
-        writer.writerow(['Date', get_field('Date', '')])
-        writer.writerow(['', '', ''])
+        worksheet.set_column(0, 0, 28)
+        worksheet.set_column(1, 1, 45)
+        worksheet.set_column(2, 2, 18)
 
-        # Machine Details
-        writer.writerow(['=== Machine Details ===', '', ''])
-        writer.writerow(['Model', get_field('Model', '')])
-        writer.writerow(['Machine Type', get_field('Machine type', '')])
-        writer.writerow(['Number of Colors', get_field('Number of colors', '')])
-        writer.writerow(['Machine Width', get_field('Machine width', '')])
-        writer.writerow(['Winder', get_field('Winder', '')])
-        writer.writerow(['Material', get_field('Material', '')])
-        writer.writerow(['', '', ''])
+        row = 0
+        worksheet.merge_range(row, 0, row, 2, f"Quotation #{quotation_number}", title_fmt)
+        row += 2
 
-        # Options
-        writer.writerow(['=== Options ===', '', ''])
-        writer.writerow(['Video Inspection', get_field('Video inspection', '')])
-        writer.writerow(['PLC', get_field('PLC', '')])
-        writer.writerow(['Slitter', get_field('Slitter', '')])
-        writer.writerow(['', '', ''])
+        def write_section(title, rows):
+            nonlocal row
+            worksheet.write(row, 0, title, section_fmt)
+            row += 1
+            for label, value in rows:
+                worksheet.write(row, 0, label, label_fmt)
+                worksheet.write(row, 1, value, value_fmt)
+                row += 1
+            row += 1
 
-        # Pricing
-        writer.writerow(['=== Pricing ===', '', ''])
-        writer.writerow(['In Stock Price', get_field('In Stock', '')])
-        writer.writerow(['New Order Price', get_field('New Order', '')])
-        writer.writerow(['Given Price', get_field('Given Price', '')])
-        writer.writerow(['Agreed Price', get_field('Agreed Price', '')])
-        writer.writerow(['Pricing Mode', get_field('Pricing Mode', '')])
+        write_section('Client Information', [
+            ('Client Name', get_field('Client Name', '')),
+            ('Company', get_field('Company', '')),
+            ('Phone', get_field('Phone', '')),
+            ('Date', get_field('Date', '')),
+        ])
 
-        # Get CSV content
-        csv_content = output.getvalue()
-        output.close()
+        write_section('Machine Details', [
+            ('Model', get_field('Model', '')),
+            ('Machine Type', get_field('Machine type', '')),
+            ('Number of Colors', get_field('Number of colors', '')),
+            ('Machine Width', get_field('Machine width', '')),
+            ('Winder', get_field('Winder', '')),
+            ('Material', get_field('Material', '')),
+        ])
 
-        # Create BlobMedia - CSV with UTF-8 BOM for Excel compatibility
-        filename = f"Quotation_{quotation_number}.csv"
-        # Add UTF-8 BOM for Excel to recognize Arabic text
-        csv_bytes = b'\xef\xbb\xbf' + csv_content.encode('utf-8')
-        media = anvil.BlobMedia('text/csv', csv_bytes, name=filename)
+        write_section('Options', [
+            ('Video Inspection', get_field('Video inspection', '')),
+            ('PLC', get_field('PLC', '')),
+            ('Slitter', get_field('Slitter', '')),
+        ])
+
+        write_section('Pricing', [
+            ('In Stock Price', get_field('In Stock', '')),
+            ('New Order Price', get_field('New Order', '')),
+            ('Given Price', get_field('Given Price', '')),
+            ('Agreed Price', get_field('Agreed Price', '')),
+            ('Pricing Mode', get_field('Pricing Mode', '')),
+        ])
+
+        workbook.close()
+        output.seek(0)
+
+        filename = f"Quotation_{quotation_number}.xlsx"
+        media = anvil.BlobMedia(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            output.read(),
+            name=filename
+        )
 
         return {'success': True, 'file': media}
 

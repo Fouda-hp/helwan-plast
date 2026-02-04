@@ -156,13 +156,17 @@ container:
           margin: 0;
           padding-right: 20px;
           padding-left: 20px;
-          font-size: 12px;
-          line-height: 1.6;
+          font-size: 13px;
+          line-height: 1.7;
+          white-space: normal;
+          word-break: break-word;
         }
 
         .specs-list li {
           margin-bottom: 4px;
           text-align: justify;
+          white-space: normal;
+          word-break: break-word;
         }
 
         /* Header */
@@ -291,7 +295,7 @@ container:
 
         .details-table td {
           background: var(--highlight-color);
-          text-align: left;
+          text-align: right;
         }
 
         /* Technical Specs Table */
@@ -303,9 +307,9 @@ container:
 
         .tech-table th,
         .tech-table td {
-          padding: 5px 10px;
+          padding: 4px 6px;
           border: 1px solid #ddd;
-          font-size: 11px;
+          font-size: 13px;
         }
 
         .tech-table th {
@@ -379,6 +383,13 @@ container:
 
         .payment-table th,
         .payment-table td {
+          padding: 6px 10px;
+          border: 1px solid #ddd;
+          font-size: 12px;
+        }
+
+        .payment-table-simple th,
+        .payment-table-simple td {
           padding: 6px 10px;
           border: 1px solid #ddd;
           font-size: 12px;
@@ -574,19 +585,19 @@ container:
             padding-bottom: 10px !important;
           }
 
-          .specs-list {
-            font-size: 11px !important;
-            line-height: 1.6 !important;
-          }
+        .specs-list {
+          font-size: 13px !important;
+          line-height: 1.7 !important;
+        }
 
           .specs-list li {
             margin-bottom: 4px !important;
           }
 
-          .tech-table th, .tech-table td {
-            padding: 5px 8px !important;
-            font-size: 10px !important;
-          }
+        .tech-table th, .tech-table td {
+          padding: 4px 6px !important;
+          font-size: 12px !important;
+        }
 
           .cylinders-table th, .cylinders-table td {
             padding: 4px 10px !important;
@@ -680,7 +691,7 @@ container:
         }
 
         .ltr .details-table td {
-          text-align: right;
+          text-align: left;
         }
 
         .ltr .tech-table th {
@@ -735,9 +746,15 @@ container:
 
         #templateContent .details-table th,
         #templateContent .details-table td {
-          padding: 4px 6px !important;   /* يصغر المربعات */
-          font-size: 15px !important;    /* يكبر الخط */
+          padding: 4px 6px !important;
+          font-size: 14px !important;
           line-height: 1.4 !important;
+          text-align: right;
+        }
+
+        .ltr #templateContent .details-table th,
+        .ltr #templateContent .details-table td {
+          text-align: left;
         }
 
 

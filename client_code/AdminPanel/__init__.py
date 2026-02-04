@@ -331,12 +331,35 @@ class AdminPanel(AdminPanelTemplate):
             return defaults;
           }
 
+          // Get condition fields for custom rules
+          function getConditionFields() {
+            return [
+              { key: 'winder_type', label: 'Winder Type (Single/Double)' },
+              { key: 'drive_type', label: 'Drive Type (Belt/Gear)' },
+              { key: 'anilox_type', label: 'Anilox Type (Metal/Ceramic)' },
+              { key: 'colors_count', label: 'Colors Count' },
+              { key: 'machine_width', label: 'Machine Width' },
+              { key: 'video_inspection', label: 'Video Inspection (Yes/No)' },
+              { key: 'plc', label: 'PLC (Yes/No)' },
+              { key: 'slitter', label: 'Slitter (Yes/No)' }
+            ];
+          }
+          
           function buildSpecRow(spec, index) {
             var valuesText = (spec.values || []).join('\\n');
             var fieldOptions = getAvailableFields().map(function(f) {
               var selected = (spec.values && spec.values.indexOf(f.key) !== -1) ? ' selected' : '';
               return '<option value=\"' + f.key + '\"' + selected + '>' + f.label + '</option>';
             }).join('');
+            
+            var conditionOptions = getConditionFields().map(function(f) {
+              var selected = (spec.condition_field === f.key) ? ' selected' : '';
+              return '<option value=\"' + f.key + '\"' + selected + '>' + f.label + '</option>';
+            }).join('');
+            
+            var isCustom = spec.source === 'custom';
+            var customStyle = isCustom ? '' : 'display:none;';
+            var fieldStyle = isCustom ? 'display:none;' : '';
             
             return '' +
               '<tr data-tech-spec-row data-spec-id=\"' + spec.id + '\" data-index=\"' + index + '\">' +
@@ -350,18 +373,42 @@ class AdminPanel(AdminPanelTemplate):
               '<td style=\"padding:8px;border:1px solid #ddd;\"><input type=\"text\" class=\"tech-label-ar\" value=\"' + (spec.label_ar || '') + '\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;\" dir=\"rtl\"></td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;\"><input type=\"text\" class=\"tech-label-en\" value=\"' + (spec.label_en || '') + '\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;\"></td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;\">' +
-                '<select class=\"tech-source\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;\">' +
+                '<select class=\"tech-source\" onchange=\"toggleCustomRule(this)\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;\">' +
                   '<option value=\"field\"' + (spec.source === 'field' ? ' selected' : '') + '>From Field</option>' +
                   '<option value=\"fixed\"' + (spec.source === 'fixed' ? ' selected' : '') + '>Fixed Value</option>' +
                   '<option value=\"yes_no\"' + (spec.source === 'yes_no' ? ' selected' : '') + '>Yes/No Field (hidden if No)</option>' +
+                  '<option value=\"custom\"' + (spec.source === 'custom' ? ' selected' : '') + '>Custom Rule (If-Then)</option>' +
                 '</select>' +
               '</td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;\">' +
-                '<select class=\"tech-field-select\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;margin-bottom:4px;\">' +
-                  '<option value=\"\">-- Select Field --</option>' +
-                  fieldOptions +
-                '</select>' +
-                '<textarea class=\"tech-values\" rows=\"2\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;\" placeholder=\"Field key or fixed value\">' + valuesText + '</textarea>' +
+                '<div class=\"field-inputs\" style=\"' + fieldStyle + '\">' +
+                  '<select class=\"tech-field-select\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;margin-bottom:4px;\">' +
+                    '<option value=\"\">-- Select Field --</option>' +
+                    fieldOptions +
+                  '</select>' +
+                  '<textarea class=\"tech-values\" rows=\"2\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;\" placeholder=\"Field key or fixed value\">' + valuesText + '</textarea>' +
+                '</div>' +
+                '<div class=\"custom-rule-inputs\" style=\"' + customStyle + 'font-size:12px;\">' +
+                  '<div style=\"margin-bottom:6px;\">' +
+                    '<label style=\"display:block;color:#666;margin-bottom:2px;\">IF field:</label>' +
+                    '<select class=\"condition-field\" style=\"width:100%;padding:4px;border:1px solid #ddd;border-radius:4px;\">' +
+                      '<option value=\"\">-- Select Condition --</option>' +
+                      conditionOptions +
+                    '</select>' +
+                  '</div>' +
+                  '<div style=\"margin-bottom:6px;\">' +
+                    '<label style=\"display:block;color:#666;margin-bottom:2px;\">Equals:</label>' +
+                    '<input type=\"text\" class=\"condition-value\" value=\"' + (spec.condition_value || '') + '\" placeholder=\"e.g. Double, Belt, Yes\" style=\"width:100%;padding:4px;border:1px solid #ddd;border-radius:4px;\">' +
+                  '</div>' +
+                  '<div style=\"margin-bottom:6px;\">' +
+                    '<label style=\"display:block;color:#666;margin-bottom:2px;\">THEN value:</label>' +
+                    '<input type=\"text\" class=\"then-value\" value=\"' + (spec.then_value || '') + '\" placeholder=\"Value if true\" style=\"width:100%;padding:4px;border:1px solid #ddd;border-radius:4px;\">' +
+                  '</div>' +
+                  '<div>' +
+                    '<label style=\"display:block;color:#666;margin-bottom:2px;\">ELSE value:</label>' +
+                    '<input type=\"text\" class=\"else-value\" value=\"' + (spec.else_value || '') + '\" placeholder=\"Value if false\" style=\"width:100%;padding:4px;border:1px solid #ddd;border-radius:4px;\">' +
+                  '</div>' +
+                '</div>' +
               '</td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;text-align:center;\">' +
                 '<input type=\"checkbox\" class=\"tech-active\"' + (spec.active ? ' checked' : '') + ' style=\"width:20px;height:20px;\">' +
@@ -371,6 +418,19 @@ class AdminPanel(AdminPanelTemplate):
               '</td>' +
               '</tr>';
           }
+          
+          window.toggleCustomRule = function(select) {
+            var row = select.closest('tr');
+            var fieldInputs = row.querySelector('.field-inputs');
+            var customInputs = row.querySelector('.custom-rule-inputs');
+            if (select.value === 'custom') {
+              fieldInputs.style.display = 'none';
+              customInputs.style.display = 'block';
+            } else {
+              fieldInputs.style.display = 'block';
+              customInputs.style.display = 'none';
+            }
+          };
 
           async function enhanceTechSpecsSettings() {
             var container = document.getElementById('settingsContent');
@@ -505,15 +565,31 @@ class AdminPanel(AdminPanelTemplate):
                 var source = row.querySelector('.tech-source');
                 var values = row.querySelector('.tech-values');
                 var active = row.querySelector('.tech-active');
+                
+                // Custom rule fields
+                var conditionField = row.querySelector('.condition-field');
+                var conditionValue = row.querySelector('.condition-value');
+                var thenValue = row.querySelector('.then-value');
+                var elseValue = row.querySelector('.else-value');
 
-                specsData.push({
+                var specData = {
                   id: row.getAttribute('data-spec-id'),
                   label_ar: labelAr ? labelAr.value : '',
                   label_en: labelEn ? labelEn.value : '',
                   source: source ? source.value : 'field',
                   values: normalizeValues(values ? values.value : ''),
                   active: active ? active.checked : true
-                });
+                };
+                
+                // Add custom rule fields if source is custom
+                if (source && source.value === 'custom') {
+                  specData.condition_field = conditionField ? conditionField.value : '';
+                  specData.condition_value = conditionValue ? conditionValue.value : '';
+                  specData.then_value = thenValue ? thenValue.value : '';
+                  specData.else_value = elseValue ? elseValue.value : '';
+                }
+                
+                specsData.push(specData);
               });
 
               try {

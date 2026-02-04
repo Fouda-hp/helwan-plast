@@ -559,6 +559,36 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                 if not show_row:
                     continue
                 value_text = 'نعم' if is_ar else 'Yes'
+            elif source == 'custom':
+                # Custom if-then rule
+                condition_field = spec.get('condition_field', '')
+                condition_value = str(spec.get('condition_value', '')).upper().strip()
+                then_value = spec.get('then_value', '')
+                else_value = spec.get('else_value', '')
+                
+                # Map condition fields to actual values
+                condition_map = {
+                    'winder_type': winder_type,  # SINGLE or DOUBLE
+                    'drive_type': 'BELT' if is_belt_drive else 'GEAR',
+                    'anilox_type': 'METAL' if is_metal_anilox else 'CERAMIC',
+                    'colors_count': str(colors_count),
+                    'machine_width': str(int(machine_width)),
+                    'video_inspection': 'YES' if is_yes_value('video_inspection') else 'NO',
+                    'plc': 'YES' if is_yes_value('plc') else 'NO',
+                    'slitter': 'YES' if is_yes_value('slitter') else 'NO',
+                }
+                
+                actual_value = str(condition_map.get(condition_field, '')).upper().strip()
+                
+                # Check condition (supports multiple values with comma)
+                condition_values = [v.strip().upper() for v in condition_value.split(',')]
+                if actual_value in condition_values:
+                    value_text = then_value
+                else:
+                    value_text = else_value
+                
+                if not value_text:
+                    continue
             else:
                 value_parts = []
                 for key in values:

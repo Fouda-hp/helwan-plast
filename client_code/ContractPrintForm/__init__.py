@@ -13,9 +13,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
         self.current_lang = 'ar'
         self.current_data = None
         self.all_quotations = []
-        self.payment_data = []  # Store payment schedule
-        self.payment_method = 'percentage'  # percentage or amount
-        self.delivery_date = ''  # Expected delivery date
+        self.payment_data = []
+        self.payment_method = 'percentage'
+        self.delivery_date = ''
 
         # Expose functions to JavaScript
         anvil.js.window.loadQuotationForPrint = self.load_quotation_for_print
@@ -40,6 +40,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.savePayments = self.save_payments
         anvil.js.window.calculateTotalPercentage = self.calculate_total_percentage
         anvil.js.window.saveContract = self.save_contract
+        anvil.js.window.validateNumPayments = self.validate_num_payments
 
     def form_show(self, **event_args):
         self.init_page()
@@ -94,13 +95,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
         if not query:
             self.populate_dropdown(self.all_quotations)
             return
-        filtered = []
-        for q in self.all_quotations:
-            q_num = str(q.get('Quotation#', ''))
-            client = str(q.get('Client Name', '')).lower()
-            model = str(q.get('Model', '')).lower()
-            if query in q_num or query in client or query in model:
-                filtered.append(q)
+        filtered = [q for q in self.all_quotations 
+                    if query in str(q.get('Quotation#', '')).lower() 
+                    or query in str(q.get('Client Name', '')).lower()
+                    or query in str(q.get('Model', '')).lower()]
         self.populate_dropdown(filtered)
 
     def load_selected_quotation(self):
@@ -111,7 +109,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         result = self.load_quotation_for_print(q_num)
         if result and result.get('success'):
             self.current_data = result.get('data', {})
-            self.render_contract()
+            self.render_template()
             # Update total in payment modal
             total = self.current_data.get('total_price', 0)
             try:
@@ -127,9 +125,41 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.localStorage.setItem('hp_language', lang)
         self.update_language_buttons()
         if self.current_data:
-            self.render_contract()
+            self.render_template()
+
+    def update_delivery_date(self):
+        delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
+        if delivery_input:
+            self.delivery_date = str(delivery_input.value or '')
+            if self.current_data:
+                self.render_template()
 
     # ==================== Payment Modal ====================
+    def validate_num_payments(self):
+        """Validate number of payments input - must be 1-12"""
+        num_input = anvil.js.window.document.getElementById('numPayments')
+        if not num_input:
+            return False
+        
+        val = str(num_input.value or '').strip()
+        is_ar = self.current_lang == 'ar'
+        
+        # Check if empty or contains non-numeric characters
+        if not val or not val.isdigit():
+            msg = 'عدد الدفعات يجب أن يكون رقم من 1 إلى 12' if is_ar else 'Number of payments must be a number from 1 to 12'
+            alert(msg)
+            num_input.value = 3
+            return False
+        
+        num = int(val)
+        if num < 1 or num > 12:
+            msg = 'عدد الدفعات يجب أن يكون من 1 إلى 12 فقط' if is_ar else 'Number of payments must be between 1 and 12 only'
+            alert(msg)
+            num_input.value = max(1, min(12, num))
+            return False
+        
+        return True
+
     def open_payment_modal(self):
         if not self.current_data:
             alert('Please select a quotation first')
@@ -138,6 +168,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         if overlay:
             overlay.classList.add('active')
             self.update_payment_rows()
+            self.calculate_total_percentage()
 
     def close_payment_modal(self):
         overlay = anvil.js.window.document.getElementById('paymentModalOverlay')
@@ -150,11 +181,15 @@ class ContractPrintForm(ContractPrintFormTemplate):
             if r.checked:
                 self.payment_method = r.value
                 break
-        # Update header
         header = anvil.js.window.document.getElementById('valueHeader')
         if header:
-            header.textContent = 'Percentage %' if self.payment_method == 'percentage' else 'Amount'
+            is_ar = self.current_lang == 'ar'
+            if self.payment_method == 'percentage':
+                header.textContent = 'النسبة % / Percentage'
+            else:
+                header.textContent = 'المبلغ / Amount'
         self.update_payment_rows()
+        self.calculate_total_percentage()  # Recalculate when method changes
 
     def update_payment_rows(self):
         num_input = anvil.js.window.document.getElementById('numPayments')
@@ -162,80 +197,147 @@ class ContractPrintForm(ContractPrintFormTemplate):
         if not num_input or not tbody:
             return
         
-        num = int(num_input.value or 3)
-        num = max(1, min(12, num))
+        # Validate the number
+        val = str(num_input.value or '').strip()
+        if not val or not val.isdigit():
+            num = 3
+            num_input.value = 3
+        else:
+            num = int(val)
+            if num < 1 or num > 12:
+                is_ar = self.current_lang == 'ar'
+                msg = 'عدد الدفعات يجب أن يكون من 1 إلى 12 فقط' if is_ar else 'Number of payments must be between 1 and 12 only'
+                alert(msg)
+                num = max(1, min(12, num))
+                num_input.value = num
         
         is_ar = self.current_lang == 'ar'
         rows_html = ''
         
         labels = {
-            1: ('الدفعة المقدمة', 'Down Payment'),
-            2: ('القسط الثاني', 'Installment 2'),
-            3: ('القسط الثالث', 'Installment 3'),
-            4: ('القسط الرابع', 'Installment 4'),
-            5: ('القسط الخامس', 'Installment 5'),
-            6: ('القسط السادس', 'Installment 6'),
-            7: ('القسط السابع', 'Installment 7'),
-            8: ('القسط الثامن', 'Installment 8'),
-            9: ('القسط التاسع', 'Installment 9'),
-            10: ('القسط العاشر', 'Installment 10'),
-            11: ('القسط الحادي عشر', 'Installment 11'),
-            12: ('القسط الثاني عشر', 'Installment 12'),
+            1: ('مقدم تعاقد', 'Down Payment'),
+            2: ('الدفعة الثانية', 'Installment 2'),
+            3: ('الدفعة الثالثة', 'Installment 3'),
+            4: ('الدفعة الرابعة', 'Installment 4'),
+            5: ('الدفعة الخامسة', 'Installment 5'),
+            6: ('الدفعة السادسة', 'Installment 6'),
+            7: ('الدفعة السابعة', 'Installment 7'),
+            8: ('الدفعة الثامنة', 'Installment 8'),
+            9: ('الدفعة التاسعة', 'Installment 9'),
+            10: ('الدفعة العاشرة', 'Installment 10'),
+            11: ('الدفعة الحادية عشر', 'Installment 11'),
+            12: ('الدفعة الثانية عشر', 'Installment 12'),
         }
         
         placeholder = '%' if self.payment_method == 'percentage' else 'Amount'
         
         for i in range(1, num + 1):
-            label = labels.get(i, (f'القسط {i}', f'Installment {i}'))
-            label_text = label[0] if is_ar else label[1]
+            label = labels.get(i, (f'الدفعة {i}', f'Installment {i}'))
+            label_text = f"{label[0]} / {label[1]}"
             
-            # Get saved value if exists
             saved_val = ''
             saved_date = ''
             if len(self.payment_data) >= i:
                 saved_val = self.payment_data[i-1].get('value', '')
                 saved_date = self.payment_data[i-1].get('date', '')
             
+            bg_color = '#f8f9fa' if i % 2 == 0 else 'white'
             rows_html += f'''
-            <tr>
-                <td><strong>{label_text}</strong></td>
-                <td><input type="number" class="payment-value" data-index="{i}" 
+            <tr style="background:{bg_color};">
+                <td style="padding:10px;"><strong>{label_text}</strong></td>
+                <td style="padding:10px;"><input type="number" class="payment-value" data-index="{i}" 
                     value="{saved_val}" placeholder="{placeholder}" 
-                    oninput="window.calculateTotalPercentage()"></td>
-                <td><input type="date" class="payment-date" data-index="{i}" value="{saved_date}"></td>
+                    oninput="window.calculateTotalPercentage()"
+                    style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;text-align:center;"></td>
+                <td style="padding:10px;"><input type="date" class="payment-date" data-index="{i}" value="{saved_date}"
+                    style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;"></td>
             </tr>
             '''
         
         tbody.innerHTML = rows_html
+        # Recalculate totals after updating rows
+        self.calculate_total_percentage()
 
     def calculate_total_percentage(self):
-        if self.payment_method != 'percentage':
-            return
         inputs = anvil.js.window.document.querySelectorAll('.payment-value')
-        total = 0
+        total_entered = 0
         for inp in inputs:
             val = float(inp.value or 0)
-            total += val
+            total_entered += val
+        
+        # Get total contract amount
+        total_contract = float(self.current_data.get('total_price', 0) or 0) if self.current_data else 0
+        
         total_el = anvil.js.window.document.getElementById('totalPercentage')
-        if total_el:
-            total_el.textContent = str(int(total))
-            if total == 100:
-                total_el.style.color = '#4caf50'
-            elif total > 100:
-                total_el.style.color = '#f44336'
-            else:
-                total_el.style.color = '#666'
-
-    def update_delivery_date(self):
-        """Update delivery date from input"""
-        delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
-        if delivery_input:
-            self.delivery_date = str(delivery_input.value or '')
-            if self.current_data:
-                self.render_contract()
+        total_unit = anvil.js.window.document.getElementById('totalUnit')
+        entered_el = anvil.js.window.document.getElementById('enteredAmount')
+        remaining_el = anvil.js.window.document.getElementById('remainingAmount')
+        is_ar = self.current_lang == 'ar'
+        
+        if self.payment_method == 'percentage':
+            # Calculate amounts from percentages
+            entered_amount = total_contract * total_entered / 100
+            remaining_amount = total_contract - entered_amount
+            
+            if total_el:
+                total_el.textContent = f"{total_entered:.1f}"
+                if total_unit:
+                    total_unit.textContent = '%'
+                # Color based on percentage
+                if round(total_entered, 1) == 100:
+                    total_el.style.color = '#4caf50'  # Green when 100%
+                elif total_entered > 100:
+                    total_el.style.color = '#f44336'  # Red when over 100%
+                else:
+                    total_el.style.color = '#ff9800'  # Orange when under 100%
+            
+            if entered_el:
+                currency = 'ج.م' if is_ar else 'EGP'
+                entered_el.textContent = f"{entered_amount:,.0f} {currency}"
+                entered_el.style.color = '#2196F3'
+            
+            if remaining_el:
+                currency = 'ج.م' if is_ar else 'EGP'
+                remaining_el.textContent = f"{remaining_amount:,.0f} {currency}"
+                if remaining_amount == 0:
+                    remaining_el.style.color = '#4caf50'  # Green when done
+                elif remaining_amount < 0:
+                    remaining_el.style.color = '#f44336'  # Red when over
+                else:
+                    remaining_el.style.color = '#ff9800'  # Orange when remaining
+        else:
+            # Amount mode
+            remaining_amount = total_contract - total_entered
+            
+            if total_el:
+                currency = 'ج.م' if is_ar else 'EGP'
+                total_el.textContent = f"{total_entered:,.0f}"
+                if total_unit:
+                    total_unit.textContent = currency
+                # Color based on amount
+                if round(total_entered, 0) == round(total_contract, 0):
+                    total_el.style.color = '#4caf50'  # Green when exact
+                elif total_entered > total_contract:
+                    total_el.style.color = '#f44336'  # Red when over
+                else:
+                    total_el.style.color = '#ff9800'  # Orange when under
+            
+            if entered_el:
+                currency = 'ج.م' if is_ar else 'EGP'
+                entered_el.textContent = f"{total_entered:,.0f} {currency}"
+                entered_el.style.color = '#2196F3'
+            
+            if remaining_el:
+                currency = 'ج.م' if is_ar else 'EGP'
+                remaining_el.textContent = f"{remaining_amount:,.0f} {currency}"
+                if remaining_amount == 0:
+                    remaining_el.style.color = '#4caf50'
+                elif remaining_amount < 0:
+                    remaining_el.style.color = '#f44336'
+                else:
+                    remaining_el.style.color = '#ff9800'
 
     def validate_payments(self):
-        """Validate payment data like VBA code"""
         is_ar = self.current_lang == 'ar'
         value_inputs = anvil.js.window.document.querySelectorAll('.payment-value')
         date_inputs = anvil.js.window.document.querySelectorAll('.payment-date')
@@ -249,13 +351,11 @@ class ContractPrintForm(ContractPrintFormTemplate):
             val = float(val_inp.value or 0)
             date_str = str(date_inp.value or '')
             
-            # Check if date is empty
             if not date_str:
-                msg = f'من فضلك أدخل تاريخ صحيح للدفعة رقم {i+1}' if is_ar else f'Please enter a valid date for installment {i+1}'
+                msg = f'من فضلك أدخل تاريخ للدفعة رقم {i+1}' if is_ar else f'Please enter date for installment {i+1}'
                 alert(msg)
                 return False
             
-            # Parse and validate date
             try:
                 payment_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             except:
@@ -263,39 +363,34 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 alert(msg)
                 return False
             
-            # Check date not before today
             if payment_date < today:
-                msg = f'تاريخ الدفعة رقم {i+1} لا يمكن أن يكون قبل تاريخ اليوم' if is_ar else f'Installment {i+1} date cannot be earlier than today'
+                msg = f'تاريخ الدفعة رقم {i+1} لا يمكن أن يكون قبل اليوم' if is_ar else f'Date for installment {i+1} cannot be before today'
                 alert(msg)
                 return False
             
-            # Check for duplicate dates
             if date_str in dates_used:
-                msg = 'تاريخ مكرر! من فضلك أدخل تاريخ مختلف لكل دفعة' if is_ar else 'Duplicate date! Please provide a unique date for each installment'
+                msg = 'تاريخ مكرر! من فضلك أدخل تاريخ مختلف لكل دفعة' if is_ar else 'Duplicate date! Please use unique dates'
                 alert(msg)
                 return False
             dates_used.append(date_str)
             
             total_value += val
         
-        # Validate totals
         if self.payment_method == 'percentage':
             if round(total_value, 2) != 100:
-                msg = f'إجمالي النسب غير صحيح!\nالإجمالي المطلوب: 100%\nالإجمالي المدخل: {total_value}%' if is_ar else f'Total percentage is incorrect!\nRequired: 100%\nEntered: {total_value}%'
+                msg = f'إجمالي النسب = {total_value}%\nيجب أن يكون 100%' if is_ar else f'Total = {total_value}%\nMust be 100%'
                 alert(msg)
                 return False
         else:
-            if round(total_value, 2) != round(total_price, 2):
+            if round(total_value, 0) != round(total_price, 0):
                 diff = abs(total_price - total_value)
-                msg = f'المبالغ المدخلة لا تطابق إجمالي قيمة العقد!\nقيمة العقد: {total_price:,.2f}\nالإجمالي المدخل: {total_value:,.2f}\nالفرق: {diff:,.2f}' if is_ar else f'Amounts do not match contract value!\nContract: {total_price:,.2f}\nEntered: {total_value:,.2f}\nDifference: {diff:,.2f}'
+                msg = f'إجمالي المبالغ = {total_value:,.0f}\nقيمة العقد = {total_price:,.0f}\nالفرق = {diff:,.0f}' if is_ar else f'Total = {total_value:,.0f}\nContract = {total_price:,.0f}\nDiff = {diff:,.0f}'
                 alert(msg)
                 return False
         
         return True
 
     def save_payments(self):
-        """Save payment data with validation"""
-        # Validate first
         if not self.validate_payments():
             return
         
@@ -336,17 +431,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 })
         
         self.close_payment_modal()
-        
-        # Show success message
         is_ar = self.current_lang == 'ar'
-        msg = 'تم حفظ بيانات الدفعات بنجاح' if is_ar else 'Payment data saved successfully'
-        Notification(msg, style='success').show()
+        Notification('تم حفظ الدفعات' if is_ar else 'Payments saved', style='success').show()
         
         if self.current_data:
-            self.render_contract()
+            self.render_template()
 
     def save_contract(self):
-        """Save complete contract data to database"""
         if not self.current_data:
             alert('Please select a quotation first')
             return
@@ -356,11 +447,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
             alert('من فضلك أدخل بيانات الدفعات أولاً' if is_ar else 'Please enter payment data first')
             return
         
-        # Get delivery date
         delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
         delivery_date = str(delivery_input.value) if delivery_input else ''
         
-        # Prepare contract data
         contract_data = {
             'quotation_number': self.current_data.get('quotation_number'),
             'client_name': self.current_data.get('client_name'),
@@ -372,15 +461,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
             'colors_count': self.current_data.get('colors_count'),
             'machine_width': self.current_data.get('machine_width'),
             'material': self.current_data.get('material'),
-            'winder_type': self.current_data.get('winder_type'),
-            'price_mode': self.current_data.get('price_mode'),
+            'winder_type': self.current_data.get('winder'),
+            'price_mode': self.current_data.get('pricing_mode'),
             'total_price': self.current_data.get('total_price'),
-            'currency': self.current_data.get('currency'),
             'payment_method': self.payment_method,
             'num_payments': len(self.payment_data),
             'payments': self.payment_data,
             'delivery_date': delivery_date,
-            'contract_date': date.today().isoformat(),
             'language': self.current_lang
         }
         
@@ -388,310 +475,562 @@ class ContractPrintForm(ContractPrintFormTemplate):
             result = anvil.server.call('save_contract', contract_data)
             if result.get('success'):
                 is_ar = self.current_lang == 'ar'
-                msg = 'تم حفظ بيانات العقد بنجاح' if is_ar else 'Contract saved successfully'
-                Notification(msg, style='success').show()
+                Notification('تم حفظ العقد بنجاح' if is_ar else 'Contract saved', style='success').show()
             else:
                 alert(f"Error: {result.get('message', 'Unknown error')}")
         except Exception as e:
-            alert(f"Error saving contract: {str(e)}")
+            alert(f"Error: {str(e)}")
 
-    # ==================== Render Contract ====================
-    def render_contract(self):
+    # ==================== RENDER TEMPLATE (Same as Quotation) ====================
+    def render_template(self):
+        """Render the contract template - SAME as quotation but with 'Contract' title"""
         if not self.current_data:
             return
-        
+
+        # Hide empty state, show template
         empty_state = anvil.js.window.document.getElementById('emptyState')
         template_content = anvil.js.window.document.getElementById('templateContent')
-        
         if empty_state:
             empty_state.style.display = 'none'
         if template_content:
             template_content.style.display = 'block'
-            html = self.generate_contract_html()
-            template_content.innerHTML = html
 
-    def generate_contract_html(self):
         data = self.current_data
-        is_ar = self.current_lang == 'ar'
-        
-        # Get settings
-        try:
-            settings_result = anvil.server.call('get_all_settings')
-            c = settings_result.get('settings', {}) if settings_result.get('success') else {}
-        except:
-            c = {}
-        
-        html = ''
-        dir_class = '' if is_ar else 'ltr'
-        
-        # Safe get for numeric values
-        def safe_float(val, default=0):
-            try:
-                return float(val) if val else default
-            except:
-                return default
-        
-        # Get delivery date
-        delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
-        delivery_date = str(delivery_input.value) if delivery_input and delivery_input.value else ''
-        
+        c = data.get('company', {})
+        is_ar = (self.current_lang == 'ar')
+
+        # Get machine details
+        model = str(data.get('model', '')).upper()
+        material = str(data.get('material', '')).upper()
+        plc_value = str(data.get('plc', '')).upper()
+        machine_type_base = data.get('machine_type', '') or data.get('model', '')
+        machine_type_display = f"Flexo Stack With {machine_type_base}" if not is_ar else f"فليكسو ستاك مع {machine_type_base}"
+
+        # Winder type
+        def get_winder_type():
+            unwind_options = []
+            rewind_options = []
+            if str(data.get('pneumatic_unwind', '')).upper() in ['YES', 'TRUE', '1']:
+                unwind_options.append('Pneumatic Unwind' if not is_ar else 'فك هوائي')
+            if str(data.get('hydraulic_station_unwind', '')).upper() in ['YES', 'TRUE', '1']:
+                unwind_options.append('Hydraulic Station Unwind' if not is_ar else 'فك هيدروليك')
+            if str(data.get('pneumatic_rewind', '')).upper() in ['YES', 'TRUE', '1']:
+                rewind_options.append('Pneumatic Rewind' if not is_ar else 'لف هوائي')
+            if str(data.get('surface_rewind', '')).upper() in ['YES', 'TRUE', '1']:
+                rewind_options.append('Surface Rewind' if not is_ar else 'لف سطحي')
+            if not unwind_options and not rewind_options:
+                return 'Central' if not is_ar else 'مركزي'
+            parts = []
+            if unwind_options:
+                parts.append(', '.join(unwind_options))
+            if rewind_options:
+                parts.append(', '.join(rewind_options))
+            return ' / '.join(parts)
+
+        winder_type_display = get_winder_type()
         q_num = data.get('quotation_number', '')
-        total_price = safe_float(data.get('total_price', 0))
-        currency = 'ج.م' if is_ar else 'EGP'
-        
-        # ==================== PAGE 1 - Contract Info ====================
-        html += f'<div class="template-page {dir_class}">'
-        
+
+        # ==================== PAGE 1 ====================
+        html = f'<div class="template-page {"" if is_ar else "ltr"}">'
+
         # Header
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div style="font-size:14px;color:#333;">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "القاهرة" if is_ar else "Cairo")}</div>'
-        html += f'<div style="font-size:13px;color:#666;">{c.get("company_address_ar" if is_ar else "company_address_en", "")}</div>'
+        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")} / {data.get("quotation_date_ar" if is_ar else "quotation_date_en", "")}</div>'
+        html += f'<div class="address">{c.get("company_address_ar" if is_ar else "company_address_en", "")}</div>'
+        html += f'<div class="contact">{data.get("user_phone", "")}</div>'
+        html += f'<div class="contact">{c.get("company_email", "")}</div>'
         html += '</div>'
         html += '<div class="header-left">'
-        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo" style="max-width:120px;">'
-        html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "حلوان بلاست" if is_ar else "Helwan Plast")}</div>'
+        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
+        html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
+        html += f'<div class="website">{c.get("company_website", "")}</div>'
         html += '</div>'
         html += '</div>'
-        
-        # Contract Title
-        contract_title = 'عقد توريد ماكينة طباعة فلكسو' if is_ar else 'Flexo Printing Machine Supply Contract'
-        html += f'<div style="text-align:center;margin:25px 0;"><h2 style="color:var(--primary-color);font-size:22px;border-bottom:3px solid var(--accent-color);display:inline-block;padding-bottom:10px;">{contract_title}</h2></div>'
-        
-        # Contract Info Box
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:20px;background:#f8f9fa;padding:15px;border-radius:8px;">'
-        html += f'<div><strong>{"رقم العقد" if is_ar else "Contract No"}:</strong> <span style="color:var(--accent-color);font-size:18px;font-weight:bold;">C-{q_num}</span></div>'
-        html += f'<div><strong>{"التاريخ" if is_ar else "Date"}:</strong> {date.today().strftime("%Y-%m-%d")}</div>'
-        if delivery_date:
-            html += f'<div><strong>{"تاريخ التسليم المتوقع" if is_ar else "Expected Delivery"}:</strong> {delivery_date}</div>'
+
+        # Contract Info (Changed from Quotation)
+        html += '<div class="quotation-info">'
+        html += f'<div class="quotation-number">{"عقد رقم" if is_ar else "Contract No.:"} <span>C-{q_num}</span></div>'
+        html += f'<div class="client-info">{"السادة - شركة /" if is_ar else "To: / Company:"} <span>{data.get("client_name", "")}</span></div>'
+        html += f'<div class="greeting">{"تحية طيبة وبعد،" if is_ar else "Dear Sir/Madam,"}</div>'
+        intro = 'تم الاتفاق بين الطرفين على توريد ماكينة الطباعة التالية طبقاً للمواصفات الموضحة أدناه:' if is_ar else 'Both parties have agreed to supply the following printing machine according to the specifications detailed below:'
+        html += f'<div class="intro-text">{intro}</div>'
         html += '</div>'
-        
-        # First Party (Seller)
-        first_party_title = 'الطرف الأول (البائع):' if is_ar else 'First Party (Seller):'
-        html += f'<div class="section-title">{first_party_title}</div>'
+
+        # Machine Details (Same as Quotation)
+        html += f'<div class="section-title">{"تفاصيل الماكينة :" if is_ar else "Machine Details"}</div>'
         html += '<table class="details-table">'
-        html += f'<tr><th>{"الاسم" if is_ar else "Name"}</th><td>{c.get("company_name_ar" if is_ar else "company_name_en", "حلوان بلاست" if is_ar else "Helwan Plast")}</td></tr>'
-        html += f'<tr><th>{"العنوان" if is_ar else "Address"}</th><td>{c.get("company_address_ar" if is_ar else "company_address_en", "")}</td></tr>'
+        
+        if is_ar:
+            html += f'<tr><th>نوع الماكينة :</th><td>{machine_type_display}</td></tr>'
+            html += f'<tr><th>الموديل :</th><td>{data.get("model", "")}</td></tr>'
+            html += f'<tr><th>بلد المنشأ :</th><td>{c.get("country_origin_ar", "")}</td></tr>'
+            html += f'<tr><th>عدد الألوان :</th><td>{data.get("colors_count", "")}</td></tr>'
+            html += f'<tr><th>الوندر :</th><td>{data.get("winder", "")}</td></tr>'
+            html += f'<tr><th>نوع الوندر :</th><td>{winder_type_display}</td></tr>'
+            html += f'<tr><th>عرض الماكينة :</th><td>{data.get("machine_width", "")} سم</td></tr>'
+        else:
+            html += f'<tr><th>Machine Type:</th><td>{machine_type_display}</td></tr>'
+            html += f'<tr><th>Model:</th><td>{data.get("model", "")}</td></tr>'
+            html += f'<tr><th>Country of Origin:</th><td>{c.get("country_origin_en", "")}</td></tr>'
+            html += f'<tr><th>Number of Colors:</th><td>{data.get("colors_count", "")}</td></tr>'
+            html += f'<tr><th>Winder:</th><td>{data.get("winder", "")}</td></tr>'
+            html += f'<tr><th>Winder Type:</th><td>{winder_type_display}</td></tr>'
+            html += f'<tr><th>Machine Width:</th><td>{data.get("machine_width", "")} CM</td></tr>'
         html += '</table>'
-        
-        # Second Party (Client)
-        client_title = 'الطرف الثاني (المشتري):' if is_ar else 'Second Party (Buyer):'
-        html += f'<div class="section-title">{client_title}</div>'
-        html += '<table class="details-table">'
-        
-        client_fields = [
-            ('الاسم' if is_ar else 'Name', data.get('client_name', '')),
-            ('الشركة' if is_ar else 'Company', data.get('company', '')),
-            ('الهاتف' if is_ar else 'Phone', data.get('phone', '')),
-            ('الدولة' if is_ar else 'Country', data.get('country', '')),
-            ('العنوان' if is_ar else 'Address', data.get('address', '')),
+
+        # 17 Specifications (Same as Quotation)
+        html += f'<div class="section-title">{"المواصفات الفنية:" if is_ar else "Technical Specifications:"}</div>'
+        html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px;">'
+
+        def get_drive_type():
+            is_metal_anilox = 'METAL' in model
+            is_nonwoven = 'NONWOVEN' in material
+            if is_metal_anilox and not is_nonwoven:
+                return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق الجيربوكس' if is_ar else 'Gear drive',
+                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر نظام الجير' if is_ar else 'Power transmission via Gear drive')
+            else:
+                return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق السيور' if is_ar else 'Belt drive',
+                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر السيور' if is_ar else 'Power transmission via Belt drive')
+
+        def get_color_registration():
+            is_plc_yes = plc_value in ['YES', 'TRUE', '1', 'نعم']
+            if is_plc_yes:
+                return ('ضبط تسجيل الألوان الأفقي والرأسي أوتوماتيكياً أثناء التشغيل' if is_ar else 'Automatic horizontal and vertical color registration')
+            else:
+                return ('ضبط تسجيل الألوان الأفقي والرأسي يدوياً أثناء التشغيل' if is_ar else 'Manual horizontal and vertical color registration')
+
+        drive_type, drive_desc = get_drive_type()
+        color_reg = get_color_registration()
+
+        specs_en = [
+            "Heavy-duty cast iron frame, stable and vibration-resistant",
+            "Automatic web tension control units suitable for different material weights",
+            "Web guiding (oscillating) units to ensure accurate print centering",
+            "Rollers and cylinders laser-treated for heavy-duty operation",
+            "Automatic machine stop sensors in case of film breakage",
+            "Printing cylinder pressure applied via hydraulic oil system",
+            color_reg,
+            "Integrated overhead lifting cranes",
+            "Suitable for solvent-based and water-based inks",
+            "Delta (Taiwan) inverters",
+            "Safety alarm before machine start-up",
+            "Hot air drying units with extended web path",
+            drive_desc,
+            "Integrated lubrication pumps",
+            "Separate rewind motors with independent control",
+            "Air-shaft unwind/rewind cylinders",
+            "Double-sided printing capability"
         ]
-        
-        for label, value in client_fields:
-            if value:
-                html += f'<tr><th>{label}</th><td>{value}</td></tr>'
-        html += '</table>'
-        
-        # Machine Details
-        machine_title = 'موضوع العقد (تفاصيل الماكينة):' if is_ar else 'Subject of Contract (Machine Details):'
-        html += f'<div class="section-title">{machine_title}</div>'
-        html += '<table class="details-table">'
-        
-        machine_width = safe_float(data.get('machine_width', 0))
-        machine_fields = [
-            ('الموديل' if is_ar else 'Model', data.get('model', '')),
-            ('عدد الألوان' if is_ar else 'Number of Colors', str(data.get('colors_count', '')) if data.get('colors_count') else ''),
-            ('عرض الماكينة' if is_ar else 'Machine Width', f"{machine_width} cm" if machine_width else ''),
-            ('نوع الخامة' if is_ar else 'Material', data.get('material', '')),
-            ('نوع اللفاف' if is_ar else 'Winder Type', data.get('winder_type', '')),
+
+        specs_ar = [
+            "هيكل من الحديد الزهر الثقيل، ثابت ومقاوم للاهتزازات",
+            "وحدات تحكم أوتوماتيكية في شد الخامة",
+            "وحدات توجيه الخامة (المتأرجحة) لضمان دقة توسيط الطباعة",
+            "الرولات والأسطوانات معالجة بالليزر للتشغيل الشاق",
+            "مستشعرات إيقاف أوتوماتيكي للماكينة في حالة انقطاع الفيلم",
+            "ضغط أسطوانة الطباعة عبر نظام الزيت الهيدروليكي",
+            get_color_registration(),
+            "رافعات سقفية مدمجة لتسهيل تحميل وتفريغ الرولات",
+            "مناسبة لأحبار المذيبات والأحبار المائية",
+            "إنفرترات دلتا (تايوان)",
+            "إنذار أمان قبل بدء تشغيل الماكينة",
+            "وحدات تجفيف بالهواء الساخن مع مسار خامة ممتد",
+            get_drive_type()[1],
+            "مضخات تشحيم مدمجة لضمان توزيع متوازن للزيت",
+            "موتورات إعادة لف منفصلة بتحكم مستقل",
+            "أسطوانات فك/لف بشافت هوائي",
+            "إمكانية الطباعة على الوجهين"
         ]
-        
-        for label, value in machine_fields:
-            if value and value != '0 cm' and value != ' cm':
-                html += f'<tr><th>{label}</th><td>{value}</td></tr>'
-        html += '</table>'
-        
+
+        specs = specs_ar if is_ar else specs_en
+        for spec in specs:
+            html += f'<li>{spec}</li>'
+        html += '</ol>'
         html += '</div>'  # End Page 1
-        
-        # ==================== PAGE 2 - Technical Specs ====================
-        html += f'<div class="template-page page-break-before {dir_class}">'
-        
-        # Header repeated
+
+        # ==================== PAGE 2 - Technical Table (Same as Quotation) ====================
+        html += f'<div class="template-page page-break-before {"" if is_ar else "ltr"}">'
+
+        # Header (repeated)
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div style="font-size:14px;color:#333;">{"عقد رقم" if is_ar else "Contract No"}: C-{q_num}</div>'
+        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")}</div>'
         html += '</div>'
         html += '<div class="header-left">'
-        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo" style="max-width:80px;">'
+        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
+        html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
         html += '</div>'
         html += '</div>'
-        
-        # Technical Specifications
-        specs_title = 'المواصفات الفنية:' if is_ar else 'Technical Specifications:'
-        html += f'<div class="section-title">{specs_title}</div>'
-        
-        html += '<table class="tech-table">'
-        
-        winder_type = str(data.get('winder_type', '') or '').upper()
+
+        html += f'<div class="section-title">{"جدول المواصفات الفنية:" if is_ar else "General Specifications:"}</div>'
+
+        # Calculate table values
+        winder_type = str(data.get('winder', '')).upper()
         is_double_winder = 'DOUBLE' in winder_type
-        model = str(data.get('model', '') or '').upper()
-        is_belt_drive = 'METAL' not in model
-        
-        specs = [
-            ('أوجه الطباعة' if is_ar else 'Printing Sides', '2'),
-            ('أقصى عرض للفيلم' if is_ar else 'Max Film Width', f"{int(machine_width * 10 + 50)} mm" if machine_width else ''),
-            ('أقصى عرض للطباعة' if is_ar else 'Max Print Width', f"{int(machine_width * 10 - 40)} mm" if machine_width else ''),
-            ('نوع الأنيلوكس' if is_ar else 'Anilox Type', ('انيلوكس سيراميك' if is_ar else 'Ceramic Anilox') if is_belt_drive else ('انيلوكس معدني' if is_ar else 'Metal Anilox')),
-            ('طريقة نقل القدرة' if is_ar else 'Power Transmission', ('سيور' if is_ar else 'Belt Drive') if is_belt_drive else ('جيربوكس' if is_ar else 'Gear Drive')),
-            ('أقصى سرعة للماكينة' if is_ar else 'Max Machine Speed', '120 m/min' if is_belt_drive else '100 m/min'),
-        ]
-        
+        colors_count = int(data.get('colors_count', 0) or 0)
+        machine_width = float(data.get('machine_width', 0) or 0)
+        is_metal_anilox = 'METAL' in model
+        is_nonwoven = 'NONWOVEN' in material
+        is_belt_drive = not (is_metal_anilox and not is_nonwoven)
+
+        # Get settings values
+        belt_max_machine_speed = int(c.get('belt_max_machine_speed', 120))
+        belt_max_print_speed = int(c.get('belt_max_print_speed', 120))
+        belt_print_length = c.get('belt_print_length', '300mm - 1300mm')
+        gear_max_machine_speed = int(c.get('gear_max_machine_speed', 100))
+        gear_max_print_speed = int(c.get('gear_max_print_speed', 80))
+        gear_print_length = c.get('gear_print_length', '240mm - 1000mm')
+        single_winder_roll_dia = int(c.get('single_winder_roll_dia', 1200))
+        double_winder_roll_dia = int(c.get('double_winder_roll_dia', 800))
+        dryer_capacity = c.get('dryer_capacity', '2.2kw air blower × 2 units')
+        main_motor_power = c.get('main_motor_power', '5 HP')
+
+        # Calculate values
+        if colors_count == 8:
+            colors_display = "8+0, 7+1, 6+2, 5+3, 4+4" if not is_ar else "8+0، 7+1، 6+2، 5+3، 4+4"
+        elif colors_count == 6:
+            colors_display = "6+0, 5+1, 4+2, 3+3" if not is_ar else "6+0، 5+1، 4+2، 3+3"
+        elif colors_count == 4:
+            colors_display = "4+0, 3+1, 2+2" if not is_ar else "4+0، 3+1، 2+2"
+        else:
+            colors_display = str(colors_count)
+
+        tension_units = 4 if is_double_winder else 2
+        brake_system = 4 if is_double_winder else 2
+        brake_power = 2 if is_double_winder else 1
+        web_guiding = 2 if is_double_winder else 1
+        max_film_width = int(machine_width * 10 + 50)
+        max_print_width = int(machine_width * 10 - 40)
+        print_length = belt_print_length if is_belt_drive else gear_print_length
+        max_roll_diameter = double_winder_roll_dia if is_double_winder else single_winder_roll_dia
+        anilox_display = ("Metal Anilox" if not is_ar else "انيلوكس معدني") if is_metal_anilox else ("Ceramic Anilox" if not is_ar else "انيلوكس سيراميك")
+        max_machine_speed = belt_max_machine_speed if is_belt_drive else gear_max_machine_speed
+        max_print_speed = belt_max_print_speed if is_belt_drive else gear_max_print_speed
+        drive_display = ("Belt Drive" if not is_ar else "سيور") if is_belt_drive else ("Gear Drive" if not is_ar else "جيربوكس")
+
+        def yes_no(field):
+            val = str(data.get(field, '')).upper()
+            if val in ['YES', 'TRUE', '1', 'نعم']:
+                return 'نعم' if is_ar else 'Yes'
+            return None  # Hide if No
+
+        # Build specs table - using same dynamic logic as QuotationPrintForm
+        def yes_no_value(field_name):
+            val = str(data.get(field_name, '')).upper()
+            if val in ['YES', 'TRUE', '1', 'نعم']:
+                return 'نعم' if is_ar else 'Yes'
+            return None
+
+        def is_yes_value(field_name):
+            val = str(data.get(field_name, '')).upper()
+            return val in ['YES', 'TRUE', '1', 'نعم']
+
+        def normalize_values(values):
+            if values is None:
+                return []
+            if isinstance(values, list):
+                return [str(v).strip() for v in values if str(v).strip()]
+            if isinstance(values, str):
+                parts = []
+                for chunk in values.replace(',', '\n').split('\n'):
+                    chunk = chunk.strip()
+                    if chunk:
+                        parts.append(chunk)
+                return parts
+            return []
+
+        def default_specs():
+            return [
+                {'label_ar': 'الموديل', 'label_en': 'Model', 'source': 'field', 'values': ['model'], 'active': True},
+                {'label_ar': 'عدد الألوان', 'label_en': 'Number of Colors', 'source': 'field', 'values': ['colors_display'], 'active': True},
+                {'label_ar': 'أوجه الطباعة', 'label_en': 'Printing Sides', 'source': 'field', 'values': ['printing_sides'], 'active': True},
+                {'label_ar': 'وحدات التحكم في الشد', 'label_en': 'Tension Control Units', 'source': 'field', 'values': ['tension_units'], 'active': True},
+                {'label_ar': 'نظام الفرامل', 'label_en': 'Brake System', 'source': 'field', 'values': ['brake_system'], 'active': True},
+                {'label_ar': 'قوة الفرامل', 'label_en': 'Brake Power', 'source': 'field', 'values': ['brake_power'], 'active': True},
+                {'label_ar': 'نظام توجيه الخامة (النوع المتأرجح)', 'label_en': 'Web Guiding System (Oscillating Type)', 'source': 'field', 'values': ['web_guiding'], 'active': True},
+                {'label_ar': 'أقصى عرض للفيلم', 'label_en': 'Maximum Film Width', 'source': 'field', 'values': ['max_film_width'], 'active': True},
+                {'label_ar': 'أقصى عرض للطباعة', 'label_en': 'Maximum Printing Width', 'source': 'field', 'values': ['max_print_width'], 'active': True},
+                {'label_ar': 'الحد الأدنى والأقصى لطول الطباعة', 'label_en': 'Minimum and Maximum Printing Length', 'source': 'field', 'values': ['print_length'], 'active': True},
+                {'label_ar': 'أقصى قطر للرول', 'label_en': 'Maximum Roll Diameter', 'source': 'field', 'values': ['max_roll_diameter'], 'active': True},
+                {'label_ar': 'نوع الأنيلوكس', 'label_en': 'Anilox Type', 'source': 'field', 'values': ['anilox_display'], 'active': True},
+                {'label_ar': 'أقصى سرعة للماكينة', 'label_en': 'Maximum Machine Speed', 'source': 'field', 'values': ['max_machine_speed'], 'active': True},
+                {'label_ar': 'أقصى سرعة للطباعة', 'label_en': 'Maximum Printing Speed', 'source': 'field', 'values': ['max_print_speed'], 'active': True},
+                {'label_ar': 'قدرة المجفف', 'label_en': 'Dryer Capacity', 'source': 'field', 'values': ['dryer_capacity'], 'active': True},
+                {'label_ar': 'طريقة نقل القدرة', 'label_en': 'Power Transmission Method', 'source': 'field', 'values': ['drive_display'], 'active': True},
+                {'label_ar': 'قدرة الموتور الرئيسي', 'label_en': 'Main Motor Power', 'source': 'field', 'values': ['main_motor_power'], 'active': True},
+                {'label_ar': 'الفحص بالفيديو', 'label_en': 'Video Inspection', 'source': 'yes_no', 'values': ['video_inspection'], 'active': True},
+                {'label_ar': 'PLC', 'label_en': 'PLC', 'source': 'yes_no', 'values': ['plc'], 'active': True},
+                {'label_ar': 'سليتر', 'label_en': 'Slitter', 'source': 'yes_no', 'values': ['slitter'], 'active': True},
+            ]
+
+        def normalize_specs(raw):
+            defaults = default_specs()
+            if isinstance(raw, list) and len(raw) > 0:
+                first_item = raw[0] if raw else {}
+                if first_item.get('label_en') or first_item.get('label_ar'):
+                    specs = []
+                    for spec in raw:
+                        if not spec.get('label_en') and not spec.get('label_ar'):
+                            continue
+                        specs.append({
+                            'label_ar': spec.get('label_ar', ''),
+                            'label_en': spec.get('label_en', ''),
+                            'source': spec.get('source', 'field'),
+                            'values': normalize_values(spec.get('values')),
+                            'active': spec.get('active', True) is not False,
+                        })
+                    return specs if specs else defaults
+                return defaults
+            return defaults
+
+        # Get tech_specs_settings from database
+        tech_specs_settings = data.get('tech_specs_settings', None)
+        specs_list = normalize_specs(tech_specs_settings)
+
+        value_map = {
+            'model': data.get('model', '-'),
+            'colors_display': colors_display,
+            'printing_sides': '2',
+            'tension_units': str(tension_units),
+            'brake_system': str(brake_system),
+            'brake_power': str(brake_power),
+            'web_guiding': str(web_guiding),
+            'max_film_width': f"{max_film_width} mm",
+            'max_print_width': f"{max_print_width} mm",
+            'print_length': print_length,
+            'max_roll_diameter': f"{max_roll_diameter} mm",
+            'anilox_display': anilox_display,
+            'max_machine_speed': f"{max_machine_speed} m/min",
+            'max_print_speed': f"{max_print_speed} m/min",
+            'dryer_capacity': dryer_capacity,
+            'drive_display': drive_display,
+            'main_motor_power': main_motor_power,
+        }
+
+        def resolve_value(key):
+            if key in value_map:
+                return value_map[key]
+            return data.get(key, '')
+
+        html += '<table class="tech-table">'
         row_num = 1
-        for label, value in specs:
-            if value:
-                html += f'<tr><td class="row-num" style="width:40px;text-align:center;background:#f5f5f5;">{row_num}</td><th style="width:40%;">{label}</th><td class="value">{value}</td></tr>'
-                row_num += 1
+        for spec in specs_list:
+            if not spec.get('active', True):
+                continue
+
+            label = spec.get('label_ar', '') if is_ar else spec.get('label_en', '')
+            source = spec.get('source', 'field')
+            values = normalize_values(spec.get('values'))
+
+            if source == 'fixed':
+                value_parts = values or ['-']
+                value_text = '<br>'.join(value_parts)
+            elif source == 'yes_no':
+                if not values:
+                    continue
+                show_row = any(is_yes_value(v) for v in values)
+                if not show_row:
+                    continue
+                value_text = 'نعم' if is_ar else 'Yes'
+            elif source == 'custom':
+                condition_field = spec.get('condition_field', '')
+                condition_value = str(spec.get('condition_value', '')).upper().strip()
+                then_value = spec.get('then_value', '')
+                else_value = spec.get('else_value', '')
+                
+                winder_type_val = str(data.get('winder', '')).upper()
+                condition_map = {
+                    'winder_type': winder_type_val,
+                    'drive_type': 'BELT' if is_belt_drive else 'GEAR',
+                    'anilox_type': 'METAL' if is_metal_anilox else 'CERAMIC',
+                    'colors_count': str(colors_count),
+                    'machine_width': str(int(machine_width)),
+                    'video_inspection': 'YES' if is_yes_value('video_inspection') else 'NO',
+                    'plc': 'YES' if is_yes_value('plc') else 'NO',
+                    'slitter': 'YES' if is_yes_value('slitter') else 'NO',
+                }
+                
+                actual_value = str(condition_map.get(condition_field, '')).upper().strip()
+                condition_values = [v.strip().upper() for v in condition_value.split(',')]
+                if actual_value in condition_values:
+                    value_text = then_value
+                else:
+                    value_text = else_value
+                
+                if not value_text:
+                    continue
+            else:
+                value_parts = []
+                for key in values:
+                    resolved = resolve_value(key)
+                    if resolved not in [None, '']:
+                        value_parts.append(str(resolved))
+                value_text = '<br>'.join(value_parts) if value_parts else '-'
+
+            # DYNAMIC: Hide any row where value is "No" or "لا" or empty
+            value_upper = str(value_text).strip().upper()
+            if value_upper in ['NO', 'لا', 'N/A', '-', '']:
+                continue
+
+            html += f'<tr><td class="row-num">{row_num}</td><th>{label}</th><td class="value">{value_text}</td></tr>'
+            row_num += 1
         html += '</table>'
-        
+
+        # Cylinders
+        cylinders = data.get('cylinders', [])
+        html += f'<div class="section-title">{"سلندرات الطباعة :" if is_ar else "Printing Cylinders:"}</div>'
+        html += '<table class="cylinders-table" style="width: 50%;">'
+        html += f'<tr><th>{"مقاس" if is_ar else "Size"}</th><th>{"عدد" if is_ar else "Count"}</th></tr>'
+        for i in range(12):
+            if i < len(cylinders):
+                cyl = cylinders[i]
+                size = cyl.get("size", "")
+                count = cyl.get("count", "")
+                html += f'<tr><td style="border: 1px solid #ddd;">{size}</td><td style="border: 1px solid #ddd;">{count}</td></tr>'
+            else:
+                html += '<tr><td style="border: none;"></td><td style="border: none;"></td></tr>'
+        html += '</table>'
         html += '</div>'  # End Page 2
-        
-        # ==================== PAGE 3 - Financial & Payments ====================
-        html += f'<div class="template-page page-break-before {dir_class}">'
-        
-        # Header repeated
+
+        # ==================== PAGE 3 - Financial + Payments ====================
+        html += f'<div class="template-page page-break-before {"" if is_ar else "ltr"}">'
+
+        # Header
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div style="font-size:14px;color:#333;">{"عقد رقم" if is_ar else "Contract No"}: C-{q_num}</div>'
+        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")}</div>'
         html += '</div>'
         html += '<div class="header-left">'
-        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo" style="max-width:80px;">'
+        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
+        html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
         html += '</div>'
         html += '</div>'
-        
-        # Financial Section
-        financial_title = 'القيمة المالية للعقد:' if is_ar else 'Contract Value:'
-        html += f'<div class="section-title">{financial_title}</div>'
-        
-        html += '<div class="financial-box" style="background:linear-gradient(135deg,#667eea11,#764ba211);border:2px solid var(--accent-color);">'
-        html += f'<div class="total-price" style="font-size:28px;color:var(--accent-color);">{total_price:,.0f} {currency}</div>'
-        
-        price_note = 'القيمة شاملة التوريد والتركيب والتشغيل والتدريب والضمان' if is_ar else 'Price includes supply, installation, commissioning, training and warranty'
-        html += f'<div style="text-align:center;font-size:12px;color:#666;margin-top:10px;">{price_note}</div>'
+
+        html += f'<div class="section-title">{"القيمة المالية:" if is_ar else "Contract Value:"}</div>'
+
+        html += '<div class="financial-box">'
+        total_price = data.get("total_price", "")
+        html += f'<div class="total-price">{total_price} {"ج.م" if is_ar else "EGP"}</div>'
         html += '</div>'
-        
+
         # Payment Schedule
         if self.payment_data:
-            payment_title = 'جدول الدفعات:' if is_ar else 'Payment Schedule:'
-            html += f'<div class="section-title">{payment_title}</div>'
-            
-            html += '<table class="payment-schedule-table" style="border:2px solid var(--accent-color);">'
-            html += '<tr style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">'
-            html += f'<th style="color:white;padding:10px;">{"#"}</th>'
-            html += f'<th style="color:white;padding:10px;">{"البند" if is_ar else "Description"}</th>'
-            html += f'<th style="color:white;padding:10px;">{"النسبة" if is_ar else "Percentage"}</th>'
-            html += f'<th style="color:white;padding:10px;">{"المبلغ" if is_ar else "Amount"}</th>'
-            html += f'<th style="color:white;padding:10px;">{"التاريخ" if is_ar else "Date"}</th>'
+            html += f'<div class="section-title">{"جدول الدفعات:" if is_ar else "Payment Schedule:"}</div>'
+            html += '<table class="payment-table" style="width:100%;">'
+            html += '<tr style="background:#667eea;color:white;">'
+            html += f'<th style="padding:10px;color:white;">#</th>'
+            html += f'<th style="padding:10px;color:white;">{"البند" if is_ar else "Description"}</th>'
+            html += f'<th style="padding:10px;color:white;">{"النسبة" if is_ar else "%"}</th>'
+            html += f'<th style="padding:10px;color:white;">{"المبلغ" if is_ar else "Amount"}</th>'
+            html += f'<th style="padding:10px;color:white;">{"التاريخ" if is_ar else "Date"}</th>'
             html += '</tr>'
             
-            for i, payment in enumerate(self.payment_data):
-                label = payment.get('label_ar' if is_ar else 'label_en', '')
-                percentage = payment.get('percentage', 0)
-                amount = payment.get('amount', 0)
-                pdate = payment.get('date', '')
+            currency = 'ج.م' if is_ar else 'EGP'
+            for i, p in enumerate(self.payment_data):
+                label = p.get('label_ar' if is_ar else 'label_en', '')
                 bg = '#f8f9fa' if i % 2 == 0 else 'white'
-                
                 html += f'<tr style="background:{bg};">'
-                html += f'<td style="padding:8px;font-weight:bold;">{i + 1}</td>'
-                html += f'<td style="padding:8px;text-align:{"right" if is_ar else "left"};font-weight:bold;">{label}</td>'
-                html += f'<td style="padding:8px;">{percentage:.1f}%</td>'
-                html += f'<td style="padding:8px;font-weight:bold;color:var(--accent-color);">{amount:,.0f} {currency}</td>'
-                html += f'<td style="padding:8px;">{pdate}</td>'
-                html += f'</tr>'
-            
-            # Total row
-            html += f'<tr style="background:#667eea22;font-weight:bold;">'
-            html += f'<td colspan="2" style="padding:10px;text-align:{"right" if is_ar else "left"};">{"الإجمالي" if is_ar else "Total"}</td>'
-            html += f'<td style="padding:10px;">100%</td>'
-            html += f'<td style="padding:10px;color:var(--accent-color);font-size:16px;">{total_price:,.0f} {currency}</td>'
-            html += f'<td></td>'
-            html += f'</tr>'
-            
+                html += f'<td style="padding:8px;text-align:center;">{i+1}</td>'
+                html += f'<td style="padding:8px;">{label}</td>'
+                html += f'<td style="padding:8px;text-align:center;">{p.get("percentage", 0):.1f}%</td>'
+                html += f'<td style="padding:8px;text-align:center;">{p.get("amount", 0):,.0f} {currency}</td>'
+                html += f'<td style="padding:8px;text-align:center;">{p.get("date", "")}</td>'
+                html += '</tr>'
             html += '</table>'
-        
-        # Delivery Date
-        if delivery_date:
-            html += f'<div style="margin:20px 0;padding:15px;background:#e8f5e9;border-radius:8px;border-right:4px solid #4caf50;">'
-            html += f'<strong>{"تاريخ التسليم المتوقع" if is_ar else "Expected Delivery Date"}:</strong> {delivery_date}'
-            html += '</div>'
-        
-        # Terms & Conditions
-        terms_title = 'الشروط والأحكام:' if is_ar else 'Terms & Conditions:'
-        html += f'<div class="section-title">{terms_title}</div>'
-        
-        warranty_months = c.get('warranty_months', '12')
-        
-        terms = [
-            f'{"مدة الضمان" if is_ar else "Warranty Period"}: {warranty_months} {"شهر" if is_ar else "months"}',
-            'يشمل الضمان جميع قطع الغيار والصيانة الدورية' if is_ar else 'Warranty covers all spare parts and periodic maintenance',
-            'التركيب والتشغيل والتدريب مجاني' if is_ar else 'Installation, commissioning and training are free',
-            'يلتزم الطرف الثاني بالسداد في المواعيد المحددة' if is_ar else 'Second party commits to payment on scheduled dates',
-        ]
-        
-        html += '<ul style="font-size:12px;line-height:2;background:#f8f9fa;padding:15px 30px;border-radius:8px;">'
-        for term in terms:
-            html += f'<li style="margin-bottom:5px;">{term}</li>'
-        html += '</ul>'
-        
+
+        # Delivery
+        html += '<div class="info-grid">'
+        html += '<div class="info-box">'
+        html += f'<h4>{"التسليم :" if is_ar else "Delivery:"}</h4>'
+        html += f'<p>{"مكان التسليم :" if is_ar else "Delivery location:"} <span class="highlight">{data.get("delivery_location", "-")}</span></p>'
+        delivery_time = self.delivery_date if self.delivery_date else data.get("expected_delivery_formatted", "-")
+        html += f'<p>{"تاريخ التسليم المتوقع :" if is_ar else "Expected delivery:"} <span class="highlight">{delivery_time}</span></p>'
+        html += '</div>'
+
+        html += '<div class="info-box">'
+        html += f'<h4>{"الضمان:" if is_ar else "Warranty:"}</h4>'
+        warranty_text = f'يسري الضمان لمدة <strong>{c.get("warranty_months", "12")}</strong> شهر' if is_ar else f'Warranty: <strong>{c.get("warranty_months", "12")}</strong> months'
+        html += f'<p>{warranty_text}</p>'
+        html += '</div>'
+        html += '</div>'
+
         # Signatures
-        html += '<div style="margin-top:50px;display:flex;justify-content:space-around;padding-top:20px;">'
-        
-        party1 = 'الطرف الأول (البائع)' if is_ar else 'First Party (Seller)'
-        party2 = 'الطرف الثاني (المشتري)' if is_ar else 'Second Party (Buyer)'
-        signature = 'التوقيع' if is_ar else 'Signature'
-        
+        html += '<div style="margin-top:40px;display:flex;justify-content:space-around;">'
         html += f'''
         <div style="text-align:center;min-width:200px;">
-            <div style="font-weight:bold;margin-bottom:10px;font-size:14px;color:var(--primary-color);">{party1}</div>
-            <div style="margin-bottom:5px;">{c.get("company_name_ar" if is_ar else "company_name_en", "حلوان بلاست" if is_ar else "Helwan Plast")}</div>
-            <div style="margin-top:60px;border-top:2px solid #333;padding-top:8px;font-size:12px;">{signature}</div>
+            <div style="font-weight:bold;margin-bottom:10px;">{"الطرف الأول" if is_ar else "First Party"}</div>
+            <div>{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>
+            <div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">{"التوقيع" if is_ar else "Signature"}</div>
         </div>
         <div style="text-align:center;min-width:200px;">
-            <div style="font-weight:bold;margin-bottom:10px;font-size:14px;color:var(--primary-color);">{party2}</div>
-            <div style="margin-bottom:5px;">{data.get('client_name', '')}</div>
-            <div style="margin-top:60px;border-top:2px solid #333;padding-top:8px;font-size:12px;">{signature}</div>
+            <div style="font-weight:bold;margin-bottom:10px;">{"الطرف الثاني" if is_ar else "Second Party"}</div>
+            <div>{data.get('client_name', '')}</div>
+            <div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">{"التوقيع" if is_ar else "Signature"}</div>
         </div>
         '''
         html += '</div>'
-        
         html += '</div>'  # End Page 3
-        
-        return html
+
+        # Update content
+        if template_content:
+            template_content.innerHTML = html
 
     # ==================== Export Functions ====================
     def print_contract(self):
+        if not self.current_data:
+            alert('Please select a quotation first')
+            return
         anvil.js.window.print()
 
     def export_pdf(self):
-        js_code = """
-        (function() {
-            var content = document.getElementById('templateContent');
-            if (!content) { alert('No content to export'); return; }
+        if not self.current_data:
+            alert('Please select a quotation first')
+            return
+        q_num = self.current_data.get('quotation_number', '')
+        client = self.current_data.get('client_name', '').replace(' ', '_')
+        filename = f"Contract_C-{q_num}_{client}.pdf"
+        
+        js_code = f"""
+        (async function() {{
+            const element = document.getElementById('templateContent');
+            if (!element) {{ alert('No content'); return; }}
             
-            var printWin = window.open('', '_blank');
-            printWin.document.write('<html><head><title>Contract</title>');
-            printWin.document.write('<style>');
-            printWin.document.write(document.querySelector('style').innerHTML);
-            printWin.document.write('body { margin: 0; padding: 20px; }');
-            printWin.document.write('.controls-bar { display: none !important; }');
-            printWin.document.write('</style></head><body>');
-            printWin.document.write(content.innerHTML);
-            printWin.document.write('</body></html>');
-            printWin.document.close();
-            
-            setTimeout(function() {
-                printWin.print();
-            }, 500);
-        })();
+            function loadScript(url) {{
+                return new Promise((resolve, reject) => {{
+                    if (document.querySelector('script[src="' + url + '"]')) {{ resolve(); return; }}
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }});
+            }}
+
+            try {{
+                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+                const {{ jsPDF }} = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pages = element.querySelectorAll('.template-page');
+
+                for (let i = 0; i < pages.length; i++) {{
+                    const canvas = await html2canvas(pages[i], {{
+                        scale: 2, useCORS: true, backgroundColor: '#ffffff'
+                    }});
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    const imgWidth = 210;
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                    if (i > 0) pdf.addPage();
+                    pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+                }}
+
+                pdf.save('{filename}');
+            }} catch (error) {{
+                alert('Error: ' + error.message);
+            }}
+        }})();
         """
         anvil.js.window.eval(js_code)
 
@@ -699,7 +1038,6 @@ class ContractPrintForm(ContractPrintFormTemplate):
         if not self.current_data:
             alert('Please select a quotation first')
             return
-        # Reuse the quotation excel export
         try:
             q_num = self.current_data.get('quotation_number', 0)
             result = anvil.server.call('export_quotation_excel', q_num)
@@ -708,9 +1046,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 if media:
                     anvil.media.download(media)
             else:
-                alert(f"Error: {result.get('message', 'Unknown error')}")
+                alert(f"Error: {result.get('message')}")
         except Exception as e:
-            alert(f"Error exporting Excel: {str(e)}")
+            alert(f"Error: {str(e)}")
 
     # ==================== Server Calls ====================
     def load_quotation_for_print(self, quotation_number):

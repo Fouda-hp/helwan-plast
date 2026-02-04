@@ -1645,6 +1645,30 @@ def get_all_users(token_or_email):
 
 
 @anvil.server.callable
+def get_active_users_for_dropdown():
+    """
+    الحصول على أسماء المستخدمين النشطين فقط لاستخدامها في dropdown
+    لا يحتاج صلاحيات أدمن
+    """
+    try:
+        users = []
+        for user in app_tables.users.search(is_active=True, is_approved=True):
+            full_name = user.get('full_name', '').strip()
+            if full_name:
+                users.append({
+                    'name': full_name,
+                    'email': user['email']
+                })
+        
+        # Sort by name
+        users.sort(key=lambda x: x['name'])
+        return {'success': True, 'users': users}
+    except Exception as e:
+        logger.error(f"Error getting active users: {e}")
+        return {'success': False, 'message': str(e), 'users': []}
+
+
+@anvil.server.callable
 def update_user_role(token_or_email, user_id, new_role, custom_permissions=None):
     """
     تحديث دور المستخدم وصلاحياته

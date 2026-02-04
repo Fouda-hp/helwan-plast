@@ -316,10 +316,88 @@ container:
           border-bottom: 2px solid var(--accent-color);
         }
 
-        .header-right { text-align: right; }
-        .header-left { text-align: left; }
-        .header-left .logo { width: 100px; margin-bottom: 8px; }
-        .header-left .company-name { font-size: 14px; font-weight: bold; }
+        .header-right {
+          text-align: right;
+        }
+
+        .header-right .location-date {
+          font-size: 14px;
+          color: #333;
+          margin-bottom: 5px;
+        }
+
+        .header-right .address {
+          font-size: 13px;
+          color: #666;
+          margin-bottom: 3px;
+        }
+
+        .header-right .contact {
+          font-size: 13px;
+          color: #666;
+        }
+
+        .header-left {
+          text-align: left;
+        }
+
+        .header-left .logo {
+          width: 100px;
+          margin-bottom: 8px;
+        }
+
+        .header-left .company-name {
+          font-size: 14px;
+          font-weight: bold;
+          color: var(--primary-color);
+        }
+
+        .header-left .website {
+          font-size: 12px;
+          color: var(--accent-color);
+        }
+
+        /* Quotation/Contract Info */
+        .quotation-info {
+          margin-bottom: 15px;
+        }
+
+        .quotation-number {
+          font-size: 16px;
+          font-weight: bold;
+          color: var(--primary-color);
+          margin-bottom: 8px;
+        }
+
+        .quotation-number span {
+          background: var(--highlight-color);
+          padding: 5px 15px;
+          border-radius: 5px;
+          margin-right: 10px;
+        }
+
+        .client-info {
+          font-size: 14px;
+          margin-bottom: 10px;
+        }
+
+        .client-info span {
+          background: var(--highlight-color);
+          padding: 3px 10px;
+          border-radius: 3px;
+        }
+
+        .greeting {
+          font-size: 13px;
+          color: #333;
+          margin-bottom: 6px;
+        }
+
+        .intro-text {
+          font-size: 12px;
+          color: #555;
+          line-height: 1.5;
+        }
 
         /* Section Title */
         .section-title {
@@ -358,6 +436,69 @@ container:
 
         .payment-schedule-table td {
           text-align: center;
+        }
+
+        .tech-table td.value {
+          background: var(--highlight-color);
+          text-align: left;
+        }
+
+        .tech-table .row-num {
+          width: 40px;
+          text-align: center;
+          background: #f5f5f5;
+        }
+
+        /* Cylinders Table */
+        .cylinders-table {
+          width: 50%;
+          border-collapse: collapse;
+          margin: 0 auto 12px;
+        }
+
+        .cylinders-table th,
+        .cylinders-table td {
+          padding: 4px 10px;
+          border: 1px solid #ddd;
+          text-align: center;
+          font-size: 11px;
+        }
+
+        .cylinders-table th {
+          background: #f5f5f5;
+        }
+
+        /* Delivery & Warranty */
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+
+        .info-box {
+          background: #f9f9f9;
+          padding: 10px;
+          border-radius: 8px;
+        }
+
+        .info-box h4 {
+          font-size: 12px;
+          color: var(--primary-color);
+          margin-bottom: 6px;
+          border-bottom: 1px solid #ddd;
+          padding-bottom: 4px;
+        }
+
+        .info-box p {
+          font-size: 11px;
+          margin-bottom: 4px;
+        }
+
+        .info-box .highlight {
+          background: var(--highlight-color);
+          padding: 2px 8px;
+          border-radius: 3px;
         }
 
         /* Financial Section */

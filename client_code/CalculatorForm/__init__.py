@@ -28,6 +28,9 @@ class CalculatorForm(CalculatorFormTemplate):
     # ---------- Load from overlays
     anvil.js.window.loadQuotationFromOverlay = self._load_quotation_from_js
     anvil.js.window.loadClientFromOverlay = self._load_client_from_js
+    
+    # ---------- Get active users for Sales Rep dropdown
+    anvil.js.window.getActiveUsersForDropdown = self.get_active_users_for_dropdown
 
     # ---------- Event handlers
     for c in self.get_components():
@@ -134,6 +137,9 @@ class CalculatorForm(CalculatorFormTemplate):
 
   def get_clients_for_overlay(self):
     return anvil.server.call("get_all_clients")
+
+  def get_active_users_for_dropdown(self):
+    return anvil.server.call("get_active_users_for_dropdown")
 
   # =================================================
   # LOAD DATA

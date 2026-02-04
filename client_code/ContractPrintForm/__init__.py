@@ -559,8 +559,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
         html += '<div class="header-right">'
         html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")} / {data.get("quotation_date_ar" if is_ar else "quotation_date_en", "")}</div>'
         html += f'<div class="address">{c.get("company_address_ar" if is_ar else "company_address_en", "")}</div>'
-        html += f'<div class="contact">{data.get("user_phone", "")}</div>'
-        html += f'<div class="contact">{c.get("company_email", "")}</div>'
+        html += f'<div class="contact">{data.get("sales_rep_phone", "")}</div>'
+        html += f'<div class="contact">{data.get("sales_rep_email", "")}</div>'
         html += '</div>'
         html += '<div class="header-left">'
         html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
@@ -682,11 +682,15 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # Header (repeated)
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")}</div>'
+        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")} / {data.get("quotation_date_ar" if is_ar else "quotation_date_en", "")}</div>'
+        html += f'<div class="address">{c.get("company_address_ar" if is_ar else "company_address_en", "")}</div>'
+        html += f'<div class="contact">{data.get("sales_rep_phone", "")}</div>'
+        html += f'<div class="contact">{data.get("sales_rep_email", "")}</div>'
         html += '</div>'
         html += '<div class="header-left">'
         html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
         html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
+        html += f'<div class="website">{c.get("company_website", "")}</div>'
         html += '</div>'
         html += '</div>'
 
@@ -959,14 +963,18 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # ==================== PAGE 3 - Financial + Payments ====================
         html += f'<div class="template-page page-break-before {"" if is_ar else "ltr"}">'
 
-        # Header
+        # Header (repeated)
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")}</div>'
+        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")} / {data.get("quotation_date_ar" if is_ar else "quotation_date_en", "")}</div>'
+        html += f'<div class="address">{c.get("company_address_ar" if is_ar else "company_address_en", "")}</div>'
+        html += f'<div class="contact">{data.get("sales_rep_phone", "")}</div>'
+        html += f'<div class="contact">{data.get("sales_rep_email", "")}</div>'
         html += '</div>'
         html += '<div class="header-left">'
         html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
         html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
+        html += f'<div class="website">{c.get("company_website", "")}</div>'
         html += '</div>'
         html += '</div>'
 

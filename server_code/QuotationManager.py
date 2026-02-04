@@ -1307,11 +1307,30 @@ def get_user_info(email):
         if user:
             return {
                 'name': user['full_name'] or 'N/A',
-                'phone': user['phone'] or 'N/A'
+                'phone': user['phone'] or 'N/A',
+                'email': user['email'] or 'N/A'
             }
-        return {'name': 'N/A', 'phone': 'N/A'}
+        return {'name': 'N/A', 'phone': 'N/A', 'email': 'N/A'}
     except Exception:
-        return {'name': 'N/A', 'phone': 'N/A'}
+        return {'name': 'N/A', 'phone': 'N/A', 'email': 'N/A'}
+
+
+def get_user_info_by_name(full_name):
+    """جلب معلومات المستخدم بناءً على الاسم الكامل (للـ Sales Rep)"""
+    try:
+        if not full_name or not full_name.strip():
+            return {'name': 'N/A', 'phone': 'N/A', 'email': 'N/A'}
+        
+        user = app_tables.users.get(full_name=full_name.strip())
+        if user:
+            return {
+                'name': user['full_name'] or 'N/A',
+                'phone': user['phone'] or 'N/A',
+                'email': user['email'] or 'N/A'
+            }
+        return {'name': full_name, 'phone': 'N/A', 'email': 'N/A'}
+    except Exception:
+        return {'name': full_name or 'N/A', 'phone': 'N/A', 'email': 'N/A'}
 
 
 def get_machine_specs(model):
@@ -1372,8 +1391,15 @@ def get_quotation_pdf_data(quotation_number, user_email):
 
         q_data = dict(quotation)
 
-        # جلب معلومات المستخدم (الاسم والهاتف للهيدر)
+        # جلب معلومات المستخدم اللي سجل الدخول (للرجوع)
         user_info = get_user_info(user_email)
+        
+        # جلب معلومات السيلز ريب من الكوتيشن (للهيدر)
+        sales_rep_name = q_data.get('Sales Rep', '').strip()
+        if sales_rep_name:
+            sales_rep_info = get_user_info_by_name(sales_rep_name)
+        else:
+            sales_rep_info = user_info  # fallback to logged-in user
 
         # جلب إعدادات الشركة
         company_settings = {
@@ -1437,9 +1463,14 @@ def get_quotation_pdf_data(quotation_number, user_email):
 
         # تجهيز البيانات النهائية
         pdf_data = {
-            # معلومات المستخدم (للهيدر)
+            # معلومات المستخدم اللي سجل الدخول
             'user_name': user_info['name'],
             'user_phone': user_info['phone'],
+            
+            # معلومات السيلز ريب (للهيدر)
+            'sales_rep_name': sales_rep_info['name'],
+            'sales_rep_phone': sales_rep_info['phone'],
+            'sales_rep_email': sales_rep_info['email'],
 
             # معلومات الشركة
             'company': company_settings,

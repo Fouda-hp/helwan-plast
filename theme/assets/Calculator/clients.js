@@ -205,7 +205,7 @@
     setValue("Country", record["Country"]);
     setValue("Address", record["Address"]);
     setValue("Email", record["Email"]);
-    setValue("sales_rep", record["Sales Rep"]);
+    // Use special function for sales_rep dropdown\n    if (window.setSalesRepValue) {\n      window.setSalesRepValue(record["Sales Rep"]);\n    } else {\n      setValue("sales_rep", record["Sales Rep"]);\n    }
     setValue("Source", record["Source"]);
   };
 

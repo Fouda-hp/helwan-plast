@@ -3,6 +3,7 @@ from anvil import *
 import anvil.server
 import anvil.js
 import json
+from datetime import datetime, date
 
 class ContractPrintForm(ContractPrintFormTemplate):
     def __init__(self, **properties):
@@ -14,6 +15,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         self.all_quotations = []
         self.payment_data = []  # Store payment schedule
         self.payment_method = 'percentage'  # percentage or amount
+        self.delivery_date = ''  # Expected delivery date
 
         # Expose functions to JavaScript
         anvil.js.window.loadQuotationForPrint = self.load_quotation_for_print
@@ -28,6 +30,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.printContract = self.print_contract
         anvil.js.window.exportPDF = self.export_pdf
         anvil.js.window.exportExcel = self.export_excel
+        anvil.js.window.updateDeliveryDate = self.update_delivery_date
 
         # Payment Modal Functions
         anvil.js.window.openPaymentModal = self.open_payment_modal
@@ -36,6 +39,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.updatePaymentMethod = self.update_payment_method
         anvil.js.window.savePayments = self.save_payments
         anvil.js.window.calculateTotalPercentage = self.calculate_total_percentage
+        anvil.js.window.saveContract = self.save_contract
 
     def form_show(self, **event_args):
         self.init_page()
@@ -222,16 +226,88 @@ class ContractPrintForm(ContractPrintFormTemplate):
             else:
                 total_el.style.color = '#666'
 
+    def update_delivery_date(self):
+        """Update delivery date from input"""
+        delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
+        if delivery_input:
+            self.delivery_date = str(delivery_input.value or '')
+            if self.current_data:
+                self.render_contract()
+
+    def validate_payments(self):
+        """Validate payment data like VBA code"""
+        is_ar = self.current_lang == 'ar'
+        value_inputs = anvil.js.window.document.querySelectorAll('.payment-value')
+        date_inputs = anvil.js.window.document.querySelectorAll('.payment-date')
+        
+        total_price = float(self.current_data.get('total_price', 0) or 0)
+        dates_used = []
+        total_value = 0
+        today = date.today()
+        
+        for i, (val_inp, date_inp) in enumerate(zip(value_inputs, date_inputs)):
+            val = float(val_inp.value or 0)
+            date_str = str(date_inp.value or '')
+            
+            # Check if date is empty
+            if not date_str:
+                msg = f'من فضلك أدخل تاريخ صحيح للدفعة رقم {i+1}' if is_ar else f'Please enter a valid date for installment {i+1}'
+                alert(msg)
+                return False
+            
+            # Parse and validate date
+            try:
+                payment_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            except:
+                msg = f'تاريخ غير صحيح للدفعة رقم {i+1}' if is_ar else f'Invalid date for installment {i+1}'
+                alert(msg)
+                return False
+            
+            # Check date not before today
+            if payment_date < today:
+                msg = f'تاريخ الدفعة رقم {i+1} لا يمكن أن يكون قبل تاريخ اليوم' if is_ar else f'Installment {i+1} date cannot be earlier than today'
+                alert(msg)
+                return False
+            
+            # Check for duplicate dates
+            if date_str in dates_used:
+                msg = 'تاريخ مكرر! من فضلك أدخل تاريخ مختلف لكل دفعة' if is_ar else 'Duplicate date! Please provide a unique date for each installment'
+                alert(msg)
+                return False
+            dates_used.append(date_str)
+            
+            total_value += val
+        
+        # Validate totals
+        if self.payment_method == 'percentage':
+            if round(total_value, 2) != 100:
+                msg = f'إجمالي النسب غير صحيح!\nالإجمالي المطلوب: 100%\nالإجمالي المدخل: {total_value}%' if is_ar else f'Total percentage is incorrect!\nRequired: 100%\nEntered: {total_value}%'
+                alert(msg)
+                return False
+        else:
+            if round(total_value, 2) != round(total_price, 2):
+                diff = abs(total_price - total_value)
+                msg = f'المبالغ المدخلة لا تطابق إجمالي قيمة العقد!\nقيمة العقد: {total_price:,.2f}\nالإجمالي المدخل: {total_value:,.2f}\nالفرق: {diff:,.2f}' if is_ar else f'Amounts do not match contract value!\nContract: {total_price:,.2f}\nEntered: {total_value:,.2f}\nDifference: {diff:,.2f}'
+                alert(msg)
+                return False
+        
+        return True
+
     def save_payments(self):
+        """Save payment data with validation"""
+        # Validate first
+        if not self.validate_payments():
+            return
+        
         value_inputs = anvil.js.window.document.querySelectorAll('.payment-value')
         date_inputs = anvil.js.window.document.querySelectorAll('.payment-date')
         
         self.payment_data = []
         total_price = float(self.current_data.get('total_price', 0) or 0)
         
-        labels_ar = ['الدفعة المقدمة', 'القسط الثاني', 'القسط الثالث', 'القسط الرابع', 
-                     'القسط الخامس', 'القسط السادس', 'القسط السابع', 'القسط الثامن',
-                     'القسط التاسع', 'القسط العاشر', 'القسط الحادي عشر', 'القسط الثاني عشر']
+        labels_ar = ['مقدم تعاقد', 'الدفعة الثانية', 'الدفعة الثالثة', 'الدفعة الرابعة', 
+                     'الدفعة الخامسة', 'الدفعة السادسة', 'الدفعة السابعة', 'الدفعة الثامنة',
+                     'الدفعة التاسعة', 'الدفعة العاشرة', 'الدفعة الحادية عشر', 'الدفعة الثانية عشر']
         labels_en = ['Down Payment', 'Installment 2', 'Installment 3', 'Installment 4',
                      'Installment 5', 'Installment 6', 'Installment 7', 'Installment 8',
                      'Installment 9', 'Installment 10', 'Installment 11', 'Installment 12']
@@ -250,7 +326,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 
                 self.payment_data.append({
                     'index': i + 1,
-                    'label_ar': labels_ar[i] if i < len(labels_ar) else f'القسط {i+1}',
+                    'label_ar': labels_ar[i] if i < len(labels_ar) else f'الدفعة {i+1}',
                     'label_en': labels_en[i] if i < len(labels_en) else f'Installment {i+1}',
                     'value': val,
                     'percentage': percentage,
@@ -260,8 +336,64 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 })
         
         self.close_payment_modal()
+        
+        # Show success message
+        is_ar = self.current_lang == 'ar'
+        msg = 'تم حفظ بيانات الدفعات بنجاح' if is_ar else 'Payment data saved successfully'
+        Notification(msg, style='success').show()
+        
         if self.current_data:
             self.render_contract()
+
+    def save_contract(self):
+        """Save complete contract data to database"""
+        if not self.current_data:
+            alert('Please select a quotation first')
+            return
+        
+        if not self.payment_data:
+            is_ar = self.current_lang == 'ar'
+            alert('من فضلك أدخل بيانات الدفعات أولاً' if is_ar else 'Please enter payment data first')
+            return
+        
+        # Get delivery date
+        delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
+        delivery_date = str(delivery_input.value) if delivery_input else ''
+        
+        # Prepare contract data
+        contract_data = {
+            'quotation_number': self.current_data.get('quotation_number'),
+            'client_name': self.current_data.get('client_name'),
+            'company': self.current_data.get('company'),
+            'phone': self.current_data.get('phone'),
+            'country': self.current_data.get('country'),
+            'address': self.current_data.get('address'),
+            'model': self.current_data.get('model'),
+            'colors_count': self.current_data.get('colors_count'),
+            'machine_width': self.current_data.get('machine_width'),
+            'material': self.current_data.get('material'),
+            'winder_type': self.current_data.get('winder_type'),
+            'price_mode': self.current_data.get('price_mode'),
+            'total_price': self.current_data.get('total_price'),
+            'currency': self.current_data.get('currency'),
+            'payment_method': self.payment_method,
+            'num_payments': len(self.payment_data),
+            'payments': self.payment_data,
+            'delivery_date': delivery_date,
+            'contract_date': date.today().isoformat(),
+            'language': self.current_lang
+        }
+        
+        try:
+            result = anvil.server.call('save_contract', contract_data)
+            if result.get('success'):
+                is_ar = self.current_lang == 'ar'
+                msg = 'تم حفظ بيانات العقد بنجاح' if is_ar else 'Contract saved successfully'
+                Notification(msg, style='success').show()
+            else:
+                alert(f"Error: {result.get('message', 'Unknown error')}")
+        except Exception as e:
+            alert(f"Error saving contract: {str(e)}")
 
     # ==================== Render Contract ====================
     def render_contract(self):
@@ -292,32 +424,58 @@ class ContractPrintForm(ContractPrintFormTemplate):
         html = ''
         dir_class = '' if is_ar else 'ltr'
         
+        # Safe get for numeric values
+        def safe_float(val, default=0):
+            try:
+                return float(val) if val else default
+            except:
+                return default
+        
+        # Get delivery date
+        delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
+        delivery_date = str(delivery_input.value) if delivery_input and delivery_input.value else ''
+        
+        q_num = data.get('quotation_number', '')
+        total_price = safe_float(data.get('total_price', 0))
+        currency = 'ج.م' if is_ar else 'EGP'
+        
         # ==================== PAGE 1 - Contract Info ====================
         html += f'<div class="template-page {dir_class}">'
         
         # Header
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div style="font-size:14px;color:#333;">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")} / {data.get("quotation_date_ar" if is_ar else "quotation_date_en", "")}</div>'
+        html += f'<div style="font-size:14px;color:#333;">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "القاهرة" if is_ar else "Cairo")}</div>'
         html += f'<div style="font-size:13px;color:#666;">{c.get("company_address_ar" if is_ar else "company_address_en", "")}</div>'
         html += '</div>'
         html += '<div class="header-left">'
-        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-        html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
+        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo" style="max-width:120px;">'
+        html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "حلوان بلاست" if is_ar else "Helwan Plast")}</div>'
         html += '</div>'
         html += '</div>'
         
         # Contract Title
         contract_title = 'عقد توريد ماكينة طباعة فلكسو' if is_ar else 'Flexo Printing Machine Supply Contract'
-        html += f'<div style="text-align:center;margin:20px 0;"><h2 style="color:var(--primary-color);">{contract_title}</h2></div>'
+        html += f'<div style="text-align:center;margin:25px 0;"><h2 style="color:var(--primary-color);font-size:22px;border-bottom:3px solid var(--accent-color);display:inline-block;padding-bottom:10px;">{contract_title}</h2></div>'
         
-        # Contract Number
-        q_num = data.get('quotation_number', '')
-        contract_num_label = 'رقم العقد:' if is_ar else 'Contract No:'
-        html += f'<div style="font-size:16px;font-weight:bold;margin-bottom:15px;">{contract_num_label} <span style="color:var(--accent-color);">C-{q_num}</span></div>'
+        # Contract Info Box
+        html += '<div style="display:flex;justify-content:space-between;margin-bottom:20px;background:#f8f9fa;padding:15px;border-radius:8px;">'
+        html += f'<div><strong>{"رقم العقد" if is_ar else "Contract No"}:</strong> <span style="color:var(--accent-color);font-size:18px;font-weight:bold;">C-{q_num}</span></div>'
+        html += f'<div><strong>{"التاريخ" if is_ar else "Date"}:</strong> {date.today().strftime("%Y-%m-%d")}</div>'
+        if delivery_date:
+            html += f'<div><strong>{"تاريخ التسليم المتوقع" if is_ar else "Expected Delivery"}:</strong> {delivery_date}</div>'
+        html += '</div>'
         
-        # Client Info Section
-        client_title = 'بيانات العميل (الطرف الثاني):' if is_ar else 'Client Information (Second Party):'
+        # First Party (Seller)
+        first_party_title = 'الطرف الأول (البائع):' if is_ar else 'First Party (Seller):'
+        html += f'<div class="section-title">{first_party_title}</div>'
+        html += '<table class="details-table">'
+        html += f'<tr><th>{"الاسم" if is_ar else "Name"}</th><td>{c.get("company_name_ar" if is_ar else "company_name_en", "حلوان بلاست" if is_ar else "Helwan Plast")}</td></tr>'
+        html += f'<tr><th>{"العنوان" if is_ar else "Address"}</th><td>{c.get("company_address_ar" if is_ar else "company_address_en", "")}</td></tr>'
+        html += '</table>'
+        
+        # Second Party (Client)
+        client_title = 'الطرف الثاني (المشتري):' if is_ar else 'Second Party (Buyer):'
         html += f'<div class="section-title">{client_title}</div>'
         html += '<table class="details-table">'
         
@@ -335,20 +493,21 @@ class ContractPrintForm(ContractPrintFormTemplate):
         html += '</table>'
         
         # Machine Details
-        machine_title = 'تفاصيل الماكينة:' if is_ar else 'Machine Details:'
+        machine_title = 'موضوع العقد (تفاصيل الماكينة):' if is_ar else 'Subject of Contract (Machine Details):'
         html += f'<div class="section-title">{machine_title}</div>'
         html += '<table class="details-table">'
         
+        machine_width = safe_float(data.get('machine_width', 0))
         machine_fields = [
             ('الموديل' if is_ar else 'Model', data.get('model', '')),
-            ('عدد الألوان' if is_ar else 'Number of Colors', data.get('colors_count', '')),
-            ('عرض الماكينة' if is_ar else 'Machine Width', f"{data.get('machine_width', '')} cm"),
+            ('عدد الألوان' if is_ar else 'Number of Colors', str(data.get('colors_count', '')) if data.get('colors_count') else ''),
+            ('عرض الماكينة' if is_ar else 'Machine Width', f"{machine_width} cm" if machine_width else ''),
             ('نوع الخامة' if is_ar else 'Material', data.get('material', '')),
             ('نوع اللفاف' if is_ar else 'Winder Type', data.get('winder_type', '')),
         ]
         
         for label, value in machine_fields:
-            if value and value != ' cm':
+            if value and value != '0 cm' and value != ' cm':
                 html += f'<tr><th>{label}</th><td>{value}</td></tr>'
         html += '</table>'
         
@@ -360,10 +519,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # Header repeated
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div style="font-size:14px;color:#333;">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")}</div>'
+        html += f'<div style="font-size:14px;color:#333;">{"عقد رقم" if is_ar else "Contract No"}: C-{q_num}</div>'
         html += '</div>'
         html += '<div class="header-left">'
-        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
+        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo" style="max-width:80px;">'
         html += '</div>'
         html += '</div>'
         
@@ -371,17 +530,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
         specs_title = 'المواصفات الفنية:' if is_ar else 'Technical Specifications:'
         html += f'<div class="section-title">{specs_title}</div>'
         
-        # Add tech specs similar to quotation (simplified)
         html += '<table class="tech-table">'
         
         winder_type = str(data.get('winder_type', '') or '').upper()
         is_double_winder = 'DOUBLE' in winder_type
         model = str(data.get('model', '') or '').upper()
         is_belt_drive = 'METAL' not in model
-        try:
-            machine_width = float(data.get('machine_width', 0) or 0)
-        except:
-            machine_width = 0
         
         specs = [
             ('أوجه الطباعة' if is_ar else 'Printing Sides', '2'),
@@ -389,12 +543,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
             ('أقصى عرض للطباعة' if is_ar else 'Max Print Width', f"{int(machine_width * 10 - 40)} mm" if machine_width else ''),
             ('نوع الأنيلوكس' if is_ar else 'Anilox Type', ('انيلوكس سيراميك' if is_ar else 'Ceramic Anilox') if is_belt_drive else ('انيلوكس معدني' if is_ar else 'Metal Anilox')),
             ('طريقة نقل القدرة' if is_ar else 'Power Transmission', ('سيور' if is_ar else 'Belt Drive') if is_belt_drive else ('جيربوكس' if is_ar else 'Gear Drive')),
+            ('أقصى سرعة للماكينة' if is_ar else 'Max Machine Speed', '120 m/min' if is_belt_drive else '100 m/min'),
         ]
         
         row_num = 1
         for label, value in specs:
             if value:
-                html += f'<tr><td class="row-num">{row_num}</td><th>{label}</th><td class="value">{value}</td></tr>'
+                html += f'<tr><td class="row-num" style="width:40px;text-align:center;background:#f5f5f5;">{row_num}</td><th style="width:40%;">{label}</th><td class="value">{value}</td></tr>'
                 row_num += 1
         html += '</table>'
         
@@ -406,10 +561,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # Header repeated
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div style="font-size:14px;color:#333;">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")}</div>'
+        html += f'<div style="font-size:14px;color:#333;">{"عقد رقم" if is_ar else "Contract No"}: C-{q_num}</div>'
         html += '</div>'
         html += '<div class="header-left">'
-        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
+        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo" style="max-width:80px;">'
         html += '</div>'
         html += '</div>'
         
@@ -417,17 +572,11 @@ class ContractPrintForm(ContractPrintFormTemplate):
         financial_title = 'القيمة المالية للعقد:' if is_ar else 'Contract Value:'
         html += f'<div class="section-title">{financial_title}</div>'
         
-        html += '<div class="financial-box">'
-        total_price = data.get('total_price', 0)
-        try:
-            total_price = float(total_price) if total_price else 0
-        except:
-            total_price = 0
-        currency = 'ج.م' if is_ar else 'EGP'
-        html += f'<div class="total-price">{total_price:,.0f} {currency}</div>'
+        html += '<div class="financial-box" style="background:linear-gradient(135deg,#667eea11,#764ba211);border:2px solid var(--accent-color);">'
+        html += f'<div class="total-price" style="font-size:28px;color:var(--accent-color);">{total_price:,.0f} {currency}</div>'
         
-        price_note = 'القيمة شاملة التوريد والتركيب والضمان' if is_ar else 'Price includes supply, installation, and warranty'
-        html += f'<div style="text-align:center;font-size:12px;color:#666;">{price_note}</div>'
+        price_note = 'القيمة شاملة التوريد والتركيب والتشغيل والتدريب والضمان' if is_ar else 'Price includes supply, installation, commissioning, training and warranty'
+        html += f'<div style="text-align:center;font-size:12px;color:#666;margin-top:10px;">{price_note}</div>'
         html += '</div>'
         
         # Payment Schedule
@@ -435,30 +584,45 @@ class ContractPrintForm(ContractPrintFormTemplate):
             payment_title = 'جدول الدفعات:' if is_ar else 'Payment Schedule:'
             html += f'<div class="section-title">{payment_title}</div>'
             
-            html += '<table class="payment-schedule-table">'
-            html += '<tr>'
-            html += f'<th>{"#"}</th>'
-            html += f'<th>{"البند" if is_ar else "Description"}</th>'
-            html += f'<th>{"النسبة %" if is_ar else "Percentage %"}</th>'
-            html += f'<th>{"المبلغ" if is_ar else "Amount"}</th>'
-            html += f'<th>{"التاريخ" if is_ar else "Date"}</th>'
+            html += '<table class="payment-schedule-table" style="border:2px solid var(--accent-color);">'
+            html += '<tr style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">'
+            html += f'<th style="color:white;padding:10px;">{"#"}</th>'
+            html += f'<th style="color:white;padding:10px;">{"البند" if is_ar else "Description"}</th>'
+            html += f'<th style="color:white;padding:10px;">{"النسبة" if is_ar else "Percentage"}</th>'
+            html += f'<th style="color:white;padding:10px;">{"المبلغ" if is_ar else "Amount"}</th>'
+            html += f'<th style="color:white;padding:10px;">{"التاريخ" if is_ar else "Date"}</th>'
             html += '</tr>'
             
             for i, payment in enumerate(self.payment_data):
                 label = payment.get('label_ar' if is_ar else 'label_en', '')
                 percentage = payment.get('percentage', 0)
                 amount = payment.get('amount', 0)
-                date = payment.get('date', '')
+                pdate = payment.get('date', '')
+                bg = '#f8f9fa' if i % 2 == 0 else 'white'
                 
-                html += f'<tr>'
-                html += f'<td>{i + 1}</td>'
-                html += f'<td style="text-align:{"right" if is_ar else "left"};font-weight:bold;">{label}</td>'
-                html += f'<td>{percentage:.1f}%</td>'
-                html += f'<td>{amount:,.0f} {currency}</td>'
-                html += f'<td>{date}</td>'
+                html += f'<tr style="background:{bg};">'
+                html += f'<td style="padding:8px;font-weight:bold;">{i + 1}</td>'
+                html += f'<td style="padding:8px;text-align:{"right" if is_ar else "left"};font-weight:bold;">{label}</td>'
+                html += f'<td style="padding:8px;">{percentage:.1f}%</td>'
+                html += f'<td style="padding:8px;font-weight:bold;color:var(--accent-color);">{amount:,.0f} {currency}</td>'
+                html += f'<td style="padding:8px;">{pdate}</td>'
                 html += f'</tr>'
             
+            # Total row
+            html += f'<tr style="background:#667eea22;font-weight:bold;">'
+            html += f'<td colspan="2" style="padding:10px;text-align:{"right" if is_ar else "left"};">{"الإجمالي" if is_ar else "Total"}</td>'
+            html += f'<td style="padding:10px;">100%</td>'
+            html += f'<td style="padding:10px;color:var(--accent-color);font-size:16px;">{total_price:,.0f} {currency}</td>'
+            html += f'<td></td>'
+            html += f'</tr>'
+            
             html += '</table>'
+        
+        # Delivery Date
+        if delivery_date:
+            html += f'<div style="margin:20px 0;padding:15px;background:#e8f5e9;border-radius:8px;border-right:4px solid #4caf50;">'
+            html += f'<strong>{"تاريخ التسليم المتوقع" if is_ar else "Expected Delivery Date"}:</strong> {delivery_date}'
+            html += '</div>'
         
         # Terms & Conditions
         terms_title = 'الشروط والأحكام:' if is_ar else 'Terms & Conditions:'
@@ -467,33 +631,34 @@ class ContractPrintForm(ContractPrintFormTemplate):
         warranty_months = c.get('warranty_months', '12')
         
         terms = [
-            f'مدة الضمان: {warranty_months} شهر' if is_ar else f'Warranty Period: {warranty_months} months',
-            'يشمل الضمان جميع قطع الغيار والصيانة' if is_ar else 'Warranty covers all spare parts and maintenance',
-            'التركيب والتدريب مجاني' if is_ar else 'Installation and training are free',
+            f'{"مدة الضمان" if is_ar else "Warranty Period"}: {warranty_months} {"شهر" if is_ar else "months"}',
+            'يشمل الضمان جميع قطع الغيار والصيانة الدورية' if is_ar else 'Warranty covers all spare parts and periodic maintenance',
+            'التركيب والتشغيل والتدريب مجاني' if is_ar else 'Installation, commissioning and training are free',
+            'يلتزم الطرف الثاني بالسداد في المواعيد المحددة' if is_ar else 'Second party commits to payment on scheduled dates',
         ]
         
-        html += '<ul style="font-size:12px;line-height:1.8;">'
+        html += '<ul style="font-size:12px;line-height:2;background:#f8f9fa;padding:15px 30px;border-radius:8px;">'
         for term in terms:
-            html += f'<li>{term}</li>'
+            html += f'<li style="margin-bottom:5px;">{term}</li>'
         html += '</ul>'
         
         # Signatures
-        html += '<div style="margin-top:40px;display:flex;justify-content:space-between;">'
+        html += '<div style="margin-top:50px;display:flex;justify-content:space-around;padding-top:20px;">'
         
         party1 = 'الطرف الأول (البائع)' if is_ar else 'First Party (Seller)'
         party2 = 'الطرف الثاني (المشتري)' if is_ar else 'Second Party (Buyer)'
-        signature = 'التوقيع:' if is_ar else 'Signature:'
+        signature = 'التوقيع' if is_ar else 'Signature'
         
         html += f'''
-        <div style="text-align:center;">
-            <div style="font-weight:bold;margin-bottom:10px;">{party1}</div>
-            <div>{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>
-            <div style="margin-top:50px;border-top:1px solid #333;padding-top:5px;">{signature}</div>
+        <div style="text-align:center;min-width:200px;">
+            <div style="font-weight:bold;margin-bottom:10px;font-size:14px;color:var(--primary-color);">{party1}</div>
+            <div style="margin-bottom:5px;">{c.get("company_name_ar" if is_ar else "company_name_en", "حلوان بلاست" if is_ar else "Helwan Plast")}</div>
+            <div style="margin-top:60px;border-top:2px solid #333;padding-top:8px;font-size:12px;">{signature}</div>
         </div>
-        <div style="text-align:center;">
-            <div style="font-weight:bold;margin-bottom:10px;">{party2}</div>
-            <div>{data.get('client_name', '')}</div>
-            <div style="margin-top:50px;border-top:1px solid #333;padding-top:5px;">{signature}</div>
+        <div style="text-align:center;min-width:200px;">
+            <div style="font-weight:bold;margin-bottom:10px;font-size:14px;color:var(--primary-color);">{party2}</div>
+            <div style="margin-bottom:5px;">{data.get('client_name', '')}</div>
+            <div style="margin-top:60px;border-top:2px solid #333;padding-top:8px;font-size:12px;">{signature}</div>
         </div>
         '''
         html += '</div>'

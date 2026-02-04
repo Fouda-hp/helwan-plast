@@ -489,27 +489,23 @@ container:
                 <div style="font-size: 14px; color: #666; margin-bottom: 5px;">إجمالي قيمة العقد / Total Contract Amount</div>
                 <div class="amount" id="totalContractAmount" style="font-size: 28px;">0.00</div>
                 
-                <!-- Summary Grid -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px;">
-                  <!-- Entered Percentage/Amount -->
-                  <div style="background: #e3f2fd; padding: 10px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 12px; color: #1976D2; margin-bottom: 5px;">المدخل / Entered</div>
+                <!-- Summary Grid - 2 columns only -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                  <!-- Entered Amount -->
+                  <div style="background: #e8f5e9; padding: 12px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 12px; color: #388E3C; margin-bottom: 5px;">المبلغ المدخل / Entered</div>
                     <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                      <span id="totalPercentage" style="font-size: 20px; font-weight: bold; color: #1976D2;">0</span>
-                      <span id="totalUnit" style="font-size: 14px; color: #1976D2;">%</span>
+                      <span id="enteredAmount" style="font-size: 20px; font-weight: bold; color: #388E3C;">0 EGP</span>
+                    </div>
+                    <div style="font-size: 11px; color: #666; margin-top: 5px;">
+                      (<span id="totalPercentage">0</span><span id="totalUnit">%</span>)
                     </div>
                   </div>
                   
-                  <!-- Entered Amount -->
-                  <div style="background: #e8f5e9; padding: 10px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 12px; color: #388E3C; margin-bottom: 5px;">المبلغ المدخل / Entered Amount</div>
-                    <div id="enteredAmount" style="font-size: 18px; font-weight: bold; color: #388E3C;">0 EGP</div>
-                  </div>
-                  
                   <!-- Remaining -->
-                  <div style="background: #fff3e0; padding: 10px; border-radius: 8px; text-align: center;">
+                  <div style="background: #fff3e0; padding: 12px; border-radius: 8px; text-align: center;">
                     <div style="font-size: 12px; color: #F57C00; margin-bottom: 5px;">الباقي / Remaining</div>
-                    <div id="remainingAmount" style="font-size: 18px; font-weight: bold; color: #F57C00;">0 EGP</div>
+                    <div id="remainingAmount" style="font-size: 20px; font-weight: bold; color: #F57C00;">0 EGP</div>
                   </div>
                 </div>
               </div>

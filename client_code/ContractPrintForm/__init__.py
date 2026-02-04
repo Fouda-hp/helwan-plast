@@ -110,15 +110,17 @@ class ContractPrintForm(ContractPrintFormTemplate):
         if result and result.get('success'):
             self.current_data = result.get('data', {})
             self.render_template()
-            # Update total in payment modal
-            total = self.current_data.get('total_price', 0)
+            # Update total in payment modal - remove commas from formatted price
+            total_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
             try:
-                total = float(total) if total else 0
+                total = float(total_str) if total_str else 0
             except:
                 total = 0
             total_el = anvil.js.window.document.getElementById('totalContractAmount')
             if total_el:
                 total_el.textContent = f"{total:,.2f}"
+            # Also trigger calculation to update entered/remaining
+            self.calculate_total_percentage()
 
     def switch_language(self, lang):
         self.current_lang = lang
@@ -896,20 +898,22 @@ class ContractPrintForm(ContractPrintFormTemplate):
             row_num += 1
         html += '</table>'
 
-        # Cylinders
+        # Cylinders - centered table
         cylinders = data.get('cylinders', [])
         html += f'<div class="section-title">{"سلندرات الطباعة :" if is_ar else "Printing Cylinders:"}</div>'
-        html += '<table class="cylinders-table" style="width: 50%;">'
-        html += f'<tr><th>{"مقاس" if is_ar else "Size"}</th><th>{"عدد" if is_ar else "Count"}</th></tr>'
+        html += '<div style="display: flex; justify-content: center;">'
+        html += '<table class="cylinders-table" style="width: 50%; margin: 0 auto;">'
+        html += f'<tr><th style="background:#f5f5f5; padding:8px; border:1px solid #ddd;">{"مقاس" if is_ar else "Size"}</th><th style="background:#f5f5f5; padding:8px; border:1px solid #ddd;">{"عدد" if is_ar else "Count"}</th></tr>'
         for i in range(12):
             if i < len(cylinders):
                 cyl = cylinders[i]
                 size = cyl.get("size", "")
                 count = cyl.get("count", "")
-                html += f'<tr><td style="border: 1px solid #ddd;">{size}</td><td style="border: 1px solid #ddd;">{count}</td></tr>'
+                html += f'<tr><td style="border: 1px solid #ddd; padding:6px; text-align:center;">{size}</td><td style="border: 1px solid #ddd; padding:6px; text-align:center;">{count}</td></tr>'
             else:
                 html += '<tr><td style="border: none;"></td><td style="border: none;"></td></tr>'
         html += '</table>'
+        html += '</div>'
         html += '</div>'  # End Page 2
 
         # ==================== PAGE 3 - Financial + Payments ====================
@@ -971,6 +975,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
         html += f'<h4>{"الضمان:" if is_ar else "Warranty:"}</h4>'
         warranty_text = f'يسري الضمان لمدة <strong>{c.get("warranty_months", "12")}</strong> شهر' if is_ar else f'Warranty: <strong>{c.get("warranty_months", "12")}</strong> months'
         html += f'<p>{warranty_text}</p>'
+        support_text = 'دعم فني كامل مع توافر قطع الغيار عند الطلب' if is_ar else 'Full technical support with spare parts availability upon request'
+        html += f'<p style="margin-top:8px; color:#555;">{support_text}</p>'
         html += '</div>'
         html += '</div>'
 

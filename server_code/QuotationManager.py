@@ -1586,7 +1586,6 @@ def export_quotation_excel(quotation_number):
         
         # Create worksheet
         worksheet = workbook.add_worksheet('Quotation')
-        worksheet.set_right_to_left()  # RTL support
         
         # Formats
         title_fmt = workbook.add_format({

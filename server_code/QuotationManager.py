@@ -1551,15 +1551,23 @@ def get_all_machine_specs():
 
 @anvil.server.callable
 def export_quotation_excel(quotation_number):
-    """Export quotation data as Excel file"""
+    """Export quotation data as Excel file with full formatting"""
     try:
         import io
         import xlsxwriter
 
-        # Get quotation data - use correct field name 'Quotation#'
+        # Get quotation data
         q_data = app_tables.quotations.get(**{'Quotation#': int(quotation_number)})
         if not q_data:
             return {'success': False, 'message': 'Quotation not found'}
+
+        # Get company settings
+        def get_setting(key, default=''):
+            try:
+                setting = app_tables.settings.get(setting_key=key)
+                return setting['setting_value'] if setting else default
+            except:
+                return default
 
         # Helper function to safely get field value
         def get_field(field_name, default=''):
@@ -1569,67 +1577,196 @@ def export_quotation_excel(quotation_number):
             except:
                 return default
 
+        def is_yes(field_name):
+            val = str(get_field(field_name, '')).upper()
+            return val in ['YES', 'TRUE', '1', 'نعم']
+
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        
+        # Create worksheet
         worksheet = workbook.add_worksheet('Quotation')
+        worksheet.set_right_to_left()  # RTL support
+        
+        # Formats
+        title_fmt = workbook.add_format({
+            'bold': True, 'font_size': 16, 'align': 'center', 'valign': 'vcenter',
+            'font_color': '#1565c0', 'bottom': 2
+        })
+        header_fmt = workbook.add_format({
+            'bold': True, 'font_size': 12, 'bg_color': '#1565c0', 'font_color': 'white',
+            'align': 'center', 'valign': 'vcenter', 'border': 1
+        })
+        section_fmt = workbook.add_format({
+            'bold': True, 'font_size': 11, 'bg_color': '#e3f2fd', 'font_color': '#1565c0',
+            'align': 'right', 'valign': 'vcenter', 'border': 1
+        })
+        label_fmt = workbook.add_format({
+            'bold': True, 'font_size': 10, 'bg_color': '#f5f5f5',
+            'align': 'right', 'valign': 'vcenter', 'border': 1
+        })
+        value_fmt = workbook.add_format({
+            'font_size': 10, 'align': 'center', 'valign': 'vcenter', 'border': 1
+        })
+        price_fmt = workbook.add_format({
+            'font_size': 12, 'bold': True, 'align': 'center', 'valign': 'vcenter',
+            'border': 1, 'num_format': '#,##0', 'font_color': '#2e7d32'
+        })
+        cyl_header_fmt = workbook.add_format({
+            'bold': True, 'font_size': 10, 'bg_color': '#fff3e0',
+            'align': 'center', 'valign': 'vcenter', 'border': 1
+        })
 
-        title_fmt = workbook.add_format({'bold': True, 'font_size': 14})
-        section_fmt = workbook.add_format({'bold': True, 'bg_color': '#F2F2F2'})
-        label_fmt = workbook.add_format({'bold': True, 'border': 1})
-        value_fmt = workbook.add_format({'border': 1})
-
-        worksheet.set_column(0, 0, 28)
-        worksheet.set_column(1, 1, 45)
-        worksheet.set_column(2, 2, 18)
+        # Set column widths
+        worksheet.set_column(0, 0, 5)   # #
+        worksheet.set_column(1, 1, 35)  # Label
+        worksheet.set_column(2, 2, 30)  # Value
+        worksheet.set_column(3, 3, 15)  # Extra
+        worksheet.set_column(4, 4, 15)  # Extra
 
         row = 0
-        worksheet.merge_range(row, 0, row, 2, f"Quotation #{quotation_number}", title_fmt)
+        
+        # === HEADER ===
+        company_name = get_setting('company_name_en', 'Helwan Plast')
+        worksheet.merge_range(row, 0, row, 4, company_name, title_fmt)
+        row += 1
+        worksheet.merge_range(row, 0, row, 4, f"Quotation #{quotation_number}", header_fmt)
         row += 2
 
-        def write_section(title, rows):
-            nonlocal row
-            worksheet.write(row, 0, title, section_fmt)
-            row += 1
-            for label, value in rows:
-                worksheet.write(row, 0, label, label_fmt)
-                worksheet.write(row, 1, value, value_fmt)
-                row += 1
-            row += 1
-
-        write_section('Client Information', [
+        # === CLIENT INFO ===
+        worksheet.merge_range(row, 0, row, 4, "Client Information", section_fmt)
+        row += 1
+        
+        client_info = [
             ('Client Name', get_field('Client Name', '')),
             ('Company', get_field('Company', '')),
             ('Phone', get_field('Phone', '')),
-            ('Date', get_field('Date', '')),
-        ])
+            ('Country', get_field('Country', '')),
+            ('Date', str(get_field('Date', ''))),
+        ]
+        for label, value in client_info:
+            if value and value != 'None':
+                worksheet.write(row, 1, label, label_fmt)
+                worksheet.write(row, 2, value, value_fmt)
+                row += 1
+        row += 1
 
-        write_section('Machine Details', [
+        # === MACHINE DETAILS ===
+        worksheet.merge_range(row, 0, row, 4, "Machine Details", section_fmt)
+        row += 1
+        
+        machine_details = [
             ('Model', get_field('Model', '')),
             ('Machine Type', get_field('Machine type', '')),
             ('Number of Colors', get_field('Number of colors', '')),
-            ('Machine Width', get_field('Machine width', '')),
+            ('Machine Width', f"{get_field('Machine width', '')} cm"),
             ('Winder', get_field('Winder', '')),
             ('Material', get_field('Material', '')),
-        ])
+        ]
+        for label, value in machine_details:
+            if value and value != 'None' and value != ' cm':
+                worksheet.write(row, 1, label, label_fmt)
+                worksheet.write(row, 2, value, value_fmt)
+                row += 1
+        row += 1
 
-        write_section('Options', [
-            ('Video Inspection', get_field('Video inspection', '')),
-            ('PLC', get_field('PLC', '')),
-            ('Slitter', get_field('Slitter', '')),
-        ])
+        # === TECHNICAL SPECS ===
+        worksheet.merge_range(row, 0, row, 4, "Technical Specifications", section_fmt)
+        row += 1
+        
+        # Calculate specs values
+        winder = str(get_field('Winder', '')).upper()
+        is_double = 'DOUBLE' in winder
+        model = str(get_field('Model', '')).upper()
+        is_belt = 'METAL' not in model
+        machine_width = float(get_field('Machine width', 0) or 0)
+        colors = get_field('Number of colors', '')
+        
+        specs = [
+            ('Printing Sides', '2'),
+            ('Tension Control Units', '4' if is_double else '2'),
+            ('Brake System', '4' if is_double else '2'),
+            ('Brake Power', '2' if is_double else '1'),
+            ('Web Guiding System', '2' if is_double else '1'),
+            ('Maximum Film Width', f"{int(machine_width * 10 + 50)} mm" if machine_width else ''),
+            ('Maximum Printing Width', f"{int(machine_width * 10 - 40)} mm" if machine_width else ''),
+            ('Print Length Range', '300mm-1300mm' if is_belt else '240mm-1000mm'),
+            ('Maximum Roll Diameter', '800 mm' if is_double else '1200 mm'),
+            ('Anilox Type', 'Ceramic Anilox' if is_belt else 'Metal Anilox'),
+            ('Maximum Machine Speed', '120 m/min' if is_belt else '100 m/min'),
+            ('Maximum Printing Speed', '120 m/min' if is_belt else '80 m/min'),
+            ('Power Transmission', 'Belt Drive' if is_belt else 'Gear Drive'),
+            ('Main Motor Power', get_setting('main_motor_power', '5 HP')),
+            ('Dryer Capacity', get_setting('dryer_capacity', '2.2kw air blower × 2 units')),
+        ]
+        
+        # Add yes/no options only if YES
+        if is_yes('Video inspection'):
+            specs.append(('Video Inspection', 'Yes'))
+        if is_yes('PLC'):
+            specs.append(('PLC', 'Yes'))
+        if is_yes('Slitter'):
+            specs.append(('Slitter', 'Yes'))
+        
+        spec_num = 1
+        for label, value in specs:
+            if value and value != 'None' and str(value).upper() not in ['NO', 'لا', '']:
+                worksheet.write(row, 0, spec_num, value_fmt)
+                worksheet.write(row, 1, label, label_fmt)
+                worksheet.write(row, 2, value, value_fmt)
+                row += 1
+                spec_num += 1
+        row += 1
 
-        write_section('Pricing', [
-            ('In Stock Price', get_field('In Stock', '')),
-            ('New Order Price', get_field('New Order', '')),
-            ('Given Price', get_field('Given Price', '')),
-            ('Agreed Price', get_field('Agreed Price', '')),
-            ('Pricing Mode', get_field('Pricing Mode', '')),
-        ])
+        # === CYLINDERS ===
+        worksheet.merge_range(row, 0, row, 4, "Printing Cylinders", section_fmt)
+        row += 1
+        worksheet.write(row, 1, "Size (cm)", cyl_header_fmt)
+        worksheet.write(row, 2, "Count", cyl_header_fmt)
+        worksheet.write(row, 3, "Cost", cyl_header_fmt)
+        row += 1
+        
+        for i in range(1, 13):
+            size = get_field(f'Size in CM{i}', '')
+            count = get_field(f'Count{i}', '')
+            cost = get_field(f'Cost{i}', '')
+            if size and count:
+                worksheet.write(row, 1, size, value_fmt)
+                worksheet.write(row, 2, count, value_fmt)
+                worksheet.write(row, 3, cost, value_fmt)
+                row += 1
+        row += 1
+
+        # === PRICING ===
+        worksheet.merge_range(row, 0, row, 4, "Financial Offer", section_fmt)
+        row += 1
+        
+        pricing_mode = str(get_field('Pricing Mode', '')).upper()
+        
+        if 'STOCK' in pricing_mode:
+            in_stock = get_field('In Stock', '')
+            if in_stock:
+                worksheet.write(row, 1, "In Stock Price", label_fmt)
+                worksheet.write(row, 2, f"{in_stock} EGP", price_fmt)
+                row += 1
+        else:
+            new_order = get_field('New Order', '')
+            if new_order:
+                worksheet.write(row, 1, "New Order Price", label_fmt)
+                worksheet.write(row, 2, f"{new_order} EGP", price_fmt)
+                row += 1
+        
+        agreed = get_field('Agreed Price', '')
+        if agreed and agreed != '0':
+            worksheet.write(row, 1, "Agreed Price", label_fmt)
+            worksheet.write(row, 2, f"{agreed} EGP", price_fmt)
+            row += 1
 
         workbook.close()
         output.seek(0)
 
-        filename = f"Quotation_{quotation_number}.xlsx"
+        client_name = get_field('Client Name', 'Client').replace(' ', '_')
+        filename = f"Quotation_{quotation_number}_{client_name}.xlsx"
         media = anvil.BlobMedia(
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             output.read(),
@@ -1639,7 +1776,7 @@ def export_quotation_excel(quotation_number):
         return {'success': True, 'file': media}
 
     except Exception as e:
-        logger.error(f"Error exporting CSV: {e}")
+        logger.error(f"Error exporting Excel: {e}")
         import traceback
         logger.error(traceback.format_exc())
         return {'success': False, 'message': str(e)}

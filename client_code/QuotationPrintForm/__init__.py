@@ -597,6 +597,11 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                         value_parts.append(str(resolved))
                 value_text = '<br>'.join(value_parts) if value_parts else '-'
 
+            # DYNAMIC: Hide any row where value is "No" or "لا" or empty
+            value_upper = str(value_text).strip().upper()
+            if value_upper in ['NO', 'لا', 'N/A', '-', '']:
+                continue
+
             html += f'<tr><td class="row-num">{row_num}</td><th>{label}</th><td class="value">{value_text}</td></tr>'
             row_num += 1
         html += '</table>'

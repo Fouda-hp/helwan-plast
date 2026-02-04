@@ -19,25 +19,14 @@
     BANK_COMMISSION: 0.0132
   };
 
-  function getStoredExchangeRate() {
-    const stored = window.localStorage?.getItem('exchange_rate');
-    if (stored && !isNaN(stored)) {
-      return parseFloat(stored);
-    }
-    return null;
-  }
-
-  // تحميل الإعدادات من السيرفر
+  // تحميل الإعدادات من السيرفر - السيرفر هو المصدر الأساسي دايماً
   async function loadSettingsFromServer() {
     try {
-      // تحميل سعر الصرف
+      // تحميل سعر الصرف من السيرفر أولاً (المصدر الأساسي)
       const exchangeRate = await window.anvil?.server?.call('get_setting', 'exchange_rate');
       if (exchangeRate && !isNaN(exchangeRate)) {
         EXCHANGE_RATE = parseFloat(exchangeRate);
         console.log('📈 Exchange rate loaded from server:', EXCHANGE_RATE);
-        if (window.localStorage) {
-          window.localStorage.setItem('exchange_rate', String(EXCHANGE_RATE));
-        }
       }
 
       // تحميل باقي الإعدادات
@@ -60,17 +49,20 @@
       const exchangeInput = document.getElementById("exchange_rate");
       if (exchangeInput) exchangeInput.value = EXCHANGE_RATE.toFixed(2);
 
+      // إعادة حساب الأسعار بعد تحميل الإعدادات الجديدة
+      if (typeof window.recalcAll === 'function') {
+        window.recalcAll();
+      }
+
       console.log('⚙️ Settings loaded successfully from server');
+      window._settingsLoaded = true;
     } catch (e) {
       console.warn('⚠️ Could not load settings from server, using defaults:', e);
     }
   }
 
-  // تحميل الإعدادات عند بدء التشغيل
-  const storedRate = getStoredExchangeRate();
-  if (storedRate) {
-    EXCHANGE_RATE = storedRate;
-  }
+  // تحميل الإعدادات عند بدء التشغيل - من السيرفر مباشرة
+  window._settingsLoaded = false;
   loadSettingsFromServer();
 
   // ----------------------------------------

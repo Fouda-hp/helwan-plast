@@ -692,12 +692,12 @@ container:
         }
 
         .ltr .details-table th {
-          text-align: left;
+          text-align: left !important;
           width: 35%;
         }
 
         .ltr .details-table td {
-          text-align: left;
+          text-align: left !important;
           width: 65%;
         }
 

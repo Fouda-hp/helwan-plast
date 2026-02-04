@@ -122,7 +122,9 @@ class CalculatorForm(CalculatorFormTemplate):
 
   def _save_to_server(self, form_data):
     try:
-      return anvil.server.call("save_quotation", form_data)
+      # Get user email from localStorage
+      user_email = anvil.js.window.localStorage.getItem('user_email') or 'system'
+      return anvil.server.call("save_quotation", form_data, user_email)
     except Exception as e:
       return {"success": False, "message": str(e)}
 

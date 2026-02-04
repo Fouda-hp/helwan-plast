@@ -1865,7 +1865,7 @@ def get_quotations_list(search='', include_deleted=False):
 # Contracts are stored in the 'contracts' table
 
 @anvil.server.callable
-def save_contract(contract_data):
+def save_contract(contract_data, user_email='system'):
     """
     Save contract data to contracts table
     Required table: contracts with columns:
@@ -1887,12 +1887,14 @@ def save_contract(contract_data):
         
         contract_number = f"C-{quotation_number}"
         payments_json = json.dumps(contract_data.get('payments', []), ensure_ascii=False, default=str)
+        ip_address = get_client_ip()
         
         # Try to find existing contract
         try:
             existing = app_tables.contracts.get(contract_number=contract_number)
             if existing:
                 # Update existing
+                old_data = {'contract_number': contract_number}
                 existing.update(
                     client_name=contract_data.get('client_name', ''),
                     company=contract_data.get('company', ''),
@@ -1912,7 +1914,8 @@ def save_contract(contract_data):
                     delivery_date=contract_data.get('delivery_date', ''),
                     updated_at=datetime.now()
                 )
-                logger.info(f"Contract {contract_number} updated")
+                logger.info(f"Contract {contract_number} updated by {user_email}")
+                log_audit('UPDATE', 'contracts', contract_number, old_data, contract_data, user_email, ip_address)
                 return {'success': True, 'message': 'Contract updated', 'contract_number': contract_number}
         except Exception as e:
             logger.warning(f"Contract lookup failed: {e}")
@@ -1941,7 +1944,8 @@ def save_contract(contract_data):
                 created_at=datetime.now(),
                 updated_at=datetime.now()
             )
-            logger.info(f"Contract {contract_number} created")
+            logger.info(f"Contract {contract_number} created by {user_email}")
+            log_audit('CREATE', 'contracts', contract_number, None, contract_data, user_email, ip_address)
             return {'success': True, 'message': 'Contract saved', 'contract_number': contract_number}
             
         except Exception as e:

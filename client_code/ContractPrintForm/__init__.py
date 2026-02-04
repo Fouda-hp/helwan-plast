@@ -493,7 +493,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
         }
         
         try:
-            result = anvil.server.call('save_contract', contract_data)
+            # Get user email for audit log
+            user_email = anvil.js.window.localStorage.getItem('user_email') or 'system'
+            result = anvil.server.call('save_contract', contract_data, user_email)
             if result.get('success'):
                 is_ar = self.current_lang == 'ar'
                 Notification('تم حفظ العقد بنجاح' if is_ar else 'Contract saved', style='success').show()

@@ -2510,6 +2510,92 @@ def get_setting(key):
     return value
 
 
+@anvil.server.callable
+def get_machine_prices():
+    """
+    الحصول على أسعار المكن من السيرفر
+    إذا لم توجد، يرجع القيم الافتراضية
+    """
+    # القيم الافتراضية من machine_prices.json
+    default_prices = {
+        "Metal anilox": {
+            "4": {"80": 15000, "100": 16000, "120": 17500},
+            "6": {"80": 25000, "100": 26000, "120": 29000},
+            "8": {"80": 29000, "100": 32000, "120": 33000}
+        },
+        "Ceramic anilox Single Doctor Blade": {
+            "4": {"80": 18000, "100": 19000, "120": 20500},
+            "6": {"80": 28000, "100": 29000, "120": 32000},
+            "8": {"80": 32000, "100": 35000, "120": 36000}
+        },
+        "Ceramic anilox Chamber Doctor Blade": {
+            "4": {"80": 21168, "100": 22960, "120": 25252},
+            "6": {"80": 32752, "100": 34940, "120": 39128},
+            "8": {"80": 38336, "100": 42920, "120": 45504}
+        }
+    }
+    
+    try:
+        setting = app_tables.settings.get(setting_key='machine_prices')
+        if setting and setting['setting_value']:
+            try:
+                prices = json.loads(setting['setting_value'])
+                return {'success': True, 'prices': prices}
+            except json.JSONDecodeError:
+                pass
+        
+        # Return defaults if not found
+        return {'success': True, 'prices': default_prices}
+    except Exception as e:
+        logger.error(f"Error getting machine prices: {e}")
+        return {'success': True, 'prices': default_prices}
+
+
+@anvil.server.callable
+def save_machine_prices(token_or_email, prices):
+    """
+    حفظ أسعار المكن في السيرفر
+    """
+    is_authorized, error = require_admin(token_or_email)
+    if not is_authorized:
+        return error
+    
+    try:
+        ip_address = get_client_ip()
+        admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
+        
+        setting = app_tables.settings.get(setting_key='machine_prices')
+        old_value = None
+        
+        if setting:
+            old_value = setting['setting_value']
+            setting.update(
+                setting_value=json.dumps(prices),
+                setting_type='json',
+                updated_by=admin_email,
+                updated_at=datetime.now()
+            )
+        else:
+            app_tables.settings.add_row(
+                setting_key='machine_prices',
+                setting_value=json.dumps(prices),
+                setting_type='json',
+                description='Machine prices configuration',
+                updated_by=admin_email,
+                updated_at=datetime.now()
+            )
+        
+        log_audit('UPDATE_SETTING', 'settings', 'machine_prices',
+                  {'value': old_value} if old_value else None,
+                  {'value': 'machine_prices_updated', 'updated_by': admin_email},
+                  admin_email, ip_address)
+        
+        return {'success': True, 'message': 'Machine prices saved successfully'}
+    except Exception as e:
+        logger.error(f"Error saving machine prices: {e}")
+        return {'success': False, 'message': str(e)}
+
+
 # =========================================================
 # سجل التدقيق
 # =========================================================

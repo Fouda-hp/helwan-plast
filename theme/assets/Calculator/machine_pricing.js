@@ -187,13 +187,35 @@
   }
 
   // ----------------------------------------
-  // أسعار الآلات - JSON
+  // أسعار الآلات - من السيرفر
   // ----------------------------------------
 
-  let MACHINE_PRICES = {};
-  fetch("_/theme/machine_prices.json")
-    .then(r => r.json())
-    .then(d => MACHINE_PRICES = d);
+  let MACHINE_PRICES = {
+    // Default prices (fallback)
+    "Metal anilox": {"4": {"80": 15000, "100": 16000, "120": 17500}, "6": {"80": 25000, "100": 26000, "120": 29000}, "8": {"80": 29000, "100": 32000, "120": 33000}},
+    "Ceramic anilox Single Doctor Blade": {"4": {"80": 18000, "100": 19000, "120": 20500}, "6": {"80": 28000, "100": 29000, "120": 32000}, "8": {"80": 32000, "100": 35000, "120": 36000}},
+    "Ceramic anilox Chamber Doctor Blade": {"4": {"80": 21168, "100": 22960, "120": 25252}, "6": {"80": 32752, "100": 34940, "120": 39128}, "8": {"80": 38336, "100": 42920, "120": 45504}}
+  };
+  
+  // Load machine prices from server
+  async function loadMachinePricesFromServer() {
+    try {
+      const result = await window.anvil?.server?.call('get_machine_prices');
+      if (result && result.success && result.prices) {
+        MACHINE_PRICES = result.prices;
+        console.log('🏭 Machine prices loaded from server');
+        // Recalculate if model is ready
+        if (typeof window.recalcAll === 'function') {
+          window.recalcAll();
+        }
+      }
+    } catch(e) {
+      console.warn('Could not load machine prices from server, using defaults:', e);
+    }
+  }
+  
+  // Load after settings are loaded
+  setTimeout(loadMachinePricesFromServer, 1000);
 
   function getMachineBasePrice() {
     return MACHINE_PRICES?.[machineType.value]?.[colors.value]?.[width.value] || 0;

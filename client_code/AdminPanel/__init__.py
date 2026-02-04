@@ -144,19 +144,98 @@ class AdminPanel(AdminPanelTemplate):
           }
 
           function patchSaveSetting() {
-            if (!window.saveSetting || window.saveSetting.__patched) return;
-            var original = window.saveSetting;
+            // Override saveSetting completely to fix sync issues
             window.saveSetting = async function(key, isPercent) {
-              var result = await original(key, isPercent);
-              if (key === 'exchange_rate') {
-                var input = document.getElementById('setting_exchange_rate');
-                if (input && input.value) {
-                  localStorage.setItem('exchange_rate', String(input.value));
+              var input = document.getElementById('setting_' + key);
+              if (!input) {
+                if (window.showNotification) {
+                  window.showNotification('error', 'Error', 'Input field not found for: ' + key);
+                }
+                return;
+              }
+
+              var value = parseFloat(input.value);
+              if (isNaN(value)) {
+                if (window.showNotification) {
+                  window.showNotification('error', 'Error', 'Please enter a valid number');
+                } else {
+                  alert('Please enter a valid number');
+                }
+                return;
+              }
+
+              if (isPercent) {
+                value = value / 100;
+              }
+
+              try {
+                var result = await window.updateSetting(key, value);
+                if (result && result.success) {
+                  // Sync to localStorage for important settings
+                  if (key === 'exchange_rate') {
+                    localStorage.setItem('exchange_rate', String(input.value));
+                    // Dispatch storage event for other tabs
+                    window.dispatchEvent(new StorageEvent('storage', {
+                      key: 'exchange_rate',
+                      newValue: String(input.value)
+                    }));
+                  }
+                  
+                  if (window.showNotification) {
+                    window.showNotification('success', 'Saved!', key + ' updated successfully');
+                  }
+                } else {
+                  if (window.showNotification) {
+                    window.showNotification('error', 'Error', result ? result.message : 'Error saving setting');
+                  } else {
+                    alert(result ? result.message : 'Error saving setting');
+                  }
+                }
+              } catch (e) {
+                if (window.showNotification) {
+                  window.showNotification('error', 'Error', 'Error saving setting: ' + e);
+                } else {
+                  alert('Error saving setting: ' + e);
                 }
               }
-              return result;
             };
-            window.saveSetting.__patched = true;
+
+            // Also override saveSettingText for text fields
+            window.saveSettingText = async function(key) {
+              var input = document.getElementById('setting_' + key);
+              if (!input) return;
+
+              var value = input.value.trim();
+              if (!value) {
+                if (window.showNotification) {
+                  window.showNotification('error', 'Error', 'Please enter a value');
+                } else {
+                  alert('Please enter a value');
+                }
+                return;
+              }
+
+              try {
+                var result = await window.updateSetting(key, value);
+                if (result && result.success) {
+                  if (window.showNotification) {
+                    window.showNotification('success', 'Saved!', key + ' updated successfully');
+                  }
+                } else {
+                  if (window.showNotification) {
+                    window.showNotification('error', 'Error', result ? result.message : 'Error saving setting');
+                  } else {
+                    alert(result ? result.message : 'Error saving setting');
+                  }
+                }
+              } catch (e) {
+                if (window.showNotification) {
+                  window.showNotification('error', 'Error', 'Error saving setting: ' + e);
+                } else {
+                  alert('Error saving setting: ' + e);
+                }
+              }
+            };
           }
 
           function normalizeValues(values) {

@@ -2379,22 +2379,33 @@ def _initialize_default_settings():
 @anvil.server.callable
 def get_all_settings(token_or_email):
     """
-    الحصول على جميع الإعدادات
+    الحصول على جميع الإعدادات كـ dictionary
     """
     is_authorized, error = require_admin(token_or_email)
     if not is_authorized:
         return error
 
-    settings = []
+    settings = {}
     for setting in app_tables.settings.search():
-        settings.append({
-            'key': setting['setting_key'],
-            'value': setting['setting_value'],
-            'type': setting['setting_type'],
-            'description': setting['description'],
-            'updated_by': setting.get('updated_by', ''),
-            'updated_at': setting['updated_at'].isoformat() if setting.get('updated_at') else ''
-        })
+        key = setting['setting_key']
+        value = setting['setting_value']
+        setting_type = setting.get('setting_type', 'text')
+        
+        # تحويل القيمة حسب النوع
+        if setting_type == 'number':
+            try:
+                value = float(value)
+            except (ValueError, TypeError):
+                pass
+        elif setting_type == 'json':
+            try:
+                value = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        elif setting_type == 'bool':
+            value = str(value).lower() in ('true', '1', 'yes')
+        
+        settings[key] = value
 
     return {'success': True, 'settings': settings}
 

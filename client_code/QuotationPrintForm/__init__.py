@@ -465,34 +465,51 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
             ]
 
         def normalize_specs(raw):
-            if isinstance(raw, list):
-                specs = []
-                for spec in raw:
-                    specs.append({
-                        'label_ar': spec.get('label_ar', ''),
-                        'label_en': spec.get('label_en', ''),
-                        'source': spec.get('source', 'field'),
-                        'values': normalize_values(spec.get('values')),
-                        'active': spec.get('active', True) is not False,
-                    })
-                return specs
-
             defaults = default_specs()
-            if isinstance(raw, dict):
-                specs = []
-                for i, default in enumerate(defaults, 1):
-                    saved = raw.get(f'tech_spec_{i}', {})
-                    specs.append({
-                        'label_ar': saved.get('label_ar', default['label_ar']),
-                        'label_en': saved.get('label_en', default['label_en']),
-                        'source': saved.get('source', default['source']),
-                        'values': normalize_values(saved.get('values') or saved.get('value_keys') or default['values']),
-                        'active': saved.get('active', True) is not False,
-                    })
-                return specs
+            
+            # If raw is a valid list with proper structure, use it
+            if isinstance(raw, list) and len(raw) > 0:
+                # Validate that the list has proper label structure
+                first_item = raw[0] if raw else {}
+                if first_item.get('label_en') and first_item.get('values'):
+                    specs = []
+                    for spec in raw:
+                        specs.append({
+                            'label_ar': spec.get('label_ar', ''),
+                            'label_en': spec.get('label_en', ''),
+                            'source': spec.get('source', 'field'),
+                            'values': normalize_values(spec.get('values')),
+                            'active': spec.get('active', True) is not False,
+                        })
+                    return specs
+                # Invalid structure, use defaults
+                return defaults
+
+            # If raw is a dict with tech_spec_N keys
+            if isinstance(raw, dict) and len(raw) > 0:
+                # Check if it has the expected structure
+                first_key = next(iter(raw.keys()), None)
+                if first_key and first_key.startswith('tech_spec_'):
+                    specs = []
+                    for i, default in enumerate(defaults, 1):
+                        saved = raw.get(f'tech_spec_{i}', {})
+                        if isinstance(saved, dict):
+                            specs.append({
+                                'label_ar': saved.get('label_ar', default['label_ar']),
+                                'label_en': saved.get('label_en', default['label_en']),
+                                'source': saved.get('source', default['source']),
+                                'values': normalize_values(saved.get('values') or saved.get('value_keys') or default['values']),
+                                'active': saved.get('active', True) is not False,
+                            })
+                        else:
+                            specs.append(default)
+                    return specs
+            
+            # Default: return hardcoded defaults
             return defaults
 
-        tech_specs_settings = data.get('tech_specs_settings', {})
+        # Get tech_specs_settings, default to empty to use hardcoded defaults
+        tech_specs_settings = data.get('tech_specs_settings', None)
         specs_list = normalize_specs(tech_specs_settings)
 
         value_map = {

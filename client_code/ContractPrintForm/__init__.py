@@ -600,73 +600,79 @@ class ContractPrintForm(ContractPrintFormTemplate):
             html += f'<tr><th>Machine Width:</th><td>{data.get("machine_width", "")} CM</td></tr>'
         html += '</table>'
 
-        # 17 Specifications (Same as Quotation)
+        # ==================== 17 SPECIFICATIONS (Same as Quotation - FULL VERSION) ====================
         html += f'<div class="section-title">{"المواصفات الفنية:" if is_ar else "Technical Specifications:"}</div>'
-        html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px;">'
+        html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
 
+        # Helper function to determine Belt/Gear drive for item 13
         def get_drive_type():
             is_metal_anilox = 'METAL' in model
             is_nonwoven = 'NONWOVEN' in material
+            # Belt drive if: Ceramic anilox OR NONWOVEN material
+            # Gear drive if: Metal anilox AND NOT NONWOVEN
             if is_metal_anilox and not is_nonwoven:
                 return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق الجيربوكس' if is_ar else 'Gear drive',
-                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر نظام الجير' if is_ar else 'Power transmission via Gear drive')
+                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر نظام الجير لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
             else:
                 return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق السيور' if is_ar else 'Belt drive',
-                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر السيور' if is_ar else 'Power transmission via Belt drive')
+                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر السيور لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
 
+        # Helper function for item 7 (color registration)
         def get_color_registration():
             is_plc_yes = plc_value in ['YES', 'TRUE', '1', 'نعم']
             if is_plc_yes:
-                return ('ضبط تسجيل الألوان الأفقي والرأسي أوتوماتيكياً أثناء التشغيل' if is_ar else 'Automatic horizontal and vertical color registration')
+                return ('ضبط تسجيل الألوان الأفقي والرأسي أوتوماتيكياً أثناء التشغيل' if is_ar else 'Automatically horizontal and vertical color registration adjustment during operation')
             else:
-                return ('ضبط تسجيل الألوان الأفقي والرأسي يدوياً أثناء التشغيل' if is_ar else 'Manual horizontal and vertical color registration')
+                return ('ضبط تسجيل الألوان الأفقي والرأسي يدوياً أثناء التشغيل' if is_ar else 'Manual horizontal and vertical color registration adjustment during operation')
 
         drive_type, drive_desc = get_drive_type()
         color_reg = get_color_registration()
 
+        # 17 Specifications - FULL VERSION (same as Quotation)
         specs_en = [
             "Heavy-duty cast iron frame, stable and vibration-resistant",
-            "Automatic web tension control units suitable for different material weights",
-            "Web guiding (oscillating) units to ensure accurate print centering",
-            "Rollers and cylinders laser-treated for heavy-duty operation",
-            "Automatic machine stop sensors in case of film breakage",
-            "Printing cylinder pressure applied via hydraulic oil system",
-            color_reg,
-            "Integrated overhead lifting cranes",
+            "Automatic web tension control units suitable for different material weights, thicknesses, and flexibility, with manual adjustment option",
+            "Web guiding (oscillating) units to ensure accurate print centering on the substrate and smooth rewinding of printed material",
+            "Rollers and cylinders laser-treated for heavy-duty operation and extended service life",
+            "Automatic machine stop sensors in case of film breakage or material run-out",
+            "Printing cylinder pressure applied via hydraulic oil system to avoid pneumatic pressure issues and reduce electrical consumption caused by repeated air compressor operation",
+            color_reg if not is_ar else color_reg,
+            "Integrated overhead lifting cranes to facilitate loading and unloading of rolls and printing cylinders, saving time, labor, and effort",
             "Suitable for solvent-based and water-based inks",
             "Delta (Taiwan) inverters",
-            "Safety alarm before machine start-up",
-            "Hot air drying units with extended web path",
-            drive_desc,
-            "Integrated lubrication pumps",
-            "Separate rewind motors with independent control",
-            "Air-shaft unwind/rewind cylinders",
+            "Safety alarm before machine start-up to prevent injuries",
+            "Hot air drying units with extended web path to ensure complete ink drying, in addition to inter-color drying units",
+            drive_desc if not is_ar else drive_desc,
+            "Integrated lubrication pumps to ensure balanced oil distribution to all components, smooth operation, and protection of all moving parts",
+            "Separate rewind motors with independent control to allow operation with different flexibility and thicknesses of materials",
+            "Air-shaft unwind/rewind cylinders, in addition to one extra mechanical shaft to enable operation with any core size",
             "Double-sided printing capability"
         ]
 
         specs_ar = [
             "هيكل من الحديد الزهر الثقيل، ثابت ومقاوم للاهتزازات",
-            "وحدات تحكم أوتوماتيكية في شد الخامة",
-            "وحدات توجيه الخامة (المتأرجحة) لضمان دقة توسيط الطباعة",
-            "الرولات والأسطوانات معالجة بالليزر للتشغيل الشاق",
-            "مستشعرات إيقاف أوتوماتيكي للماكينة في حالة انقطاع الفيلم",
-            "ضغط أسطوانة الطباعة عبر نظام الزيت الهيدروليكي",
+            "وحدات تحكم أوتوماتيكية في شد الخامة مناسبة لأوزان وسماكات ومرونات مختلفة، مع خيار الضبط اليدوي",
+            "وحدات توجيه الخامة (المتأرجحة) لضمان دقة توسيط الطباعة على الخامة وإعادة لف سلسة للمادة المطبوعة",
+            "الرولات والأسطوانات معالجة بالليزر للتشغيل الشاق وإطالة عمر الخدمة",
+            "مستشعرات إيقاف أوتوماتيكي للماكينة في حالة انقطاع الفيلم أو نفاد الخامة",
+            "ضغط أسطوانة الطباعة يتم عبر نظام الزيت الهيدروليكي لتجنب مشاكل الضغط الهوائي وتقليل استهلاك الكهرباء الناتج عن تشغيل ضاغط الهواء المتكرر",
             get_color_registration(),
-            "رافعات سقفية مدمجة لتسهيل تحميل وتفريغ الرولات",
+            "رافعات سقفية مدمجة لتسهيل تحميل وتفريغ الرولات وأسطوانات الطباعة، مما يوفر الوقت والجهد والعمالة",
             "مناسبة لأحبار المذيبات والأحبار المائية",
             "إنفرترات دلتا (تايوان)",
-            "إنذار أمان قبل بدء تشغيل الماكينة",
-            "وحدات تجفيف بالهواء الساخن مع مسار خامة ممتد",
+            "إنذار أمان قبل بدء تشغيل الماكينة لمنع الإصابات",
+            "وحدات تجفيف بالهواء الساخن مع مسار خامة ممتد لضمان جفاف الحبر الكامل، بالإضافة إلى وحدات تجفيف بين الألوان",
             get_drive_type()[1],
-            "مضخات تشحيم مدمجة لضمان توزيع متوازن للزيت",
-            "موتورات إعادة لف منفصلة بتحكم مستقل",
-            "أسطوانات فك/لف بشافت هوائي",
+            "مضخات تشحيم مدمجة لضمان توزيع متوازن للزيت على جميع المكونات، تشغيل سلس، وحماية جميع الأجزاء المتحركة",
+            "موتورات إعادة لف منفصلة بتحكم مستقل للسماح بالتشغيل مع مرونات وسماكات مختلفة للخامات",
+            "أسطوانات فك/لف بشافت هوائي، بالإضافة إلى شافت ميكانيكي إضافي لتمكين التشغيل مع أي حجم كور",
             "إمكانية الطباعة على الوجهين"
         ]
 
         specs = specs_ar if is_ar else specs_en
-        for spec in specs:
+        for i, spec in enumerate(specs, 1):
             html += f'<li>{spec}</li>'
+
         html += '</ol>'
         html += '</div>'  # End Page 1
 

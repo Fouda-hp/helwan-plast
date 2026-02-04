@@ -240,8 +240,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         html += f'<div class="section-title">{"تفاصيل الماكينة :" if is_ar else "Machine Details"}</div>'
         html += '<table class="details-table">'
         
-        # For Arabic: label first (th), then value (td) - RTL
-        # For English: value first (td), then label (th) - LTR with swapped columns
+        # Both Arabic and English: label (th) on left, value (td) on right
         if is_ar:
             html += f'<tr><th>نوع الماكينة :</th><td>{machine_type_display}</td></tr>'
             html += f'<tr><th>الموديل :</th><td>{data.get("model", "")}</td></tr>'
@@ -251,19 +250,19 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
             html += f'<tr><th>نوع الوندر :</th><td>{winder_type_display}</td></tr>'
             html += f'<tr><th>عرض الماكينة :</th><td>{data.get("machine_width", "")} سم</td></tr>'
         else:
-            # English: swap columns - value on left, label on right
-            html += f'<tr><td>{machine_type_display}</td><th>Machine Type:</th></tr>'
-            html += f'<tr><td>{data.get("model", "")}</td><th>Model:</th></tr>'
-            html += f'<tr><td>{c.get("country_origin_en", "")}</td><th>Country of Origin:</th></tr>'
-            html += f'<tr><td>{data.get("colors_count", "")}</td><th>Number of Colors:</th></tr>'
-            html += f'<tr><td>{data.get("winder", "")}</td><th>Winder:</th></tr>'
-            html += f'<tr><td>{winder_type_display}</td><th>Winder Type:</th></tr>'
-            html += f'<tr><td>{data.get("machine_width", "")} CM</td><th>Machine Width:</th></tr>'
+            # English: label on far left, value next to it
+            html += f'<tr><th>Machine Type:</th><td>{machine_type_display}</td></tr>'
+            html += f'<tr><th>Model:</th><td>{data.get("model", "")}</td></tr>'
+            html += f'<tr><th>Country of Origin:</th><td>{c.get("country_origin_en", "")}</td></tr>'
+            html += f'<tr><th>Number of Colors:</th><td>{data.get("colors_count", "")}</td></tr>'
+            html += f'<tr><th>Winder:</th><td>{data.get("winder", "")}</td></tr>'
+            html += f'<tr><th>Winder Type:</th><td>{winder_type_display}</td></tr>'
+            html += f'<tr><th>Machine Width:</th><td>{data.get("machine_width", "")} CM</td></tr>'
         html += '</table>'
 
         # ==================== 17 SPECIFICATIONS ====================
         html += f'<div class="section-title">{"المواصفات الفنية:" if is_ar else "Technical Specifications:"}</div>'
-        html += '<ol class="specs-list" style="font-size: 13px; line-height: 1.7; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
+        html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
 
         # Helper function to determine Belt/Gear drive for item 13
         def get_drive_type():
@@ -601,16 +600,18 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
         html += f'<div class="section-title">{"طريقة الدفع:" if is_ar else "Payment Terms:"}</div>'
         if is_in_stock:
-            html += '<table class="payment-table payment-table-simple">'
-            html += f'<tr><th>{"مقدم تعاقد" if is_ar else "Down Payment"}</th><td></td></tr>'
-            html += f'<tr><th>{"الدفع قبل الشحن" if is_ar else "Payment before shipping"}</th><td></td></tr>'
+            # In Stock mode: simple list without empty value cells
+            html += '<ul class="payment-list-simple" style="list-style: disc; padding-left: 25px; font-size: 14px; line-height: 1.8;">'
+            html += f'<li>{"مقدم تعاقد" if is_ar else "Down Payment"}</li>'
+            html += f'<li>{"الدفع قبل الشحن" if is_ar else "Payment before shipping"}</li>'
+            html += '</ul>'
         else:
             html += '<table class="payment-table">'
             html += f'<tr><th>{"مقدم تعاقد" if is_ar else "Down Payment"}</th><td>{data.get("down_payment_percent", "")}%</td><td class="amount">{data.get("down_payment_amount", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
             html += f'<tr><th>{"قبل الشحن" if is_ar else "Before Shipping"}</th><td>{data.get("before_shipping_percent", "")}%</td><td class="amount">{data.get("before_shipping_amount", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
             html += f'<tr><th>{"قبل التسليم" if is_ar else "Before Delivery"}</th><td>{data.get("before_delivery_percent", "")}%</td><td class="amount">{data.get("before_delivery_amount", "")} {"ج.م" if is_ar else "EGP"}</td></tr>'
+            html += '</table>'
 
-        html += '</table>'
         html += '</div>'
 
         # Delivery & Warranty

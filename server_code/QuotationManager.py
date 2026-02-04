@@ -1831,102 +1831,45 @@ def get_quotations_list(search='', include_deleted=False):
 # =========================================================
 # Contract Management Functions
 # =========================================================
+# Contracts are stored in the 'settings' table with key 'contract_<quotation_number>'
+# This avoids the need to create a separate table
+
 @anvil.server.callable
 def save_contract(contract_data):
     """
-    Save contract data to the contracts table
-    
-    contract_data should include:
-    - quotation_number
-    - client_name, company, phone, country, address
-    - model, colors_count, machine_width, material, winder_type
-    - price_mode, total_price, currency
-    - payment_method (percentage/amount)
-    - num_payments
-    - payments (list of payment objects)
-    - delivery_date
-    - contract_date
-    - language
+    Save contract data to settings table as JSON
+    Uses key format: contract_<quotation_number>
     """
     try:
         quotation_number = contract_data.get('quotation_number')
         if not quotation_number:
             return {'success': False, 'message': 'Quotation number is required'}
         
-        # Generate contract number
+        # Generate contract key and number
+        contract_key = f"contract_{quotation_number}"
         contract_number = f"C-{quotation_number}"
         
-        # Check if contract already exists
-        try:
-            existing = app_tables.contracts.get(contract_number=contract_number)
-            if existing:
-                # Update existing contract
-                existing.update(
-                    quotation_number=quotation_number,
-                    client_name=contract_data.get('client_name', ''),
-                    company=contract_data.get('company', ''),
-                    phone=contract_data.get('phone', ''),
-                    country=contract_data.get('country', ''),
-                    address=contract_data.get('address', ''),
-                    model=contract_data.get('model', ''),
-                    colors_count=contract_data.get('colors_count', ''),
-                    machine_width=contract_data.get('machine_width', ''),
-                    material=contract_data.get('material', ''),
-                    winder_type=contract_data.get('winder_type', ''),
-                    price_mode=contract_data.get('price_mode', ''),
-                    total_price=contract_data.get('total_price', 0),
-                    currency=contract_data.get('currency', 'EGP'),
-                    payment_method=contract_data.get('payment_method', 'percentage'),
-                    num_payments=contract_data.get('num_payments', 0),
-                    payments_json=json.dumps(contract_data.get('payments', []), ensure_ascii=False),
-                    delivery_date=contract_data.get('delivery_date', ''),
-                    updated_at=datetime.now()
-                )
-                logger.info(f"Contract {contract_number} updated")
-                return {'success': True, 'message': 'Contract updated', 'contract_number': contract_number}
-        except Exception as e:
-            # Table might not exist or contract not found
-            logger.warning(f"Could not check existing contract: {e}")
+        # Add metadata
+        contract_data['contract_number'] = contract_number
+        contract_data['created_at'] = contract_data.get('created_at', datetime.now().isoformat())
+        contract_data['updated_at'] = datetime.now().isoformat()
         
-        # Create new contract
-        try:
-            app_tables.contracts.add_row(
-                contract_number=contract_number,
-                quotation_number=quotation_number,
-                client_name=contract_data.get('client_name', ''),
-                company=contract_data.get('company', ''),
-                phone=contract_data.get('phone', ''),
-                country=contract_data.get('country', ''),
-                address=contract_data.get('address', ''),
-                model=contract_data.get('model', ''),
-                colors_count=contract_data.get('colors_count', ''),
-                machine_width=contract_data.get('machine_width', ''),
-                material=contract_data.get('material', ''),
-                winder_type=contract_data.get('winder_type', ''),
-                price_mode=contract_data.get('price_mode', ''),
-                total_price=contract_data.get('total_price', 0),
-                currency=contract_data.get('currency', 'EGP'),
-                payment_method=contract_data.get('payment_method', 'percentage'),
-                num_payments=contract_data.get('num_payments', 0),
-                payments_json=json.dumps(contract_data.get('payments', []), ensure_ascii=False),
-                delivery_date=contract_data.get('delivery_date', ''),
-                contract_date=contract_data.get('contract_date', datetime.now().strftime('%Y-%m-%d')),
-                language=contract_data.get('language', 'ar'),
-                created_at=datetime.now(),
-                updated_at=datetime.now()
+        # Convert to JSON
+        contract_json = json.dumps(contract_data, ensure_ascii=False, default=str)
+        
+        # Save to settings table
+        existing = app_tables.settings.get(setting_key=contract_key)
+        if existing:
+            existing['setting_value'] = contract_json
+            logger.info(f"Contract {contract_number} updated")
+            return {'success': True, 'message': 'Contract updated', 'contract_number': contract_number}
+        else:
+            app_tables.settings.add_row(
+                setting_key=contract_key,
+                setting_value=contract_json
             )
             logger.info(f"Contract {contract_number} created")
             return {'success': True, 'message': 'Contract saved', 'contract_number': contract_number}
-            
-        except Exception as e:
-            logger.error(f"Error creating contract: {e}")
-            # If contracts table doesn't exist, inform user
-            if 'contracts' in str(e).lower():
-                return {
-                    'success': False, 
-                    'message': 'Please create the "contracts" table in Anvil Data Tables first. Required columns: contract_number, quotation_number, client_name, company, phone, country, address, model, colors_count, machine_width, material, winder_type, price_mode, total_price, currency, payment_method, num_payments, payments_json, delivery_date, contract_date, language, created_at, updated_at'
-                }
-            return {'success': False, 'message': str(e)}
     
     except Exception as e:
         logger.error(f"Error saving contract: {e}")
@@ -1936,41 +1879,73 @@ def save_contract(contract_data):
 
 
 @anvil.server.callable
-def get_contracts_list(search=''):
+def get_contract(quotation_number):
     """
-    Get list of all contracts
+    Get a single contract by quotation number
     """
     try:
-        all_rows = list(app_tables.contracts.search())
+        contract_key = f"contract_{quotation_number}"
+        row = app_tables.settings.get(setting_key=contract_key)
+        
+        if row:
+            contract_data = json.loads(row['setting_value'])
+            return {'success': True, 'data': contract_data}
+        else:
+            return {'success': False, 'message': 'Contract not found'}
+    
+    except Exception as e:
+        logger.error(f"Error getting contract: {e}")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_contracts_list(search=''):
+    """
+    Get list of all contracts from settings table
+    """
+    try:
+        # Get all contract settings
+        all_settings = list(app_tables.settings.search())
+        contracts = []
+        
+        for row in all_settings:
+            key = row.get('setting_key', '')
+            if key.startswith('contract_'):
+                try:
+                    contract_data = json.loads(row['setting_value'])
+                    contracts.append(contract_data)
+                except:
+                    continue
         
         # Filter by search
         if search:
             search = search.lower()
             filtered = []
-            for r in all_rows:
-                client_name = str(r.get('client_name', '') or '').lower()
-                contract_num = str(r.get('contract_number', '') or '').lower()
+            for c in contracts:
+                client_name = str(c.get('client_name', '') or '').lower()
+                contract_num = str(c.get('contract_number', '') or '').lower()
                 if search in client_name or search in contract_num:
-                    filtered.append(r)
-            all_rows = filtered
+                    filtered.append(c)
+            contracts = filtered
         
         # Sort by created_at descending
-        all_rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
+        contracts.sort(key=lambda x: x.get('created_at', ''), reverse=True)
         
+        # Prepare response
         data = []
-        for r in all_rows:
+        for c in contracts:
             data.append({
-                'contract_number': r.get('contract_number'),
-                'quotation_number': r.get('quotation_number'),
-                'client_name': r.get('client_name'),
-                'total_price': r.get('total_price'),
-                'num_payments': r.get('num_payments'),
-                'delivery_date': r.get('delivery_date'),
-                'contract_date': r.get('contract_date'),
-                'created_at': r.get('created_at').isoformat() if r.get('created_at') else ''
+                'contract_number': c.get('contract_number'),
+                'quotation_number': c.get('quotation_number'),
+                'client_name': c.get('client_name'),
+                'total_price': c.get('total_price'),
+                'num_payments': c.get('num_payments'),
+                'delivery_date': c.get('delivery_date'),
+                'contract_date': c.get('contract_date'),
+                'created_at': c.get('created_at', '')
             })
         
-        return {'success': True, 'data': data}
+        return {'success': True, 'data': data, 'count': len(data)}
     
     except Exception as e:
         logger.error(f"Error getting contracts list: {e}")

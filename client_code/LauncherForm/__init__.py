@@ -90,12 +90,12 @@ class LauncherForm(LauncherFormTemplate):
         self._inject_totp_link()
 
     def _inject_totp_link(self):
-        """إظهار رابط تفعيل تطبيق المصادقة (موجود في القالب) وربط النقر - يظهر للمستخدم أول مرة فقط حتى يفعّل التطبيق"""
+        """رابط التطبيق ظاهر افتراضياً في القالب؛ نربط النقر ونخفيه فقط إذا المستخدم فعّل المصادقة"""
         js = r"""
         (function() {
           if (window._totpLinkInjected) return;
           window._totpLinkInjected = true;
-          function attachLinkBehavior() {
+          function attachAndMaybeHide() {
             var link = document.getElementById('launcherTotpLink');
             var wrap = document.getElementById('totpLinkWrap');
             if (!link || !wrap) return;
@@ -147,29 +147,20 @@ class LauncherForm(LauncherFormTemplate):
                 modal.style.display = 'flex';
               }).catch(function(err) { alert('Error: ' + (err && err.message ? err.message : err)); });
             };
-          }
-          function doInject() {
             if (window.userHasTotpEnabled && typeof window.userHasTotpEnabled === 'function') {
               window.userHasTotpEnabled().then(function(hasTotp) {
-                attachLinkBehavior();
-                var wrap = document.getElementById('totpLinkWrap');
-                if (wrap && !hasTotp) wrap.style.display = 'block';
-              }).catch(function() {
-                attachLinkBehavior();
-                var wrap = document.getElementById('totpLinkWrap');
-                if (wrap) wrap.style.display = 'block';
-              });
-            } else {
-              attachLinkBehavior();
-              var wrap = document.getElementById('totpLinkWrap');
-              if (wrap) wrap.style.display = 'block';
+                if (hasTotp && wrap) wrap.style.display = 'none';
+              }).catch(function() {});
             }
           }
-          if (document.getElementById('totpLinkWrap')) {
-            doInject();
-          } else {
-            setTimeout(function() { doInject(); }, 400);
+          function run() {
+            if (document.getElementById('totpLinkWrap')) {
+              attachAndMaybeHide();
+            } else {
+              setTimeout(run, 200);
+            }
           }
+          run();
         })();
         """
         try:

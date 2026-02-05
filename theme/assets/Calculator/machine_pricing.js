@@ -19,45 +19,28 @@
     BANK_COMMISSION: 0.0132
   };
 
-  // تحميل الإعدادات من السيرفر - السيرفر هو المصدر الأساسي دايماً
+  // تحميل الإعدادات من السيرفر — استدعاء واحد بدل 6 (أخف على الشبكة)
   async function loadSettingsFromServer() {
     try {
-      // تحميل سعر الصرف من السيرفر أولاً (المصدر الأساسي)
-      const exchangeRate = await window.anvil?.server?.call('get_setting', 'exchange_rate');
-      if (exchangeRate && !isNaN(exchangeRate)) {
-        EXCHANGE_RATE = parseFloat(exchangeRate);
-        console.log('📈 Exchange rate loaded from server:', EXCHANGE_RATE);
+      const data = await window.anvil?.server?.call('get_calculator_settings');
+      if (!data) return;
+      if (data.exchangeRate != null && !isNaN(data.exchangeRate)) {
+        EXCHANGE_RATE = parseFloat(data.exchangeRate);
+        var exEl = document.getElementById("exchange_rate");
+        if (exEl) exEl.value = EXCHANGE_RATE.toFixed(2);
       }
-
-      // تحميل باقي الإعدادات
-      const shippingSea = await window.anvil?.server?.call('get_setting', 'shipping_sea');
-      if (shippingSea && !isNaN(shippingSea)) CONFIG.SHIPPING_SEA = parseFloat(shippingSea);
-
-      const thsCost = await window.anvil?.server?.call('get_setting', 'ths_cost');
-      if (thsCost && !isNaN(thsCost)) CONFIG.THS = parseFloat(thsCost);
-
-      const clearanceExpenses = await window.anvil?.server?.call('get_setting', 'clearance_expenses');
-      if (clearanceExpenses && !isNaN(clearanceExpenses)) CONFIG.EXPENSES_CLEARANCE = parseFloat(clearanceExpenses);
-
-      const taxRate = await window.anvil?.server?.call('get_setting', 'tax_rate');
-      if (taxRate && !isNaN(taxRate)) CONFIG.TAX_RATE = parseFloat(taxRate);
-
-      const bankCommission = await window.anvil?.server?.call('get_setting', 'bank_commission');
-      if (bankCommission && !isNaN(bankCommission)) CONFIG.BANK_COMMISSION = parseFloat(bankCommission);
-
-      // تحديث حقل سعر الصرف في الواجهة
-      const exchangeInput = document.getElementById("exchange_rate");
-      if (exchangeInput) exchangeInput.value = EXCHANGE_RATE.toFixed(2);
-
-      // إعادة حساب الأسعار بعد تحميل الإعدادات الجديدة
-      if (typeof window.recalcAll === 'function') {
-        window.recalcAll();
-      }
-
-      console.log('⚙️ Settings loaded successfully from server');
+      if (data.shipping_sea != null && !isNaN(data.shipping_sea)) CONFIG.SHIPPING_SEA = parseFloat(data.shipping_sea);
+      if (data.ths_cost != null && !isNaN(data.ths_cost)) CONFIG.THS = parseFloat(data.ths_cost);
+      if (data.clearance_expenses != null && !isNaN(data.clearance_expenses)) CONFIG.EXPENSES_CLEARANCE = parseFloat(data.clearance_expenses);
+      if (data.tax_rate != null && !isNaN(data.tax_rate)) CONFIG.TAX_RATE = parseFloat(data.tax_rate);
+      if (data.bank_commission != null && !isNaN(data.bank_commission)) CONFIG.BANK_COMMISSION = parseFloat(data.bank_commission);
+      if (data.config && data.config.types && data.config.types.length) updateMachineTypeDropdown(data.config.types);
+      if (data.config && data.config.colors && data.config.colors.length) updateColorsDropdown(data.config.colors);
+      if (data.config && data.config.widths && data.config.widths.length) updateWidthsDropdown(data.config.widths);
+      if (typeof window.recalcAll === 'function') window.recalcAll();
       window._settingsLoaded = true;
     } catch (e) {
-      console.warn('⚠️ Could not load settings from server, using defaults:', e);
+      console.warn('Could not load settings from server, using defaults:', e);
     }
   }
 
@@ -422,31 +405,17 @@
     } catch (e) {}
   }
   tryApplyStoredSettings();
-  setTimeout(tryApplyStoredSettings, 300);
-  setTimeout(tryApplyStoredSettings, 800);
+  setTimeout(tryApplyStoredSettings, 400);
+  setTimeout(tryApplyStoredSettings, 1000);
   var _pollCount = 0;
   var _pollId = setInterval(function() {
     tryApplyStoredSettings();
-    if (++_pollCount >= 10) clearInterval(_pollId);
-  }, 400);
+    if (++_pollCount >= 5) clearInterval(_pollId);
+  }, 600);
 
-  // احتياطي: بعد 2 ثانية جلب سعر الصرف من السيرفر مباشرة (لو بايثون في نافذة مختلفة)
-  setTimeout(function() {
-    if (window.anvil && window.anvil.server && typeof window.anvil.server.call === 'function') {
-      var p = window.anvil.server.call('get_setting', 'exchange_rate');
-      if (p && typeof p.then === 'function') {
-        p.then(function(rate) {
-          if (rate != null && !isNaN(parseFloat(rate)) && window.updateExchangeRate) {
-            window.updateExchangeRate(rate);
-          }
-        }).catch(function() {});
-      }
-    }
-  }, 2000);
-
-  // Load config and prices after settings
-  setTimeout(loadMachinePricesFromServer, 1000);
-  setTimeout(loadMachineConfigFromServer, 1200);
+  // تحميل الأسعار والكونفيج بعد الإعدادات (بدون استدعاء إضافي لسعر الصرف — بايثون يمرّر الإعدادات)
+  setTimeout(loadMachinePricesFromServer, 800);
+  setTimeout(loadMachineConfigFromServer, 1000);
 
   function getMachineBasePrice() {
     return MACHINE_PRICES?.[machineType.value]?.[colors.value]?.[width.value] || 0;
@@ -517,11 +486,12 @@
     }
   });
 
+  // تحديث الإعدادات كل 5 دقائق فقط (تقليل الحمل — الإعدادات لا تتغير كثيراً)
   setInterval(function() {
     if (window.anvil?.server?.call) {
       loadSettingsFromServer();
     }
-  }, 60000);
+  }, 300000);
 
   // ----------------------------------------
   // الحسابات الأساسية

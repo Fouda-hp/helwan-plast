@@ -2858,6 +2858,37 @@ def get_setting(key):
 
 
 @anvil.server.callable
+def get_calculator_settings():
+    """
+    جلب كل إعدادات الكالكتور في استدعاء واحد (تقليل عدد الـ round-trips).
+    يرجع: exchangeRate, shipping_sea, ths_cost, clearance_expenses, tax_rate, bank_commission, config
+    """
+    result = {
+        'exchangeRate': None,
+        'shipping_sea': None,
+        'ths_cost': None,
+        'clearance_expenses': None,
+        'tax_rate': None,
+        'bank_commission': None,
+        'config': None
+    }
+    try:
+        result['exchangeRate'] = get_setting('exchange_rate')
+        result['shipping_sea'] = get_setting('shipping_sea')
+        result['ths_cost'] = get_setting('ths_cost')
+        result['clearance_expenses'] = get_setting('clearance_expenses')
+        result['tax_rate'] = get_setting('tax_rate')
+        result['bank_commission'] = get_setting('bank_commission')
+        cfg = get_machine_config()
+        if cfg and cfg.get('success') and cfg.get('config'):
+            result['config'] = cfg['config']
+        return result
+    except Exception as e:
+        logger.error(f"get_calculator_settings error: {e}")
+        return result
+
+
+@anvil.server.callable
 def get_machine_prices():
     """
     المصدر الأساسي والرئيسي لجميع أسعار المكن في النظام.

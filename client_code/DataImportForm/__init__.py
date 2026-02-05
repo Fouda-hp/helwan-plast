@@ -41,7 +41,7 @@ class DataImportForm(DataImportFormTemplate):
         hash_val = anvil.js.window.location.hash or ""
         if not hash_val or hash_val == "#":
             hash_val = "#login"
-        from shared.routing import open_route
+        from LauncherForm import open_route
         open_route(hash_val)
 
     def _get_auth_info(self):

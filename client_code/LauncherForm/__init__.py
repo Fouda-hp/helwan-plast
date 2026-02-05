@@ -15,6 +15,61 @@ import anvil.tables.query as q
 from anvil.tables import app_tables
 import anvil.js
 
+# --- توحيد التوجيه (مصدر واحد، بدون حزمة shared لتفادي ModuleNotFoundError في Anvil) ---
+ROUTE_MAP = {
+    "#calculator": "CalculatorForm",
+    "#clients": "ClientListForm",
+    "#database": "DatabaseForm",
+    "#admin": "AdminPanel",
+    "#import": "DataImportForm",
+    "#quotation-print": "QuotationPrintForm",
+    "#contract-print": "ContractPrintForm",
+    "#login": "LoginForm",
+    "#launcher": "LauncherForm",
+}
+DEFAULT_ROUTE = "#launcher"
+DEFAULT_FORM = "LauncherForm"
+
+
+def open_route(hash_val):
+    """فتح النموذج المناسب حسب الـ hash."""
+    if not hash_val or hash_val == "#":
+        hash_val = DEFAULT_ROUTE
+    form_name = ROUTE_MAP.get(hash_val, DEFAULT_FORM)
+    if form_name == "CalculatorForm":
+        open_form("CalculatorForm")
+    elif form_name == "ClientListForm":
+        open_form("ClientListForm")
+    elif form_name == "DatabaseForm":
+        open_form("DatabaseForm")
+    elif form_name == "AdminPanel":
+        open_form("AdminPanel")
+    elif form_name == "DataImportForm":
+        open_form("DataImportForm")
+    elif form_name == "QuotationPrintForm":
+        open_form("QuotationPrintForm")
+    elif form_name == "ContractPrintForm":
+        open_form("ContractPrintForm")
+    elif form_name == "LoginForm":
+        open_form("LoginForm")
+    else:
+        open_form("LauncherForm")
+
+
+def get_restore_and_save_js():
+    """JS لاستعادة hp_last_page عند فراغ الـ hash وحفظ الـ hash الحالي."""
+    return """
+        (function() {
+            var h = (window.location && window.location.hash) || '';
+            if (!h || h === '#') {
+                var saved = (window.localStorage && window.localStorage.getItem('hp_last_page')) || '';
+                if (saved && saved.indexOf('#') === 0 && window.location) window.location.hash = saved;
+            }
+            h = (window.location && window.location.hash) || '#launcher';
+            if (window.localStorage) window.localStorage.setItem('hp_last_page', h);
+        })();
+    """
+
 
 class LauncherForm(LauncherFormTemplate):
     def __init__(self, **properties):
@@ -74,9 +129,8 @@ class LauncherForm(LauncherFormTemplate):
         self.check_route()
 
     def check_route(self):
-        """التحقق من المسار والتوجيه — استعادة آخر صفحة بعد الـ refresh (مصدر واحد: shared.routing)"""
+        """التحقق من المسار والتوجيه — استعادة آخر صفحة بعد الـ refresh"""
         try:
-            from shared.routing import get_restore_and_save_js, open_route
             anvil.js.window.eval(get_restore_and_save_js())
         except Exception:
             pass

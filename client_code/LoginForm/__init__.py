@@ -92,7 +92,7 @@ class LoginForm(LoginFormTemplate):
         hash_val = anvil.js.window.location.hash or "#launcher"
         if not hash_val or hash_val == "#":
             hash_val = "#launcher"
-        from shared.routing import open_route
+        from LauncherForm import open_route
         open_route(hash_val)
 
     # =========================================

@@ -9,7 +9,7 @@
 | المسار | الوظيفة |
 |--------|---------|
 | `client_code/` | نماذج الواجهة (Forms): اللانشر، تسجيل الدخول، الكالكتور، قائمة العملاء، قاعدة البيانات، الاستيراد، طباعة العروض والعقود، لوحة الأدمن |
-| `client_code/shared/routing.py` | **توحيد التوجيه**: خريطة hash → نموذج ودالة `open_route()` |
+| `client_code/LauncherForm/__init__.py` | **توحيد التوجيه**: `ROUTE_MAP`, `open_route()`, `get_restore_and_save_js()` (النماذج الأخرى تستورد منها لتجنب ModuleNotFoundError في Anvil) |
 | `server_code/AuthManager.py` | المصادقة والتفويض وإدارة المستخدمين والإعدادات (يستورد من `auth_config` و `auth_helpers`) |
 | `server_code/auth_config.py` | ثوابت المصادقة ومفتاح الطوارئ وصلاحيات الأدوار |
 | `server_code/auth_helpers.py` | دوال مساعدة: تحقق بريد، تشفير كلمات مرور، OTP أساسي، IP العميل |
@@ -20,7 +20,7 @@
 ## التوجيه (Routing)
 
 - التطبيق يعتمد على **hash** في الرابط (مثل `#launcher`, `#calculator`, `#admin`).
-- الخريطة الموحدة في `client_code/shared/routing.py`: `ROUTE_MAP`, `open_route(hash_val)`, واستعادة آخر صفحة من `localStorage` عبر `get_restore_and_save_js()`.
+- الخريطة الموحدة ودوال التوجيه معرّفة في **`client_code/LauncherForm/__init__.py`** (`ROUTE_MAP`, `open_route()`, `get_restore_and_save_js()`)، والنماذج الأخرى تستوردها بـ `from LauncherForm import open_route` لأن Anvil لا يعامل مجلد `shared` كوحدة عميل.
 - النماذج التي تتعامل مع التنقل: LauncherForm، LoginForm، DataImportForm، AdminPanel.
 
 ## المصادقة والأمان

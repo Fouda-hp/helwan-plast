@@ -1306,7 +1306,7 @@ class AdminPanel(AdminPanelTemplate):
         if hash_val == "#admin":
             pass  # نبقى على الأدمن
         else:
-            from shared.routing import open_route
+            from LauncherForm import open_route
             open_route(hash_val)
 
     # =========================================================

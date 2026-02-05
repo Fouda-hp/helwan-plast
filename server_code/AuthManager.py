@@ -566,7 +566,7 @@ def setup_totp_start(auth_token):
     totp = pyotp.TOTP(secret)
     issuer = 'Helwan Plast'
     label = user_email
-    uri = totp.provisioning_uri(name=label, issuer=issuer)
+    uri = totp.provisioning_uri(name=label, issuer_name=issuer)
     img = qrcode.make(uri)
     buf = io.BytesIO()
     img.save(buf, format='PNG')

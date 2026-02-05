@@ -15,6 +15,9 @@ class CalculatorForm(CalculatorFormTemplate):
   # =================================================
   def __init__(self, **properties):
     self.init_components(**properties)
+    
+    # ---------- Bind form_show event to load settings
+    self.add_event_handler('show', self.form_show)
 
     # ---------- JS bridges (auto numbering)
     anvil.js.window.getNextClientCode = self.get_next_client_code_js
@@ -157,16 +160,19 @@ class CalculatorForm(CalculatorFormTemplate):
 
   def form_show(self, **event_args):
     """جلب كل الإعدادات من السيرفر (بايثون) وتمريرها للصفحة حتى يعمل الكالكتور بدون استدعاءات من JS"""
+    print("📊 CalculatorForm form_show called - loading settings from server...")
     try:
       # جلب كل إعدادات الكالكتور من السيرفر (لا نعتمد على استدعاءات من الثيم)
       settings_payload = {}
       try:
         rate = anvil.server.call("get_setting", "exchange_rate")
+        print(f"📈 Exchange rate from server: {rate}")
         if rate is not None:
           try:
             settings_payload["exchangeRate"] = float(str(rate).replace(",", "."))
-          except (ValueError, TypeError):
-            pass
+            print(f"✅ Exchange rate set to: {settings_payload['exchangeRate']}")
+          except (ValueError, TypeError) as e:
+            print(f"⚠️ Error parsing exchange rate: {e}")
         for key, py_key in [
             ("shipping_sea", "shipping_sea"),
             ("ths_cost", "ths_cost"),
@@ -183,23 +189,25 @@ class CalculatorForm(CalculatorFormTemplate):
         result = anvil.server.call("get_machine_config")
         if result and result.get("success") and result.get("config"):
           settings_payload["config"] = result["config"]
+        print(f"📦 Settings payload: {settings_payload}")
       except Exception as e:
-        print("CalculatorForm form_show get settings error:", e)
+        print(f"❌ CalculatorForm form_show get settings error: {e}")
       # تخزين الإعدادات في متغير عام أولاً (حتى لو السكربت لسه مش حمّل، يلاقيها لما يحمّل)
       json_str = json.dumps(settings_payload, default=str)
       escaped = json_str.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
       # تخزين في النافذة الحالية وفي top (لو الفورم في iframe يلاقي القيمة)
       try:
-        set_global = 'var _p = JSON.parse("%s"); window.__calculatorSettingsFromPython = _p; if (window.top && window.top !== window) window.top.__calculatorSettingsFromPython = _p;' % escaped
+        set_global = 'var _p = JSON.parse("%s"); window.__calculatorSettingsFromPython = _p; if (window.top && window.top !== window) window.top.__calculatorSettingsFromPython = _p; console.log("🐍 Settings from Python:", _p);' % escaped
         anvil.js.window.eval(set_global)
-      except Exception:
-        pass
+      except Exception as e:
+        print(f"⚠️ Error setting global: {e}")
       # تطبيق الإعدادات بعد تأخيرات متعددة (السكربت قد يتأخر عن form_show)
       apply_js = (
         "var _d = (window.__calculatorSettingsFromPython || (window.top && window.top.__calculatorSettingsFromPython));"
+        "console.log('🔄 Applying calculator settings:', _d);"
         "var _apply = function() {"
         "  if (window.applyCalculatorSettingsFromPython && _d) {"
-        "    try { window.applyCalculatorSettingsFromPython(_d); } catch(e) {}"
+        "    try { window.applyCalculatorSettingsFromPython(_d); console.log('✅ Settings applied successfully'); } catch(e) { console.error('❌ Error applying settings:', e); }"
         "  }"
         "};"
         "setTimeout(_apply, 150); setTimeout(_apply, 500); setTimeout(_apply, 1200); setTimeout(_apply, 2500);"
@@ -210,8 +218,9 @@ class CalculatorForm(CalculatorFormTemplate):
         "var _r=function(){ if (window.reinitCalculatorDropdowns) window.reinitCalculatorDropdowns(); };"
         "setTimeout(_r, 250); setTimeout(_r, 800);"
       )
-    except Exception:
-      pass
+      print("✅ CalculatorForm form_show completed")
+    except Exception as e:
+      print(f"❌ CalculatorForm form_show error: {e}")
 
   def load_quotation(self, data):
     if not data:

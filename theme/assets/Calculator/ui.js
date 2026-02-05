@@ -273,17 +273,32 @@
   } // ✅ قفل الـ function هنا
 
   // ----------------------------------------
-  // INIT
+  // INIT (انتظار ظهور .ui-select ثم ربط الأحداث - لو الصفحة لسه مش محمّلة)
   // ----------------------------------------
-  initCustomSelects();
+  function tryInitCustomSelects() {
+    if (document.querySelectorAll(".ui-select").length > 0) {
+      initCustomSelects();
+      const materialSelect = document.getElementById("Material");
+      if (materialSelect) {
+        updateWinderOptionsByMaterial(materialSelect.value);
+      }
+      return true;
+    }
+    return false;
+  }
+  if (!tryInitCustomSelects()) {
+    var attempts = 0;
+    var t = setInterval(function() {
+      attempts++;
+      if (tryInitCustomSelects() || attempts >= 50) {
+        clearInterval(t);
+      }
+    }, 200);
+  }
+  window.reinitCalculatorDropdowns = initCustomSelects;
+
   attachQuotationRowHover();
   initButtons();
-
-  // Sync winder on first load
-  const materialSelect = document.getElementById("Material");
-  if (materialSelect) {
-    updateWinderOptionsByMaterial(materialSelect.value);
-  }
 
 })(); // ✅ قفل الـ IIFE
 

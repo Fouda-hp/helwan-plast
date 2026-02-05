@@ -154,6 +154,15 @@ class CalculatorForm(CalculatorFormTemplate):
       if c and hasattr(c, "text"):
         c.text = v or ""
 
+  def form_show(self, **event_args):
+    """عند عرض النموذج: إعادة ربط أحداث الـ dropdowns (Select machine type, Number of colors, ...)"""
+    try:
+      anvil.js.window.eval(
+        "setTimeout(function(){ if (window.reinitCalculatorDropdowns) window.reinitCalculatorDropdowns(); }, 200);"
+      )
+    except Exception:
+      pass
+
   def load_quotation(self, data):
     if not data:
       return

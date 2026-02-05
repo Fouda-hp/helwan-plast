@@ -327,10 +327,10 @@
     var attempts = 0;
     var t = setInterval(function() {
       attempts++;
-      if (tryInitCustomSelects() || attempts >= 50) {
+      if (tryInitCustomSelects() || attempts >= 25) {
         clearInterval(t);
       }
-    }, 200);
+    }, 300);
   }
   window.reinitCalculatorDropdowns = initCustomSelects;
 

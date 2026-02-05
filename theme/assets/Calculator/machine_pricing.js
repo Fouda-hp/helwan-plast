@@ -200,12 +200,23 @@
     }
   }
 
+  // تطبيع المفاتيح لـ string حتى لا يفشل البحث عند إضافة مقاس جديد (مفتاح رقمي من السيرفر)
+  function normalizePricesKeys(p) {
+    if (!p || typeof p !== 'object') return p;
+    var out = {};
+    Object.keys(p).forEach(function(k) {
+      var key = String(k);
+      out[key] = p[k] != null && typeof p[k] === 'object' && !Array.isArray(p[k]) ? normalizePricesKeys(p[k]) : p[k];
+    });
+    return out;
+  }
+
   // Load machine prices from server — المصدر الوحيد لـ Standard Machine FOB cost وخيارات الدروب داون
   async function loadMachinePricesFromServer() {
     try {
       const result = await window.anvil?.server?.call('get_machine_prices');
       if (result && result.success && result.prices) {
-        MACHINE_PRICES = result.prices;
+        MACHINE_PRICES = normalizePricesKeys(result.prices);
         if (result.options && result.options.types) {
           PRICE_OPTIONS = result.options;
           if (PRICE_OPTIONS.types.length > 0) {
@@ -398,6 +409,9 @@
       if (data.bank_commission != null && !isNaN(data.bank_commission)) CONFIG.BANK_COMMISSION = parseFloat(data.bank_commission);
       var c = data.config;
       var opts = data.priceOptions;
+      if (data.cylinderPrices && window.applyCylinderPricesMap) {
+        window.applyCylinderPricesMap(data.cylinderPrices);
+      }
       if (opts && opts.types && opts.types.length) {
         PRICE_OPTIONS = opts;
         updateMachineTypeDropdown(opts.types);
@@ -426,18 +440,33 @@
   tryApplyStoredSettings();
   setTimeout(tryApplyStoredSettings, 400);
   setTimeout(tryApplyStoredSettings, 1000);
+  setTimeout(tryApplyStoredSettings, 2200);
   var _pollCount = 0;
   var _pollId = setInterval(function() {
     tryApplyStoredSettings();
-    if (++_pollCount >= 5) clearInterval(_pollId);
-  }, 600);
+    if (++_pollCount >= 12) clearInterval(_pollId);
+  }, 500);
 
-  // تحميل الأسعار والكونفيج بعد الإعدادات (بدون استدعاء إضافي لسعر الصرف — بايثون يمرّر الإعدادات)
-  setTimeout(loadMachinePricesFromServer, 800);
-  setTimeout(loadMachineConfigFromServer, 1000);
+  // تحميل الأسعار والكونفيج بعد الإعدادات — تأخير كافٍ حتى يكون الـ DOM جاهزاً
+  setTimeout(loadMachinePricesFromServer, 600);
+  setTimeout(loadMachineConfigFromServer, 900);
+  // بعد تحميل الأسعار: إعادة تطبيق إعدادات بايثون ثم إعادة حساب (حتى لو فتح الصفحة بسرعة)
+  setTimeout(function() {
+    var d = window.__calculatorSettingsFromPython || (window.top && window.top !== window && window.top.__calculatorSettingsFromPython);
+    if (window.applyCalculatorSettingsFromPython && d) try { window.applyCalculatorSettingsFromPython(d); } catch(e) {}
+    if (typeof window.recalcAll === 'function') window.recalcAll();
+  }, 2000);
 
   function getMachineBasePrice() {
-    return MACHINE_PRICES?.[machineType.value]?.[colors.value]?.[width.value] || 0;
+    var t = machineType && machineType.value, c = colors && colors.value, w = width && width.value;
+    if (!t || !c || !w) return 0;
+    var byType = MACHINE_PRICES[t] || MACHINE_PRICES[String(t)];
+    if (!byType) return 0;
+    var byColor = byType[c] || byType[String(c)];
+    if (!byColor) return 0;
+    var val = byColor[w] != null ? byColor[w] : byColor[String(w)];
+    if (val == null || isNaN(parseFloat(val))) return 0;
+    return parseFloat(val);
   }
 
   function getMaterialAdjustment() {

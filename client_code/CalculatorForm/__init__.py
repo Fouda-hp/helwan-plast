@@ -182,6 +182,8 @@ class CalculatorForm(CalculatorFormTemplate):
         settings_payload["config"] = data["config"]
       if data.get("priceOptions"):
         settings_payload["priceOptions"] = data["priceOptions"]
+      if data.get("cylinderPrices") is not None:
+        settings_payload["cylinderPrices"] = data["cylinderPrices"]
       json_str = json.dumps(settings_payload, default=str)
       escaped = json_str.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
       try:
@@ -191,13 +193,15 @@ class CalculatorForm(CalculatorFormTemplate):
         pass
       apply_js = (
         "var _d = (window.__calculatorSettingsFromPython || (window.top && window.top.__calculatorSettingsFromPython));"
-        "var _apply = function() { if (window.applyCalculatorSettingsFromPython && _d) { try { window.applyCalculatorSettingsFromPython(_d); } catch(e) {} } };"
-        "setTimeout(_apply, 150); setTimeout(_apply, 500); setTimeout(_apply, 1200);"
+        "var _apply = function() { if (window.applyCalculatorSettingsFromPython && _d) { try { window.applyCalculatorSettingsFromPython(_d); if (window.recalcAll) setTimeout(window.recalcAll, 50); } catch(e) {} } };"
+        "var _r = function() { if (window.reinitCalculatorDropdowns) window.reinitCalculatorDropdowns(); };"
+        "setTimeout(_apply, 150); setTimeout(_apply, 500); setTimeout(_apply, 1200); setTimeout(_apply, 2500); setTimeout(_apply, 4000);"
+        "setTimeout(_r, 250); setTimeout(_r, 800); setTimeout(_r, 1500); setTimeout(_r, 3000);"
       )
       anvil.js.window.eval(apply_js)
       anvil.js.window.eval(
         "var _r=function(){ if (window.reinitCalculatorDropdowns) window.reinitCalculatorDropdowns(); };"
-        "setTimeout(_r, 250); setTimeout(_r, 800);"
+        "setTimeout(_r, 250); setTimeout(_r, 800); setTimeout(_r, 1500); setTimeout(_r, 3000);"
       )
     except Exception as e:
       print("CalculatorForm form_show error:", e)

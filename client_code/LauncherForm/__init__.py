@@ -74,8 +74,28 @@ class LauncherForm(LauncherFormTemplate):
         self.check_route()
 
     def check_route(self):
-        """التحقق من المسار والتوجيه"""
-        hash_val = anvil.js.window.location.hash
+        """التحقق من المسار والتوجيه — استعادة آخر صفحة بعد الـ refresh"""
+        try:
+            # استعادة آخر صفحة من localStorage عند الـ refresh (بدون تغيير الـ hash حتى لا يُستدعى check_route مرتين)
+            anvil.js.window.eval("""
+                (function() {
+                    var h = (window.location && window.location.hash) || '';
+                    if (!h || h === '#') {
+                        var saved = (window.localStorage && window.localStorage.getItem('hp_last_page')) || '';
+                        if (saved && saved.indexOf('#') === 0 && window.location) window.location.hash = saved;
+                    }
+                    h = (window.location && window.location.hash) || '#launcher';
+                    if (window.localStorage) window.localStorage.setItem('hp_last_page', h);
+                })();
+            """)
+        except Exception:
+            pass
+        try:
+            hash_val = anvil.js.window.location.hash or "#launcher"
+        except Exception:
+            hash_val = "#launcher"
+        if not hash_val or hash_val == "#":
+            hash_val = "#launcher"
 
         if hash_val == "#calculator":
             open_form('CalculatorForm')

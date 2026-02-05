@@ -621,6 +621,7 @@ class AdminPanel(AdminPanelTemplate):
               await original();
               setTimeout(enhanceTechSpecsSettings, 50);
               setTimeout(addMachinePricesSection, 100);
+              setTimeout(addCylinderPricesSection, 150);
               setTimeout(addMachineConfigSection, 200);
             };
             window.loadSettings.__patched = true;
@@ -818,6 +819,91 @@ class AdminPanel(AdminPanelTemplate):
                 } else alert(result ? result.message : 'Error saving prices');
               } else alert('Save function not available. Please refresh the page.');
             } catch(e) { alert('Error saving: ' + e); }
+          };
+
+          // ==========================================
+          // Cylinder Prices (USD per cm) — المصدر الوحيد لأسعار السلندرات في الكالكتور
+          // ==========================================
+          async function addCylinderPricesSection() {
+            var container = document.getElementById('settingsContent');
+            if (!container) return;
+            if (document.getElementById('cylinderPricesSection')) return;
+            var cp = {};
+            try {
+              if (window.getSetting) cp = await window.getSetting('cylinder_prices') || {};
+            } catch(e) {}
+            if (typeof cp !== 'object' || cp === null) cp = {80: 3.49, 100: 3.59, 120: 4.05, 130: 4.5, 140: 5.026, 160: 5.4};
+            var widths = Object.keys(cp).sort(function(a,b){ return parseInt(a,10) - parseInt(b,10); });
+            if (widths.length === 0) widths = ['80', '100', '120'];
+            var html = '<div id="cylinderPricesSection" style="background:#e8f5e9;padding:20px;border-radius:12px;margin-top:20px;border:2px solid #2e7d32;">';
+            html += '<h4 style="margin:0 0 15px;color:#1b5e20;">🔧 Cylinder Prices (USD per cm)</h4>';
+            html += '<p style="margin:0 0 15px;color:#2e7d32;font-size:12px;">المصدر الوحيد لأسعار السلندرات في الكالكتور فورم</p>';
+            html += '<table style="width:100%;max-width:400px;border-collapse:collapse;background:#fff;font-size:13px;">';
+            html += '<thead><tr style="background:#f5f5f5;"><th style="padding:8px;border:1px solid #ddd;">Width (cm)</th><th style="padding:8px;border:1px solid #ddd;">Price USD/cm</th><th style="padding:8px;border:1px solid #ddd;width:70px;"></th></tr></thead><tbody>';
+            widths.forEach(function(w) {
+              var val = cp[w] != null ? cp[w] : 0;
+              html += '<tr><td style="padding:8px;border:1px solid #ddd;">' + w + '</td><td style="padding:4px;border:1px solid #ddd;"><input type="number" step="0.01" class="cp-price" data-width="' + w + '" value="' + val + '" style="width:100px;padding:4px;"></td><td style="padding:4px;border:1px solid #ddd;"><button type="button" class="cp-del-row" data-width="' + w + '" style="padding:4px 8px;font-size:11px;cursor:pointer;background:#d32f2f;color:#fff;border:none;border-radius:4px;">حذف</button></td></tr>';
+            });
+            html += '</tbody></table>';
+            html += '<div style="margin-top:12px;"><button type="button" id="cpAddRow" style="padding:6px 12px;margin-right:8px;font-size:12px;cursor:pointer;background:#2e7d32;color:#fff;border:none;border-radius:4px;">➕ إضافة مقاس</button>';
+            html += '<button type="button" id="cpSave" style="padding:10px 24px;font-size:13px;cursor:pointer;background:#1b5e20;color:#fff;border:none;border-radius:6px;font-weight:bold;">💾 حفظ أسعار الأسطوانات</button></div></div>';
+            var ref = document.getElementById('machinePricesSection');
+            if (ref && ref.parentNode) ref.insertAdjacentHTML('afterend', html);
+            else container.insertAdjacentHTML('beforeend', html);
+            var sec = document.getElementById('cylinderPricesSection');
+            if (!sec) return;
+            sec.addEventListener('click', function(e) {
+              var btn = e.target.closest('.cp-del-row');
+              if (btn) { e.preventDefault(); window.deleteCylinderPriceRow(btn.getAttribute('data-width')); return; }
+              if (e.target.id === 'cpAddRow') { e.preventDefault(); window.addCylinderPriceRow(); return; }
+              if (e.target.id === 'cpSave') { e.preventDefault(); window.saveCylinderPricesAll(); return; }
+            });
+          }
+
+          window.deleteCylinderPriceRow = async function(width) {
+            if (!confirm('حذف مقاس ' + width + ' سم؟')) return;
+            var obj = getCurrentCylinderPricesFromSection();
+            delete obj[width];
+            try {
+              var result = await window.updateSetting('cylinder_prices', obj);
+              if (result && result.success) { var el = document.getElementById('cylinderPricesSection'); if (el) el.remove(); addCylinderPricesSection(); if (window.showNotification) window.showNotification('success', 'تم', 'تم الحذف'); }
+              else alert(result ? result.message : 'Error');
+            } catch(e) { alert('Error: ' + e); }
+          };
+
+          window.addCylinderPriceRow = async function() {
+            var w = prompt('أدخل المقاس (سم):', '140');
+            if (w === null || !w.trim()) return;
+            w = String(w.trim());
+            var obj = getCurrentCylinderPricesFromSection();
+            if (obj[w] != null) { alert('المقاس موجود بالفعل'); return; }
+            obj[w] = 0;
+            try {
+              var result = await window.updateSetting('cylinder_prices', obj);
+              if (result && result.success) { var el = document.getElementById('cylinderPricesSection'); if (el) el.remove(); addCylinderPricesSection(); if (window.showNotification) window.showNotification('success', 'تم', 'تمت الإضافة'); }
+              else alert(result ? result.message : 'Error');
+            } catch(e) { alert('Error: ' + e); }
+          };
+
+          function getCurrentCylinderPricesFromSection() {
+            var obj = {};
+            document.querySelectorAll('#cylinderPricesSection input.cp-price').forEach(function(inp) {
+              var w = inp.getAttribute('data-width');
+              var v = parseFloat(inp.value);
+              obj[w] = isNaN(v) ? 0 : v;
+            });
+            return obj;
+          }
+
+          window.saveCylinderPricesAll = async function() {
+            var obj = getCurrentCylinderPricesFromSection();
+            try {
+              var result = await window.updateSetting('cylinder_prices', obj);
+              if (result && result.success) {
+                if (window.showNotification) window.showNotification('success', 'تم الحفظ', 'أسعار الأسطوانات محفوظة');
+                else alert('تم الحفظ');
+              } else alert(result ? result.message : 'Error');
+            } catch(e) { alert('Error: ' + e); }
           };
 
           // ==========================================

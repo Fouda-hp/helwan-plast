@@ -10,32 +10,33 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
   window.__cylindersLoaded = true;
 
   // ----------------------------------------
-  // أسعار الأسطوانات - يتم تحميلها من السيرفر
-  // القيم الافتراضية تُستخدم إذا فشل التحميل
+  // أسعار الأسطوانات — المصدر الوحيد: جدول Cylinder Prices (USD per cm) في السيتنج
+  // استدعاء واحد get_setting('cylinder_prices') بدل 6 استدعاءات (تقليل البطء)
   // ----------------------------------------
   let CM_PRICES = {80:3.49, 100:3.59, 120:4.05, 130:4.5, 140:5.026, 160:5.4};
   const DEFAULT_SIZES = [25,30,35,40,45,50,60];
 
-  // تحميل أسعار الأسطوانات من السيرفر
+  function applyCylinderPricesMap(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    Object.keys(obj).forEach(function(k) {
+      var num = parseInt(k, 10);
+      if (!isNaN(num) && obj[k] != null && !isNaN(parseFloat(obj[k]))) {
+        CM_PRICES[num] = parseFloat(obj[k]);
+      }
+    });
+  }
+  window.applyCylinderPricesMap = applyCylinderPricesMap;
+
+  // تحميل أسعار الأسطوانات من السيرفر — استدعاء واحد
   async function loadCylinderPricesFromServer() {
     try {
-      // تحميل أسعار كل عرض
-      const widths = [80, 100, 120, 130, 140, 160];
-
-      for (const width of widths) {
-        const price = await window.anvil?.server?.call('get_setting', `cylinder_price_${width}`);
-        if (price && !isNaN(price)) {
-          CM_PRICES[width] = parseFloat(price);
-        }
-      }
-
-      console.log('🔧 Cylinder prices loaded from server:', CM_PRICES);
+      const data = await window.anvil?.server?.call('get_setting', 'cylinder_prices');
+      applyCylinderPricesMap(data);
     } catch (e) {
-      console.warn('⚠️ Could not load cylinder prices from server, using defaults:', e);
+      console.warn('Could not load cylinder prices from server, using defaults:', e);
     }
   }
 
-  // تحميل الأسعار عند بدء التشغيل
   loadCylinderPricesFromServer();
 
   // دالة للحصول على أسعار الأسطوانات الحالية (للأدمن)

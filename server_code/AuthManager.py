@@ -2797,10 +2797,12 @@ def update_setting(token_or_email, key, value):
 
     if not setting:
         # إنشاء الإعداد إذا لم يكن موجوداً
+        sv = json.dumps(value) if isinstance(value, (dict, list)) else str(value)
+        stype = 'json' if isinstance(value, (dict, list)) else 'text'
         app_tables.settings.add_row(
             setting_key=key,
-            setting_value=str(value),
-            setting_type='text',
+            setting_value=sv,
+            setting_type=stype,
             description=f'Auto-created setting: {key}',
             updated_by=admin_email,
             updated_at=datetime.now()
@@ -2812,9 +2814,14 @@ def update_setting(token_or_email, key, value):
         return {'success': True, 'message': 'Setting created successfully'}
 
     old_value = setting['setting_value']
+    new_value = value
+    if setting.get('setting_type') == 'json' and isinstance(value, (dict, list)):
+        new_value = json.dumps(value)
+    else:
+        new_value = str(value)
 
     setting.update(
-        setting_value=str(value),
+        setting_value=new_value,
         updated_by=admin_email,
         updated_at=datetime.now()
     )
@@ -2871,7 +2878,8 @@ def get_calculator_settings():
         'tax_rate': None,
         'bank_commission': None,
         'config': None,
-        'priceOptions': None
+        'priceOptions': None,
+        'cylinderPrices': None
     }
     try:
         result['exchangeRate'] = get_setting('exchange_rate')
@@ -2886,6 +2894,9 @@ def get_calculator_settings():
         pr = get_machine_prices()
         if pr and pr.get('options'):
             result['priceOptions'] = pr['options']
+        cp = get_setting('cylinder_prices')
+        if cp and isinstance(cp, dict):
+            result['cylinderPrices'] = cp
         return result
     except Exception as e:
         logger.error(f"get_calculator_settings error: {e}")

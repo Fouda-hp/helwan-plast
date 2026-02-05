@@ -37,16 +37,12 @@ class DataImportForm(DataImportFormTemplate):
         self.check_route()
 
     def check_route(self):
-        """Handle routing"""
-        hash_val = anvil.js.window.location.hash
-        if hash_val == "#admin":
-            open_form('AdminPanel')
-        elif hash_val == "#launcher":
-            open_form('LauncherForm')
-        elif hash_val == "#calculator":
-            open_form('CalculatorForm')
-        elif hash_val == "#login" or hash_val == "":
-            open_form('LoginForm')
+        """التوجيه حسب الـ hash (مصدر واحد: shared.routing)"""
+        hash_val = anvil.js.window.location.hash or ""
+        if not hash_val or hash_val == "#":
+            hash_val = "#login"
+        from shared.routing import open_route
+        open_route(hash_val)
 
     def _get_auth_info(self):
         """Get auth token and user email from session"""

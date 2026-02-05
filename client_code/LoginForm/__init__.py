@@ -88,18 +88,12 @@ class LoginForm(LoginFormTemplate):
         self.check_route()
 
     def check_route(self):
-        hash_val = anvil.js.window.location.hash
-
-        if hash_val == "#launcher":
-            open_form('LauncherForm')
-        elif hash_val == "#calculator":
-            open_form('CalculatorForm')
-        elif hash_val == "#admin":
-            open_form('AdminPanel')
-        elif hash_val == "#import":
-            open_form('DataImportForm')
-        elif hash_val == "#quotation-print":
-            open_form('QuotationPrintForm')
+        """التوجيه حسب الـ hash (مصدر واحد: shared.routing)"""
+        hash_val = anvil.js.window.location.hash or "#launcher"
+        if not hash_val or hash_val == "#":
+            hash_val = "#launcher"
+        from shared.routing import open_route
+        open_route(hash_val)
 
     # =========================================
     # Bridge functions for JavaScript

@@ -74,20 +74,10 @@ class LauncherForm(LauncherFormTemplate):
         self.check_route()
 
     def check_route(self):
-        """التحقق من المسار والتوجيه — استعادة آخر صفحة بعد الـ refresh"""
+        """التحقق من المسار والتوجيه — استعادة آخر صفحة بعد الـ refresh (مصدر واحد: shared.routing)"""
         try:
-            # استعادة آخر صفحة من localStorage عند الـ refresh (بدون تغيير الـ hash حتى لا يُستدعى check_route مرتين)
-            anvil.js.window.eval("""
-                (function() {
-                    var h = (window.location && window.location.hash) || '';
-                    if (!h || h === '#') {
-                        var saved = (window.localStorage && window.localStorage.getItem('hp_last_page')) || '';
-                        if (saved && saved.indexOf('#') === 0 && window.location) window.location.hash = saved;
-                    }
-                    h = (window.location && window.location.hash) || '#launcher';
-                    if (window.localStorage) window.localStorage.setItem('hp_last_page', h);
-                })();
-            """)
+            from shared.routing import get_restore_and_save_js, open_route
+            anvil.js.window.eval(get_restore_and_save_js())
         except Exception:
             pass
         try:
@@ -96,23 +86,7 @@ class LauncherForm(LauncherFormTemplate):
             hash_val = "#launcher"
         if not hash_val or hash_val == "#":
             hash_val = "#launcher"
-
-        if hash_val == "#calculator":
-            open_form('CalculatorForm')
-        elif hash_val == "#clients":
-            open_form('ClientListForm')
-        elif hash_val == "#database":
-            open_form('DatabaseForm')
-        elif hash_val == "#admin":
-            open_form('AdminPanel')
-        elif hash_val == "#import":
-            open_form('DataImportForm')
-        elif hash_val == "#quotation-print":
-            open_form('QuotationPrintForm')
-        elif hash_val == "#contract-print":
-            open_form('ContractPrintForm')
-        elif hash_val == "#login":
-            open_form('LoginForm')
+        open_route(hash_val)
 
     def form_show(self, **event_args):
         """عند عرض النموذج — تخفيف: مزامنة التوكن فوراً، تأجيل TOTP حتى لا يثقل التحميل"""

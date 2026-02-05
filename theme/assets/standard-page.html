@@ -1,3 +1,12 @@
+<script>
+  (function(){
+    var env = (document.documentElement && document.documentElement.getAttribute('data-hp-env')) || '';
+    if (env === 'production' || window.HP_DISABLE_CONSOLE === true) {
+      var noop = function(){};
+      try { ['log','info','warn','debug'].forEach(function(m){ if (console[m]) console[m] = noop; }); } catch(e) {}
+    }
+  })();
+</script>
 <style>
   /* ================= ANIMATIONS ================= */
   @keyframes fadeSlide {

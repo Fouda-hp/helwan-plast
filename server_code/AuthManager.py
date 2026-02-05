@@ -19,21 +19,20 @@ import secrets
 import json
 import uuid
 import re
-import logging
 
-
-def get_utc_now():
-  """الحصول على الوقت الحالي بـ UTC timezone"""
-  return datetime.now(timezone.utc)
-
-
-def make_aware(dt):
-  """تحويل datetime naive إلى aware (UTC)"""
-  if dt is None:
-    return None
-  if dt.tzinfo is None:
-    return dt.replace(tzinfo=timezone.utc)
-  return dt
+# تقسيم AuthManager: ثوابت ومساعدات من وحدات منفصلة
+from auth_config import (
+    get_utc_now, make_aware, logger,
+    MAX_LOGIN_ATTEMPTS, LOCKOUT_DURATION_MINUTES, SESSION_DURATION_MINUTES,
+    MAX_SESSIONS_PER_USER, RATE_LIMIT_WINDOW_MINUTES, RATE_LIMIT_MAX_REQUESTS,
+    PBKDF2_ITERATIONS, PASSWORD_HISTORY_COUNT, OTP_EXPIRY_MINUTES,
+    ADMIN_NOTIFICATION_EMAIL, EMERGENCY_SECRET_KEY, ROLES, AVAILABLE_PERMISSIONS,
+)
+from auth_helpers import (
+    validate_email, hash_password, verify_password, upgrade_password_hash,
+    add_to_password_history, check_password_history, generate_session_token,
+    generate_otp, get_client_ip,
+)
 
 # محاولة استيراد خدمة البريد الإلكتروني
 try:
@@ -42,114 +41,19 @@ try:
 except ImportError:
   EMAIL_SERVICE_AVAILABLE = False
 
-# =========================================================
-# إعداد نظام التسجيل (Logging) - يجب أن يكون أولاً
-# =========================================================
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# =========================================================
-# Google Gmail API Configuration (via Anvil)
-# =========================================================
 import anvil.google.mail
 
+
 def send_email_smtp(to_email, subject, html_body):
-  """
-  إرسال إيميل عبر Google Gmail API
-  """
+  """إرسال إيميل عبر Google Gmail API"""
   try:
     logger.info(f"Attempting to send email via Google to {to_email}")
-
-    anvil.google.mail.send(
-      to=to_email,
-      subject=subject,
-      html=html_body
-    )
-
+    anvil.google.mail.send(to=to_email, subject=subject, html=html_body)
     logger.info(f"Email sent successfully via Google to {to_email}")
     return True
-
   except Exception as e:
     logger.error(f"Failed to send email via Google to {to_email}: {type(e).__name__}: {e}")
     return False
-
-
-# =========================================================
-# الثوابت والإعدادات
-# =========================================================
-MAX_LOGIN_ATTEMPTS = 50           # عدد المحاولات قبل القفل
-LOCKOUT_DURATION_MINUTES = 5    # مدة القفل بالدقائق
-SESSION_DURATION_MINUTES = 60    # مدة الجلسة بالدقائق (60 دقيقة = ساعة واحدة)
-MAX_SESSIONS_PER_USER = 5        # الحد الأقصى للجلسات لكل مستخدم (يسمح لأجهزة متعددة على نفس الشبكة)
-RATE_LIMIT_WINDOW_MINUTES = 15   # نافذة Rate Limiting
-RATE_LIMIT_MAX_REQUESTS = 500    # الحد الأقصى للطلبات في النافذة (زيادة للسماح بأجهزة متعددة على نفس الشبكة)
-PBKDF2_ITERATIONS = 100000       # عدد التكرارات للتشفير (أكثر أماناً)
-PASSWORD_HISTORY_COUNT = 5       # عدد كلمات المرور السابقة للتحقق منها
-OTP_EXPIRY_MINUTES = 10          # مدة صلاحية OTP
-
-# Admin Email for Notifications - يُقرأ من Environment Variables
-try:
-  import anvil.secrets
-  ADMIN_NOTIFICATION_EMAIL = anvil.secrets.get_secret('ADMIN_EMAIL') or "mohamedadelfouda@helwanplast.com"
-  _emergency_key = anvil.secrets.get_secret('EMERGENCY_KEY')
-  if not _emergency_key:
-    logger.warning("EMERGENCY_KEY not set in secrets! Using fallback key.")
-    _emergency_key = "HP_EMERGENCY_" + str(hashlib.sha256(b"helwan_plast_2024").hexdigest()[:16])
-  EMERGENCY_SECRET_KEY = _emergency_key
-except Exception as e:
-  logger.error(f"Failed to load secrets: {e}")
-  ADMIN_NOTIFICATION_EMAIL = "mohamedadelfouda@helwanplast.com"
-  EMERGENCY_SECRET_KEY = "HP_EMERGENCY_" + str(hashlib.sha256(b"helwan_plast_2024").hexdigest()[:16])
-
-# صلاحيات الأدوار
-ROLES = {
-  'admin': ['all'],
-  'manager': ['view', 'create', 'edit', 'export', 'delete_own'],
-  'sales': ['view', 'create', 'edit_own'],
-  'viewer': ['view']
-}
-
-# الصلاحيات المتاحة للتخصيص
-AVAILABLE_PERMISSIONS = [
-  'view',           # عرض البيانات
-  'create',         # إنشاء بيانات جديدة
-  'edit',           # تعديل أي بيانات
-  'edit_own',       # تعديل بياناته فقط
-  'delete',         # حذف أي بيانات
-  'delete_own',     # حذف بياناته فقط
-  'export',         # تصدير البيانات
-  'import',         # استيراد البيانات
-  'manage_users',   # إدارة المستخدمين
-  'view_audit',     # عرض سجل التدقيق
-  'manage_settings' # إدارة الإعدادات
-]
-
-
-# =========================================================
-# التحقق من صحة البريد الإلكتروني (محسّن)
-# =========================================================
-def validate_email(email):
-  """
-    التحقق من صحة البريد الإلكتروني باستخدام regex متقدم
-    """
-  if not email:
-    return False
-
-    # نمط regex للتحقق من صحة البريد الإلكتروني
-  pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-
-  if not re.match(pattern, email):
-    return False
-
-    # التحقق من الطول
-  if len(email) > 254:
-    return False
-
-    # التحقق من عدم وجود نقطتين متتاليتين
-  if '..' in email:
-    return False
-
-  return True
 
 
 # =========================================================
@@ -249,13 +153,8 @@ def send_approval_email(user_email, user_name, role, approved=True):
 
 
 # =========================================================
-# OTP Generation and Verification
+# OTP Generation and Verification (generate_otp من auth_helpers)
 # =========================================================
-def generate_otp():
-  """توليد رمز OTP من 6 أرقام"""
-  return ''.join([str(secrets.randbelow(10)) for _ in range(6)])
-
-
 def _get_global_otp_channel():
   """قناة OTP الافتراضية من الإعدادات (بدون اعتبار يوزر معين)"""
   try:
@@ -744,143 +643,8 @@ def send_admin_notification_email(new_user_email, new_user_name, new_user_phone)
 
 
 # =========================================================
-# تشفير كلمات المرور (PBKDF2 - أكثر أماناً من SHA-256)
+# إدارة الجلسات (في قاعدة البيانات؛ generate_session_token من auth_helpers)
 # =========================================================
-def hash_password(password):
-  """
-    تشفير كلمة المرور باستخدام PBKDF2
-    أكثر أماناً من SHA-256 العادي
-    """
-  # توليد ملح عشوائي 32 بايت
-  salt = secrets.token_hex(32)
-
-  # استخدام PBKDF2 مع SHA-256
-  key = hashlib.pbkdf2_hmac(
-    'sha256',
-    password.encode('utf-8'),
-    salt.encode('utf-8'),
-    PBKDF2_ITERATIONS
-  )
-
-  # تحويل المفتاح إلى hex
-  hash_value = key.hex()
-
-  # إرجاع الملح والهاش معاً
-  return f"{salt}:{hash_value}"
-
-
-def verify_password(password, stored_hash):
-  """
-    التحقق من كلمة المرور
-    يدعم كلمات المرور القديمة (SHA-256) والجديدة (PBKDF2)
-    """
-  if not stored_hash:
-    return False
-
-  try:
-    # التحقق من نوع التشفير
-    if ':' in stored_hash:
-      # تشفير PBKDF2 الجديد (salt:hash)
-      salt, hash_value = stored_hash.split(':', 1)
-
-      # إعادة حساب الهاش
-      key = hashlib.pbkdf2_hmac(
-        'sha256',
-        password.encode('utf-8'),
-        salt.encode('utf-8'),
-        PBKDF2_ITERATIONS
-      )
-
-      check_hash = key.hex()
-
-      # مقارنة آمنة (ثابتة الوقت)
-      return secrets.compare_digest(check_hash, hash_value)
-    else:
-      # تشفير SHA-256 القديم (للتوافق مع كلمات المرور السابقة)
-      old_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
-      return secrets.compare_digest(old_hash, stored_hash)
-
-  except Exception as e:
-    logger.error(f"Password verification error: {e}")
-    return False
-
-
-def upgrade_password_hash(user, password):
-  """
-    ترقية كلمة المرور من SHA-256 القديم إلى PBKDF2 الجديد
-    يتم استدعاؤها تلقائياً عند تسجيل الدخول الناجح
-    """
-  try:
-    stored_hash = user['password_hash']
-
-    # إذا كانت كلمة المرور بالتشفير القديم (بدون :)
-    if stored_hash and ':' not in stored_hash:
-      # إعادة تشفير كلمة المرور بالطريقة الجديدة
-      new_hash = hash_password(password)
-      user.update(password_hash=new_hash)
-      logger.info(f"Password hash upgraded for user: {user['email']}")
-      return True
-  except Exception as e:
-    logger.error(f"Error upgrading password hash: {e}")
-
-  return False
-
-
-# =========================================================
-# Password History (منع تكرار كلمات المرور)
-# =========================================================
-def add_to_password_history(user_email, password_hash):
-  """
-    إضافة كلمة المرور إلى سجل كلمات المرور السابقة
-    """
-  try:
-    app_tables.password_history.add_row(
-      history_id=str(uuid.uuid4()),
-      user_email=user_email,
-      password_hash=password_hash,
-      created_at=datetime.now()
-    )
-
-    # حذف كلمات المرور القديمة إذا تجاوزت الحد
-    history = list(app_tables.password_history.search(user_email=user_email))
-    history.sort(key=lambda x: x['created_at'], reverse=True)
-
-    if len(history) > PASSWORD_HISTORY_COUNT:
-      for old in history[PASSWORD_HISTORY_COUNT:]:
-        old.delete()
-
-    return True
-  except Exception as e:
-    logger.error(f"Failed to add password to history: {e}")
-    return False
-
-
-def check_password_history(user_email, new_password):
-  """
-    التحقق من أن كلمة المرور الجديدة ليست مستخدمة سابقاً
-    Returns: (is_valid, message)
-    """
-  try:
-    history = list(app_tables.password_history.search(user_email=user_email))
-
-    for record in history:
-      if verify_password(new_password, record['password_hash']):
-        return False, f"Cannot reuse any of your last {PASSWORD_HISTORY_COUNT} passwords"
-
-    return True, "Password is valid"
-  except Exception as e:
-    logger.error(f"Password history check error: {e}")
-    return True, "Check passed"  # السماح في حالة الخطأ
-
-
-# =========================================================
-# إدارة الجلسات (في قاعدة البيانات)
-# =========================================================
-def generate_session_token():
-  """توليد رمز جلسة آمن"""
-  return secrets.token_urlsafe(64)
-
-
 def create_session(user_email, role, ip_address=None, user_agent=None):
     """
     إنشاء جلسة جديدة في قاعدة البيانات
@@ -1143,12 +907,10 @@ def reset_user_login_attempts(email):
 
 
 # =========================================================
-# تسجيل التدقيق (مع IP Address)
+# تسجيل التدقيق (get_client_ip من auth_helpers)
 # =========================================================
 def log_audit(action, table_name, record_id, old_data, new_data, user_email=None, ip_address=None):
-  """
-    تسجيل العملية في سجل التدقيق
-    """
+  """تسجيل العملية في سجل التدقيق"""
   try:
     app_tables.audit_log.add_row(
       log_id=str(uuid.uuid4()),
@@ -1163,28 +925,6 @@ def log_audit(action, table_name, record_id, old_data, new_data, user_email=None
     )
   except Exception as e:
     logger.error(f"Audit log error: {e}")
-
-
-# =========================================================
-# الحصول على IP Address
-# =========================================================
-def get_client_ip():
-  """
-    الحصول على IP Address للعميل
-    ملاحظة: anvil.server.request غير متاح في server callable functions
-    لذلك نستخدم anvil.server.context للحصول على معلومات العميل
-    """
-  try:
-    # محاولة الحصول على IP من call context
-    context = anvil.server.context
-    if hasattr(context, 'client') and context.client:
-      client = context.client
-      if hasattr(client, 'ip'):
-        return client.ip or 'unknown'
-    # إذا لم يتوفر، نرجع قيمة افتراضية
-    return 'unknown'
-  except Exception:
-    return 'unknown'
 
 
 # =========================================================
@@ -2503,6 +2243,8 @@ def fix_admin_user(email, secret_key):
     إصلاح حساب الأدمن - تأكيد أنه is_active و is_approved
     يتطلب مفتاح سري من Environment Variables
     """
+    if EMERGENCY_SECRET_KEY is None:
+        return {'success': False, 'message': 'Emergency key not configured in this environment'}
     if secret_key != EMERGENCY_SECRET_KEY:
         return {'success': False, 'message': 'Invalid secret key'}
 
@@ -2548,6 +2290,8 @@ def reset_admin_password_emergency(email, new_password, secret_key):
     ip_address = get_client_ip()
 
     try:
+        if EMERGENCY_SECRET_KEY is None:
+            return {'success': False, 'message': 'Emergency key not configured in this environment'}
         # التحقق من المفتاح السري
         if secret_key != EMERGENCY_SECRET_KEY:
             log_audit('FAILED_EMERGENCY_RESET', 'users', None, None,
@@ -2674,63 +2418,9 @@ def setup_initial_admin(email, password, full_name, phone=None):
 
 
 def _initialize_default_settings():
-    """
-    إنشاء الإعدادات الافتراضية
-    """
-    default_settings = [
-        {
-            'key': 'exchange_rate',
-            'value': '47.5',
-            'type': 'number',
-            'description': 'Exchange Rate (USD to EGP)'
-        },
-        {
-            'key': 'cylinder_prices',
-            'value': json.dumps({
-                '80': 3.49, '100': 3.59, '120': 4.05,
-                '130': 4.5, '140': 5.026, '160': 5.4
-            }),
-            'type': 'json',
-            'description': 'Cylinder prices per CM'
-        },
-        {
-            'key': 'default_cylinder_sizes',
-            'value': json.dumps([25, 30, 35, 40, 45, 50, 60]),
-            'type': 'json',
-            'description': 'Default cylinder sizes'
-        },
-        {
-            'key': 'shipping_sea',
-            'value': '3200',
-            'type': 'number',
-            'description': 'Sea shipping cost (USD)'
-        },
-        {
-            'key': 'ths_cost',
-            'value': '1000',
-            'type': 'number',
-            'description': 'THS cost (USD)'
-        },
-        {
-            'key': 'clearance_expenses',
-            'value': '1400',
-            'type': 'number',
-            'description': 'Clearance expenses (USD)'
-        },
-        {
-            'key': 'tax_rate',
-            'value': '0.15',
-            'type': 'number',
-            'description': 'Tax rate (decimal)'
-        },
-        {
-            'key': 'bank_commission',
-            'value': '0.0132',
-            'type': 'number',
-            'description': 'Bank commission rate (decimal)'
-        }
-    ]
-
+    """إنشاء الإعدادات الافتراضية (مصدر القيم: defaults.get_default_settings)"""
+    from defaults import get_default_settings
+    default_settings = get_default_settings()
     for setting in default_settings:
         existing = app_tables.settings.get(setting_key=setting['key'])
         if not existing:

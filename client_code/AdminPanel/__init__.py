@@ -1283,8 +1283,8 @@ class AdminPanel(AdminPanelTemplate):
         self.check_route()
 
     def check_route(self):
+        """التوجيه مع استعادة آخر صفحة عند الفراغ (مصدر واحد: shared.routing)"""
         try:
-            # عند التحميل أو الريفرش: إذا الـ hash فاضي استعد آخر صفحة من localStorage (مش الأدمن)
             restored = anvil.js.window.eval("""
                 (function(){
                     var h = (window.location && window.location.hash) || '';
@@ -1303,18 +1303,11 @@ class AdminPanel(AdminPanelTemplate):
             hash_val = ""
         if not hash_val or hash_val == "#":
             hash_val = "#launcher"
-        if hash_val == "#launcher":
-            open_form('LauncherForm')
-        elif hash_val == "#calculator":
-            open_form('CalculatorForm')
-        elif hash_val == "#import":
-            open_form('DataImportForm')
-        elif hash_val == "#login":
-            open_form('LoginForm')
-        elif hash_val == "#admin":
+        if hash_val == "#admin":
             pass  # نبقى على الأدمن
         else:
-            open_form('LauncherForm')
+            from shared.routing import open_route
+            open_route(hash_val)
 
     # =========================================================
     # معلومات المستخدم

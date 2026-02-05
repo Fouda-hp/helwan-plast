@@ -412,12 +412,12 @@
     }
   };
 
-  // عند التحميل وبعد تأخير: تطبيق إعدادات بايثون إن وُجدت (سعر الصرف = نفس السيتنج)
+  // عند التحميل: تطبيق إعدادات بايثون إن وُجدت (من النافذة الحالية أو top)
   function tryApplyStoredSettings() {
-    if (!window.__calculatorSettingsFromPython) return;
+    var stored = window.__calculatorSettingsFromPython || (window.top && window.top !== window && window.top.__calculatorSettingsFromPython);
+    if (!stored) return;
     try {
-      var d = window.__calculatorSettingsFromPython;
-      if (typeof d === 'string') d = JSON.parse(d);
+      var d = typeof stored === 'string' ? JSON.parse(stored) : stored;
       window.applyCalculatorSettingsFromPython(d);
     } catch (e) {}
   }
@@ -429,6 +429,20 @@
     tryApplyStoredSettings();
     if (++_pollCount >= 10) clearInterval(_pollId);
   }, 400);
+
+  // احتياطي: بعد 2 ثانية جلب سعر الصرف من السيرفر مباشرة (لو بايثون في نافذة مختلفة)
+  setTimeout(function() {
+    if (window.anvil && window.anvil.server && typeof window.anvil.server.call === 'function') {
+      var p = window.anvil.server.call('get_setting', 'exchange_rate');
+      if (p && typeof p.then === 'function') {
+        p.then(function(rate) {
+          if (rate != null && !isNaN(parseFloat(rate)) && window.updateExchangeRate) {
+            window.updateExchangeRate(rate);
+          }
+        }).catch(function() {});
+      }
+    }
+  }, 2000);
 
   // Load config and prices after settings
   setTimeout(loadMachinePricesFromServer, 1000);

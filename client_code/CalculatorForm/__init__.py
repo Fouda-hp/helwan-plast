@@ -188,15 +188,15 @@ class CalculatorForm(CalculatorFormTemplate):
       # تخزين الإعدادات في متغير عام أولاً (حتى لو السكربت لسه مش حمّل، يلاقيها لما يحمّل)
       json_str = json.dumps(settings_payload, default=str)
       escaped = json_str.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
+      # تخزين في النافذة الحالية وفي top (لو الفورم في iframe يلاقي القيمة)
       try:
-        anvil.js.window.eval(
-          'window.__calculatorSettingsFromPython = JSON.parse("%s");' % escaped
-        )
+        set_global = 'var _p = JSON.parse("%s"); window.__calculatorSettingsFromPython = _p; if (window.top && window.top !== window) window.top.__calculatorSettingsFromPython = _p;' % escaped
+        anvil.js.window.eval(set_global)
       except Exception:
         pass
       # تطبيق الإعدادات بعد تأخيرات متعددة (السكربت قد يتأخر عن form_show)
       apply_js = (
-        "var _d = window.__calculatorSettingsFromPython;"
+        "var _d = (window.__calculatorSettingsFromPython || (window.top && window.top.__calculatorSettingsFromPython));"
         "var _apply = function() {"
         "  if (window.applyCalculatorSettingsFromPython && _d) {"
         "    try { window.applyCalculatorSettingsFromPython(_d); } catch(e) {}"

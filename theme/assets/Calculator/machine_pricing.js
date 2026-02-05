@@ -391,7 +391,10 @@
       if (typeof data.exchangeRate !== 'undefined' && data.exchangeRate != null && !isNaN(parseFloat(data.exchangeRate))) {
         EXCHANGE_RATE = parseFloat(data.exchangeRate);
         var exEl = document.getElementById("exchange_rate");
-        if (exEl) exEl.value = EXCHANGE_RATE.toFixed(2);
+        if (exEl) {
+          exEl.value = EXCHANGE_RATE.toFixed(2);
+          exEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
       }
       if (data.shipping_sea != null && !isNaN(data.shipping_sea)) CONFIG.SHIPPING_SEA = parseFloat(data.shipping_sea);
       if (data.ths_cost != null && !isNaN(data.ths_cost)) CONFIG.THS = parseFloat(data.ths_cost);
@@ -408,6 +411,24 @@
       console.warn('applyCalculatorSettingsFromPython error:', e);
     }
   };
+
+  // عند التحميل وبعد تأخير: تطبيق إعدادات بايثون إن وُجدت (سعر الصرف = نفس السيتنج)
+  function tryApplyStoredSettings() {
+    if (!window.__calculatorSettingsFromPython) return;
+    try {
+      var d = window.__calculatorSettingsFromPython;
+      if (typeof d === 'string') d = JSON.parse(d);
+      window.applyCalculatorSettingsFromPython(d);
+    } catch (e) {}
+  }
+  tryApplyStoredSettings();
+  setTimeout(tryApplyStoredSettings, 300);
+  setTimeout(tryApplyStoredSettings, 800);
+  var _pollCount = 0;
+  var _pollId = setInterval(function() {
+    tryApplyStoredSettings();
+    if (++_pollCount >= 10) clearInterval(_pollId);
+  }, 400);
 
   // Load config and prices after settings
   setTimeout(loadMachinePricesFromServer, 1000);

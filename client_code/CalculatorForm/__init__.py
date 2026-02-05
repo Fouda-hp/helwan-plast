@@ -185,18 +185,26 @@ class CalculatorForm(CalculatorFormTemplate):
           settings_payload["config"] = result["config"]
       except Exception as e:
         print("CalculatorForm form_show get settings error:", e)
-      # تطبيق الإعدادات في الصفحة بعد تأخير قصير (لضمان وجود الـ DOM والسكربت)
+      # تخزين الإعدادات في متغير عام أولاً (حتى لو السكربت لسه مش حمّل، يلاقيها لما يحمّل)
       json_str = json.dumps(settings_payload, default=str)
       escaped = json_str.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
-      js = (
+      try:
+        anvil.js.window.eval(
+          'window.__calculatorSettingsFromPython = JSON.parse("%s");' % escaped
+        )
+      except Exception:
+        pass
+      # تطبيق الإعدادات بعد تأخيرات متعددة (السكربت قد يتأخر عن form_show)
+      apply_js = (
+        "var _d = window.__calculatorSettingsFromPython;"
         "var _apply = function() {"
-        "  if (window.applyCalculatorSettingsFromPython) {"
-        '    try { var d = JSON.parse("%s"); window.applyCalculatorSettingsFromPython(d); } catch(e) {}'
+        "  if (window.applyCalculatorSettingsFromPython && _d) {"
+        "    try { window.applyCalculatorSettingsFromPython(_d); } catch(e) {}"
         "  }"
         "};"
-        "setTimeout(_apply, 200); setTimeout(_apply, 700);"
-      ) % escaped
-      anvil.js.window.eval(js)
+        "setTimeout(_apply, 150); setTimeout(_apply, 500); setTimeout(_apply, 1200); setTimeout(_apply, 2500);"
+      )
+      anvil.js.window.eval(apply_js)
       # إعادة ربط الـ dropdowns المخصصة
       anvil.js.window.eval(
         "var _r=function(){ if (window.reinitCalculatorDropdowns) window.reinitCalculatorDropdowns(); };"

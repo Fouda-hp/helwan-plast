@@ -38,17 +38,20 @@ class LauncherForm(LauncherFormTemplate):
         """Get auth token from localStorage"""
         return anvil.js.window.localStorage.getItem('auth_token')
 
-    def setup_totp_start(self):
-        """بدء تفعيل تطبيق المصادقة (Authenticator)"""
-        return anvil.server.call('setup_totp_start', self.get_token())
+    def setup_totp_start(self, token=None):
+        """بدء تفعيل تطبيق المصادقة (Authenticator). يُفضّل تمرير token من JS من نفس الصفحة."""
+        auth_token = token if token is not None else self.get_token()
+        return anvil.server.call('setup_totp_start', auth_token)
 
-    def setup_totp_confirm(self, code):
+    def setup_totp_confirm(self, code, token=None):
         """تأكيد تفعيل تطبيق المصادقة بالكود من التطبيق"""
-        return anvil.server.call('setup_totp_confirm', self.get_token(), code)
+        auth_token = token if token is not None else self.get_token()
+        return anvil.server.call('setup_totp_confirm', auth_token, code)
 
-    def user_has_totp_enabled(self):
+    def user_has_totp_enabled(self, token=None):
         """هل المستخدم الحالي فعّل تطبيق المصادقة؟ (لإخفاء الرابط بعد التفعيل)"""
-        return anvil.server.call('user_has_totp_enabled', self.get_token())
+        auth_token = token if token is not None else self.get_token()
+        return anvil.server.call('user_has_totp_enabled', auth_token)
 
     def logout_user(self):
         """تسجيل الخروج"""

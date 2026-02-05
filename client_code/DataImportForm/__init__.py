@@ -54,7 +54,8 @@ class DataImportForm(DataImportFormTemplate):
         hash_val = anvil.js.window.location.hash or ""
         if not hash_val or hash_val == "#":
             hash_val = "#login"
-        _open_route(hash_val)
+        if hash_val != "#import":
+            _open_route(hash_val)
 
     def _get_auth_info(self):
         """Get auth token and user email from session"""

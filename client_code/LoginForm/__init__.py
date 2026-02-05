@@ -105,7 +105,8 @@ class LoginForm(LoginFormTemplate):
         hash_val = anvil.js.window.location.hash or "#launcher"
         if not hash_val or hash_val == "#":
             hash_val = "#launcher"
-        _open_route(hash_val)
+        if hash_val != "#login":
+            _open_route(hash_val)
 
     # =========================================
     # Bridge functions for JavaScript

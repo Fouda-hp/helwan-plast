@@ -140,7 +140,9 @@ class LauncherForm(LauncherFormTemplate):
             hash_val = "#launcher"
         if not hash_val or hash_val == "#":
             hash_val = "#launcher"
-        open_route(hash_val)
+        # تجنّب فتح اللانشر مرة أخرى ونحن عليه (يمنع RecursionError)
+        if hash_val != "#launcher":
+            open_route(hash_val)
 
     def form_show(self, **event_args):
         """عند عرض النموذج — تخفيف: مزامنة التوكن فوراً، تأجيل TOTP حتى لا يثقل التحميل"""

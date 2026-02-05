@@ -99,7 +99,7 @@ class LauncherForm(LauncherFormTemplate):
           var link = document.createElement('a');
           link.href = '#';
           link.id = 'launcherTotpLink';
-          link.style.cssText = 'display:inline-block;margin-top:8px;font-size:13px;color:#1976d2;text-decoration:underline;';
+          link.style.cssText = 'display:inline-block;margin-top:12px;margin-bottom:8px;font-size:14px;color:#1976d2;text-decoration:underline;';
           link.textContent = 'تفعيل تطبيق المصادقة (مجاني) | Enable Authenticator App';
           link.onclick = function(e) {
             e.preventDefault();
@@ -150,22 +150,32 @@ class LauncherForm(LauncherFormTemplate):
             }).catch(function(err) { alert('Error: ' + (err && err.message ? err.message : err)); });
           };
           var wrap = document.createElement('div');
+          wrap.className = 'totp-link-wrap';
           wrap.style.cssText = 'text-align:center;margin-top:20px;padding-top:12px;border-top:1px solid #eee;';
           wrap.appendChild(link);
           var card = document.querySelector('.launcher-card');
           var footer = document.querySelector('.footer');
           if (card && footer) {
             card.insertBefore(wrap, footer);
+          } else if (card) {
+            card.appendChild(wrap);
           } else {
             document.body.appendChild(wrap);
           }
           }
-          if (window.userHasTotpEnabled && typeof window.userHasTotpEnabled === 'function') {
-            window.userHasTotpEnabled().then(function(hasTotp) {
-              if (!hasTotp) addLink();
-            }).catch(function() { addLink(); });
+          function doInject() {
+            if (window.userHasTotpEnabled && typeof window.userHasTotpEnabled === 'function') {
+              window.userHasTotpEnabled().then(function(hasTotp) {
+                if (!hasTotp) addLink();
+              }).catch(function() { addLink(); });
+            } else {
+              addLink();
+            }
+          }
+          if (document.querySelector('.launcher-card')) {
+            doInject();
           } else {
-            addLink();
+            setTimeout(function() { doInject(); }, 400);
           }
         })();
         """

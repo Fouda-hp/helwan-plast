@@ -14,6 +14,9 @@ from anvil.google.drive import app_files
 import anvil.server
 import anvil.js
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AdminPanel(AdminPanelTemplate):
@@ -47,7 +50,7 @@ class AdminPanel(AdminPanelTemplate):
                     self.user_email = self.current_user.get('email', '')
                     self.user_name = self.current_user.get('full_name', '')
         except Exception as e:
-            print(f"Error loading user info: {e}")
+            logger.debug("Error loading user info: %s", e)
 
     def _setup_js_bridges(self):
         """إعداد الجسور مع JavaScript"""
@@ -86,9 +89,15 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.restoreClient = self.restore_client
         anvil.js.window.restoreQuotation = self.restore_quotation
 
-        # Export
+        # Export & Backup
         anvil.js.window.exportClientsData = self.export_clients_data
         anvil.js.window.exportQuotationsData = self.export_quotations_data
+        anvil.js.window.createBackup = self.create_backup
+        anvil.js.window.listScheduledBackups = self.list_scheduled_backups
+        anvil.js.window.getScheduledBackupFile = self.get_scheduled_backup_file
+        anvil.js.window.listDriveBackups = self.list_drive_backups
+        anvil.js.window.restoreBackupFromDrive = self.restore_backup_from_drive
+        anvil.js.window.restoreBackup = self.restore_backup
 
         # Settings
         anvil.js.window.getAllSettings = self.get_all_settings
@@ -124,6 +133,169 @@ class AdminPanel(AdminPanelTemplate):
             return item;
           }
 
+          function downloadBackupFile(r, context) {
+            if (!r || !r.success || !r.file) {
+              if (window.showNotification) window.showNotification('error', 'خطأ', r && r.message ? r.message : (context || 'فشل'));
+              return;
+            }
+            try {
+              var url = r.file.url ? r.file.url() : (r.file.get_url ? r.file.get_url() : null);
+              var name = r.filename || 'Helwan_Plast_backup.json';
+              if (url) {
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = name;
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              } else {
+                window.open(r.file);
+              }
+              if (window.showNotification) window.showNotification('success', 'تم', 'تم تحميل النسخة الاحتياطية');
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', 'خطأ', err && err.message ? err.message : 'تنزيل الملف فشل');
+            }
+          }
+
+          function attachBackupClick(item) {
+            if (!item) return;
+            item.onclick = function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              var menu = document.getElementById('backupDropdown');
+              if (menu) {
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                return;
+              }
+              var dropdown = document.createElement('div');
+              dropdown.id = 'backupDropdown';
+              dropdown.style.cssText = 'position:absolute;top:100%;left:0;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);min-width:200px;z-index:9999;margin-top:4px;';
+              dropdown.innerHTML = '<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #eee;" data-action="create">إنشاء نسخة الآن</div><div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #eee;" data-action="scheduled">النسخ المجدولة (يوم 1 و 16)</div><div style="padding:8px 12px;cursor:pointer;" data-action="restore-drive">استعادة من Google Drive</div>';
+              dropdown.querySelector('[data-action="create"]').onclick = function(ev) {
+                ev.stopPropagation();
+                dropdown.remove();
+                if (!window.createBackup) return;
+                item.disabled = true;
+                var p = window.createBackup();
+                if (p && typeof p.then === 'function') {
+                  p.then(function(r) {
+                    item.disabled = false;
+                    downloadBackupFile(r, 'فشل إنشاء النسخة الاحتياطية');
+                  }).catch(function(err) {
+                    item.disabled = false;
+                    if (window.showNotification) window.showNotification('error', 'خطأ', err && err.message ? err.message : 'فشل إنشاء النسخة الاحتياطية');
+                  });
+                } else item.disabled = false;
+              };
+              dropdown.querySelector('[data-action="scheduled"]').onclick = function(ev) {
+                ev.stopPropagation();
+                dropdown.remove();
+                if (!window.listScheduledBackups) return;
+                var p = window.listScheduledBackups();
+                if (p && typeof p.then === 'function') {
+                  p.then(function(res) {
+                    var data = (res && res.data) ? res.data : [];
+                    if (data.length === 0) {
+                      if (window.showNotification) window.showNotification('info', 'النسخ المجدولة', 'لا توجد نسخ مجدولة بعد.');
+                      return;
+                    }
+                    var list = document.createElement('div');
+                    list.id = 'backupListPopup';
+                    list.style.cssText = 'position:absolute;top:100%;left:0;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);min-width:260px;max-height:320px;overflow:auto;z-index:9999;margin-top:4px;';
+                    data.forEach(function(row) {
+                      var created = row.created_at || '';
+                      var fn = row.filename || '';
+                      var line = document.createElement('div');
+                      line.style.cssText = 'padding:8px 12px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px;';
+                      line.textContent = (created ? created.replace('T', ' ').slice(0, 19) : fn) + (fn ? ' - ' + fn : '');
+                      line.title = fn;
+                      line.onclick = function(ev2) {
+                        ev2.stopPropagation();
+                        list.remove();
+                        if (!window.getScheduledBackupFile) return;
+                        window.getScheduledBackupFile(fn, created).then(function(r) {
+                          downloadBackupFile(r, 'فشل تحميل النسخة المجدولة');
+                        }).catch(function(err) {
+                          if (window.showNotification) window.showNotification('error', 'خطأ', err && err.message ? err.message : 'فشل التحميل');
+                        });
+                      };
+                      list.appendChild(line);
+                    });
+                    item.parentNode.style.position = 'relative';
+                    item.parentNode.appendChild(list);
+                  }).catch(function(err) {
+                    if (window.showNotification) window.showNotification('error', 'خطأ', err && err.message ? err.message : 'فشل جلب القائمة');
+                  });
+                }
+              };
+              dropdown.querySelector('[data-action="restore-drive"]').onclick = function(ev) {
+                ev.stopPropagation();
+                dropdown.remove();
+                if (!window.listDriveBackups) return;
+                window.listDriveBackups().then(function(res) {
+                  if (!res || !res.success) {
+                    if (window.showNotification) window.showNotification('error', 'خطأ', res && res.message ? res.message : 'فشل جلب القائمة');
+                    return;
+                  }
+                  var data = (res.data) ? res.data : [];
+                  if (data.length === 0) {
+                    if (window.showNotification) window.showNotification('info', 'Google Drive', 'لا توجد نسخ احتياطية في المجلد أو لم يتم إعداد مجلد Backups.');
+                    return;
+                  }
+                  var list = document.createElement('div');
+                  list.id = 'restoreListPopup';
+                  list.style.cssText = 'position:absolute;top:100%;left:0;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);min-width:280px;max-height:320px;overflow:auto;z-index:9999;margin-top:4px;';
+                  data.forEach(function(row) {
+                    var fn = row.filename || '';
+                    var line = document.createElement('div');
+                    line.style.cssText = 'padding:8px 12px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px;';
+                    line.textContent = fn;
+                    line.title = fn;
+                    line.onclick = function(ev2) {
+                      ev2.stopPropagation();
+                      list.remove();
+                      var doRestore = window.showConfirm ? window.showConfirm('استعادة من هذا الملف؟ سيتم استبدال كل البيانات الحالية (عملاء، عروض، عقود، إعدادات، مواصفات). المستخدمون وسجل التدقيق لن يتأثروا.', 'تأكيد الاستعادة') : Promise.resolve(confirm('استعادة؟ سيتم استبدال البيانات الحالية.'));
+                      doRestore.then(function(ok) {
+                        if (!ok) return;
+                        if (!window.restoreBackupFromDrive) return;
+                        item.disabled = true;
+                        window.restoreBackupFromDrive(fn).then(function(r) {
+                          item.disabled = false;
+                          if (r && r.success) {
+                            if (window.showNotification) window.showNotification('success', 'تمت الاستعادة', r.message || 'تمت الاستعادة بنجاح');
+                          } else {
+                            if (window.showNotification) window.showNotification('error', 'خطأ', r && r.message ? r.message : 'فشلت الاستعادة');
+                          }
+                        }).catch(function(err) {
+                          item.disabled = false;
+                          if (window.showNotification) window.showNotification('error', 'خطأ', err && err.message ? err.message : 'فشلت الاستعادة');
+                        });
+                      });
+                    };
+                    list.appendChild(line);
+                  });
+                  item.parentNode.style.position = 'relative';
+                  item.parentNode.appendChild(list);
+                }).catch(function(err) {
+                  if (window.showNotification) window.showNotification('error', 'خطأ', err && err.message ? err.message : 'فشل جلب القائمة');
+                });
+              };
+              item.parentNode.style.position = 'relative';
+              item.parentNode.appendChild(dropdown);
+            };
+          }
+
+          function buildBackupNavItem(id) {
+            var item = document.createElement('a');
+            item.className = 'nav-item';
+            item.id = id;
+            item.href = '#';
+            item.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg><span>نسخة احتياطية</span>';
+            attachBackupClick(item);
+            return item;
+          }
+
           function insertDataImportNav() {
             var topNav = document.querySelector('.header-row-nav');
             if (topNav && !document.getElementById('navDataImportTop')) {
@@ -148,6 +320,39 @@ class AdminPanel(AdminPanelTemplate):
             }
           }
 
+          function insertBackupNav() {
+            var existingTop = document.getElementById('navBackupTop');
+            if (existingTop) {
+              attachBackupClick(existingTop);
+            } else {
+              var topNav = document.querySelector('.header-row-nav');
+              if (topNav) {
+                var settingsItem = topNav.querySelector('.nav-item[data-panel="settings"]');
+                var item = buildBackupNavItem('navBackupTop');
+                if (settingsItem && settingsItem.parentNode) {
+                  settingsItem.parentNode.insertBefore(item, settingsItem);
+                } else {
+                  topNav.appendChild(item);
+                }
+              }
+            }
+            var existingMobile = document.getElementById('navBackupMobile');
+            if (existingMobile) {
+              attachBackupClick(existingMobile);
+            } else {
+              var mobileMenu = document.getElementById('mobileMenu');
+              if (mobileMenu) {
+                var mobileSettings = mobileMenu.querySelector('.nav-item[data-panel="settings"]');
+                var mobileItem = buildBackupNavItem('navBackupMobile');
+                if (mobileSettings && mobileSettings.parentNode) {
+                  mobileSettings.parentNode.insertBefore(mobileItem, mobileSettings);
+                } else {
+                  mobileMenu.appendChild(mobileItem);
+                }
+              }
+            }
+          }
+
           function patchSaveSetting() {
             // Override saveSetting completely to fix sync issues
             window.saveSetting = async function(key, isPercent) {
@@ -161,11 +366,7 @@ class AdminPanel(AdminPanelTemplate):
 
               var value = parseFloat(input.value);
               if (isNaN(value)) {
-                if (window.showNotification) {
-                  window.showNotification('error', 'Error', 'Please enter a valid number');
-                } else {
-                  alert('Please enter a valid number');
-                }
+                if (window.showNotification) window.showNotification('error', 'Error', 'Please enter a valid number');
                 return;
               }
 
@@ -190,18 +391,10 @@ class AdminPanel(AdminPanelTemplate):
                     window.showNotification('success', 'Saved!', key + ' updated successfully');
                   }
                 } else {
-                  if (window.showNotification) {
-                    window.showNotification('error', 'Error', result ? result.message : 'Error saving setting');
-                  } else {
-                    alert(result ? result.message : 'Error saving setting');
-                  }
+                  if (window.showNotification) window.showNotification('error', 'Error', result ? result.message : 'Error saving setting');
                 }
               } catch (e) {
-                if (window.showNotification) {
-                  window.showNotification('error', 'Error', 'Error saving setting: ' + e);
-                } else {
-                  alert('Error saving setting: ' + e);
-                }
+                if (window.showNotification) window.showNotification('error', 'Error', 'Error saving setting: ' + e);
               }
             };
 
@@ -212,11 +405,7 @@ class AdminPanel(AdminPanelTemplate):
 
               var value = input.value.trim();
               if (!value) {
-                if (window.showNotification) {
-                  window.showNotification('error', 'Error', 'Please enter a value');
-                } else {
-                  alert('Please enter a value');
-                }
+                if (window.showNotification) window.showNotification('error', 'Error', 'Please enter a value');
                 return;
               }
 
@@ -227,18 +416,10 @@ class AdminPanel(AdminPanelTemplate):
                     window.showNotification('success', 'Saved!', key + ' updated successfully');
                   }
                 } else {
-                  if (window.showNotification) {
-                    window.showNotification('error', 'Error', result ? result.message : 'Error saving setting');
-                  } else {
-                    alert(result ? result.message : 'Error saving setting');
-                  }
+                  if (window.showNotification) window.showNotification('error', 'Error', result ? result.message : 'Error saving setting');
                 }
               } catch (e) {
-                if (window.showNotification) {
-                  window.showNotification('error', 'Error', 'Error saving setting: ' + e);
-                } else {
-                  alert('Error saving setting: ' + e);
-                }
+                if (window.showNotification) window.showNotification('error', 'Error', 'Error saving setting: ' + e);
               }
             };
           }
@@ -509,10 +690,9 @@ class AdminPanel(AdminPanelTemplate):
             window.removeTechSpecRow = function(id) {
               var row = container.querySelector('[data-spec-id=\"' + id + '\"]');
               if (row && row.parentNode) {
-                if (confirm('Are you sure you want to delete this row?')) {
-                  row.parentNode.removeChild(row);
-                  updateRowNumbers();
-                }
+                (window.showConfirm || function(m){ return Promise.resolve(confirm(m)); })('Are you sure you want to delete this row?').then(function(ok) {
+                  if (ok) { row.parentNode.removeChild(row); updateRowNumbers(); }
+                });
               }
             };
             
@@ -535,17 +715,16 @@ class AdminPanel(AdminPanelTemplate):
             };
             
             window.resetTechSpecs = function() {
-              if (!confirm('Reset to default specifications? This will overwrite your current settings.')) return;
-              
+              (window.showConfirm || function(m){ return Promise.resolve(confirm(m)); })('Reset to default specifications? This will overwrite your current settings.').then(function(ok) {
+              if (!ok) return;
               var tbody = document.getElementById('techSpecsBody');
               if (!tbody) return;
               
               var defaults = getDefaultSpecs();
               tbody.innerHTML = defaults.map(buildSpecRow).join('');
               
-              if (window.showNotification) {
-                window.showNotification('info', 'Reset', 'Specifications reset to defaults. Click Save to apply.');
-              }
+              if (window.showNotification) window.showNotification('info', 'Reset', 'Specifications reset to defaults. Click Save to apply.');
+            });
             };
             
             // Auto-fill value from dropdown selection
@@ -600,16 +779,12 @@ class AdminPanel(AdminPanelTemplate):
               try {
                 var result = await window.updateSetting('technical_specs', JSON.stringify(specsData));
                 if (result && result.success) {
-                  if (window.showNotification) {
-                    window.showNotification('success', 'Saved!', 'Technical Specifications saved successfully');
-                  } else {
-                    alert('Technical Specifications saved successfully');
-                  }
+                  if (window.showNotification) window.showNotification('success', 'Saved!', 'Technical Specifications saved successfully');
                 } else {
-                  alert(result ? result.message : 'Error saving settings');
+                  if (window.showNotification) window.showNotification('error', 'Error', result ? result.message : 'Error saving settings');
                 }
               } catch (e) {
-                alert('Error saving: ' + e);
+                if (window.showNotification) window.showNotification('error', 'Error', 'Error saving: ' + e);
               }
             };
           }
@@ -733,7 +908,8 @@ class AdminPanel(AdminPanelTemplate):
           }
 
           window.deleteMachinePriceRow = async function(typeKey, color) {
-            if (!confirm('حذف صف ' + color + ' Colors لهذا النوع؟')) return;
+            var ok = await (window.showConfirm || function(m){ return Promise.resolve(confirm(m)); })('حذف صف ' + color + ' Colors لهذا النوع؟');
+            if (!ok) return;
             var prices = getCurrentPricesFromMachinePricesSection();
             if (prices[typeKey]) delete prices[typeKey][color];
             try {
@@ -743,12 +919,13 @@ class AdminPanel(AdminPanelTemplate):
                 if (el) el.remove();
                 addMachinePricesSection();
                 if (window.showNotification) window.showNotification('success', 'تم', 'تم حذف الصف');
-              } else alert(result ? result.message : 'Error');
-            } catch(e) { alert('Error: ' + e); }
+              } else if (window.showNotification) window.showNotification('error', 'خطأ', result ? result.message : 'Error');
+            } catch(e) { if (window.showNotification) window.showNotification('error', 'خطأ', 'Error: ' + e); }
           };
 
           window.deleteMachinePriceColumn = async function(typeKey, width) {
-            if (!confirm('حذف عمود ' + width + ' cm لهذا النوع؟')) return;
+            var ok = await (window.showConfirm || function(m){ return Promise.resolve(confirm(m)); })('حذف عمود ' + width + ' cm لهذا النوع؟');
+            if (!ok) return;
             var prices = getCurrentPricesFromMachinePricesSection();
             if (prices[typeKey]) {
               Object.keys(prices[typeKey]).forEach(function(c) { if (prices[typeKey][c][width] !== undefined) delete prices[typeKey][c][width]; });
@@ -760,12 +937,12 @@ class AdminPanel(AdminPanelTemplate):
                 if (el) el.remove();
                 addMachinePricesSection();
                 if (window.showNotification) window.showNotification('success', 'تم', 'تم حذف العمود');
-              } else alert(result ? result.message : 'Error');
-            } catch(e) { alert('Error: ' + e); }
+              } else if (window.showNotification) window.showNotification('error', 'خطأ', result ? result.message : 'Error');
+            } catch(e) { if (window.showNotification) window.showNotification('error', 'خطأ', 'Error: ' + e); }
           };
 
           window.addMachinePriceRow = async function(typeKey) {
-            var color = prompt('أدخل عدد الألوان (مثال: 4 أو 6):', '10');
+            var color = await (window.showPrompt || function(m,d){ return Promise.resolve(prompt(m,d)); })('أدخل عدد الألوان (مثال: 4 أو 6):', '10');
             if (color === null || !color.trim()) return;
             color = String(color.trim());
             var prices = getCurrentPricesFromMachinePricesSection();
@@ -783,12 +960,12 @@ class AdminPanel(AdminPanelTemplate):
                 if (el) el.remove();
                 addMachinePricesSection();
                 if (window.showNotification) window.showNotification('success', 'تم', 'تمت إضافة الصف');
-              } else alert(result ? result.message : 'Error');
-            } catch(e) { alert('Error: ' + e); }
+              } else if (window.showNotification) window.showNotification('error', 'خطأ', result ? result.message : 'Error');
+            } catch(e) { if (window.showNotification) window.showNotification('error', 'خطأ', 'Error: ' + e); }
           };
 
           window.addMachinePriceColumn = async function(typeKey) {
-            var width = prompt('أدخل المقاس (سم، مثال: 80 أو 140):', '140');
+            var width = await (window.showPrompt || function(m,d){ return Promise.resolve(prompt(m,d)); })('أدخل المقاس (سم، مثال: 80 أو 140):', '140');
             if (width === null || !width.trim()) return;
             width = String(width.trim());
             var prices = getCurrentPricesFromMachinePricesSection();
@@ -804,8 +981,8 @@ class AdminPanel(AdminPanelTemplate):
                 if (el) el.remove();
                 addMachinePricesSection();
                 if (window.showNotification) window.showNotification('success', 'تم', 'تمت إضافة العمود');
-              } else alert(result ? result.message : 'Error');
-            } catch(e) { alert('Error: ' + e); }
+              } else if (window.showNotification) window.showNotification('error', 'خطأ', result ? result.message : 'Error');
+            } catch(e) { if (window.showNotification) window.showNotification('error', 'خطأ', 'Error: ' + e); }
           };
 
           window.saveMachinePricesAll = async function() {
@@ -815,10 +992,9 @@ class AdminPanel(AdminPanelTemplate):
                 var result = await window.saveMachinePrices(prices);
                 if (result && result.success) {
                   if (window.showNotification) window.showNotification('success', 'Saved!', 'Machine prices saved successfully');
-                  else alert('Machine prices saved successfully!');
-                } else alert(result ? result.message : 'Error saving prices');
-              } else alert('Save function not available. Please refresh the page.');
-            } catch(e) { alert('Error saving: ' + e); }
+                } else if (window.showNotification) window.showNotification('error', 'Error', result ? result.message : 'Error saving prices');
+              } else if (window.showNotification) window.showNotification('warning', 'تنبيه', 'Save function not available. Please refresh the page.');
+            } catch(e) { if (window.showNotification) window.showNotification('error', 'Error', 'Error saving: ' + e); }
           };
 
           // ==========================================
@@ -873,28 +1049,29 @@ class AdminPanel(AdminPanelTemplate):
           }
 
           window.deleteCylinderPriceRow = async function(width) {
-            if (!confirm('حذف مقاس ' + width + ' سم؟')) return;
+            var ok = await (window.showConfirm || function(m){ return Promise.resolve(confirm(m)); })('حذف مقاس ' + width + ' سم؟');
+            if (!ok) return;
             var obj = getCurrentCylinderPricesFromSection();
             delete obj[width];
             try {
               var result = await window.updateSetting('cylinder_prices', obj);
               if (result && result.success) { var el = document.getElementById('cylinderPricesSection'); if (el) el.remove(); addCylinderPricesSection(); if (window.showNotification) window.showNotification('success', 'تم', 'تم الحذف'); }
-              else alert(result ? result.message : 'Error');
-            } catch(e) { alert('Error: ' + e); }
+              else if (window.showNotification) window.showNotification('error', 'خطأ', result ? result.message : 'Error');
+            } catch(e) { if (window.showNotification) window.showNotification('error', 'خطأ', 'Error: ' + e); }
           };
 
           window.addCylinderPriceRow = async function() {
-            var w = prompt('أدخل المقاس (سم):', '140');
+            var w = await (window.showPrompt || function(m,d){ return Promise.resolve(prompt(m,d)); })('أدخل المقاس (سم):', '140');
             if (w === null || !w.trim()) return;
             w = String(w.trim());
             var obj = getCurrentCylinderPricesFromSection();
-            if (obj[w] != null) { alert('المقاس موجود بالفعل'); return; }
+            if (obj[w] != null) { if (window.showNotification) window.showNotification('warning', 'تنبيه', 'المقاس موجود بالفعل'); return; }
             obj[w] = 0;
             try {
               var result = await window.updateSetting('cylinder_prices', obj);
               if (result && result.success) { var el = document.getElementById('cylinderPricesSection'); if (el) el.remove(); addCylinderPricesSection(); if (window.showNotification) window.showNotification('success', 'تم', 'تمت الإضافة'); }
-              else alert(result ? result.message : 'Error');
-            } catch(e) { alert('Error: ' + e); }
+              else if (window.showNotification) window.showNotification('error', 'خطأ', result ? result.message : 'Error');
+            } catch(e) { if (window.showNotification) window.showNotification('error', 'خطأ', 'Error: ' + e); }
           };
 
           function getCurrentCylinderPricesFromSection() {
@@ -913,9 +1090,8 @@ class AdminPanel(AdminPanelTemplate):
               var result = await window.updateSetting('cylinder_prices', obj);
               if (result && result.success) {
                 if (window.showNotification) window.showNotification('success', 'تم الحفظ', 'أسعار الأسطوانات محفوظة');
-                else alert('تم الحفظ');
-              } else alert(result ? result.message : 'Error');
-            } catch(e) { alert('Error: ' + e); }
+              } else if (window.showNotification) window.showNotification('error', 'خطأ', result ? result.message : 'Error');
+            } catch(e) { if (window.showNotification) window.showNotification('error', 'خطأ', 'Error: ' + e); }
           };
 
           // ==========================================
@@ -1133,7 +1309,7 @@ class AdminPanel(AdminPanelTemplate):
             var name = nameInput.value.trim();
             
             if (!name) {
-              alert('Please enter a machine type name');
+              if (window.showNotification) window.showNotification('error', 'Error', 'Please enter a machine type name');
               return;
             }
             
@@ -1147,7 +1323,7 @@ class AdminPanel(AdminPanelTemplate):
             
             // Check if already exists
             if (config.types.indexOf(name) !== -1) {
-              alert('This machine type already exists');
+              if (window.showNotification) window.showNotification('warning', 'تنبيه', 'This machine type already exists');
               return;
             }
             
@@ -1163,7 +1339,7 @@ class AdminPanel(AdminPanelTemplate):
                 // Reload settings panel
                 setTimeout(function() { window.loadSettings(); }, 500);
               } else {
-                alert(saveResult.message || 'Error saving');
+                if (window.showNotification) window.showNotification('error', 'Error', saveResult.message || 'Error saving');
               }
             }
           };
@@ -1173,7 +1349,7 @@ class AdminPanel(AdminPanelTemplate):
             var count = input.value.trim();
             
             if (!count || isNaN(count)) {
-              alert('Please enter a valid color count');
+              if (window.showNotification) window.showNotification('error', 'Error', 'Please enter a valid color count');
               return;
             }
             
@@ -1187,7 +1363,7 @@ class AdminPanel(AdminPanelTemplate):
             
             // Check if already exists
             if (config.colors.indexOf(count) !== -1) {
-              alert('This color count already exists');
+              if (window.showNotification) window.showNotification('warning', 'تنبيه', 'This color count already exists');
               return;
             }
             
@@ -1203,7 +1379,7 @@ class AdminPanel(AdminPanelTemplate):
                 window.showNotification('success', 'Added!', 'New color count added. Refresh Settings to see changes.');
                 setTimeout(function() { window.loadSettings(); }, 500);
               } else {
-                alert(saveResult.message || 'Error saving');
+                if (window.showNotification) window.showNotification('error', 'Error', saveResult.message || 'Error saving');
               }
             }
           };
@@ -1213,7 +1389,7 @@ class AdminPanel(AdminPanelTemplate):
             var width = input.value.trim();
             
             if (!width || isNaN(width)) {
-              alert('Please enter a valid width');
+              if (window.showNotification) window.showNotification('error', 'Error', 'Please enter a valid width');
               return;
             }
             
@@ -1227,7 +1403,7 @@ class AdminPanel(AdminPanelTemplate):
             
             // Check if already exists
             if (config.widths.indexOf(width) !== -1) {
-              alert('This width already exists');
+              if (window.showNotification) window.showNotification('warning', 'تنبيه', 'This width already exists');
               return;
             }
             
@@ -1243,7 +1419,7 @@ class AdminPanel(AdminPanelTemplate):
                 window.showNotification('success', 'Added!', 'New width added. Refresh Settings to see changes.');
                 setTimeout(function() { window.loadSettings(); }, 500);
               } else {
-                alert(saveResult.message || 'Error saving');
+                if (window.showNotification) window.showNotification('error', 'Error', saveResult.message || 'Error saving');
               }
             }
           };
@@ -1262,6 +1438,7 @@ class AdminPanel(AdminPanelTemplate):
 
           function run() {
             insertDataImportNav();
+            insertBackupNav();
             patchSaveSetting();
             patchLoadSettings();
             patchLoadAuditLogs();
@@ -1438,13 +1615,54 @@ class AdminPanel(AdminPanelTemplate):
     def export_quotations_data(self, include_deleted):
         return anvil.server.call('export_quotations_data', include_deleted)
 
+    def create_backup(self):
+        """إنشاء وتحميل نسخة احتياطية (عملاء، عروض، عقود، إعدادات، مواصفات). للأدمن فقط."""
+        auth = self.get_auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated. Please login again.'}
+        return anvil.server.call('create_backup', auth)
+
+    def list_scheduled_backups(self):
+        """قائمة النسخ الاحتياطية المجدولة (يوم 1 و 16). للأدمن فقط."""
+        auth = self.get_auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated.', 'data': []}
+        return anvil.server.call('list_scheduled_backups', auth)
+
+    def get_scheduled_backup_file(self, filename, created_at_iso):
+        """تحميل ملف نسخة احتياطية مجدولة. للأدمن فقط."""
+        auth = self.get_auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated.'}
+        return anvil.server.call('get_scheduled_backup_file', auth, filename, created_at_iso)
+
+    def list_drive_backups(self):
+        """قائمة النسخ الاحتياطية في مجلد Google Drive. للأدمن فقط."""
+        auth = self.get_auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated.', 'data': []}
+        return anvil.server.call('list_drive_backups', auth)
+
+    def restore_backup_from_drive(self, filename):
+        """استعادة من نسخة احتياطية على Google Drive. للأدمن فقط."""
+        auth = self.get_auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated.'}
+        return anvil.server.call('restore_backup_from_drive', auth, filename)
+
+    def restore_backup(self, backup_media):
+        """استعادة من ملف نسخة احتياطية (مرفوع من الجهاز). للأدمن فقط."""
+        auth = self.get_auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated.'}
+        return anvil.server.call('restore_backup', auth, backup_media)
+
     # =========================================================
     # Settings Management (سعر الصرف، أسعار الأسطوانات)
     # =========================================================
     def get_all_settings(self):
         """الحصول على جميع الإعدادات"""
         auth = self.get_auth()
-        print(f"get_all_settings called with auth: {auth}")
         if not auth:
             return {'success': False, 'message': 'Not authenticated. Please login again.'}
         return anvil.server.call('get_all_settings', auth)
@@ -1482,7 +1700,10 @@ class AdminPanel(AdminPanelTemplate):
             from ..DataImportForm import DataImportForm
             open_form("DataImportForm")
         except Exception as e:
-            alert(f"Error opening DataImportForm: {e}")
+            try:
+                anvil.js.window.showNotification('error', 'خطأ', str(e))
+            except Exception:
+                pass
 
     # =========================================================
     # Debug
@@ -1499,7 +1720,7 @@ class AdminPanel(AdminPanelTemplate):
         if token:
             try:
                 anvil.server.call('logout_user', token)
-            except:
+            except Exception:
                 pass
         try:
             for k in ('auth_token', 'user_email', 'user_name', 'user_role'):

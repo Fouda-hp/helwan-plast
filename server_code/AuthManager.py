@@ -1,14 +1,7 @@
 """
-AuthManager.py - نظام المصادقة والتفويض الآمن
-==============================================
-الميزات:
-- تشفير كلمات المرور باستخدام PBKDF2 (بديل آمن لـ bcrypt)
-- إدارة الجلسات في قاعدة البيانات (بدلاً من الذاكرة)
-- التحكم في الصلاحيات حسب الأدوار
-- قفل الحساب بعد محاولات فاشلة
-- Rate Limiting للحماية من الهجمات
-- تسجيل التدقيق مع IP Address
-- التحقق المتقدم من صحة البريد الإلكتروني
+AuthManager.py - نظام المصادقة والتفويض الآمن (واجهة موحدة)
+============================================================
+يستورد الثوابت والدوال المساعدة من الوحدات المنفصلة ويُبقي كل الـ callables هنا.
 """
 
 import anvil.server
@@ -21,232 +14,22 @@ import uuid
 import re
 import logging
 
-
-def get_utc_now():
-  """الحصول على الوقت الحالي بـ UTC timezone"""
-  return datetime.now(timezone.utc)
-
-
-def make_aware(dt):
-  """تحويل datetime naive إلى aware (UTC)"""
-  if dt is None:
-    return None
-  if dt.tzinfo is None:
-    return dt.replace(tzinfo=timezone.utc)
-  return dt
-
-# محاولة استيراد خدمة البريد الإلكتروني
-try:
-  import anvil.email
-  EMAIL_SERVICE_AVAILABLE = True
-except ImportError:
-  EMAIL_SERVICE_AVAILABLE = False
-
-# =========================================================
-# إعداد نظام التسجيل (Logging) - يجب أن يكون أولاً
-# =========================================================
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# =========================================================
-# Google Gmail API Configuration (via Anvil)
-# =========================================================
-import anvil.google.mail
-
-def send_email_smtp(to_email, subject, html_body):
-  """
-  إرسال إيميل عبر Google Gmail API
-  """
-  try:
-    logger.info(f"Attempting to send email via Google to {to_email}")
-
-    anvil.google.mail.send(
-      to=to_email,
-      subject=subject,
-      html=html_body
-    )
-
-    logger.info(f"Email sent successfully via Google to {to_email}")
-    return True
-
-  except Exception as e:
-    logger.error(f"Failed to send email via Google to {to_email}: {type(e).__name__}: {e}")
-    return False
-
-
-# =========================================================
-# الثوابت والإعدادات
-# =========================================================
-MAX_LOGIN_ATTEMPTS = 50           # عدد المحاولات قبل القفل
-LOCKOUT_DURATION_MINUTES = 5    # مدة القفل بالدقائق
-SESSION_DURATION_MINUTES = 60    # مدة الجلسة بالدقائق (60 دقيقة = ساعة واحدة)
-MAX_SESSIONS_PER_USER = 5        # الحد الأقصى للجلسات لكل مستخدم (يسمح لأجهزة متعددة على نفس الشبكة)
-RATE_LIMIT_WINDOW_MINUTES = 15   # نافذة Rate Limiting
-RATE_LIMIT_MAX_REQUESTS = 500    # الحد الأقصى للطلبات في النافذة (زيادة للسماح بأجهزة متعددة على نفس الشبكة)
-PBKDF2_ITERATIONS = 100000       # عدد التكرارات للتشفير (أكثر أماناً)
-PASSWORD_HISTORY_COUNT = 5       # عدد كلمات المرور السابقة للتحقق منها
-OTP_EXPIRY_MINUTES = 10          # مدة صلاحية OTP
-
-# Admin Email for Notifications - يُقرأ من Environment Variables
-try:
-  import anvil.secrets
-  ADMIN_NOTIFICATION_EMAIL = anvil.secrets.get_secret('ADMIN_EMAIL') or "mohamedadelfouda@helwanplast.com"
-  _emergency_key = anvil.secrets.get_secret('EMERGENCY_KEY')
-  if not _emergency_key:
-    logger.warning("EMERGENCY_KEY not set in secrets! Using fallback key.")
-    _emergency_key = "HP_EMERGENCY_" + str(hashlib.sha256(b"helwan_plast_2024").hexdigest()[:16])
-  EMERGENCY_SECRET_KEY = _emergency_key
-except Exception as e:
-  logger.error(f"Failed to load secrets: {e}")
-  ADMIN_NOTIFICATION_EMAIL = "mohamedadelfouda@helwanplast.com"
-  EMERGENCY_SECRET_KEY = "HP_EMERGENCY_" + str(hashlib.sha256(b"helwan_plast_2024").hexdigest()[:16])
-
-# صلاحيات الأدوار
-ROLES = {
-  'admin': ['all'],
-  'manager': ['view', 'create', 'edit', 'export', 'delete_own'],
-  'sales': ['view', 'create', 'edit_own'],
-  'viewer': ['view']
-}
-
-# الصلاحيات المتاحة للتخصيص
-AVAILABLE_PERMISSIONS = [
-  'view',           # عرض البيانات
-  'create',         # إنشاء بيانات جديدة
-  'edit',           # تعديل أي بيانات
-  'edit_own',       # تعديل بياناته فقط
-  'delete',         # حذف أي بيانات
-  'delete_own',     # حذف بياناته فقط
-  'export',         # تصدير البيانات
-  'import',         # استيراد البيانات
-  'manage_users',   # إدارة المستخدمين
-  'view_audit',     # عرض سجل التدقيق
-  'manage_settings' # إدارة الإعدادات
-]
-
-
-# =========================================================
-# التحقق من صحة البريد الإلكتروني (محسّن)
-# =========================================================
-def validate_email(email):
-  """
-    التحقق من صحة البريد الإلكتروني باستخدام regex متقدم
-    """
-  if not email:
-    return False
-
-    # نمط regex للتحقق من صحة البريد الإلكتروني
-  pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-
-  if not re.match(pattern, email):
-    return False
-
-    # التحقق من الطول
-  if len(email) > 254:
-    return False
-
-    # التحقق من عدم وجود نقطتين متتاليتين
-  if '..' in email:
-    return False
-
-  return True
-
-
-# =========================================================
-# وظائف إرسال البريد الإلكتروني
-# =========================================================
-def send_approval_email(user_email, user_name, role, approved=True):
-  """
-    إرسال بريد إلكتروني للمستخدم عند الموافقة أو الرفض
-    """
-  if not EMAIL_SERVICE_AVAILABLE:
-    logger.warning("Email service not available. Skipping email notification.")
-    return False
-
-  try:
-    if approved:
-      subject = "Account Approved - Helwan Plast System"
-      html_body = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0;">
-                    <h1 style="color: white; margin: 0; text-align: center;">Helwan Plast System</h1>
-                </div>
-
-                <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
-                    <h2 style="color: #2e7d32; margin-top: 0;">🎉 Account Approved!</h2>
-
-                    <p style="font-size: 16px; color: #333;">Dear <strong>{user_name}</strong>,</p>
-
-                    <p style="font-size: 16px; color: #333;">
-                        Your account has been approved! You can now log in to the Helwan Plast System.
-                    </p>
-
-                    <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                        <p style="margin: 0; font-size: 14px; color: #2e7d32;">
-                            <strong>Your Role:</strong> {role.capitalize()}
-                        </p>
-                    </div>
-
-                    <p style="font-size: 14px; color: #666;">
-                        If you have any questions, please contact the administrator.
-                    </p>
-
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-
-                    <p style="font-size: 12px; color: #999; text-align: center;">
-                        Best regards,<br>
-                        <strong>Mohamed Adel - Helwan Plast</strong>
-                    </p>
-                </div>
-            </div>
-            """
-    else:
-      subject = "Account Status Update - Helwan Plast System"
-      html_body = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0;">
-                    <h1 style="color: white; margin: 0; text-align: center;">Helwan Plast System</h1>
-                </div>
-
-                <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
-                    <h2 style="color: #c62828; margin-top: 0;">Account Registration Status</h2>
-
-                    <p style="font-size: 16px; color: #333;">Dear <strong>{user_name}</strong>,</p>
-
-                    <p style="font-size: 16px; color: #333;">
-                        We regret to inform you that your account registration request has been declined.
-                    </p>
-
-                    <div style="background: #ffebee; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                        <p style="margin: 0; font-size: 14px; color: #c62828;">
-                            If you believe this was a mistake, please contact the administrator for more information.
-                        </p>
-                    </div>
-
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-
-                    <p style="font-size: 12px; color: #999; text-align: center;">
-                        Best regards,<br>
-                        <strong>Mohamed Adel - Helwan Plast</strong>
-                    </p>
-                </div>
-            </div>
-            """
-
-    # استخدام SMTP بدلاً من Anvil Email
-    result = send_email_smtp(user_email, subject, html_body)
-
-    if result:
-      logger.info(f"Email sent to {user_email}: {'Approval' if approved else 'Rejection'}")
-      return True
-    else:
-      logger.error(f"Failed to send email to {user_email}")
-      return False
-
-  except Exception as e:
-    logger.error(f"Failed to send email to {user_email}: {e}")
-    return False
-
+# ========== استيراد من الوحدات المنظمة ==========
+from . import auth_constants
+from .auth_constants import (
+    MAX_LOGIN_ATTEMPTS, LOCKOUT_DURATION_MINUTES, SESSION_DURATION_MINUTES,
+    MAX_SESSIONS_PER_USER, RATE_LIMIT_WINDOW_MINUTES, RATE_LIMIT_MAX_REQUESTS,
+    PBKDF2_ITERATIONS, PASSWORD_HISTORY_COUNT, OTP_EXPIRY_MINUTES,
+    ADMIN_NOTIFICATION_EMAIL, EMERGENCY_SECRET_KEY, ROLES, AVAILABLE_PERMISSIONS
+)
+from .auth_utils import get_utc_now, make_aware, get_client_ip, validate_email
+from .auth_email import send_email_smtp, send_approval_email, EMAIL_SERVICE_AVAILABLE
+from .auth_password import hash_password, verify_password, upgrade_password_hash, add_to_password_history, check_password_history
+from .auth_sessions import generate_session_token, create_session, validate_session, destroy_session, cleanup_expired_sessions
+from .auth_rate_limit import check_rate_limit
 
 # =========================================================
 # OTP Generation and Verification
@@ -744,353 +527,8 @@ def send_admin_notification_email(new_user_email, new_user_name, new_user_phone)
 
 
 # =========================================================
-# تشفير كلمات المرور (PBKDF2 - أكثر أماناً من SHA-256)
+# Rate Limiting - check_rate_limit مستورد من auth_rate_limit
 # =========================================================
-def hash_password(password):
-  """
-    تشفير كلمة المرور باستخدام PBKDF2
-    أكثر أماناً من SHA-256 العادي
-    """
-  # توليد ملح عشوائي 32 بايت
-  salt = secrets.token_hex(32)
-
-  # استخدام PBKDF2 مع SHA-256
-  key = hashlib.pbkdf2_hmac(
-    'sha256',
-    password.encode('utf-8'),
-    salt.encode('utf-8'),
-    PBKDF2_ITERATIONS
-  )
-
-  # تحويل المفتاح إلى hex
-  hash_value = key.hex()
-
-  # إرجاع الملح والهاش معاً
-  return f"{salt}:{hash_value}"
-
-
-def verify_password(password, stored_hash):
-  """
-    التحقق من كلمة المرور
-    يدعم كلمات المرور القديمة (SHA-256) والجديدة (PBKDF2)
-    """
-  if not stored_hash:
-    return False
-
-  try:
-    # التحقق من نوع التشفير
-    if ':' in stored_hash:
-      # تشفير PBKDF2 الجديد (salt:hash)
-      salt, hash_value = stored_hash.split(':', 1)
-
-      # إعادة حساب الهاش
-      key = hashlib.pbkdf2_hmac(
-        'sha256',
-        password.encode('utf-8'),
-        salt.encode('utf-8'),
-        PBKDF2_ITERATIONS
-      )
-
-      check_hash = key.hex()
-
-      # مقارنة آمنة (ثابتة الوقت)
-      return secrets.compare_digest(check_hash, hash_value)
-    else:
-      # تشفير SHA-256 القديم (للتوافق مع كلمات المرور السابقة)
-      old_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
-      return secrets.compare_digest(old_hash, stored_hash)
-
-  except Exception as e:
-    logger.error(f"Password verification error: {e}")
-    return False
-
-
-def upgrade_password_hash(user, password):
-  """
-    ترقية كلمة المرور من SHA-256 القديم إلى PBKDF2 الجديد
-    يتم استدعاؤها تلقائياً عند تسجيل الدخول الناجح
-    """
-  try:
-    stored_hash = user['password_hash']
-
-    # إذا كانت كلمة المرور بالتشفير القديم (بدون :)
-    if stored_hash and ':' not in stored_hash:
-      # إعادة تشفير كلمة المرور بالطريقة الجديدة
-      new_hash = hash_password(password)
-      user.update(password_hash=new_hash)
-      logger.info(f"Password hash upgraded for user: {user['email']}")
-      return True
-  except Exception as e:
-    logger.error(f"Error upgrading password hash: {e}")
-
-  return False
-
-
-# =========================================================
-# Password History (منع تكرار كلمات المرور)
-# =========================================================
-def add_to_password_history(user_email, password_hash):
-  """
-    إضافة كلمة المرور إلى سجل كلمات المرور السابقة
-    """
-  try:
-    app_tables.password_history.add_row(
-      history_id=str(uuid.uuid4()),
-      user_email=user_email,
-      password_hash=password_hash,
-      created_at=datetime.now()
-    )
-
-    # حذف كلمات المرور القديمة إذا تجاوزت الحد
-    history = list(app_tables.password_history.search(user_email=user_email))
-    history.sort(key=lambda x: x['created_at'], reverse=True)
-
-    if len(history) > PASSWORD_HISTORY_COUNT:
-      for old in history[PASSWORD_HISTORY_COUNT:]:
-        old.delete()
-
-    return True
-  except Exception as e:
-    logger.error(f"Failed to add password to history: {e}")
-    return False
-
-
-def check_password_history(user_email, new_password):
-  """
-    التحقق من أن كلمة المرور الجديدة ليست مستخدمة سابقاً
-    Returns: (is_valid, message)
-    """
-  try:
-    history = list(app_tables.password_history.search(user_email=user_email))
-
-    for record in history:
-      if verify_password(new_password, record['password_hash']):
-        return False, f"Cannot reuse any of your last {PASSWORD_HISTORY_COUNT} passwords"
-
-    return True, "Password is valid"
-  except Exception as e:
-    logger.error(f"Password history check error: {e}")
-    return True, "Check passed"  # السماح في حالة الخطأ
-
-
-# =========================================================
-# إدارة الجلسات (في قاعدة البيانات)
-# =========================================================
-def generate_session_token():
-  """توليد رمز جلسة آمن"""
-  return secrets.token_urlsafe(64)
-
-
-def create_session(user_email, role, ip_address=None, user_agent=None):
-    """
-    إنشاء جلسة جديدة في قاعدة البيانات
-    يسمح بـ MAX_SESSIONS_PER_USER جلسات لكل مستخدم (افتراضياً 5)
-    ملاحظة: الحد على المستخدم وليس الـ IP لأن أجهزة متعددة قد تشارك نفس الـ IP العام
-    """
-    token = generate_session_token()
-    expires = datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES)
-    ip = ip_address or 'unknown'
-
-    try:
-        # التحقق من عدد الجلسات النشطة لهذا المستخدم (وليس الـ IP)
-        active_sessions = list(app_tables.sessions.search(
-            user_email=user_email,
-            is_active=True
-        ))
-
-        # تصفية الجلسات المنتهية
-        now = datetime.now()
-        valid_sessions = [s for s in active_sessions if s['expires_at'] > now]
-
-        # إلغاء الجلسات المنتهية
-        for s in active_sessions:
-            if s['expires_at'] <= now:
-                s.update(is_active=False)
-
-        # إذا وصل للحد الأقصى، نحذف الجلسة الأقدم
-        if len(valid_sessions) >= MAX_SESSIONS_PER_USER:
-            # ترتيب حسب تاريخ الإنشاء وحذف الأقدم
-            valid_sessions.sort(key=lambda s: s['created_at'])
-            oldest_session = valid_sessions[0]
-            oldest_session.update(is_active=False)
-            logger.info(f"Deactivated oldest session for {user_email} to allow new session")
-
-        app_tables.sessions.add_row(
-            session_token=token,
-            user_email=user_email,
-            user_role=role,
-            created_at=datetime.now(),
-            expires_at=expires,
-            ip_address=ip,
-            user_agent=user_agent or 'unknown',
-            is_active=True
-        )
-
-        logger.info(f"Session created for {user_email} from IP {ip}")
-        return token
-    except Exception as e:
-        logger.error(f"Session creation error: {e}")
-        return None
-
-
-def validate_session(token):
-  """
-    التحقق من صحة الجلسة
-    """
-  if not token:
-    return None
-
-  try:
-    # البحث عن الجلسة في قاعدة البيانات
-    session = app_tables.sessions.get(
-      session_token=token,
-      is_active=True
-    )
-
-    if not session:
-      return None
-
-    # التحقق من انتهاء الصلاحية (تجاهل إذا expires_at غير موجود)
-    expires_at = session.get('expires_at')
-    if expires_at is not None:
-      try:
-        if datetime.now() > expires_at:
-          session.update(is_active=False)
-          return None
-      except (TypeError, ValueError):
-        pass
-
-    # جلب المستخدم الحالي من جدول users
-      # هذا يضمن أن أي تغيير في الـ role أو الحالة يُطبق فوراً
-    user = app_tables.users.get(email=session['user_email'])
-
-    if not user:
-      # المستخدم تم حذفه - إبطال الجلسة
-      session.update(is_active=False)
-      return None
-
-      # التحقق من أن المستخدم مفعل ومعتمد
-    if not user['is_active'] or not user['is_approved']:
-      # المستخدم غير مفعل أو غير معتمد - إبطال الجلسة
-      session.update(is_active=False)
-      return None
-
-    return {
-      'email': session['user_email'],
-      'role': user['role'],  # استخدام الـ role الحالي من users table
-      'is_active': user['is_active'],
-      'is_approved': user['is_approved'],
-      'created': session['created_at'],
-      'expires': session['expires_at']
-    }
-  except Exception as e:
-    logger.error(f"Session validation error: {e}")
-    return None
-
-
-def destroy_session(token):
-  """
-    إنهاء الجلسة (تسجيل الخروج)
-    """
-  if not token:
-    return False
-
-  try:
-    session = app_tables.sessions.get(session_token=token)
-    if session:
-      session.update(is_active=False)
-      return True
-    return False
-  except Exception as e:
-    logger.error(f"Session destruction error: {e}")
-    return False
-
-
-def cleanup_expired_sessions():
-  """
-    تنظيف الجلسات المنتهية (يُستدعى دورياً)
-    """
-  try:
-    expired = list(app_tables.sessions.search(is_active=True))
-    count = 0
-    for session in expired:
-      if session['expires_at'] and datetime.now() > session['expires_at']:
-        session.update(is_active=False)
-        count += 1
-
-    if count > 0:
-      logger.info(f"Cleaned up {count} expired sessions")
-  except Exception as e:
-    logger.error(f"Session cleanup error: {e}")
-
-
-# =========================================================
-# Rate Limiting (حماية من الهجمات)
-# =========================================================
-def check_rate_limit(ip_address, endpoint='general'):
-  """
-    التحقق من Rate Limit
-    يعود True إذا كان الطلب مسموح، False إذا كان محظور
-    """
-  if not ip_address:
-    ip_address = 'unknown'
-
-  try:
-    now = datetime.now()
-    window_start = now - timedelta(minutes=RATE_LIMIT_WINDOW_MINUTES)
-
-    # البحث عن سجل Rate Limit (استخدام search لأن get بمعيارين قد لا يعمل في كل الإعدادات)
-    records = list(app_tables.rate_limits.search(
-      ip_address=ip_address,
-      endpoint=endpoint
-    ))
-    record = records[0] if records else None
-
-    if record:
-      # التحقق من الحظر
-      blocked_until = record.get('blocked_until')
-      if blocked_until and now < blocked_until:
-        return False
-
-      # التحقق من النافذة الزمنية (معالجة None بأمان)
-      rec_window = record.get('window_start')
-      if rec_window is not None and rec_window > window_start:
-        # داخل النافذة - زيادة العداد
-        new_count = (record.get('request_count') or 0) + 1
-
-        if new_count > RATE_LIMIT_MAX_REQUESTS:
-          # حظر لمدة ساعة
-          record.update(
-            request_count=new_count,
-            blocked_until=now + timedelta(hours=1)
-          )
-          logger.warning(f"Rate limit exceeded for IP: {ip_address}")
-          return False
-
-        record.update(request_count=new_count)
-      else:
-        # بداية نافذة جديدة أو قيم قديمة مفقودة
-        record.update(
-          request_count=1,
-          window_start=now,
-          blocked_until=None
-        )
-    else:
-      # إنشاء سجل جديد
-      app_tables.rate_limits.add_row(
-        ip_address=ip_address,
-        endpoint=endpoint,
-        request_count=1,
-        window_start=now,
-        blocked_until=None
-      )
-
-    return True
-  except Exception as e:
-    logger.error(f"Rate limit check error: {e}", exc_info=True)
-    # في حالة الخطأ نسمح بالطلب حتى لا يُحرم كل المستخدمين من الدخول بسبب خلل في Rate Limit
-    return True
-
 
 @anvil.server.callable
 def clear_rate_limits():
@@ -1143,26 +581,14 @@ def reset_user_login_attempts(email):
 
 
 # =========================================================
-# تسجيل التدقيق (مع IP Address)
+# تسجيل التدقيق (مفصل: اسم المستخدم + وصف العملية + التوقيت)
 # =========================================================
-def log_audit(action, table_name, record_id, old_data, new_data, user_email=None, ip_address=None):
-  """
-    تسجيل العملية في سجل التدقيق
-    """
-  try:
-    app_tables.audit_log.add_row(
-      log_id=str(uuid.uuid4()),
-      timestamp=datetime.now(),
-      user_email=user_email or 'system',
-      action=action,
-      table_name=table_name,
-      record_id=str(record_id) if record_id else None,
-      old_data=json.dumps(old_data, default=str) if old_data else None,
-      new_data=json.dumps(new_data, default=str) if new_data else None,
-      ip_address=ip_address or 'unknown'
-    )
-  except Exception as e:
-    logger.error(f"Audit log error: {e}")
+def log_audit(action, table_name, record_id, old_data, new_data, user_email=None, ip_address=None, user_name=None, action_description=None):
+  """تسجيل العملية في سجل التدقيق (الواجهة الموحدة - التنفيذ في auth_audit)."""
+  from . import auth_audit
+  auth_audit.log_audit(action, table_name, record_id, old_data, new_data,
+                      user_email=user_email, ip_address=ip_address,
+                      user_name=user_name, action_description=action_description)
 
 
 # =========================================================
@@ -3210,12 +2636,14 @@ def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
         logs.append({
             'log_id': log['log_id'],
             'timestamp': log['timestamp'].isoformat() if log['timestamp'] else '',
-            'user_email': log['user_email'],
-            'action': log['action'],
-            'table_name': log['table_name'],
-            'record_id': log['record_id'],
-            'old_data': log['old_data'],
-            'new_data': log['new_data'],
+            'user_email': log.get('user_email', ''),
+            'user_name': log.get('user_name', ''),
+            'action_description': log.get('action_description', ''),
+            'action': log.get('action', ''),
+            'table_name': log.get('table_name', ''),
+            'record_id': log.get('record_id', ''),
+            'old_data': log.get('old_data', ''),
+            'new_data': log.get('new_data', ''),
             'ip_address': log.get('ip_address', 'N/A')
         })
 

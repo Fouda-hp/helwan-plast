@@ -226,7 +226,7 @@ container:
               var data = await window.pyExportClients(false);
 
               if (!data || data.length === 0) {
-                alert('No data to export');
+                if (window.showNotification) window.showNotification('error', '', 'No data to export');
                 return;
               }
 
@@ -247,9 +247,9 @@ container:
               link.download = 'clients_export.csv';
               link.click();
 
-              alert('Export completed!');
+              if (window.showNotification) window.showNotification('success', '', 'Export completed!');
             } catch (e) {
-              alert('Export error: ' + e);
+              if (window.showNotification) window.showNotification('error', '', 'Export error: ' + e);
             }
           };
 

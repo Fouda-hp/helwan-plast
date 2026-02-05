@@ -4,6 +4,29 @@
 
 The app in this repository is built with [Anvil](https://anvil.works?utm_source=github:app_README), the framework for building web apps with nothing but Python. You can clone this app into your own Anvil account to use and modify.
 
+---
+
+## Helwan Plast System – تعليمات المشروع
+
+هذا التطبيق هو **نظام حلوان بلاست** لإدارة العملاء وعروض الأسعار والعقود وطباعة عروض الأسعار والعقود.
+
+### تشغيل التطبيق
+- افتح المشروع في [Anvil Editor](https://anvil.works/build)، ثم اضغط **Run**.
+- الصفحة الافتراضية: تسجيل الدخول (`LoginForm`). بعد الدخول يتم التوجيه إلى `LauncherForm`.
+
+### الجداول المطلوبة في Anvil Data Tables
+يجب أن تكون الجداول التالية موجودة ومطابقة للـ schema في `anvil.yaml`:  
+`users`, `sessions`, `clients`, `quotations`, `contracts`, `audit_log`, `machine_specs`, `settings`, `otp_codes`, `password_history`, `pending_passwords`, `rate_limits`.
+
+### الإعدادات والأسرار
+- **Anvil Secrets:** ضبط `ADMIN_EMAIL` و`EMERGENCY_KEY` (لإعادة تعيين كلمة مرور الأدمن في الطوارئ). لاستخدام OTP عبر SMS/WhatsApp: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (واختياريًا `TWILIO_WHATSAPP_FROM`).
+- **قناة OTP:** في جدول `settings` يمكن إضافة سجل بالمفتاح `otp_channel` والقيمة `email` أو `sms` أو `whatsapp`. للتفاصيل انظر `OTP_CHANNEL_SETUP.md`.
+
+### مجلد Q
+مجلد `Q/` يحتوي على مولد عروض أسعار محلي (سكربتات Python مع reportlab) للاستخدام خارج Anvil. تشغيله يتطلب: `reportlab`, `arabic-reshaper`, `python-bidi`.
+
+---
+
 Below, you will find:
 - [How to open this app](#opening-this-app-in-anvil-and-getting-it-online) in Anvil and deploy it online
 - Information [about Anvil](#about-anvil)

@@ -19,6 +19,8 @@ from datetime import datetime
 import json
 import uuid
 import logging
+import csv
+import io
 
 # استيراد الدوال المشتركة من AuthManager
 from . import AuthManager
@@ -993,6 +995,32 @@ def _normalize_client_row(row):
 
 
 @anvil.server.callable
+def import_csv(file, token_or_email=None):
+    """
+    استيراد عملاء من ملف CSV واحد.
+    يتطلب صلاحية أدمن (مرّر التوكن أو الإيميل من الجلسة).
+    الملف: عمود أول سطر = عناوين، باقي الأسطر = بيانات.
+    """
+    if not token_or_email:
+        return {'success': False, 'msg': 'يجب تسجيل الدخول كأدمن لاستيراد CSV'}
+    try:
+        raw = file.get_bytes()
+        text = raw.decode('utf-8-sig')
+        reader = csv.DictReader(io.StringIO(text))
+        data_list = [dict(row) for row in reader]
+    except Exception as e:
+        logger.exception("import_csv parse: %s", e)
+        return {'success': False, 'msg': f'خطأ في قراءة الملف: {e}'}
+    if not data_list:
+        return {'success': False, 'msg': 'الملف لا يحتوي على صفوف'}
+    result = import_clients_data(data_list, token_or_email)
+    if isinstance(result, dict) and 'success' in result and result.get('success'):
+        msg = result.get('message', result.get('msg', 'تم الاستيراد'))
+        return {'success': True, 'msg': msg, 'skipped_values': result.get('errors', [])}
+    return {'success': False, 'msg': result.get('message', result.get('msg', 'فشل الاستيراد')) if isinstance(result, dict) else str(result)}
+
+
+@anvil.server.callable
 def import_clients_data(data_list, token_or_email):
     """
     استيراد بيانات العملاء من CSV/Excel
@@ -1316,21 +1344,23 @@ def get_user_info(email):
 
 
 def get_user_info_by_name(full_name):
-    """جلب معلومات المستخدم بناءً على الاسم الكامل (للـ Sales Rep)"""
+    """جلب معلومات المستخدم بناءً على الاسم الكامل (للـ Sales Rep). يستخدم search لأن full_name قد لا يكون فريداً."""
     try:
-        if not full_name or not full_name.strip():
+        if not full_name or not str(full_name).strip():
             return {'name': 'N/A', 'phone': 'N/A', 'email': 'N/A'}
-        
-        user = app_tables.users.get(full_name=full_name.strip())
+        name = str(full_name).strip()
+        rows = list(app_tables.users.search(full_name=name))
+        user = rows[0] if rows else None
         if user:
             return {
-                'name': user['full_name'] or 'N/A',
-                'phone': user['phone'] or 'N/A',
-                'email': user['email'] or 'N/A'
+                'name': user.get('full_name') or 'N/A',
+                'phone': user.get('phone') or 'N/A',
+                'email': user.get('email') or 'N/A'
             }
-        return {'name': full_name, 'phone': 'N/A', 'email': 'N/A'}
-    except Exception:
-        return {'name': full_name or 'N/A', 'phone': 'N/A', 'email': 'N/A'}
+        return {'name': name, 'phone': 'N/A', 'email': 'N/A'}
+    except Exception as e:
+        logger.debug(f"get_user_info_by_name({full_name}): {e}")
+        return {'name': (full_name or 'N/A'), 'phone': 'N/A', 'email': 'N/A'}
 
 
 def get_machine_specs(model):
@@ -1379,10 +1409,19 @@ def format_date_en(date_obj):
 
 
 @anvil.server.callable
-def get_quotation_pdf_data(quotation_number, user_email):
+def get_quotation_pdf_data(quotation_number, user_email, auth_token=None):
     """
-    جلب كل البيانات اللازمة لتصدير عرض السعر كـ PDF
+    جلب كل البيانات اللازمة لتصدير عرض السعر كـ PDF.
+    إن وُجد auth_token يُتحقق منه وأن البريد المربوط بالجلسة يطابق user_email.
     """
+    if auth_token:
+        try:
+            result = AuthManager.validate_token(auth_token)
+            if not result.get('valid') or (result.get('user', {}).get('email') or '').strip().lower() != (user_email or '').strip().lower():
+                return {'success': False, 'message': 'Unauthorized'}
+        except Exception as e:
+            logger.warning(f"get_quotation_pdf_data auth check: {e}")
+            return {'success': False, 'message': 'Unauthorized'}
     try:
         # جلب بيانات عرض السعر
         quotation = app_tables.quotations.get(**{'Quotation#': quotation_number})
@@ -1436,7 +1475,7 @@ def get_quotation_pdf_data(quotation_number, user_email):
         tech_specs_raw = get_setting_value('technical_specs', '{}')
         try:
             tech_specs_settings = json.loads(tech_specs_raw) if isinstance(tech_specs_raw, str) else tech_specs_raw
-        except:
+        except Exception:
             tech_specs_settings = {}
 
         # جلب المواصفات الفنية للماكينة
@@ -1550,8 +1589,13 @@ def get_all_template_settings():
 
 
 @anvil.server.callable
-def save_machine_specs(specs_data):
-    """حفظ المواصفات الفنية للماكينة"""
+def save_machine_specs(specs_data, token_or_email=None):
+    """حفظ المواصفات الفنية للماكينة (يتطلب صلاحية أدمن). مرّر token_or_email من العميل."""
+    if not token_or_email:
+        return {'success': False, 'message': 'Authentication required'}
+    is_authorized, error = AuthManager.require_admin(token_or_email)
+    if not is_authorized:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied'}
     try:
         model = specs_data.get('model')
         if not model:
@@ -1565,6 +1609,7 @@ def save_machine_specs(specs_data):
 
         return {'success': True, 'message': 'Machine specs saved'}
     except Exception as e:
+        logger.exception("save_machine_specs error")
         return {'success': False, 'message': str(e)}
 
 
@@ -1597,7 +1642,7 @@ def export_quotation_excel(quotation_number):
             try:
                 setting = app_tables.settings.get(setting_key=key)
                 return setting['setting_value'] if setting else default
-            except:
+            except Exception:
                 return default
 
         # Helper function to safely get field value
@@ -1605,7 +1650,7 @@ def export_quotation_excel(quotation_number):
             try:
                 val = q_data[field_name]
                 return str(val) if val is not None else default
-            except:
+            except Exception:
                 return default
 
         def is_yes(field_name):
@@ -1978,7 +2023,7 @@ def get_contract(quotation_number):
             payments = []
             try:
                 payments = json.loads(row['payments_json'] or '[]')
-            except:
+            except Exception:
                 pass
             
             return {'success': True, 'data': {
@@ -2040,3 +2085,378 @@ def get_contracts_list(search=''):
     except Exception as e:
         logger.error(f"Error getting contracts list: {e}")
         return {'success': False, 'message': str(e), 'data': []}
+
+
+# =========================================================
+# النسخ الاحتياطي (يدوي + مجدول + Google Drive + استعادة)
+# =========================================================
+def _get_backup_drive_folder():
+    """الحصول على مجلد النسخ الاحتياطية في Google Drive (app_files)."""
+    for name in ('Backups', 'Helwan_Plast_Backups', 'backups'):
+        folder = getattr(app_files, name, None)
+        if folder is not None and hasattr(folder, 'create_file'):
+            return folder
+    return None
+
+
+def _upload_backup_to_drive(json_bytes, filename):
+    """
+    رفع ملف النسخة الاحتياطية إلى Google Drive.
+    يُرجع: (success: bool, message: str)
+    """
+    try:
+        folder = _get_backup_drive_folder()
+        if folder is None:
+            return False, 'لم يتم العثور على مجلد Backups في Google Drive. أضف مجلداً باسم Backups أو Helwan_Plast_Backups من Anvil → Google Drive.'
+        folder.create_file(filename, content_bytes=json_bytes, content_type='application/json')
+        return True, f'تم الرفع إلى Google Drive: {filename}'
+    except Exception as e:
+        logger.exception("Upload backup to Drive: %s", e)
+        return False, str(e)
+
+
+def _row_to_dict(row, exclude_keys=None):
+    """تحويل صف جدول إلى dict مع استبعاد مفاتيح حساسة."""
+    exclude_keys = exclude_keys or set()
+    try:
+        d = dict(row)
+        for k in list(d.keys()):
+            if k in exclude_keys:
+                d.pop(k, None)
+        return d
+    except Exception:
+        return {}
+
+
+def _build_backup_payload():
+    """
+    بناء محتوى النسخة الاحتياطية (بدون تحقق صلاحية).
+    يُستخدم من create_backup (يدوي) و run_scheduled_backup (مجدول).
+    يُرجع: (backup_dict, json_bytes, filename)
+    """
+    export_time = datetime.now()
+    export_date_str = export_time.strftime('%Y-%m-%d %H:%M:%S')
+    filename_date = export_time.strftime('%Y%m%d_%H%M')
+    backup = {
+        'export_date': export_date_str,
+        'app': 'Helwan_Plast',
+        'version': 1,
+        'clients': [],
+        'quotations': [],
+        'contracts': [],
+        'machine_specs': [],
+        'settings': []
+    }
+    sensitive_setting_keys = ('pending_totp_', 'password', 'secret', 'totp_')
+    for row in app_tables.clients.search():
+        backup['clients'].append(_row_to_dict(row))
+    for row in app_tables.quotations.search():
+        backup['quotations'].append(_row_to_dict(row))
+    try:
+        for row in app_tables.contracts.search():
+            backup['contracts'].append(_row_to_dict(row))
+    except Exception:
+        backup['contracts'] = []
+    try:
+        for row in app_tables.machine_specs.search():
+            backup['machine_specs'].append(_row_to_dict(row))
+    except Exception:
+        backup['machine_specs'] = []
+    for row in app_tables.settings.search():
+        key = (row.get('setting_key') or '').lower()
+        if any(s in key for s in sensitive_setting_keys):
+            continue
+        backup['settings'].append({
+            'setting_key': row.get('setting_key'),
+            'setting_value': row.get('setting_value'),
+            'setting_type': row.get('setting_type')
+        })
+    json_bytes = json.dumps(backup, ensure_ascii=False, indent=2, default=str).encode('utf-8')
+    filename = f"Helwan_Plast_backup_{filename_date}.json"
+    return backup, json_bytes, filename
+
+
+@anvil.server.background_task
+def run_scheduled_backup():
+    """
+    نسخة احتياطية مجدولة (تُستدعى تلقائياً يوم 1 ويوم 16 من كل شهر).
+    تحفظ الملف في جدول scheduled_backups، ترفعه إلى Google Drive، وتُسجّل في سجل التدقيق.
+    """
+    try:
+        backup, json_bytes, filename = _build_backup_payload()
+        media = anvil.BlobMedia('application/json', json_bytes, name=filename)
+        try:
+            app_tables.scheduled_backups.add_row(
+                created_at=datetime.now(),
+                filename=filename,
+                backup_media=media
+            )
+        except Exception as tbl_err:
+            logger.warning("scheduled_backups table add_row failed (table or column may be missing): %s", tbl_err)
+        drive_ok, drive_msg = _upload_backup_to_drive(json_bytes, filename)
+        if drive_ok:
+            logger.info("Backup uploaded to Google Drive: %s", filename)
+        else:
+            logger.warning("Backup not uploaded to Drive: %s", drive_msg)
+        AuthManager.log_audit(
+            'BACKUP_SCHEDULED', 'backup', filename,
+            None, {'export_date': backup['export_date'], 'source': 'scheduled', 'drive_uploaded': drive_ok},
+            user_email='scheduled', ip_address='system',
+            user_name='نظام (مجدول)',
+            action_description=f"نسخة احتياطية مجدولة - {filename}" + (" + Google Drive" if drive_ok else "")
+        )
+        logger.info("Scheduled backup completed: %s", filename)
+    except Exception as e:
+        logger.exception("Scheduled backup failed: %s", e)
+
+
+@anvil.server.callable
+def list_scheduled_backups(token_or_email):
+    """قائمة النسخ الاحتياطية المجدولة (للأدمن). تُرجع آخر 50 نسخة."""
+    is_authorized, error = AuthManager.require_admin(token_or_email)
+    if not is_authorized:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied'}
+    try:
+        rows = list(app_tables.scheduled_backups.search())
+        rows.sort(key=lambda r: r.get('created_at') or datetime.min, reverse=True)
+        data = []
+        for r in rows[:50]:
+            data.append({
+                'created_at': r['created_at'].isoformat() if r.get('created_at') else '',
+                'filename': r.get('filename', ''),
+            })
+        return {'success': True, 'data': data}
+    except Exception as e:
+        logger.exception("list_scheduled_backups: %s", e)
+        return {'success': False, 'message': str(e), 'data': []}
+
+
+@anvil.server.callable
+def get_scheduled_backup_file(token_or_email, filename, created_at_iso):
+    """
+    تحميل ملف نسخة احتياطية مجدولة (للأدمن).
+    filename و created_at_iso كما يردان من list_scheduled_backups.
+    """
+    is_authorized, error = AuthManager.require_admin(token_or_email)
+    if not is_authorized:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied'}
+    if not filename or not created_at_iso:
+        return {'success': False, 'message': 'Missing filename or created_at'}
+    try:
+        from datetime import datetime as dt
+        created = dt.fromisoformat(created_at_iso.replace('Z', '+00:00'))
+    except Exception:
+        return {'success': False, 'message': 'Invalid created_at format'}
+    try:
+        rows = list(app_tables.scheduled_backups.search())
+        norm_iso = created_at_iso.replace('Z', '+00:00').strip()
+        for r in rows:
+            if r.get('filename') != filename:
+                continue
+            r_created = r.get('created_at')
+            if not r_created:
+                continue
+            r_iso = r_created.isoformat()
+            if r_iso == norm_iso or r_iso.replace('+00:00', 'Z') == created_at_iso.strip():
+                media = r.get('backup_media')
+                if media:
+                    return {'success': True, 'file': media, 'filename': filename}
+                return {'success': False, 'message': 'Backup file not found'}
+        return {'success': False, 'message': 'Backup not found'}
+    except Exception as e:
+        logger.exception("get_scheduled_backup_file: %s", e)
+        return {'success': False, 'message': str(e)}
+    
+
+@anvil.server.callable
+def create_backup(token_or_email):
+    """
+    إنشاء نسخة احتياطية من البيانات الأساسية (عملاء، عروض، عقود، إعدادات، مواصفات مكائن).
+    للأدمن فقط. يُرجع ملف JSON للتحميل.
+    """
+    is_authorized, error = AuthManager.require_admin(token_or_email)
+    if not is_authorized:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied'}
+
+    ip_address = get_client_ip()
+    user_email = token_or_email if '@' in str(token_or_email) else None
+    if not user_email and token_or_email:
+        try:
+            s = AuthManager.validate_token(token_or_email)
+            if s.get('valid') and s.get('user'):
+                user_email = s['user'].get('email', '')
+        except Exception:
+            pass
+    user_email = user_email or 'admin'
+
+    try:
+        backup, json_bytes, filename = _build_backup_payload()
+        media = anvil.BlobMedia('application/json', json_bytes, name=filename)
+        drive_ok, drive_msg = _upload_backup_to_drive(json_bytes, filename)
+        AuthManager.log_audit(
+            'BACKUP_EXPORT', 'backup', filename,
+            None, {'export_date': backup['export_date'], 'tables': list(backup.keys()), 'drive_uploaded': drive_ok},
+            user_email=user_email, ip_address=ip_address,
+            action_description=f"تحميل نسخة احتياطية - {filename}" + (" + Google Drive" if drive_ok else "")
+        )
+        return {'success': True, 'file': media, 'filename': filename, 'drive_uploaded': drive_ok, 'drive_message': drive_msg if not drive_ok else None}
+    except Exception as e:
+        logger.exception("create_backup error")
+        return {'success': False, 'message': str(e)}
+
+
+def _parse_backup_value(v):
+    """تحويل قيمة من JSON النسخة الاحتياطية إلى نوع صحيح (date, datetime)."""
+    if v is None:
+        return None
+    if isinstance(v, str) and v.strip():
+        try:
+            if 'T' in v or ' ' in v:
+                return datetime.fromisoformat(v.replace('Z', '+00:00')[:26])
+            if len(v) == 10 and v[4] == '-' and v[7] == '-':
+                return datetime.strptime(v, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            pass
+    return v
+
+
+@anvil.server.callable
+def restore_backup(token_or_email, backup_media):
+    """
+    استعادة كاملة من نسخة احتياطية (Restore Point).
+    للأدمن فقط. backup_media: ملف النسخة (BlobMedia أو من التحميل).
+    يستبدل: العملاء، العروض، العقود، الإعدادات، مواصفات المكائن.
+    لا يمس: المستخدمين، الجلسات، سجل التدقيق.
+    """
+    is_authorized, error = AuthManager.require_admin(token_or_email)
+    if not is_authorized:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied'}
+    if not backup_media:
+        return {'success': False, 'message': 'لم يُرفع ملف النسخة الاحتياطية'}
+    try:
+        raw = backup_media.get_bytes()
+        data = json.loads(raw.decode('utf-8'))
+    except Exception as e:
+        logger.exception("restore_backup parse: %s", e)
+        return {'success': False, 'message': f'ملف غير صالح: {e}'}
+    if data.get('app') != 'Helwan_Plast' or data.get('version') != 1:
+        return {'success': False, 'message': 'ملف نسخة احتياطية غير متوافق (يجب أن يكون من Helwan_Plast)'}
+    ip_address = get_client_ip()
+    user_email = 'admin'
+    if token_or_email and '@' in str(token_or_email):
+        user_email = token_or_email
+    else:
+        try:
+            s = AuthManager.validate_token(token_or_email)
+            if s.get('valid') and s.get('user'):
+                user_email = s['user'].get('email', '')
+        except Exception:
+            pass
+    stats = {'clients': 0, 'quotations': 0, 'contracts': 0, 'settings': 0, 'machine_specs': 0}
+    try:
+        def clear_table(table):
+            for row in list(table.search()):
+                row.delete()
+        def restore_table(table, items, key_convert=None):
+            key_convert = key_convert or (lambda x: x)
+            for item in items:
+                row_data = {}
+                for k, v in item.items():
+                    if k is None or v is None and k != 'setting_key':
+                        continue
+                    row_data[key_convert(k)] = _parse_backup_value(v)
+                if row_data:
+                    try:
+                        table.add_row(**row_data)
+                    except Exception as add_err:
+                        logger.warning("restore skip row %s: %s", list(row_data.keys())[:3], add_err)
+        clear_table(app_tables.clients)
+        restore_table(app_tables.clients, data.get('clients', []))
+        stats['clients'] = len(data.get('clients', []))
+        clear_table(app_tables.quotations)
+        restore_table(app_tables.quotations, data.get('quotations', []))
+        stats['quotations'] = len(data.get('quotations', []))
+        try:
+            clear_table(app_tables.contracts)
+            restore_table(app_tables.contracts, data.get('contracts', []))
+            stats['contracts'] = len(data.get('contracts', []))
+        except Exception as e:
+            logger.warning("restore contracts: %s", e)
+        for item in data.get('settings', []):
+            sk = item.get('setting_key')
+            if not sk:
+                continue
+            try:
+                existing = app_tables.settings.get(setting_key=sk)
+                if existing:
+                    existing.update(setting_value=item.get('setting_value'), setting_type=item.get('setting_type', 'text'))
+                else:
+                    app_tables.settings.add_row(setting_key=sk, setting_value=item.get('setting_value'), setting_type=item.get('setting_type', 'text'))
+                stats['settings'] += 1
+            except Exception as e:
+                logger.warning("restore setting %s: %s", sk, e)
+        try:
+            clear_table(app_tables.machine_specs)
+            restore_table(app_tables.machine_specs, data.get('machine_specs', []))
+            stats['machine_specs'] = len(data.get('machine_specs', []))
+        except Exception as e:
+            logger.warning("restore machine_specs: %s", e)
+        AuthManager.log_audit(
+            'BACKUP_RESTORE', 'backup', data.get('export_date', ''),
+            None, stats,
+            user_email=user_email, ip_address=ip_address,
+            action_description=f"استعادة من نسخة احتياطية - {data.get('export_date', '')} - عملاء:{stats['clients']} عروض:{stats['quotations']}"
+        )
+        return {'success': True, 'message': 'تمت الاستعادة بنجاح', 'stats': stats}
+    except Exception as e:
+        logger.exception("restore_backup: %s", e)
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def list_drive_backups(token_or_email):
+    """قائمة ملفات النسخ الاحتياطية في مجلد Google Drive (للأدمن)."""
+    is_authorized, error = AuthManager.require_admin(token_or_email)
+    if not is_authorized:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied', 'data': []}
+    try:
+        folder = _get_backup_drive_folder()
+        if folder is None:
+            return {'success': False, 'message': 'لم يتم العثور على مجلد Backups في Google Drive', 'data': []}
+        files = []
+        file_list = list(folder.list_files()) if hasattr(folder, 'list_files') else getattr(folder, 'files', [])
+        for f in file_list:
+            title = getattr(f, 'name', None) or getattr(f, 'title', None) or str(f)
+            if title and (title.endswith('.json') or 'backup' in title.lower()):
+                files.append({'filename': title})
+        files.sort(key=lambda x: x['filename'], reverse=True)
+        return {'success': True, 'data': files[:100]}
+    except Exception as e:
+        logger.exception("list_drive_backups: %s", e)
+        return {'success': False, 'message': str(e), 'data': []}
+
+
+@anvil.server.callable
+def restore_backup_from_drive(token_or_email, filename):
+    """
+    استعادة من نسخة احتياطية مخزنة في Google Drive (بالاسم).
+    للأدمن فقط.
+    """
+    is_authorized, error = AuthManager.require_admin(token_or_email)
+    if not is_authorized:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied'}
+    if not filename:
+        return {'success': False, 'message': 'اسم الملف مطلوب'}
+    try:
+        folder = _get_backup_drive_folder()
+        if folder is None:
+            return {'success': False, 'message': 'لم يتم العثور على مجلد Backups في Google Drive'}
+        f = folder.get(filename)
+        if f is None:
+            return {'success': False, 'message': f'الملف غير موجود: {filename}'}
+        raw = f.get_bytes()
+        media = anvil.BlobMedia('application/json', raw, name=filename)
+        return restore_backup(token_or_email, media)
+    except Exception as e:
+        logger.exception("restore_backup_from_drive: %s", e)
+        return {'success': False, 'message': str(e)}

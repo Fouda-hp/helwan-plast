@@ -31,6 +31,12 @@ db_schema:
     - admin_ui: {width: 200}
       name: ip_address
       type: string
+    - admin_ui: {width: 200}
+      name: user_name
+      type: string
+    - admin_ui: {width: 300}
+      name: action_description
+      type: string
     server: full
     title: AUDIT_LOG
   clients:
@@ -530,6 +536,20 @@ db_schema:
       type: string
     server: full
     title: QUOTATIONS
+  scheduled_backups:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: filename
+      type: string
+    - admin_ui: {width: 200}
+      name: backup_media
+      type: media
+    server: full
+    title: SCHEDULED_BACKUPS
   rate_limits:
     client: none
     columns:

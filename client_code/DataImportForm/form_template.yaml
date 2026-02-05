@@ -457,13 +457,12 @@ container:
 
           window.startImport = async function() {
             if (!importData || importData.length === 0) {
-              alert('No data to import');
+              if (window.showNotification) window.showNotification('error', '', 'No data to import');
               return;
             }
 
-            if (!confirm('Import ' + importData.length + ' rows to ' + importType + '?')) {
-              return;
-            }
+            var ok = await (window.showConfirm || function(m){ return Promise.resolve(confirm(m)); })('Import ' + importData.length + ' rows to ' + importType + '?');
+            if (!ok) return;
 
             showStatus('Importing...', 'loading');
             document.getElementById('btnImport').disabled = true;

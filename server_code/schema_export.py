@@ -7,7 +7,16 @@ import json
 TABLE_NAMES = [
   "quotations",
   "clients",
-  # زوّد أي جدول تاني هنا
+  "contracts",
+  "audit_log",
+  "users",
+  "machine_specs",
+  "settings",
+  "sessions",
+  "otp_codes",
+  "password_history",
+  "pending_passwords",
+  "rate_limits",
 ]
 
 def export_schema():

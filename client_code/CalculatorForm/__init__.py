@@ -6,6 +6,9 @@ import anvil.js
 import anvil.server
 import anvil
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CalculatorForm(CalculatorFormTemplate):
@@ -136,7 +139,11 @@ class CalculatorForm(CalculatorFormTemplate):
   # OVERLAYS
   # =================================================
   def get_quotation_headers(self):
-    return [c.name for c in app_tables.quotations.columns]
+    try:
+      cols = app_tables.quotations.list_columns()
+      return [c.get('name', c.name if hasattr(c, 'name') else str(c)) for c in cols]
+    except Exception:
+      return []
 
   def get_quotations_for_overlay(self):
     return anvil.server.call("get_all_quotations")
@@ -210,7 +217,7 @@ class CalculatorForm(CalculatorFormTemplate):
         "setTimeout(_r, 250); setTimeout(_r, 800); setTimeout(_r, 1500); setTimeout(_r, 3000);"
       )
     except Exception as e:
-      print("CalculatorForm form_show error:", e)
+      logger.debug("CalculatorForm form_show error: %s", e)
 
   def load_quotation(self, data):
     if not data:

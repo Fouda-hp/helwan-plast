@@ -3,7 +3,11 @@ from anvil import *
 import anvil.server
 import anvil.js
 import json
+import logging
 from datetime import datetime, date
+
+logger = logging.getLogger(__name__)
+
 
 class ContractPrintForm(ContractPrintFormTemplate):
     def __init__(self, **properties):
@@ -42,6 +46,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.saveContract = self.save_contract
         anvil.js.window.validateNumPayments = self.validate_num_payments
 
+    def _show_msg(self, msg, typ='error'):
+        """عرض رسالة من نظام التطبيق بدل alert البراوزر"""
+        try:
+            anvil.js.window.showNotification(typ, '', str(msg))
+        except Exception:
+            pass
+
     def form_show(self, **event_args):
         self.init_page()
 
@@ -73,7 +84,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 self.all_quotations = result.get('data', [])
                 self.populate_dropdown(self.all_quotations)
         except Exception as e:
-            print(f'Error loading quotations: {e}')
+            logger.debug("Error loading quotations: %s", e)
 
     def populate_dropdown(self, quotations):
         select = anvil.js.window.document.getElementById('quotationSelect')
@@ -114,7 +125,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             total_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
             try:
                 total = float(total_str) if total_str else 0
-            except:
+            except Exception:
                 total = 0
             total_el = anvil.js.window.document.getElementById('totalContractAmount')
             if total_el:
@@ -149,14 +160,14 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # Check if empty or contains non-numeric characters
         if not val or not val.isdigit():
             msg = 'عدد الدفعات يجب أن يكون رقم من 1 إلى 12' if is_ar else 'Number of payments must be a number from 1 to 12'
-            alert(msg)
+            self._show_msg(msg)
             num_input.value = 3
             return False
         
         num = int(val)
         if num < 1 or num > 12:
             msg = 'عدد الدفعات يجب أن يكون من 1 إلى 12 فقط' if is_ar else 'Number of payments must be between 1 and 12 only'
-            alert(msg)
+            self._show_msg(msg)
             num_input.value = max(1, min(12, num))
             return False
         
@@ -164,7 +175,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
     def open_payment_modal(self):
         if not self.current_data:
-            alert('Please select a quotation first')
+            self._show_msg('Please select a quotation first')
             return
         overlay = anvil.js.window.document.getElementById('paymentModalOverlay')
         if overlay:
@@ -209,7 +220,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             if num < 1 or num > 12:
                 is_ar = self.current_lang == 'ar'
                 msg = 'عدد الدفعات يجب أن يكون من 1 إلى 12 فقط' if is_ar else 'Number of payments must be between 1 and 12 only'
-                alert(msg)
+                self._show_msg(msg)
                 num = max(1, min(12, num))
                 num_input.value = num
         
@@ -274,7 +285,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             val_str = str(val).replace(',', '').replace('،', '').strip()
             try:
                 return float(val_str) if val_str else 0.0
-            except:
+            except Exception:
                 return 0.0
         
         total_contract = safe_float(self.current_data.get('total_price', 0)) if self.current_data else 0
@@ -357,7 +368,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         price_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
         try:
             total_price = float(price_str) if price_str else 0
-        except:
+        except Exception:
             total_price = 0
         dates_used = []
         total_value = 0
@@ -369,24 +380,24 @@ class ContractPrintForm(ContractPrintFormTemplate):
             
             if not date_str:
                 msg = f'من فضلك أدخل تاريخ للدفعة رقم {i+1}' if is_ar else f'Please enter date for installment {i+1}'
-                alert(msg)
+                self._show_msg(msg)
                 return False
             
             try:
                 payment_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-            except:
+            except Exception:
                 msg = f'تاريخ غير صحيح للدفعة رقم {i+1}' if is_ar else f'Invalid date for installment {i+1}'
-                alert(msg)
+                self._show_msg(msg)
                 return False
             
             if payment_date < today:
                 msg = f'تاريخ الدفعة رقم {i+1} لا يمكن أن يكون قبل اليوم' if is_ar else f'Date for installment {i+1} cannot be before today'
-                alert(msg)
+                self._show_msg(msg)
                 return False
             
             if date_str in dates_used:
                 msg = 'تاريخ مكرر! من فضلك أدخل تاريخ مختلف لكل دفعة' if is_ar else 'Duplicate date! Please use unique dates'
-                alert(msg)
+                self._show_msg(msg)
                 return False
             dates_used.append(date_str)
             
@@ -395,13 +406,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
         if self.payment_method == 'percentage':
             if round(total_value, 2) != 100:
                 msg = f'إجمالي النسب = {total_value}%\nيجب أن يكون 100%' if is_ar else f'Total = {total_value}%\nMust be 100%'
-                alert(msg)
+                self._show_msg(msg)
                 return False
         else:
             if round(total_value, 0) != round(total_price, 0):
                 diff = abs(total_price - total_value)
                 msg = f'إجمالي المبالغ = {total_value:,.0f}\nقيمة العقد = {total_price:,.0f}\nالفرق = {diff:,.0f}' if is_ar else f'Total = {total_value:,.0f}\nContract = {total_price:,.0f}\nDiff = {diff:,.0f}'
-                alert(msg)
+                self._show_msg(msg)
                 return False
         
         return True
@@ -418,7 +429,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         price_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
         try:
             total_price = float(price_str) if price_str else 0
-        except:
+        except Exception:
             total_price = 0
         
         labels_ar = ['مقدم تعاقد', 'الدفعة الثانية', 'الدفعة الثالثة', 'الدفعة الرابعة', 
@@ -460,12 +471,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
     def save_contract(self):
         if not self.current_data:
-            alert('Please select a quotation first')
+            self._show_msg('Please select a quotation first')
             return
         
         if not self.payment_data:
             is_ar = self.current_lang == 'ar'
-            alert('من فضلك أدخل بيانات الدفعات أولاً' if is_ar else 'Please enter payment data first')
+            self._show_msg('من فضلك أدخل بيانات الدفعات أولاً' if is_ar else 'Please enter payment data first')
             return
         
         delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
@@ -500,9 +511,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 is_ar = self.current_lang == 'ar'
                 Notification('تم حفظ العقد بنجاح' if is_ar else 'Contract saved', style='success').show()
             else:
-                alert(f"Error: {result.get('message', 'Unknown error')}")
+                self._show_msg(result.get('message', 'Unknown error'))
         except Exception as e:
-            alert(f"Error: {str(e)}")
+            self._show_msg(str(e))
 
     # ==================== RENDER TEMPLATE (Same as Quotation) ====================
     def render_template(self):
@@ -1054,13 +1065,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
     # ==================== Export Functions ====================
     def print_contract(self):
         if not self.current_data:
-            alert('Please select a quotation first')
+            self._show_msg('Please select a quotation first')
             return
         anvil.js.window.print()
 
     def export_pdf(self):
         if not self.current_data:
-            alert('Please select a quotation first')
+            self._show_msg('Please select a quotation first')
             return
         q_num = self.current_data.get('quotation_number', '')
         client = self.current_data.get('client_name', '').replace(' ', '_')
@@ -1069,7 +1080,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         js_code = f"""
         (async function() {{
             const element = document.getElementById('templateContent');
-            if (!element) {{ alert('No content'); return; }}
+            if (!element) {{ if (window.showNotification) window.showNotification('error', '', 'No content'); return; }}
             
             function loadScript(url) {{
                 return new Promise((resolve, reject) => {{
@@ -1103,7 +1114,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
                 pdf.save('{filename}');
             }} catch (error) {{
-                alert('Error: ' + error.message);
+                if (window.showNotification) window.showNotification('error', '', 'Error: ' + error.message);
             }}
         }})();
         """
@@ -1111,7 +1122,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
     def export_excel(self):
         if not self.current_data:
-            alert('Please select a quotation first')
+            self._show_msg('Please select a quotation first')
             return
         try:
             q_num = self.current_data.get('quotation_number', 0)
@@ -1121,15 +1132,16 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 if media:
                     anvil.media.download(media)
             else:
-                alert(f"Error: {result.get('message')}")
+                self._show_msg(result.get('message', 'Error'))
         except Exception as e:
-            alert(f"Error: {str(e)}")
+            self._show_msg(str(e))
 
     # ==================== Server Calls ====================
     def load_quotation_for_print(self, quotation_number):
         try:
             user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
-            result = anvil.server.call('get_quotation_pdf_data', int(quotation_number), user_email)
+            auth_token = anvil.js.window.sessionStorage.getItem('auth_token') or None
+            result = anvil.server.call('get_quotation_pdf_data', int(quotation_number), user_email, auth_token)
             return result
         except Exception as e:
             return {'success': False, 'message': str(e)}
@@ -1143,7 +1155,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
     def get_all_settings(self):
         try:
-            result = anvil.server.call('get_all_settings')
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+            result = anvil.server.call('get_all_settings', auth)
             return result
         except Exception as e:
             return {'success': False, 'message': str(e)}

@@ -20,8 +20,9 @@ class LauncherForm(LauncherFormTemplate):
     def __init__(self, **properties):
         self.init_components(**properties)
 
-        # Expose logout function to JavaScript
+        # Expose logout and token for JavaScript (TOTP and hash routing)
         anvil.js.window.logoutUserFromLauncher = self.logout_user
+        anvil.js.window.launcherGetAuthToken = self.get_token
 
         # TOTP (تطبيق المصادقة - مجاني)
         anvil.js.window.setupTotpStart = self.setup_totp_start
@@ -59,7 +60,7 @@ class LauncherForm(LauncherFormTemplate):
         if token:
             try:
                 anvil.server.call('logout_user', token)
-            except:
+            except Exception:
                 pass
         try:
             for k in ('auth_token', 'user_email', 'user_name', 'user_role'):
@@ -116,6 +117,7 @@ class LauncherForm(LauncherFormTemplate):
 
     def form_show(self, **event_args):
         """عند عرض النموذج — تخفيف: مزامنة التوكن فوراً، تأجيل TOTP حتى لا يثقل التحميل"""
+        self._inject_notification_system()
         self._sync_auth_token_to_frame()
         try:
             anvil.js.window.eval("if (window.localStorage) window.localStorage.setItem('hp_last_page', '#launcher');")
@@ -123,6 +125,62 @@ class LauncherForm(LauncherFormTemplate):
             pass
         self.route()
         self._inject_totp_link()
+
+    def _inject_notification_system(self):
+        """ضمان وجود نظام الإشعارات (بديل عن alert البراوزر) — يعمل حتى قبل تحميل i18n."""
+        try:
+            anvil.js.window.eval("""
+(function() {
+  if (window._hpNotificationSystemReady) return;
+  window._hpNotificationSystemReady = true;
+  var c = document.getElementById('notificationContainer');
+  if (!c) {
+    c = document.createElement('div');
+    c.id = 'notificationContainer';
+    c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:999999;display:flex;flex-direction:column;gap:8px;max-width:360px;pointer-events:none;';
+    c.innerHTML = '<style>#notificationContainer .hp-t{pointer-events:auto;padding:12px 16px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);border-left:4px solid #667eea;background:#fff;}#notificationContainer .hp-t.suc{border-left-color:#4caf50;}#notificationContainer .hp-t.err{border-left-color:#f44336;}#notificationContainer .hp-t.warn{border-left-color:#ff9800;}#notificationContainer .hp-t.inf{border-left-color:#2196f3;}</style>';
+    document.body.appendChild(c);
+  }
+  if (!window.showNotification) {
+    window.showNotification = function(type, title, msg) {
+      var el = document.createElement('div');
+      el.className = 'hp-t ' + (type === 'success' ? 'suc' : type === 'error' ? 'err' : type === 'warning' ? 'warn' : 'inf');
+      el.innerHTML = (title ? '<strong style="display:block;margin-bottom:4px;">' + title + '</strong>' : '') + (msg || '');
+      c.appendChild(el);
+      setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 4500);
+    };
+  }
+  if (!window.showConfirm) {
+    window.showConfirm = function(msg, title) {
+      return new Promise(function(resolve) {
+        var b = document.createElement('div');
+        b.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999999;display:flex;align-items:center;justify-content:center;';
+        b.innerHTML = '<div style="background:#fff;padding:24px;border-radius:12px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);"><div style="font-weight:600;margin-bottom:12px;">' + (title || 'تأكيد') + '</div><div style="margin-bottom:20px;">' + (msg || '').replace(/</g,'&lt;') + '</div><div style="display:flex;gap:10px;justify-content:flex-end;"><button id="hpCnNo" style="padding:10px 20px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;">لا</button><button id="hpCnYes" style="padding:10px 20px;border:none;border-radius:8px;background:#1976d2;color:#fff;cursor:pointer;">نعم</button></div></div>';
+        b.onclick = function(ev) { if (ev.target === b) { document.body.removeChild(b); resolve(false); } };
+        document.body.appendChild(b);
+        document.getElementById('hpCnYes').onclick = function() { document.body.removeChild(b); resolve(true); };
+        document.getElementById('hpCnNo').onclick = function() { document.body.removeChild(b); resolve(false); };
+      });
+    };
+  }
+  if (!window.showPrompt) {
+    window.showPrompt = function(msg, def, title) {
+      return new Promise(function(resolve) {
+        var b = document.createElement('div');
+        var id = 'hpInp' + Date.now();
+        b.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999999;display:flex;align-items:center;justify-content:center;';
+        b.innerHTML = '<div style="background:#fff;padding:24px;border-radius:12px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' + (title ? '<div style="font-weight:600;margin-bottom:12px;">' + title + '</div>' : '') + '<div style="margin-bottom:12px;">' + (msg || '').replace(/</g,'&lt;') + '</div><input type="text" id="' + id + '" value="' + (def != null ? String(def).replace(/"/g,'&quot;') : '') + '" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;margin-bottom:16px;box-sizing:border-box;"><div style="display:flex;gap:10px;justify-content:flex-end;"><button id="hpPmCancel" style="padding:10px 20px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;">إلغاء</button><button id="hpPmOk" style="padding:10px 20px;border:none;border-radius:8px;background:#1976d2;color:#fff;cursor:pointer;">موافق</button></div></div>';
+        b.onclick = function(ev) { if (ev.target === b) { document.body.removeChild(b); resolve(null); } };
+        document.body.appendChild(b);
+        document.getElementById('hpPmOk').onclick = function() { var v = document.getElementById(id).value; document.body.removeChild(b); resolve(v); };
+        document.getElementById('hpPmCancel').onclick = function() { document.body.removeChild(b); resolve(null); };
+      });
+    };
+  }
+})();
+""")
+        except Exception:
+            pass
 
     def _sync_auth_token_to_frame(self):
         """نسخ الـ token من sessionStorage (النافذة الرئيسية) إلى إطار الصفحة الحالي"""
@@ -149,18 +207,18 @@ class LauncherForm(LauncherFormTemplate):
           window._totpLinkInjected = true;
           function startTotpSetup() {
             if (!window.setupTotpStart || typeof window.setupTotpStart !== 'function') {
-              alert('Please refresh the page and try again.');
+              if (window.showNotification) window.showNotification('error', '', 'Please refresh the page and try again.');
               return;
             }
             var tok = (window.launcherGetAuthToken && window.launcherGetAuthToken()) || null;
             var p = window.setupTotpStart(tok);
             if (!p || typeof p.then !== 'function') {
-              alert('Setup is not available. Please refresh the page.');
+              if (window.showNotification) window.showNotification('error', '', 'Setup is not available. Please refresh the page.');
               return;
             }
             p.then(function(r) {
               if (!r || !r.success) {
-                alert(r && r.message ? r.message : 'Failed to start setup');
+                if (window.showNotification) window.showNotification('error', '', r && r.message ? r.message : 'Failed to start setup');
                 return;
               }
               var modal = document.getElementById('totpSetupModal');
@@ -195,7 +253,7 @@ class LauncherForm(LauncherFormTemplate):
                         if (w) w.style.display = 'none';
                         setTimeout(function() { modal.style.display = 'none'; }, 1500);
                       } else { msg.style.color = 'red'; }
-                    }).catch(function(err) { alert('Error: ' + (err && err.message ? err.message : err)); });
+                    }).catch(function(err) { if (window.showNotification) window.showNotification('error', '', 'Error: ' + (err && err.message ? err.message : err)); });
                   }
                 };
               }
@@ -204,7 +262,7 @@ class LauncherForm(LauncherFormTemplate):
               document.getElementById('totpCodeInput').value = '';
               document.getElementById('totpSetupMessage').textContent = '';
               modal.style.display = 'flex';
-            }).catch(function(err) { alert('Error: ' + (err && err.message ? err.message : err)); });
+            }).catch(function(err) { if (window.showNotification) window.showNotification('error', '', 'Error: ' + (err && err.message ? err.message : err)); });
           }
           function attachAndMaybeHide() {
             var wrap = document.getElementById('totpLinkWrap');
@@ -251,7 +309,8 @@ class LauncherForm(LauncherFormTemplate):
                 from ..ClientListForm import ClientListForm
                 open_form("ClientListForm")
             except Exception as e:
-                alert(f"Error opening ClientListForm: {e}")
+                try: anvil.js.window.showNotification('error', '', str(e))
+                except Exception: pass
 
         elif h == "#database":
             # فتح صفحة قاعدة البيانات (للقراءة فقط)
@@ -259,21 +318,24 @@ class LauncherForm(LauncherFormTemplate):
                 from ..DatabaseForm import DatabaseForm
                 open_form("DatabaseForm")
             except Exception as e:
-                alert(f"Error opening DatabaseForm: {e}")
+                try: anvil.js.window.showNotification('error', '', str(e))
+                except Exception: pass
 
         elif h == "#calculator":
             # فتح الحاسبة
             try:
                 open_form("CalculatorForm")
             except Exception as e:
-                alert(f"Error opening CalculatorForm: {e}")
+                try: anvil.js.window.showNotification('error', '', str(e))
+                except Exception: pass
 
         elif h == "#admin":
             # فتح لوحة التحكم (للأدمن فقط)
             try:
                 open_form("AdminPanel")
             except Exception as e:
-                alert(f"Error opening AdminPanel: {e}")
+                try: anvil.js.window.showNotification('error', '', str(e))
+                except Exception: pass
 
         elif h == "#import":
             # فتح صفحة الاستيراد (للأدمن فقط)
@@ -281,21 +343,24 @@ class LauncherForm(LauncherFormTemplate):
                 from ..DataImportForm import DataImportForm
                 open_form("DataImportForm")
             except Exception as e:
-                alert(f"Error opening DataImportForm: {e}")
+                try: anvil.js.window.showNotification('error', '', str(e))
+                except Exception: pass
 
         elif h == "#quotation-print":
             # فتح صفحة طباعة عروض الأسعار
             try:
                 open_form("QuotationPrintForm")
             except Exception as e:
-                alert(f"Error opening QuotationPrintForm: {e}")
+                try: anvil.js.window.showNotification('error', '', str(e))
+                except Exception: pass
 
         elif h == "#contract-print":
             # فتح صفحة طباعة العقود
             try:
                 open_form("ContractPrintForm")
             except Exception as e:
-                alert(f"Error opening ContractPrintForm: {e}")
+                try: anvil.js.window.showNotification('error', '', str(e))
+                except Exception: pass
 
         # لا نفتح LauncherForm مرة أخرى لتجنب الحلقة اللانهائية
 
@@ -312,7 +377,7 @@ class LauncherForm(LauncherFormTemplate):
         anvil.js.window.location.hash = "#clients"
         try:
             open_form("ClientListForm")
-        except:
+        except Exception:
             pass
 
     def btn_database_click(self, **event_args):
@@ -320,7 +385,7 @@ class LauncherForm(LauncherFormTemplate):
         anvil.js.window.location.hash = "#database"
         try:
             open_form("DatabaseForm")
-        except:
+        except Exception:
             pass
 
     def btn_admin_click(self, **event_args):
@@ -328,5 +393,5 @@ class LauncherForm(LauncherFormTemplate):
         anvil.js.window.location.hash = "#admin"
         try:
             open_form("AdminPanel")
-        except:
+        except Exception:
             pass

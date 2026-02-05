@@ -40,6 +40,5 @@ window.collectFormData = function () {
   data["New Order"] = window.STATE?.localNewOrderEGP || 0;
   data["overseas_price"] = window.STATE?.overseasUSD || 0;
 
-  console.log("📦 collectFormData()", data);
   return data;
 };

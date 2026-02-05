@@ -16,6 +16,9 @@ import anvil.tables.query as q
 from anvil.tables import app_tables
 import anvil.js
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class LoginForm(LoginFormTemplate):
@@ -72,7 +75,7 @@ class LoginForm(LoginFormTemplate):
                     # Token expired or invalid, clear storage
                     self.clear_auth_storage()
         except Exception as e:
-            print(f"Auto-login check error: {e}")
+            logger.debug("Auto-login check error: %s", e)
             self.clear_auth_storage()
 
     def clear_auth_storage(self):
@@ -133,14 +136,12 @@ class LoginForm(LoginFormTemplate):
         تسجيل مستخدم جديد مع رقم التليفون
         """
         try:
-            print(f"register_user called with email: {email}, name: {full_name}")
             result = anvil.server.call('register_user', email, password, full_name, phone)
-            print(f"register_user result: {result}")
             if result is None:
                 return {'success': False, 'message': 'Server returned empty response'}
             return result
         except Exception as e:
-            print(f"register_user error: {e}")
+            logger.debug("register_user error: %s", e)
             return {'success': False, 'message': f'Error: {str(e)}'}
 
     def setup_admin(self, email, password, full_name, phone=None):

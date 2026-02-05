@@ -758,13 +758,98 @@
   styleSheet.textContent = rtlStyles;
   document.head.appendChild(styleSheet);
 
+  // ============================================
+  // GLOBAL NOTIFICATION SYSTEM (بديل عن alert/confirm/prompt)
+  // ============================================
+  function ensureNotificationSystem() {
+    if (window._hpNotificationSystemReady) return;
+    window._hpNotificationSystemReady = true;
+
+    var container = document.getElementById('notificationContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'notificationContainer';
+      container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:999999;display:flex;flex-direction:column;gap:8px;max-width:360px;pointer-events:none;';
+      container.innerHTML = '<style>#notificationContainer .hp-toast{pointer-events:auto;padding:12px 16px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);border-left:4px solid #667eea;background:#fff;animation:hpToastIn 0.3s ease;}#notificationContainer .hp-toast.success{border-left-color:#4caf50;}#notificationContainer .hp-toast.error{border-left-color:#f44336;}#notificationContainer .hp-toast.warning{border-left-color:#ff9800;}#notificationContainer .hp-toast.info{border-left-color:#2196f3;}@keyframes hpToastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}</style>';
+      document.body.appendChild(container);
+    }
+
+    window.showNotification = function(type, title, message) {
+      var el = document.createElement('div');
+      el.className = 'hp-toast ' + (type || 'info');
+      var titleHtml = (title && title.trim()) ? '<strong style="display:block;margin-bottom:4px;">' + title + '</strong>' : '';
+      el.innerHTML = titleHtml + (message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      container.appendChild(el);
+      setTimeout(function() {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 4500);
+    };
+
+    window.showConfirm = function(message, title) {
+      return new Promise(function(resolve) {
+        var titleText = title || (window.i18n && window.i18n.t('confirm')) || 'تأكيد';
+        var yesText = window.i18n && window.i18n.t ? window.i18n.t('yes') : 'نعم';
+        var noText = window.i18n && window.i18n.t ? window.i18n.t('no') : 'لا';
+        var back = document.createElement('div');
+        back.id = 'hpConfirmBack';
+        back.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999999;display:flex;align-items:center;justify-content:center;';
+        back.innerHTML = '<div class="hp-confirm-box" style="background:#fff;padding:24px;border-radius:12px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
+          '<div style="font-weight:600;margin-bottom:12px;">' + (titleText || '').replace(/</g, '&lt;') + '</div>' +
+          '<div style="margin-bottom:20px;color:#444;">' + (message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
+          '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
+          '<button type="button" id="hpConfirmNo" style="padding:10px 20px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;">' + noText + '</button>' +
+          '<button type="button" id="hpConfirmYes" style="padding:10px 20px;border:none;border-radius:8px;background:#1976d2;color:#fff;cursor:pointer;">' + yesText + '</button></div></div>';
+        back.onclick = function(ev) { if (ev.target === back) { document.body.removeChild(back); resolve(false); } };
+        document.body.appendChild(back);
+        document.getElementById('hpConfirmYes').onclick = function() { if (back.parentNode) document.body.removeChild(back); resolve(true); };
+        document.getElementById('hpConfirmNo').onclick = function() { if (back.parentNode) document.body.removeChild(back); resolve(false); };
+      });
+    };
+
+    window.showPrompt = function(message, defaultVal, title) {
+      return new Promise(function(resolve) {
+        var titleText = title || '';
+        var okText = window.i18n && window.i18n.t ? window.i18n.t('save') : 'موافق';
+        var cancelText = window.i18n && window.i18n.t ? window.i18n.t('cancel') : 'إلغاء';
+        var back = document.createElement('div');
+        back.id = 'hpPromptBack';
+        back.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999999;display:flex;align-items:center;justify-content:center;';
+        var inputId = 'hpPromptInput_' + Date.now();
+        back.innerHTML = '<div class="hp-prompt-box" style="background:#fff;padding:24px;border-radius:12px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' +
+          (titleText ? '<div style="font-weight:600;margin-bottom:12px;">' + titleText.replace(/</g, '&lt;') + '</div>' : '') +
+          '<div style="margin-bottom:12px;">' + (message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
+          '<input type="text" id="' + inputId + '" value="' + (defaultVal != null ? String(defaultVal).replace(/"/g, '&quot;') : '') + '" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;margin-bottom:16px;box-sizing:border-box;">' +
+          '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
+          '<button type="button" id="hpPromptCancel" style="padding:10px 20px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;">' + cancelText + '</button>' +
+          '<button type="button" id="hpPromptOk" style="padding:10px 20px;border:none;border-radius:8px;background:#1976d2;color:#fff;cursor:pointer;">' + okText + '</button></div></div>';
+        back.onclick = function(ev) { if (ev.target === back) { document.body.removeChild(back); resolve(null); } };
+        document.body.appendChild(back);
+        var inputEl = document.getElementById(inputId);
+        inputEl && inputEl.focus();
+        document.getElementById('hpPromptOk').onclick = function() { var v = inputEl ? inputEl.value : ''; if (back.parentNode) document.body.removeChild(back); resolve(v); };
+        document.getElementById('hpPromptCancel').onclick = function() { if (back.parentNode) document.body.removeChild(back); resolve(null); };
+      });
+    };
+  }
+
   // Create and export i18n instance
   window.i18n = new I18n();
 
+  // Ensure notification system is available (create container + showNotification/showConfirm/showPrompt)
+  var origInit = I18n.prototype.init;
+  I18n.prototype.init = function() {
+    ensureNotificationSystem();
+    return origInit.call(this);
+  };
+
   // Auto-init when DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => window.i18n.init());
+    document.addEventListener('DOMContentLoaded', function() {
+      ensureNotificationSystem();
+      window.i18n.init();
+    });
   } else {
+    ensureNotificationSystem();
     window.i18n.init();
   }
 

@@ -919,7 +919,7 @@ def generate_quotations(data=None):
         # محاولة تحميل خط عربي من النظام
         pdfmetrics.registerFont(TTFont('Arabic', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'))
         pdfmetrics.registerFont(TTFont('Arabic-Bold', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'))
-    except:
+    except Exception:
         print("تحذير: لم يتم العثور على الخط العربي. سيتم استخدام الخط الافتراضي.")
     
     # إنشاء أسماء الملفات

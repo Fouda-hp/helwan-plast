@@ -195,23 +195,23 @@
     });
 
     document.getElementById('quotation_btn').addEventListener('click', function() {
-      alert('Quotation feature coming soon!');
+      if (window.showNotification) window.showNotification('info', '', 'Quotation feature coming soon!');
     });
 
     document.getElementById('contract_btn').addEventListener('click', function() {
-      alert('Contract feature coming soon!');
+      if (window.showNotification) window.showNotification('info', '', 'Contract feature coming soon!');
     });
 
     document.getElementById('database_btn').addEventListener('click', function() {
-      alert('Database feature coming soon!');
+      if (window.showNotification) window.showNotification('info', '', 'Database feature coming soon!');
     });
 
     document.getElementById('client_btn').addEventListener('click', function() {
-      alert('Client List feature coming soon!');
+      if (window.showNotification) window.showNotification('info', '', 'Client List feature coming soon!');
     });
 
     document.getElementById('admin_btn').addEventListener('click', function() {
-      alert('Admin panel coming soon!');
+      if (window.showNotification) window.showNotification('info', '', 'Admin panel coming soon!');
     });
 
   });

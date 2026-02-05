@@ -83,7 +83,7 @@ class LauncherForm(LauncherFormTemplate):
             open_form('QuotationPrintForm')
         elif hash_val == "#contract-print":
             open_form('ContractPrintForm')
-        elif hash_val == "#login" or hash_val == "":
+        elif hash_val == "#login":
             open_form('LoginForm')
 
     def form_show(self, **event_args):

@@ -551,9 +551,11 @@ def setup_totp_start(auth_token):
     import qrcode
     import base64
     import io
+    if not auth_token or (isinstance(auth_token, str) and not auth_token.strip()):
+      return {'success': False, 'message': 'NO_TOKEN'}
     res = validate_token(auth_token)
     if not res.get('valid'):
-      return {'success': False, 'message': 'Please log in first'}
+      return {'success': False, 'message': 'SESSION_EXPIRED'}
     user_email = res.get('user', {}).get('email')
     if not user_email:
       return {'success': False, 'message': 'User not found'}

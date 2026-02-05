@@ -92,7 +92,32 @@ class LauncherForm(LauncherFormTemplate):
     def form_show(self, **event_args):
         """عند عرض النموذج"""
         self.route()
+        self._sync_auth_token_to_frame()
         self._inject_totp_link()
+
+    def _sync_auth_token_to_frame(self):
+        """نسخ الـ token من النافذة الرئيسية إلى إطار الصفحة الحالي (إن وُجد) حتى يصل للـ JS"""
+        js = r"""
+        (function() {
+          try {
+            var tok = null;
+            if (window.localStorage && window.localStorage.getItem('auth_token')) tok = window.localStorage.getItem('auth_token');
+            if (!tok && window.sessionStorage && window.sessionStorage.getItem('auth_token')) tok = window.sessionStorage.getItem('auth_token');
+            if (!tok && window.top && window.top !== window) {
+              try {
+                if (window.top.localStorage && window.top.localStorage.getItem('auth_token')) tok = window.top.localStorage.getItem('auth_token');
+                if (!tok && window.top.sessionStorage && window.top.sessionStorage.getItem('auth_token')) tok = window.top.sessionStorage.getItem('auth_token');
+              } catch(e) {}
+            }
+            if (tok && window.localStorage) window.localStorage.setItem('auth_token', tok);
+            if (tok && window.sessionStorage) window.sessionStorage.setItem('auth_token', tok);
+          } catch(e) {}
+        })();
+        """
+        try:
+            anvil.js.window.eval(js)
+        except Exception:
+            pass
 
     def _inject_totp_link(self):
         """رابط التطبيق ظاهر افتراضياً في القالب؛ نربط النقر ونخفيه فقط إذا المستخدم فعّل المصادقة"""

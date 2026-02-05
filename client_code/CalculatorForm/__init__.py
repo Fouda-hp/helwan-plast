@@ -161,6 +161,10 @@ class CalculatorForm(CalculatorFormTemplate):
   def form_show(self, **event_args):
     """جلب كل الإعدادات من السيرفر في استدعاء واحد وتمريرها للصفحة."""
     try:
+      anvil.js.window.eval("if (window.localStorage) window.localStorage.setItem('hp_last_page', '#calculator');")
+    except Exception:
+      pass
+    try:
       # استدعاء واحد بدل 7 — تقليل ثقل الشبكة
       data = anvil.server.call("get_calculator_settings")
       if not data:
@@ -182,6 +186,8 @@ class CalculatorForm(CalculatorFormTemplate):
         settings_payload["config"] = data["config"]
       if data.get("priceOptions"):
         settings_payload["priceOptions"] = data["priceOptions"]
+      if data.get("machinePrices") is not None:
+        settings_payload["machinePrices"] = data["machinePrices"]
       if data.get("cylinderPrices") is not None:
         settings_payload["cylinderPrices"] = data["cylinderPrices"]
       json_str = json.dumps(settings_payload, default=str)

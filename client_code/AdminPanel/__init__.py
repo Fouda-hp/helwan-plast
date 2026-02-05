@@ -1283,15 +1283,38 @@ class AdminPanel(AdminPanelTemplate):
         self.check_route()
 
     def check_route(self):
-        hash_val = anvil.js.window.location.hash
+        try:
+            # عند التحميل أو الريفرش: إذا الـ hash فاضي استعد آخر صفحة من localStorage (مش الأدمن)
+            restored = anvil.js.window.eval("""
+                (function(){
+                    var h = (window.location && window.location.hash) || '';
+                    if (!h || h === '#') {
+                        var saved = (window.localStorage && window.localStorage.getItem('hp_last_page')) || '';
+                        if (saved && saved.indexOf('#') === 0 && saved !== '#admin' && window.location) {
+                            window.location.hash = saved;
+                            return saved;
+                        }
+                    }
+                    return h || '';
+                })();
+            """)
+            hash_val = (restored or "") if restored else ""
+        except Exception:
+            hash_val = ""
+        if not hash_val or hash_val == "#":
+            hash_val = "#launcher"
         if hash_val == "#launcher":
             open_form('LauncherForm')
         elif hash_val == "#calculator":
             open_form('CalculatorForm')
         elif hash_val == "#import":
             open_form('DataImportForm')
-        elif hash_val == "#login" or hash_val == "":
+        elif hash_val == "#login":
             open_form('LoginForm')
+        elif hash_val == "#admin":
+            pass  # نبقى على الأدمن
+        else:
+            open_form('LauncherForm')
 
     # =========================================================
     # معلومات المستخدم

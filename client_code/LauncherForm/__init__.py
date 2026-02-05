@@ -115,9 +115,13 @@ class LauncherForm(LauncherFormTemplate):
             open_form('LoginForm')
 
     def form_show(self, **event_args):
-        """عند عرض النموذج"""
-        self.route()
+        """عند عرض النموذج — تخفيف: مزامنة التوكن فوراً، تأجيل TOTP حتى لا يثقل التحميل"""
         self._sync_auth_token_to_frame()
+        try:
+            anvil.js.window.eval("if (window.localStorage) window.localStorage.setItem('hp_last_page', '#launcher');")
+        except Exception:
+            pass
+        self.route()
         self._inject_totp_link()
 
     def _sync_auth_token_to_frame(self):

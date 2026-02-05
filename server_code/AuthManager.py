@@ -2892,8 +2892,11 @@ def get_calculator_settings():
         if cfg and cfg.get('success') and cfg.get('config'):
             result['config'] = cfg['config']
         pr = get_machine_prices()
-        if pr and pr.get('options'):
-            result['priceOptions'] = pr['options']
+        if pr:
+            if pr.get('options'):
+                result['priceOptions'] = pr['options']
+            if pr.get('prices'):
+                result['machinePrices'] = pr['prices']
         cp = get_setting('cylinder_prices')
         if cp and isinstance(cp, dict):
             result['cylinderPrices'] = cp

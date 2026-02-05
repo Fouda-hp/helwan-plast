@@ -214,18 +214,19 @@
   // Load machine prices from server — المصدر الوحيد لـ Standard Machine FOB cost وخيارات الدروب داون
   async function loadMachinePricesFromServer() {
     try {
-      const result = await window.anvil?.server?.call('get_machine_prices');
+      var call = (window.anvil && window.anvil.server && window.anvil.server.call) || (window.top && window.top.anvil && window.top.anvil.server && window.top.anvil.server.call);
+      if (!call) return;
+      var result = await call('get_machine_prices');
       if (result && result.success && result.prices) {
         MACHINE_PRICES = normalizePricesKeys(result.prices);
-        if (result.options && result.options.types) {
+        if (result.options && result.options.types && result.options.types.length > 0) {
           PRICE_OPTIONS = result.options;
-          if (PRICE_OPTIONS.types.length > 0) {
-            updateMachineTypeDropdown(PRICE_OPTIONS.types);
-            refreshColorsAndWidthsFromOptions();
-          }
+          updateMachineTypeDropdown(PRICE_OPTIONS.types);
+          refreshColorsAndWidthsFromOptions();
         }
         if (typeof window.recalcAll === 'function') window.recalcAll();
-        setTimeout(function() { if (typeof window.recalcAll === 'function') window.recalcAll(); }, 100);
+        setTimeout(function() { if (typeof window.recalcAll === 'function') window.recalcAll(); }, 150);
+        setTimeout(function() { if (typeof window.recalcAll === 'function') window.recalcAll(); }, 500);
       }
     } catch(e) {
       console.warn('Could not load machine prices from server, using defaults:', e);
@@ -413,6 +414,9 @@
       if (data.cylinderPrices && window.applyCylinderPricesMap) {
         window.applyCylinderPricesMap(data.cylinderPrices);
       }
+      if (data.machinePrices && typeof data.machinePrices === 'object') {
+        MACHINE_PRICES = normalizePricesKeys(data.machinePrices);
+      }
       if (opts && opts.types && opts.types.length) {
         PRICE_OPTIONS = opts;
         updateMachineTypeDropdown(opts.types);
@@ -459,7 +463,13 @@
   }, 2000);
 
   function getMachineBasePrice() {
-    var t = machineType && machineType.value, c = colors && colors.value, w = width && width.value;
+    var doc = document;
+    var mtEl = doc.getElementById('machine_type');
+    var colEl = doc.getElementById('Number of colors');
+    var widEl = doc.getElementById('Machine width');
+    var t = (mtEl && mtEl.value) || (machineType && machineType.value);
+    var c = (colEl && colEl.value) || (colors && colors.value);
+    var w = (widEl && widEl.value) || (width && width.value);
     if (!t || !c || !w) return 0;
     var byType = MACHINE_PRICES[t] || MACHINE_PRICES[String(t)];
     if (!byType) {

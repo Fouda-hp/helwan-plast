@@ -134,8 +134,16 @@ class AdminPanel(AdminPanelTemplate):
           }
 
           function downloadBackupFile(r, context) {
-            if (!r || !r.success || !r.file) {
+            if (!r || !r.success) {
               if (window.showNotification) window.showNotification('error', 'خطأ', r && r.message ? r.message : (context || 'فشل'));
+              return;
+            }
+            if (r.downloaded) {
+              if (window.showNotification) window.showNotification('success', 'تم', 'تم تحميل النسخة الاحتياطية');
+              return;
+            }
+            if (!r.file) {
+              if (window.showNotification) window.showNotification('error', 'خطأ', context || 'لا يوجد ملف للتحميل');
               return;
             }
             try {
@@ -149,10 +157,10 @@ class AdminPanel(AdminPanelTemplate):
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
+                if (window.showNotification) window.showNotification('success', 'تم', 'تم تحميل النسخة الاحتياطية');
               } else {
-                window.open(r.file);
+                if (window.showNotification) window.showNotification('error', 'خطأ', 'تعذر الحصول على رابط التحميل. جرّب مرة أخرى.');
               }
-              if (window.showNotification) window.showNotification('success', 'تم', 'تم تحميل النسخة الاحتياطية');
             } catch (err) {
               if (window.showNotification) window.showNotification('error', 'خطأ', err && err.message ? err.message : 'تنزيل الملف فشل');
             }
@@ -286,12 +294,21 @@ class AdminPanel(AdminPanelTemplate):
             };
           }
 
+          function updateBackupNavLabel() {
+            var lang = (typeof localStorage !== 'undefined' && localStorage.getItem('hp_language')) || 'en';
+            var text = (lang === 'ar') ? 'نسخة احتياطية' : 'Backup';
+            var topSpan = document.querySelector('#navBackupTop span');
+            if (topSpan) topSpan.textContent = text;
+            var mobileSpan = document.querySelector('#navBackupMobile span');
+            if (mobileSpan) mobileSpan.textContent = text;
+          }
+
           function buildBackupNavItem(id) {
             var item = document.createElement('a');
             item.className = 'nav-item';
             item.id = id;
             item.href = '#';
-            item.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg><span>نسخة احتياطية</span>';
+            item.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg><span></span>';
             attachBackupClick(item);
             return item;
           }
@@ -351,6 +368,8 @@ class AdminPanel(AdminPanelTemplate):
                 }
               }
             }
+            window.updateBackupNavLabel = updateBackupNavLabel;
+            updateBackupNavLabel();
           }
 
           function patchSaveSetting() {
@@ -1620,7 +1639,11 @@ class AdminPanel(AdminPanelTemplate):
         auth = self.get_auth()
         if not auth:
             return {'success': False, 'message': 'Not authenticated. Please login again.'}
-        return anvil.server.call('create_backup', auth)
+        result = anvil.server.call('create_backup', auth)
+        if result and result.get('success') and result.get('file'):
+            anvil.media.download(result['file'])
+            return {'success': True, 'filename': result.get('filename'), 'downloaded': True}
+        return result
 
     def list_scheduled_backups(self):
         """قائمة النسخ الاحتياطية المجدولة (يوم 1 و 16). للأدمن فقط."""
@@ -1634,7 +1657,11 @@ class AdminPanel(AdminPanelTemplate):
         auth = self.get_auth()
         if not auth:
             return {'success': False, 'message': 'Not authenticated.'}
-        return anvil.server.call('get_scheduled_backup_file', auth, filename, created_at_iso)
+        result = anvil.server.call('get_scheduled_backup_file', auth, filename, created_at_iso)
+        if result and result.get('success') and result.get('file'):
+            anvil.media.download(result['file'])
+            return {'success': True, 'filename': result.get('filename'), 'downloaded': True}
+        return result
 
     def list_drive_backups(self):
         """قائمة النسخ الاحتياطية في مجلد Google Drive. للأدمن فقط."""

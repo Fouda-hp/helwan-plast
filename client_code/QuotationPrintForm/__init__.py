@@ -133,7 +133,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
             template_content.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading...</p></div>'
 
         try:
-            user_email = anvil.js.window.localStorage.getItem('user_email') or ''
+            user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
             result = anvil.server.call('get_quotation_pdf_data', quotation_number, user_email)
 
             if result and result.get('success'):
@@ -847,7 +847,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     def load_quotation_for_print(self, quotation_number):
         """Load quotation data for print preview"""
         try:
-            user_email = anvil.js.window.localStorage.getItem('user_email') or ''
+            user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
             result = anvil.server.call('get_quotation_pdf_data', int(quotation_number), user_email)
             return result
         except Exception as e:
@@ -864,7 +864,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     def get_quotation_pdf_data(self, quotation_number):
         """Get full quotation data for PDF"""
         try:
-            user_email = anvil.js.window.localStorage.getItem('user_email') or ''
+            user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
             result = anvil.server.call('get_quotation_pdf_data', int(quotation_number), user_email)
             return result
         except Exception as e:

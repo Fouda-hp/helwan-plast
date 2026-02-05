@@ -35,8 +35,8 @@ class LauncherForm(LauncherFormTemplate):
         anvil.js.window.addEventListener("hashchange", self.on_hash_change)
 
     def get_token(self):
-        """Get auth token from localStorage"""
-        return anvil.js.window.localStorage.getItem('auth_token')
+        """Get auth token from sessionStorage (جلسة تنتهي عند إغلاق التاب)"""
+        return anvil.js.window.sessionStorage.getItem('auth_token')
 
     def setup_totp_start(self, token=None):
         """بدء تفعيل تطبيق المصادقة (Authenticator). يُفضّل تمرير token من JS من نفس الصفحة."""
@@ -61,7 +61,12 @@ class LauncherForm(LauncherFormTemplate):
                 anvil.server.call('logout_user', token)
             except:
                 pass
-        anvil.js.window.localStorage.clear()
+        try:
+            for k in ('auth_token', 'user_email', 'user_name', 'user_role'):
+                anvil.js.window.sessionStorage.removeItem(k)
+                anvil.js.window.localStorage.removeItem(k)
+        except Exception:
+            pass
         return True
 
     def on_hash_change(self, event):
@@ -96,20 +101,13 @@ class LauncherForm(LauncherFormTemplate):
         self._inject_totp_link()
 
     def _sync_auth_token_to_frame(self):
-        """نسخ الـ token من النافذة الرئيسية إلى إطار الصفحة الحالي (إن وُجد) حتى يصل للـ JS"""
+        """نسخ الـ token من sessionStorage (النافذة الرئيسية) إلى إطار الصفحة الحالي"""
         js = r"""
         (function() {
           try {
-            var tok = null;
-            if (window.localStorage && window.localStorage.getItem('auth_token')) tok = window.localStorage.getItem('auth_token');
-            if (!tok && window.sessionStorage && window.sessionStorage.getItem('auth_token')) tok = window.sessionStorage.getItem('auth_token');
-            if (!tok && window.top && window.top !== window) {
-              try {
-                if (window.top.localStorage && window.top.localStorage.getItem('auth_token')) tok = window.top.localStorage.getItem('auth_token');
-                if (!tok && window.top.sessionStorage && window.top.sessionStorage.getItem('auth_token')) tok = window.top.sessionStorage.getItem('auth_token');
-              } catch(e) {}
-            }
-            if (tok && window.localStorage) window.localStorage.setItem('auth_token', tok);
+            var tok = (window.sessionStorage && window.sessionStorage.getItem('auth_token')) || null;
+            if (!tok && window.top && window.top !== window && window.top.sessionStorage)
+              tok = window.top.sessionStorage.getItem('auth_token');
             if (tok && window.sessionStorage) window.sessionStorage.setItem('auth_token', tok);
           } catch(e) {}
         })();

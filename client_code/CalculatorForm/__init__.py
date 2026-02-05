@@ -122,8 +122,8 @@ class CalculatorForm(CalculatorFormTemplate):
 
   def _save_to_server(self, form_data):
     try:
-      # Get user email from localStorage
-      user_email = anvil.js.window.localStorage.getItem('user_email') or 'system'
+      # Get user email from sessionStorage (جلسة تنتهي عند إغلاق التاب)
+      user_email = anvil.js.window.sessionStorage.getItem('user_email') or 'system'
       return anvil.server.call("save_quotation", form_data, user_email)
     except Exception as e:
       return {"success": False, "message": str(e)}
@@ -155,11 +155,15 @@ class CalculatorForm(CalculatorFormTemplate):
         c.text = v or ""
 
   def form_show(self, **event_args):
-    """عند عرض النموذج: إعادة ربط الـ dropdowns عدة مرات (لضمان وجود الـ DOM)"""
+    """عند عرض النموذج: إعادة ربط الـ dropdowns + تحديث سعر الصرف من السيرفر"""
     try:
       anvil.js.window.eval(
         "var _r=function(){ if (window.reinitCalculatorDropdowns) window.reinitCalculatorDropdowns(); };"
         "setTimeout(_r, 150); setTimeout(_r, 500); setTimeout(_r, 1000);"
+      )
+      # تحديث سعر الصرف والإعدادات من السيرفر عند كل فتح للكالكتور
+      anvil.js.window.eval(
+        "if (window.loadSettingsFromServer) window.loadSettingsFromServer();"
       )
     except Exception:
       pass

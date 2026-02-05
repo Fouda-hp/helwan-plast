@@ -52,11 +52,11 @@ class LoginForm(LoginFormTemplate):
         anvil.js.window.addEventListener("hashchange", self.on_hash_change)
 
     def check_existing_session(self):
-        """Check if user has valid session and redirect to launcher"""
+        """Check if user has valid session (sessionStorage only = انتهاء الجلسة عند إغلاق التاب)"""
         try:
-            auth_token = anvil.js.window.localStorage.getItem('auth_token')
-            user_email = anvil.js.window.localStorage.getItem('user_email')
-            user_role = anvil.js.window.localStorage.getItem('user_role')
+            auth_token = anvil.js.window.sessionStorage.getItem('auth_token')
+            user_email = anvil.js.window.sessionStorage.getItem('user_email')
+            user_role = anvil.js.window.sessionStorage.getItem('user_role')
 
             # Only check if we have saved credentials
             if auth_token and user_email:
@@ -76,11 +76,13 @@ class LoginForm(LoginFormTemplate):
             self.clear_auth_storage()
 
     def clear_auth_storage(self):
-        """Clear all auth-related localStorage items"""
-        anvil.js.window.localStorage.removeItem('auth_token')
-        anvil.js.window.localStorage.removeItem('user_email')
-        anvil.js.window.localStorage.removeItem('user_name')
-        anvil.js.window.localStorage.removeItem('user_role')
+        """Clear all auth-related sessionStorage (and localStorage for cleanup)"""
+        try:
+            for key in ('auth_token', 'user_email', 'user_name', 'user_role'):
+                anvil.js.window.sessionStorage.removeItem(key)
+                anvil.js.window.localStorage.removeItem(key)
+        except Exception:
+            pass
 
     def on_hash_change(self, event):
         self.check_route()
@@ -201,39 +203,19 @@ class LoginForm(LoginFormTemplate):
             return {'success': False, 'message': f'Error: {str(e)}'}
 
     def _save_auth_everywhere(self, user_email='', user_name='', user_role='', auth_token=''):
-        """حفظ التوكن ومعلومات المستخدم في localStorage و sessionStorage والنافذة الرئيسية (top)"""
+        """حفظ التوكن ومعلومات المستخدم في sessionStorage فقط (انتهاء الجلسة عند إغلاق التاب)"""
         js = r"""
         (function(email, name, role, token) {
           try {
-            var w = window;
-            if (w.localStorage) {
-              w.localStorage.setItem('user_email', email || '');
-              w.localStorage.setItem('user_name', name || '');
-              w.localStorage.setItem('user_role', role || '');
-              if (token) w.localStorage.setItem('auth_token', token);
-            }
-            if (w.sessionStorage) {
-              w.sessionStorage.setItem('user_email', email || '');
-              w.sessionStorage.setItem('user_name', name || '');
-              w.sessionStorage.setItem('user_role', role || '');
-              if (token) w.sessionStorage.setItem('auth_token', token);
-            }
-            if (w.top && w.top !== w) {
-              try {
-                if (w.top.localStorage) {
-                  w.top.localStorage.setItem('user_email', email || '');
-                  w.top.localStorage.setItem('user_name', name || '');
-                  w.top.localStorage.setItem('user_role', role || '');
-                  if (token) w.top.localStorage.setItem('auth_token', token);
-                }
-                if (w.top.sessionStorage) {
-                  w.top.sessionStorage.setItem('user_email', email || '');
-                  w.top.sessionStorage.setItem('user_name', name || '');
-                  w.top.sessionStorage.setItem('user_role', role || '');
-                  if (token) w.top.sessionStorage.setItem('auth_token', token);
-                }
-              } catch(e) {}
-            }
+            var set = function(s) {
+              if (!s) return;
+              s.setItem('user_email', email || '');
+              s.setItem('user_name', name || '');
+              s.setItem('user_role', role || '');
+              if (token) s.setItem('auth_token', token);
+            };
+            if (window.sessionStorage) set(window.sessionStorage);
+            if (window.top && window.top !== window && window.top.sessionStorage) set(window.top.sessionStorage);
           } catch(e) {}
         })(%s, %s, %s, %s);
         """ % (json.dumps(user_email or ''), json.dumps(user_name or ''), json.dumps(user_role or ''), json.dumps(auth_token or ''))

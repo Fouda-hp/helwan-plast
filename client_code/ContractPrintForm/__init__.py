@@ -494,7 +494,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         
         try:
             # Get user email for audit log
-            user_email = anvil.js.window.localStorage.getItem('user_email') or 'system'
+            user_email = anvil.js.window.sessionStorage.getItem('user_email') or 'system'
             result = anvil.server.call('save_contract', contract_data, user_email)
             if result.get('success'):
                 is_ar = self.current_lang == 'ar'
@@ -1128,7 +1128,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
     # ==================== Server Calls ====================
     def load_quotation_for_print(self, quotation_number):
         try:
-            user_email = anvil.js.window.localStorage.getItem('user_email') or ''
+            user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
             result = anvil.server.call('get_quotation_pdf_data', int(quotation_number), user_email)
             return result
         except Exception as e:

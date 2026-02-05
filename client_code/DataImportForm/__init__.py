@@ -51,8 +51,8 @@ class DataImportForm(DataImportFormTemplate):
     def _get_auth_info(self):
         """Get auth token and user email from session"""
         try:
-            self.auth_token = anvil.js.window.localStorage.getItem('auth_token') or ''
-            self.user_email = anvil.js.window.localStorage.getItem('user_email') or ''
+            self.auth_token = anvil.js.window.sessionStorage.getItem('auth_token') or ''
+            self.user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
 
             print(f"DEBUG: auth_token exists: {bool(self.auth_token)}")
             print(f"DEBUG: user_email from storage: {self.user_email}")

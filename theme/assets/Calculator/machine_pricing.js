@@ -61,6 +61,9 @@
     }
   }
 
+  // تعريض الدالة لتحديث الإعدادات (سعر الصرف وغيره) عند فتح الكالكتور
+  window.loadSettingsFromServer = loadSettingsFromServer;
+
   // تحميل الإعدادات عند بدء التشغيل - من السيرفر مباشرة
   window._settingsLoaded = false;
   loadSettingsFromServer();

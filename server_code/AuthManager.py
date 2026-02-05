@@ -950,13 +950,17 @@ def validate_session(token):
     if not session:
       return None
 
-      # التحقق من انتهاء الصلاحية
-    if datetime.now() > session['expires_at']:
-      # حذف الجلسة المنتهية
-      session.update(is_active=False)
-      return None
+    # التحقق من انتهاء الصلاحية (تجاهل إذا expires_at غير موجود)
+    expires_at = session.get('expires_at')
+    if expires_at is not None:
+      try:
+        if datetime.now() > expires_at:
+          session.update(is_active=False)
+          return None
+      except (TypeError, ValueError):
+        pass
 
-      # جلب المستخدم الحالي من جدول users
+    # جلب المستخدم الحالي من جدول users
       # هذا يضمن أن أي تغيير في الـ role أو الحالة يُطبق فوراً
     user = app_tables.users.get(email=session['user_email'])
 
@@ -1632,6 +1636,14 @@ def validate_token(token):
     if not user or not user['is_active'] or not user['is_approved']:
         destroy_session(token)
         return {'valid': False}
+
+    # تمديد الجلسة عند كل استخدام (sliding expiration) حتى لا تنتهي أثناء الاستخدام
+    try:
+        session_row = app_tables.sessions.get(session_token=token)
+        if session_row:
+            session_row.update(expires_at=datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES))
+    except Exception:
+        pass
 
     return {
         'valid': True,

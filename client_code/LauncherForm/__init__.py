@@ -130,7 +130,8 @@ class LauncherForm(LauncherFormTemplate):
               alert('Please refresh the page and try again.');
               return;
             }
-            var p = window.setupTotpStart();
+            var tok = (window.launcherGetAuthToken && window.launcherGetAuthToken()) || null;
+            var p = window.setupTotpStart(tok);
             if (!p || typeof p.then !== 'function') {
               alert('Setup is not available. Please refresh the page.');
               return;
@@ -160,7 +161,8 @@ class LauncherForm(LauncherFormTemplate):
                 document.getElementById('totpConfirmBtn').onclick = function() {
                   var code = document.getElementById('totpCodeInput').value.trim();
                   if (code.length !== 6) { document.getElementById('totpSetupMessage').textContent = 'Enter 6 digits'; return; }
-                  var p2 = window.setupTotpConfirm && window.setupTotpConfirm(code);
+                  var _tok = (window.launcherGetAuthToken && window.launcherGetAuthToken()) || null;
+                  var p2 = window.setupTotpConfirm && window.setupTotpConfirm(code, _tok);
                   if (p2 && typeof p2.then === 'function') {
                     p2.then(function(res) {
                       var msg = document.getElementById('totpSetupMessage');
@@ -185,7 +187,8 @@ class LauncherForm(LauncherFormTemplate):
           function attachAndMaybeHide() {
             var wrap = document.getElementById('totpLinkWrap');
             if (wrap && window.userHasTotpEnabled && typeof window.userHasTotpEnabled === 'function') {
-              var p = window.userHasTotpEnabled();
+              var _t = (window.launcherGetAuthToken && window.launcherGetAuthToken()) || null;
+              var p = window.userHasTotpEnabled(_t);
               if (p && typeof p.then === 'function') {
                 p.then(function(hasTotp) { if (hasTotp) wrap.style.display = 'none'; }).catch(function() {});
               }

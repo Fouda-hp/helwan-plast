@@ -15,6 +15,7 @@ import anvil.tables as tables
 import anvil.tables.query as q
 from anvil.tables import app_tables
 import anvil.js
+import json
 
 
 class LoginForm(LoginFormTemplate):
@@ -109,14 +110,16 @@ class LoginForm(LoginFormTemplate):
         try:
             result = anvil.server.call('login_user', email, password)
 
-            # حفظ معلومات المستخدم في localStorage للحفاظ على الجلسة
+            # حفظ معلومات المستخدم في localStorage للحفاظ على الجلسة (وكل النوافذ/الإطارات)
             if result.get('success') and result.get('user'):
                 user = result['user']
-                anvil.js.window.localStorage.setItem('user_email', user.get('email', ''))
-                anvil.js.window.localStorage.setItem('user_name', user.get('full_name', ''))
-                anvil.js.window.localStorage.setItem('user_role', user.get('role', ''))
-                if result.get('token'):
-                    anvil.js.window.localStorage.setItem('auth_token', result.get('token', ''))
+                token = result.get('token', '')
+                self._save_auth_everywhere(
+                    user_email=user.get('email', ''),
+                    user_name=user.get('full_name', ''),
+                    user_role=user.get('role', ''),
+                    auth_token=token
+                )
 
             return result
         except Exception as e:
@@ -182,18 +185,62 @@ class LoginForm(LoginFormTemplate):
         try:
             result = anvil.server.call('verify_login_otp', email, otp)
 
-            # حفظ معلومات المستخدم إذا نجح التحقق
+            # حفظ معلومات المستخدم إذا نجح التحقق (وكل النوافذ/الإطارات)
             if result.get('success') and result.get('user'):
                 user = result['user']
-                anvil.js.window.localStorage.setItem('user_email', user.get('email', ''))
-                anvil.js.window.localStorage.setItem('user_name', user.get('full_name', ''))
-                anvil.js.window.localStorage.setItem('user_role', user.get('role', ''))
-                if result.get('token'):
-                    anvil.js.window.localStorage.setItem('auth_token', result.get('token', ''))
+                token = result.get('token', '')
+                self._save_auth_everywhere(
+                    user_email=user.get('email', ''),
+                    user_name=user.get('full_name', ''),
+                    user_role=user.get('role', ''),
+                    auth_token=token
+                )
 
             return result
         except Exception as e:
             return {'success': False, 'message': f'Error: {str(e)}'}
+
+    def _save_auth_everywhere(self, user_email='', user_name='', user_role='', auth_token=''):
+        """حفظ التوكن ومعلومات المستخدم في localStorage و sessionStorage والنافذة الرئيسية (top)"""
+        js = r"""
+        (function(email, name, role, token) {
+          try {
+            var w = window;
+            if (w.localStorage) {
+              w.localStorage.setItem('user_email', email || '');
+              w.localStorage.setItem('user_name', name || '');
+              w.localStorage.setItem('user_role', role || '');
+              if (token) w.localStorage.setItem('auth_token', token);
+            }
+            if (w.sessionStorage) {
+              w.sessionStorage.setItem('user_email', email || '');
+              w.sessionStorage.setItem('user_name', name || '');
+              w.sessionStorage.setItem('user_role', role || '');
+              if (token) w.sessionStorage.setItem('auth_token', token);
+            }
+            if (w.top && w.top !== w) {
+              try {
+                if (w.top.localStorage) {
+                  w.top.localStorage.setItem('user_email', email || '');
+                  w.top.localStorage.setItem('user_name', name || '');
+                  w.top.localStorage.setItem('user_role', role || '');
+                  if (token) w.top.localStorage.setItem('auth_token', token);
+                }
+                if (w.top.sessionStorage) {
+                  w.top.sessionStorage.setItem('user_email', email || '');
+                  w.top.sessionStorage.setItem('user_name', name || '');
+                  w.top.sessionStorage.setItem('user_role', role || '');
+                  if (token) w.top.sessionStorage.setItem('auth_token', token);
+                }
+              } catch(e) {}
+            }
+          } catch(e) {}
+        })(%s, %s, %s, %s);
+        """ % (json.dumps(user_email or ''), json.dumps(user_name or ''), json.dumps(user_role or ''), json.dumps(auth_token or ''))
+        try:
+            anvil.js.window.eval(js)
+        except Exception:
+            pass
 
     def resend_login_otp(self, email):
         """

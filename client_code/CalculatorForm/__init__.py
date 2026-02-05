@@ -155,10 +155,11 @@ class CalculatorForm(CalculatorFormTemplate):
         c.text = v or ""
 
   def form_show(self, **event_args):
-    """عند عرض النموذج: إعادة ربط أحداث الـ dropdowns (Select machine type, Number of colors, ...)"""
+    """عند عرض النموذج: إعادة ربط الـ dropdowns عدة مرات (لضمان وجود الـ DOM)"""
     try:
       anvil.js.window.eval(
-        "setTimeout(function(){ if (window.reinitCalculatorDropdowns) window.reinitCalculatorDropdowns(); }, 200);"
+        "var _r=function(){ if (window.reinitCalculatorDropdowns) window.reinitCalculatorDropdowns(); };"
+        "setTimeout(_r, 150); setTimeout(_r, 500); setTimeout(_r, 1000);"
       )
     except Exception:
       pass

@@ -54,7 +54,44 @@
   });
 
   // ----------------------------------------
-  // Custom select logic
+  // Event delegation: أي نقر على .ui-select-trigger أو .ui-option يعمل حتى لو initCustomSelects ما ربطش
+  // ----------------------------------------
+  document.addEventListener("click", function (e) {
+    var trigger = e.target && e.target.closest && e.target.closest(".ui-select-trigger");
+    if (trigger) {
+      var select = trigger.closest(".ui-select");
+      if (select) {
+        select.classList.toggle("open");
+        e.stopPropagation();
+      }
+      return;
+    }
+    var option = e.target && e.target.closest && e.target.closest(".ui-option");
+    if (option) {
+      var sel = option.closest(".ui-select");
+      if (sel) {
+        var valueBox = sel.querySelector(".ui-select-value");
+        var options = sel.querySelectorAll(".ui-option");
+        var realSelect = byId(sel.dataset.target);
+        if (valueBox && realSelect) {
+          options.forEach(function (o) { o.classList.remove("selected"); });
+          option.classList.add("selected");
+          valueBox.textContent = option.textContent;
+          realSelect.value = option.dataset.value || "";
+          realSelect.dispatchEvent(new Event("change"));
+          if (sel.dataset.target === "Material") {
+            updateWinderOptionsByMaterial(option.dataset.value);
+          }
+          sel.classList.remove("open");
+        }
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+  }, true);
+
+  // ----------------------------------------
+  // Custom select logic (ربط مباشر - يستخدم كـ reinit أيضاً)
   // ----------------------------------------
   function initCustomSelects() {
     document.querySelectorAll(".ui-select").forEach(select => {

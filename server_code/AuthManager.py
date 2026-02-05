@@ -756,21 +756,24 @@ def check_rate_limit(ip_address, endpoint='general'):
     now = datetime.now()
     window_start = now - timedelta(minutes=RATE_LIMIT_WINDOW_MINUTES)
 
-    # البحث عن سجل Rate Limit
-    record = app_tables.rate_limits.get(
+    # البحث عن سجل Rate Limit (استخدام search لأن get بمعيارين قد لا يعمل في كل الإعدادات)
+    records = list(app_tables.rate_limits.search(
       ip_address=ip_address,
       endpoint=endpoint
-    )
+    ))
+    record = records[0] if records else None
 
     if record:
       # التحقق من الحظر
-      if record['blocked_until'] and now < record['blocked_until']:
+      blocked_until = record.get('blocked_until')
+      if blocked_until and now < blocked_until:
         return False
 
-        # التحقق من النافذة الزمنية
-      if record['window_start'] and record['window_start'] > window_start:
+      # التحقق من النافذة الزمنية (معالجة None بأمان)
+      rec_window = record.get('window_start')
+      if rec_window is not None and rec_window > window_start:
         # داخل النافذة - زيادة العداد
-        new_count = (record['request_count'] or 0) + 1
+        new_count = (record.get('request_count') or 0) + 1
 
         if new_count > RATE_LIMIT_MAX_REQUESTS:
           # حظر لمدة ساعة
@@ -783,7 +786,7 @@ def check_rate_limit(ip_address, endpoint='general'):
 
         record.update(request_count=new_count)
       else:
-        # بداية نافذة جديدة
+        # بداية نافذة جديدة أو قيم قديمة مفقودة
         record.update(
           request_count=1,
           window_start=now,
@@ -801,9 +804,9 @@ def check_rate_limit(ip_address, endpoint='general'):
 
     return True
   except Exception as e:
-    logger.error(f"Rate limit check error: {e}")
-    # رفض الطلب في حالة الخطأ للأمان - يمنع تجاوز Rate Limiting
-    return False
+    logger.error(f"Rate limit check error: {e}", exc_info=True)
+    # في حالة الخطأ نسمح بالطلب حتى لا يُحرم كل المستخدمين من الدخول بسبب خلل في Rate Limit
+    return True
 
 
 @anvil.server.callable

@@ -101,7 +101,8 @@ class LauncherForm(LauncherFormTemplate):
             if (!link || !wrap) return;
             link.onclick = function(e) {
               e.preventDefault();
-              if (!window.setupTotpStart || !window.setupTotpConfirm) return;
+              e.stopPropagation();
+              if (!window.setupTotpStart || !window.setupTotpConfirm) return false;
               window.setupTotpStart().then(function(r) {
                 if (!r || !r.success) {
                   alert(r && r.message ? r.message : 'Failed to start setup');
@@ -146,6 +147,7 @@ class LauncherForm(LauncherFormTemplate):
                 document.getElementById('totpSetupMessage').textContent = '';
                 modal.style.display = 'flex';
               }).catch(function(err) { alert('Error: ' + (err && err.message ? err.message : err)); });
+              return false;
             };
             if (window.userHasTotpEnabled && typeof window.userHasTotpEnabled === 'function') {
               window.userHasTotpEnabled().then(function(hasTotp) {

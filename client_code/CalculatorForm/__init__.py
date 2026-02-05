@@ -155,15 +155,33 @@ class CalculatorForm(CalculatorFormTemplate):
         c.text = v or ""
 
   def form_show(self, **event_args):
-    """عند عرض النموذج: إعادة ربط الـ dropdowns + تحديث سعر الصرف من السيرفر"""
+    """عند عرض النموذج: ربط سعر الصرف وإعدادات المكن من السيرفر + إعادة ربط الـ dropdowns"""
     try:
+      # 1) سعر الصرف من الإعدادات (السيرفر هو المصدر)
+      try:
+        rate = anvil.server.call("get_setting", "exchange_rate")
+        if rate is not None:
+          val = str(rate).strip().replace(",", ".")
+          if val and (val.replace(".", "").replace("-", "").isdigit()):
+            disp = "%.2f" % float(val)
+            anvil.js.window.eval(
+              "var el = document.getElementById('exchange_rate'); if (el) el.value = %s;"
+              % repr(disp)
+            )
+      except Exception:
+        pass
+      # 2) إعادة ربط الـ dropdowns
       anvil.js.window.eval(
         "var _r=function(){ if (window.reinitCalculatorDropdowns) window.reinitCalculatorDropdowns(); };"
         "setTimeout(_r, 150); setTimeout(_r, 500); setTimeout(_r, 1000);"
       )
-      # تحديث سعر الصرف والإعدادات من السيرفر عند كل فتح للكالكتور
+      # 3) تحديث كل الإعدادات من السيرفر (سعر الصرف + الحسابات) وتحديث دروب داون المكن (نوع، ألوان، مقاسات)
       anvil.js.window.eval(
-        "if (window.loadSettingsFromServer) window.loadSettingsFromServer();"
+        "var _load = function() {"
+        "  if (window.loadSettingsFromServer) window.loadSettingsFromServer();"
+        "  if (window.loadMachineConfigFromServer) window.loadMachineConfigFromServer();"
+        "};"
+        "setTimeout(_load, 100); setTimeout(_load, 600);"
       )
     except Exception:
       pass

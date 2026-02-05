@@ -246,66 +246,56 @@
   }
 
   function updateMachineTypeDropdown(types) {
-    // Update hidden select
+    const typeList = (types || []).map(function(t) { return String(t); });
     const select = document.getElementById('machine_type');
     if (select) {
       const currentValue = select.value;
       select.innerHTML = '<option value=""></option>';
-      types.forEach(type => {
+      typeList.forEach(function(type) {
         const option = document.createElement('option');
         option.value = type;
         option.textContent = type;
         select.appendChild(option);
       });
-      // Restore value if it still exists
-      if (types.includes(currentValue)) {
-        select.value = currentValue;
-      }
+      if (typeList.indexOf(currentValue) !== -1) select.value = currentValue;
     }
-    
-    // Update custom UI select
     const uiSelect = document.querySelector('.ui-select[data-target="machine_type"]');
     if (uiSelect) {
       const menu = uiSelect.querySelector('.ui-select-menu');
       if (menu) {
         menu.innerHTML = '';
-        types.forEach(type => {
+        typeList.forEach(function(type) {
           const div = document.createElement('div');
           div.className = 'ui-option';
           div.setAttribute('data-value', type);
           div.textContent = type;
           menu.appendChild(div);
         });
-        // Rebind click handlers
         rebindUiSelectHandlers(uiSelect, 'machine_type');
       }
     }
   }
 
   function updateColorsDropdown(colors) {
-    // Update hidden select
+    const colorList = (colors || []).map(function(c) { return String(c); });
     const select = document.getElementById('Number of colors');
     if (select) {
       const currentValue = select.value;
       select.innerHTML = '<option value=""></option>';
-      colors.forEach(color => {
+      colorList.forEach(function(color) {
         const option = document.createElement('option');
         option.value = color;
         option.textContent = color;
         select.appendChild(option);
       });
-      if (colors.includes(currentValue)) {
-        select.value = currentValue;
-      }
+      if (colorList.indexOf(currentValue) !== -1) select.value = currentValue;
     }
-    
-    // Update custom UI select
     const uiSelect = document.querySelector('.ui-select[data-target="Number of colors"]');
     if (uiSelect) {
       const menu = uiSelect.querySelector('.ui-select-menu');
       if (menu) {
         menu.innerHTML = '';
-        colors.forEach(color => {
+        colorList.forEach(function(color) {
           const div = document.createElement('div');
           div.className = 'ui-option';
           div.setAttribute('data-value', color);
@@ -318,33 +308,32 @@
   }
 
   function updateWidthsDropdown(widths) {
-    // Update hidden select
+    // Normalize to strings (السيرفر قد يرجع أرقاماً أو نصوصاً)
+    const widthList = (widths || []).map(function(w) { return String(w); });
     const select = document.getElementById('Machine width');
     if (select) {
-      const currentValue = select.value;
+      const currentValue = String(select.value || '');
       select.innerHTML = '<option value=""></option>';
-      widths.forEach(width => {
+      widthList.forEach(function(w) {
         const option = document.createElement('option');
-        option.value = width;
-        option.textContent = width;
+        option.value = w;
+        option.textContent = w;
         select.appendChild(option);
       });
-      if (widths.includes(currentValue)) {
+      if (widthList.indexOf(currentValue) !== -1) {
         select.value = currentValue;
       }
     }
-    
-    // Update custom UI select
     const uiSelect = document.querySelector('.ui-select[data-target="Machine width"]');
     if (uiSelect) {
       const menu = uiSelect.querySelector('.ui-select-menu');
       if (menu) {
         menu.innerHTML = '';
-        widths.forEach(width => {
+        widthList.forEach(function(w) {
           const div = document.createElement('div');
           div.className = 'ui-option';
-          div.setAttribute('data-value', width);
-          div.textContent = width;
+          div.setAttribute('data-value', w);
+          div.textContent = w;
           menu.appendChild(div);
         });
         rebindUiSelectHandlers(uiSelect, 'Machine width');
@@ -389,6 +378,9 @@
     document.querySelectorAll('.ui-select.open').forEach(s => s.classList.remove('open'));
   });
   
+  // تعريض تحميل إعدادات المكن من السيرفر (أنواع الماكينة، الألوان، المقاسات) لاستدعائها عند فتح الكالكتور
+  window.loadMachineConfigFromServer = loadMachineConfigFromServer;
+
   // Load config and prices after settings
   setTimeout(loadMachinePricesFromServer, 1000);
   setTimeout(loadMachineConfigFromServer, 1200);

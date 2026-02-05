@@ -2870,7 +2870,8 @@ def get_calculator_settings():
         'clearance_expenses': None,
         'tax_rate': None,
         'bank_commission': None,
-        'config': None
+        'config': None,
+        'priceOptions': None
     }
     try:
         result['exchangeRate'] = get_setting('exchange_rate')
@@ -2882,20 +2883,48 @@ def get_calculator_settings():
         cfg = get_machine_config()
         if cfg and cfg.get('success') and cfg.get('config'):
             result['config'] = cfg['config']
+        pr = get_machine_prices()
+        if pr and pr.get('options'):
+            result['priceOptions'] = pr['options']
         return result
     except Exception as e:
         logger.error(f"get_calculator_settings error: {e}")
         return result
 
 
+def _options_from_machine_prices(prices):
+    """
+    استخراج الخيارات المتاحة للكالكتور من جدول الأسعار (فقط المقاسات ذات سعر > 0).
+    يرجع: types, typeColors[type], typeColorWidths[type][color]
+    """
+    if not prices or not isinstance(prices, dict):
+        return {'types': [], 'typeColors': {}, 'typeColorWidths': {}}
+    types = []
+    type_colors = {}
+    type_color_widths = {}
+    for mtype, by_color in prices.items():
+        if not by_color or not isinstance(by_color, dict):
+            continue
+        colors_with_price = []
+        type_color_widths[mtype] = {}
+        for color, by_width in by_color.items():
+            if not by_width or not isinstance(by_width, dict):
+                continue
+            widths_with_price = [w for w, p in by_width.items() if p is not None and float(p) > 0]
+            if widths_with_price:
+                colors_with_price.append(str(color))
+                type_color_widths[mtype][str(color)] = sorted(widths_with_price, key=lambda x: int(x) if str(x).isdigit() else 0)
+        if colors_with_price:
+            types.append(mtype)
+            type_colors[mtype] = sorted(colors_with_price, key=lambda x: int(x) if str(x).isdigit() else 0)
+    return {'types': types, 'typeColors': type_colors, 'typeColorWidths': type_color_widths}
+
+
 @anvil.server.callable
 def get_machine_prices():
     """
-    المصدر الأساسي والرئيسي لجميع أسعار المكن في النظام.
-    Calculator والعروض والعقود يعتمدون على هذا الجدول (settings.machine_prices).
-    إذا لم توجد قيمة محفوظة، يرجع القيم الافتراضية.
+    المصدر الأساسي لجميع أسعار المكن. يرجع الأسعار + خيارات الدروب داون (فقط مقاسات سعرها > 0).
     """
-    # القيم الافتراضية عند عدم وجود إعداد
     default_prices = {
         "Metal anilox": {
             "4": {"80": 15000, "100": 16000, "120": 17500},
@@ -2913,21 +2942,21 @@ def get_machine_prices():
             "8": {"80": 38336, "100": 42920, "120": 45504}
         }
     }
-    
     try:
         setting = app_tables.settings.get(setting_key='machine_prices')
         if setting and setting['setting_value']:
             try:
                 prices = json.loads(setting['setting_value'])
-                return {'success': True, 'prices': prices}
             except json.JSONDecodeError:
-                pass
-        
-        # Return defaults if not found
-        return {'success': True, 'prices': default_prices}
+                prices = default_prices
+        else:
+            prices = default_prices
+        options = _options_from_machine_prices(prices)
+        return {'success': True, 'prices': prices, 'options': options}
     except Exception as e:
         logger.error(f"Error getting machine prices: {e}")
-        return {'success': True, 'prices': default_prices}
+        options = _options_from_machine_prices(default_prices)
+        return {'success': True, 'prices': default_prices, 'options': options}
 
 
 @anvil.server.callable

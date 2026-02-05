@@ -627,112 +627,197 @@ class AdminPanel(AdminPanelTemplate):
           }
 
           // ==========================================
-          // Machine Prices Section - المصدر الأساسي لجميع أسعار المكن في النظام
+          // Machine Prices Section - المصدر الوحيد لـ Standard Machine FOB cost والدروب داون في الكالكتور
+          // البنية من الجدول فقط؛ حذف صف/عمود؛ سعر 0 = المقاس لا يظهر في الكالكتور
           // ==========================================
+          function getCurrentPricesFromMachinePricesSection() {
+            var prices = {};
+            var section = document.getElementById('machinePricesSection');
+            if (!section) return prices;
+            section.querySelectorAll('input[type="number"]').forEach(function(input) {
+              var machine = input.getAttribute('data-machine');
+              var c = input.getAttribute('data-colors');
+              var width = input.getAttribute('data-width');
+              var value = parseFloat(input.value);
+              if (isNaN(value)) value = 0;
+              if (!prices[machine]) prices[machine] = {};
+              if (!prices[machine][c]) prices[machine][c] = {};
+              prices[machine][c][width] = value;
+            });
+            return prices;
+          }
+
           async function addMachinePricesSection() {
             var container = document.getElementById('settingsContent');
             if (!container) return;
-            
-            // Check if already added
-            if (document.getElementById('machinePricesSection')) return;
-            
-            // Load config and prices from server (single source of truth)
-            var configResult = null;
+            var existing = document.getElementById('machinePricesSection');
+            if (existing) return;
             var pricesResult = null;
             try {
-              if (window.getMachineConfig) configResult = await window.getMachineConfig();
               if (window.getMachinePrices) pricesResult = await window.getMachinePrices();
-            } catch(e) {
-              console.error('Error loading machine data:', e);
-            }
-            
-            var types = (configResult && configResult.success && configResult.config && configResult.config.types) ? configResult.config.types : ["Metal anilox", "Ceramic anilox Single Doctor Blade", "Ceramic anilox Chamber Doctor Blade"];
-            var colors = (configResult && configResult.success && configResult.config && configResult.config.colors) ? configResult.config.colors : ["4", "6", "8"];
-            var widths = (configResult && configResult.success && configResult.config && configResult.config.widths) ? configResult.config.widths : ["80", "100", "120"];
+            } catch(e) { console.error('Error loading machine prices:', e); }
             var prices = pricesResult && pricesResult.prices ? pricesResult.prices : {};
-            
-            // Find the exchange rate section and add machine prices after it
+            if (Object.keys(prices).length === 0) {
+              prices = {
+                "Metal anilox": {"4": {"80": 15000, "100": 16000, "120": 17500}, "6": {"80": 25000, "100": 26000, "120": 29000}, "8": {"80": 29000, "100": 32000, "120": 33000}},
+                "Ceramic anilox Single Doctor Blade": {"4": {"80": 18000, "100": 19000, "120": 20500}, "6": {"80": 28000, "100": 29000, "120": 32000}, "8": {"80": 32000, "100": 35000, "120": 36000}},
+                "Ceramic anilox Chamber Doctor Blade": {"4": {"80": 21168, "100": 22960, "120": 25252}, "6": {"80": 32752, "100": 34940, "120": 39128}, "8": {"80": 38336, "100": 42920, "120": 45504}}
+              };
+            }
             var firstGrid = container.querySelector('div[style*="grid-template-columns"]');
             if (!firstGrid) return;
-            
             var leftCol = firstGrid.querySelector('div[style*="background:#f8f9fa"]');
             if (!leftCol) return;
-            
-            // ألوان وتنسيق جدول Machine Prices (القديم - ملون)
             var typeColors = ['#90caf9', '#a5d6a7', '#ce93d8'];
             var html = '<div id="machinePricesSection" style="background:#fff3e0;padding:20px;border-radius:12px;margin-top:20px;border:2px solid #ff9800;">';
             html += '<h4 style="margin:0 0 15px;color:#e65100;">🏭 Machine Prices (USD)</h4>';
-            html += '<p style="margin:0 0 15px;color:#bf360c;font-size:12px;">المصدر الأساسي لجميع أسعار المكن في النظام (Calculator، العروض، العقود)</p>';
-            
+            html += '<p style="margin:0 0 15px;color:#bf360c;font-size:12px;">المصدر الوحيد لـ Standard Machine FOB cost. سعر 0 = المقاس لا يظهر في الكالكتور. حذف صف/عمود ثم حفظ.</p>';
+            var types = Object.keys(prices);
             types.forEach(function(typeKey, idx) {
               var boxColor = typeColors[idx % typeColors.length];
               var shortLabel = typeKey.length > 25 ? typeKey.substring(0, 22) + '...' : typeKey;
-              html += '<div style="background:' + boxColor + ';padding:12px;border-radius:8px;margin-bottom:12px;">';
+              var colorsList = Object.keys(prices[typeKey] || {}).sort(function(a,b){ return parseInt(a,10) - parseInt(b,10); });
+              var widthsSet = {};
+              colorsList.forEach(function(c) {
+                Object.keys(prices[typeKey][c] || {}).forEach(function(w) { widthsSet[w] = true; });
+              });
+              var widthsList = Object.keys(widthsSet).sort(function(a,b){ return parseInt(a,10) - parseInt(b,10); });
+              if (widthsList.length === 0) widthsList = ['80'];
+              if (colorsList.length === 0) colorsList = ['4'];
+              var typeEsc = String(typeKey).replace(/"/g, '&quot;').replace(/\\\\/g, '\\\\\\\\');
+              var typeData = String(typeKey).replace(/"/g, '&quot;');
+              html += '<div class="mp-type-block" style="background:' + boxColor + ';padding:12px;border-radius:8px;margin-bottom:12px;">';
               html += '<h5 style="margin:0 0 10px;color:#333;">' + shortLabel + '</h5>';
-              html += '<table style="width:100%;border-collapse:collapse;background:#fff;border-radius:6px;overflow:hidden;font-size:13px;">';
+              html += '<table class="mp-table" style="width:100%;border-collapse:collapse;background:#fff;font-size:13px;">';
               html += '<thead><tr style="background:#f5f5f5;">';
               html += '<th style="padding:8px;border:1px solid #ddd;text-align:center;">Colors \\\\ Width</th>';
-              widths.forEach(function(w) {
-                html += '<th style="padding:8px;border:1px solid #ddd;text-align:center;">' + w + ' cm</th>';
+              widthsList.forEach(function(w) {
+                html += '<th style="padding:8px;border:1px solid #ddd;text-align:center;">' + w + ' cm <button type="button" class="mp-del-col" data-type="' + typeData + '" data-width="' + w + '" style="margin-left:4px;padding:2px 6px;font-size:11px;cursor:pointer;background:#d32f2f;color:#fff;border:none;border-radius:4px;" title="حذف العمود">✕</button></th>';
               });
-              html += '</tr></thead><tbody>';
-              
-              colors.forEach(function(c) {
+              html += '<th style="padding:8px;border:1px solid #ddd;text-align:center;width:80px;">حذف صف</th></tr></thead><tbody>';
+              colorsList.forEach(function(c) {
                 html += '<tr>';
                 html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;background:#f9f9f9;font-weight:bold;">' + c + ' Colors</td>';
-                widths.forEach(function(w) {
-                  var price = prices[typeKey] && prices[typeKey][c] && prices[typeKey][c][w] ? prices[typeKey][c][w] : 0;
-                  var inputId = 'mp_' + typeKey.replace(/\\s+/g, '_') + '_' + c + '_' + w;
-                  html += '<td style="padding:4px;border:1px solid #ddd;text-align:center;">';
-                  html += '<input type="number" id="' + inputId + '" value="' + price + '" style="width:80px;padding:4px;border:1px solid #ccc;border-radius:4px;text-align:center;" data-machine="' + String(typeKey).replace(/"/g, '&quot;') + '" data-colors="' + c + '" data-width="' + w + '">';
-                  html += '</td>';
+                widthsList.forEach(function(w) {
+                  var price = (prices[typeKey][c] && prices[typeKey][c][w] != null) ? prices[typeKey][c][w] : 0;
+                  var inputId = 'mp_' + typeKey.replace(/\\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + c + '_' + w;
+                  html += '<td style="padding:4px;border:1px solid #ddd;text-align:center;"><input type="number" id="' + inputId + '" value="' + price + '" style="width:80px;padding:4px;border:1px solid #ccc;border-radius:4px;text-align:center;" data-machine="' + typeData + '" data-colors="' + c + '" data-width="' + w + '"></td>';
                 });
+                html += '<td style="padding:4px;border:1px solid #ddd;text-align:center;"><button type="button" class="mp-del-row" data-type="' + typeData + '" data-color="' + c + '" style="padding:4px 8px;font-size:11px;cursor:pointer;background:#d32f2f;color:#fff;border:none;border-radius:4px;">حذف صف</button></td>';
                 html += '</tr>';
               });
-              html += '</tbody></table></div>';
+              html += '</tbody></table>';
+              html += '<div style="margin-top:8px;"><button type="button" class="mp-add-row" data-type="' + typeData + '" style="padding:6px 12px;margin-right:8px;font-size:12px;cursor:pointer;background:#2e7d32;color:#fff;border:none;border-radius:4px;">➕ إضافة صف (لون)</button>';
+              html += '<button type="button" class="mp-add-col" data-type="' + typeData + '" style="padding:6px 12px;font-size:12px;cursor:pointer;background:#1565c0;color:#fff;border:none;border-radius:4px;">➕ إضافة عمود (مقاس)</button></div>';
+              html += '</div>';
             });
-            
             html += '<div style="margin-top:15px;text-align:center;">';
             html += '<button class="action-btn" onclick="saveMachinePricesAll()" style="padding:12px 30px;background:#ff9800;border:none;color:#fff;font-weight:bold;border-radius:8px;cursor:pointer;">💾 Save All Machine Prices</button>';
             html += '</div></div>';
-            
             leftCol.insertAdjacentHTML('afterend', html);
+            var mpSection = document.getElementById('machinePricesSection');
+            if (mpSection) {
+              mpSection.addEventListener('click', function(e) {
+                var btn = e.target.closest('.mp-del-row');
+                if (btn) { e.preventDefault(); window.deleteMachinePriceRow(btn.getAttribute('data-type'), btn.getAttribute('data-color')); return; }
+                btn = e.target.closest('.mp-del-col');
+                if (btn) { e.preventDefault(); window.deleteMachinePriceColumn(btn.getAttribute('data-type'), btn.getAttribute('data-width')); return; }
+                btn = e.target.closest('.mp-add-row');
+                if (btn) { e.preventDefault(); window.addMachinePriceRow(btn.getAttribute('data-type')); return; }
+                btn = e.target.closest('.mp-add-col');
+                if (btn) { e.preventDefault(); window.addMachinePriceColumn(btn.getAttribute('data-type')); return; }
+              });
+            }
             addMachineConfigSection();
           }
-          
-          window.saveMachinePricesAll = async function() {
-            var prices = {};
-            var inputs = document.querySelectorAll('#machinePricesSection input[type="number"]');
-            
-            inputs.forEach(function(input) {
-              var machine = input.getAttribute('data-machine');
-              var colors = input.getAttribute('data-colors');
-              var width = input.getAttribute('data-width');
-              var value = parseFloat(input.value) || 0;
-              
-              if (!prices[machine]) prices[machine] = {};
-              if (!prices[machine][colors]) prices[machine][colors] = {};
-              prices[machine][colors][width] = value;
+
+          window.deleteMachinePriceRow = async function(typeKey, color) {
+            if (!confirm('حذف صف ' + color + ' Colors لهذا النوع؟')) return;
+            var prices = getCurrentPricesFromMachinePricesSection();
+            if (prices[typeKey]) delete prices[typeKey][color];
+            try {
+              var result = await window.saveMachinePrices(prices);
+              if (result && result.success) {
+                var el = document.getElementById('machinePricesSection');
+                if (el) el.remove();
+                addMachinePricesSection();
+                if (window.showNotification) window.showNotification('success', 'تم', 'تم حذف الصف');
+              } else alert(result ? result.message : 'Error');
+            } catch(e) { alert('Error: ' + e); }
+          };
+
+          window.deleteMachinePriceColumn = async function(typeKey, width) {
+            if (!confirm('حذف عمود ' + width + ' cm لهذا النوع؟')) return;
+            var prices = getCurrentPricesFromMachinePricesSection();
+            if (prices[typeKey]) {
+              Object.keys(prices[typeKey]).forEach(function(c) { if (prices[typeKey][c][width] !== undefined) delete prices[typeKey][c][width]; });
+            }
+            try {
+              var result = await window.saveMachinePrices(prices);
+              if (result && result.success) {
+                var el = document.getElementById('machinePricesSection');
+                if (el) el.remove();
+                addMachinePricesSection();
+                if (window.showNotification) window.showNotification('success', 'تم', 'تم حذف العمود');
+              } else alert(result ? result.message : 'Error');
+            } catch(e) { alert('Error: ' + e); }
+          };
+
+          window.addMachinePriceRow = async function(typeKey) {
+            var color = prompt('أدخل عدد الألوان (مثال: 4 أو 6):', '10');
+            if (color === null || !color.trim()) return;
+            color = String(color.trim());
+            var prices = getCurrentPricesFromMachinePricesSection();
+            if (!prices[typeKey]) prices[typeKey] = {};
+            var widthsList = [];
+            Object.keys(prices[typeKey]).forEach(function(c) { Object.keys(prices[typeKey][c] || {}).forEach(function(w) { if (widthsList.indexOf(w) === -1) widthsList.push(w); }); });
+            widthsList.sort(function(a,b){ return parseInt(a,10) - parseInt(b,10); });
+            if (widthsList.length === 0) widthsList = ['80', '100', '120'];
+            prices[typeKey][color] = {};
+            widthsList.forEach(function(w) { prices[typeKey][color][w] = 0; });
+            try {
+              var result = await window.saveMachinePrices(prices);
+              if (result && result.success) {
+                var el = document.getElementById('machinePricesSection');
+                if (el) el.remove();
+                addMachinePricesSection();
+                if (window.showNotification) window.showNotification('success', 'تم', 'تمت إضافة الصف');
+              } else alert(result ? result.message : 'Error');
+            } catch(e) { alert('Error: ' + e); }
+          };
+
+          window.addMachinePriceColumn = async function(typeKey) {
+            var width = prompt('أدخل المقاس (سم، مثال: 80 أو 140):', '140');
+            if (width === null || !width.trim()) return;
+            width = String(width.trim());
+            var prices = getCurrentPricesFromMachinePricesSection();
+            if (!prices[typeKey]) prices[typeKey] = {};
+            Object.keys(prices[typeKey]).forEach(function(c) {
+              if (!prices[typeKey][c]) prices[typeKey][c] = {};
+              prices[typeKey][c][width] = 0;
             });
-            
+            try {
+              var result = await window.saveMachinePrices(prices);
+              if (result && result.success) {
+                var el = document.getElementById('machinePricesSection');
+                if (el) el.remove();
+                addMachinePricesSection();
+                if (window.showNotification) window.showNotification('success', 'تم', 'تمت إضافة العمود');
+              } else alert(result ? result.message : 'Error');
+            } catch(e) { alert('Error: ' + e); }
+          };
+
+          window.saveMachinePricesAll = async function() {
+            var prices = getCurrentPricesFromMachinePricesSection();
             try {
               if (window.saveMachinePrices) {
                 var result = await window.saveMachinePrices(prices);
                 if (result && result.success) {
-                  if (window.showNotification) {
-                    window.showNotification('success', 'Saved!', 'Machine prices saved successfully');
-                  } else {
-                    alert('Machine prices saved successfully!');
-                  }
-                } else {
-                  alert(result ? result.message : 'Error saving prices');
-                }
-              } else {
-                alert('Save function not available. Please refresh the page.');
-              }
-            } catch(e) {
-              alert('Error saving: ' + e);
-            }
+                  if (window.showNotification) window.showNotification('success', 'Saved!', 'Machine prices saved successfully');
+                  else alert('Machine prices saved successfully!');
+                } else alert(result ? result.message : 'Error saving prices');
+              } else alert('Save function not available. Please refresh the page.');
+            } catch(e) { alert('Error saving: ' + e); }
           };
 
           // ==========================================

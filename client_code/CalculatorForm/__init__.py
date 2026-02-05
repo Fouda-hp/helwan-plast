@@ -180,6 +180,8 @@ class CalculatorForm(CalculatorFormTemplate):
             pass
       if data.get("config"):
         settings_payload["config"] = data["config"]
+      if data.get("priceOptions"):
+        settings_payload["priceOptions"] = data["priceOptions"]
       json_str = json.dumps(settings_payload, default=str)
       escaped = json_str.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
       try:

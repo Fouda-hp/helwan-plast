@@ -183,48 +183,56 @@
     "Ceramic anilox Chamber Doctor Blade": {"4": {"80": 21168, "100": 22960, "120": 25252}, "6": {"80": 32752, "100": 34940, "120": 39128}, "8": {"80": 38336, "100": 42920, "120": 45504}}
   };
   
-  // Load machine prices from server
+  // خيارات الدروب داون من جدول الأسعار (فقط مقاسات سعرها > 0)
+  var PRICE_OPTIONS = { types: [], typeColors: {}, typeColorWidths: {} };
+
+  function refreshColorsAndWidthsFromOptions() {
+    var t = (machineType && machineType.value) || '';
+    var c = (colors && colors.value) || '';
+    var opts = PRICE_OPTIONS;
+    if (opts.typeColors[t] && opts.typeColors[t].length) {
+      updateColorsDropdown(opts.typeColors[t]);
+      if (opts.typeColors[t].indexOf(c) === -1) colors.value = opts.typeColors[t][0] || '';
+      c = colors.value || opts.typeColors[t][0];
+    }
+    if (t && c && opts.typeColorWidths[t] && opts.typeColorWidths[t][c] && opts.typeColorWidths[t][c].length) {
+      updateWidthsDropdown(opts.typeColorWidths[t][c]);
+    }
+  }
+
+  // Load machine prices from server — المصدر الوحيد لـ Standard Machine FOB cost وخيارات الدروب داون
   async function loadMachinePricesFromServer() {
     try {
       const result = await window.anvil?.server?.call('get_machine_prices');
       if (result && result.success && result.prices) {
         MACHINE_PRICES = result.prices;
-        console.log('🏭 Machine prices loaded from server');
-        // Recalculate if model is ready
-        if (typeof window.recalcAll === 'function') {
-          window.recalcAll();
+        if (result.options && result.options.types) {
+          PRICE_OPTIONS = result.options;
+          if (PRICE_OPTIONS.types.length > 0) {
+            updateMachineTypeDropdown(PRICE_OPTIONS.types);
+            refreshColorsAndWidthsFromOptions();
+          }
         }
+        if (typeof window.recalcAll === 'function') window.recalcAll();
       }
     } catch(e) {
       console.warn('Could not load machine prices from server, using defaults:', e);
     }
   }
 
-  // Load machine configuration (types, colors, widths) from server
+  // احتياطي: إذا لم نجد options من الأسعار نحمّل الكونفيج القديم
   async function loadMachineConfigFromServer() {
+    if (PRICE_OPTIONS.types && PRICE_OPTIONS.types.length > 0) return;
     try {
       const result = await window.anvil?.server?.call('get_machine_config');
       if (result && result.success && result.config) {
-        const config = result.config;
-        console.log('⚙️ Machine config loaded from server:', config);
-        
-        // Update machine type dropdown
-        if (config.types && config.types.length > 0) {
-          updateMachineTypeDropdown(config.types);
-        }
-        
-        // Update colors dropdown
-        if (config.colors && config.colors.length > 0) {
-          updateColorsDropdown(config.colors);
-        }
-        
-        // Update widths dropdown
-        if (config.widths && config.widths.length > 0) {
-          updateWidthsDropdown(config.widths);
-        }
+        var config = result.config;
+        if (config.types && config.types.length > 0) updateMachineTypeDropdown(config.types);
+        if (config.colors && config.colors.length > 0) updateColorsDropdown(config.colors);
+        if (config.widths && config.widths.length > 0) updateWidthsDropdown(config.widths);
       }
     } catch(e) {
-      console.warn('Could not load machine config from server, using defaults:', e);
+      console.warn('Could not load machine config from server:', e);
     }
   }
 
@@ -360,7 +368,11 @@
   document.addEventListener('click', () => {
     document.querySelectorAll('.ui-select.open').forEach(s => s.classList.remove('open'));
   });
-  
+
+  // عند تغيير النوع أو اللون: تحديث خيارات الألوان/المقاسات من جدول الأسعار (المقاس سعره 0 لا يظهر)
+  if (machineType) machineType.addEventListener('change', refreshColorsAndWidthsFromOptions);
+  if (colors) colors.addEventListener('change', refreshColorsAndWidthsFromOptions);
+
   // تعريض تحميل إعدادات المكن من السيرفر (أنواع الماكينة، الألوان، المقاسات) لاستدعائها عند فتح الكالكتور
   window.loadMachineConfigFromServer = loadMachineConfigFromServer;
 
@@ -385,9 +397,16 @@
       if (data.tax_rate != null && !isNaN(data.tax_rate)) CONFIG.TAX_RATE = parseFloat(data.tax_rate);
       if (data.bank_commission != null && !isNaN(data.bank_commission)) CONFIG.BANK_COMMISSION = parseFloat(data.bank_commission);
       var c = data.config;
-      if (c && c.types && c.types.length) updateMachineTypeDropdown(c.types);
-      if (c && c.colors && c.colors.length) updateColorsDropdown(c.colors);
-      if (c && c.widths && c.widths.length) updateWidthsDropdown(c.widths);
+      var opts = data.priceOptions;
+      if (opts && opts.types && opts.types.length) {
+        PRICE_OPTIONS = opts;
+        updateMachineTypeDropdown(opts.types);
+        refreshColorsAndWidthsFromOptions();
+      } else if (c && c.types && c.types.length) {
+        updateMachineTypeDropdown(c.types);
+        if (c.colors && c.colors.length) updateColorsDropdown(c.colors);
+        if (c.widths && c.widths.length) updateWidthsDropdown(c.widths);
+      }
       if (typeof window.recalcAll === 'function') window.recalcAll();
       window._settingsLoaded = true;
     } catch (e) {

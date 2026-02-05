@@ -1037,8 +1037,18 @@ container:
 
               if (result.success) {
                 if (result.requires_2fa) {
-                  // Show OTP form for 2FA
+                  // Show OTP form for 2FA (إيميل أو تطبيق مصادقة)
+                  window._loginUseAuthenticator = result.use_authenticator || false;
                   pendingLoginEmail = email;
+                  var sub = document.getElementById('otpLoginSubtitle');
+                  var resendLink = document.getElementById('resendOtpLogin');
+                  if (result.use_authenticator) {
+                    if (sub) sub.textContent = 'Enter the 6-digit code from your authenticator app';
+                    if (resendLink) resendLink.style.display = 'none';
+                  } else {
+                    if (sub) sub.textContent = 'Enter the verification code sent to your email';
+                    if (resendLink) resendLink.style.display = '';
+                  }
                   loginForm.classList.remove('active');
                   otpLoginForm.classList.add('active');
                   document.querySelector('.auth-tabs').style.display = 'none';
@@ -1149,6 +1159,7 @@ container:
 
           // Resend OTP for login
           document.getElementById('resendOtpLogin').onclick = async function() {
+            if (window._loginUseAuthenticator) return;
             try {
               var result = await window.resendLoginOtp(pendingLoginEmail);
               showMessage('otpLoginMessage', result.success ? 'success' : 'error', result.message);

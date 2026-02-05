@@ -653,6 +653,9 @@ db_schema:
     - admin_ui: {order: 15, width: 200}
       name: email_verified
       type: bool
+    - admin_ui: {order: 16, width: 200}
+      name: totp_secret
+      type: string
     server: full
     title: USERS
 dependencies: []

@@ -256,6 +256,103 @@ def generate_otp():
   return ''.join([str(secrets.randbelow(10)) for _ in range(6)])
 
 
+@anvil.server.callable
+def get_otp_channel():
+  """قراءة قناة إرسال OTP من الإعدادات: email | sms | whatsapp (افتراضي: email)"""
+  try:
+    s = app_tables.settings.get(setting_key='otp_channel')
+    if s and s.get('setting_value'):
+      ch = str(s['setting_value']).strip().lower()
+      if ch in ('email', 'sms', 'whatsapp'):
+        return ch
+  except Exception:
+    pass
+  return 'email'
+
+
+def send_otp_sms(phone_number, otp, purpose='verification'):
+  """
+  إرسال OTP عبر SMS (Twilio).
+  يتطلب في Anvil Secrets: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
+  """
+  try:
+    import anvil.http
+    sid = anvil.secrets.get_secret('TWILIO_ACCOUNT_SID')
+    token = anvil.secrets.get_secret('TWILIO_AUTH_TOKEN')
+    from_num = anvil.secrets.get_secret('TWILIO_FROM_NUMBER')
+    if not sid or not token or not from_num:
+      logger.warning("Twilio secrets not set. OTP SMS skipped.")
+      return False
+    # تطبيع رقم الجوال (إضافة + إن لم يكن)
+    to = str(phone_number).strip()
+    if not to.startswith('+'):
+      to = '+' + to
+    body = f"Helwan Plast: Your verification code is {otp}. Valid for {OTP_EXPIRY_MINUTES} minutes."
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
+    import base64
+    auth = base64.b64encode(f"{sid}:{token}".encode()).decode()
+    anvil.http.request(
+      url,
+      method="POST",
+      data={"To": to, "From": from_num, "Body": body},
+      headers={"Authorization": f"Basic {auth}", "Content-Type": "application/x-www-form-urlencoded"}
+    )
+    logger.info(f"OTP SMS sent to {to}")
+    return True
+  except Exception as e:
+    logger.error(f"Send OTP SMS error: {e}")
+    return False
+
+
+def send_otp(user_email, user_name, otp, purpose='verification'):
+  """
+  إرسال OTP عبر القناة المختارة في الإعدادات (otp_channel: email | sms | whatsapp).
+  المصدر الأساسي لجميع إرسالات OTP في النظام.
+  """
+  channel = get_otp_channel()
+  if channel == 'sms':
+    user = app_tables.users.get(email=user_email)
+    phone = user.get('phone') if user else None
+    if not phone or not str(phone).strip():
+      logger.warning(f"No phone for {user_email}, falling back to email for OTP")
+      return send_otp_email(user_email, user_name, otp, purpose)
+    return send_otp_sms(phone, otp, purpose)
+  if channel == 'whatsapp':
+    # نفس SMS عبر Twilio WhatsApp (رقم From يبدأ بـ whatsapp:)
+    user = app_tables.users.get(email=user_email)
+    phone = user.get('phone') if user else None
+    if not phone or not str(phone).strip():
+      logger.warning(f"No phone for {user_email}, falling back to email for OTP")
+      return send_otp_email(user_email, user_name, otp, purpose)
+    try:
+      import anvil.http
+      sid = anvil.secrets.get_secret('TWILIO_ACCOUNT_SID')
+      token = anvil.secrets.get_secret('TWILIO_AUTH_TOKEN')
+      from_wa = anvil.secrets.get_secret('TWILIO_WHATSAPP_FROM')  # e.g. whatsapp:+14155238886
+      if not sid or not token or not from_wa:
+        return send_otp_email(user_email, user_name, otp, purpose)
+      to = str(phone).strip()
+      if not to.startswith('whatsapp:'):
+        to = 'whatsapp:+' + to.lstrip('+')
+      body = f"Helwan Plast: Your code is {otp}. Valid {OTP_EXPIRY_MINUTES} min."
+      url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
+      import base64
+      auth = base64.b64encode(f"{sid}:{token}".encode()).decode()
+      anvil.http.request(
+        url,
+        method="POST",
+        data={"To": to, "From": from_wa, "Body": body},
+        headers={"Authorization": f"Basic {auth}", "Content-Type": "application/x-www-form-urlencoded"}
+      )
+      logger.info(f"OTP WhatsApp sent to {to}")
+      return True
+    except Exception as e:
+      logger.error(f"WhatsApp OTP error: {e}")
+      return send_otp_email(user_email, user_name, otp, purpose)
+  # email (default)
+  return send_otp_email(user_email, user_name, otp, purpose)
+
+
 def send_otp_email(user_email, user_name, otp, purpose='verification'):
   """
     إرسال OTP عبر البريد الإلكتروني
@@ -400,6 +497,160 @@ def verify_otp(user_email, otp, purpose='verification'):
   except Exception as e:
     logger.error(f"OTP verification error: {e}")
     return False, f"Verification failed: {str(e)}"
+
+
+# =========================================================
+# TOTP (Authenticator App) - طريقة مجانية 100% بدل الإيميل/SMS
+# =========================================================
+def _get_totp_secret_for_user(user):
+  """قراءة أو توليد secret لـ TOTP (لا يحفظه)."""
+  try:
+    import pyotp
+    secret = user.get('totp_secret')
+    if secret:
+      return secret
+    return pyotp.random_base32()
+  except Exception:
+    return None
+
+
+@anvil.server.callable
+def setup_totp_start(auth_token):
+  """
+  بدء تفعيل تطبيق المصادقة (Authenticator). يتطلب تسجيل دخول.
+  يرجع: provisioning_uri, qr_base64, secret. المستخدم يمسح QR ثم يدخل الكود في setup_totp_confirm.
+  """
+  try:
+    import pyotp
+    import qrcode
+    import base64
+    import io
+    res = validate_token(auth_token)
+    if not res.get('valid'):
+      return {'success': False, 'message': 'Please log in first'}
+    user_email = res.get('user', {}).get('email')
+    if not user_email:
+      return {'success': False, 'message': 'User not found'}
+    user = app_tables.users.get(email=user_email)
+    if not user:
+      return {'success': False, 'message': 'User not found'}
+    secret = pyotp.random_base32()
+    totp = pyotp.TOTP(secret)
+    issuer = 'Helwan Plast'
+    label = user_email
+    uri = totp.provisioning_uri(name=label, issuer=issuer)
+    img = qrcode.make(uri)
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    qr_base64 = base64.b64encode(buf.getvalue()).decode()
+    # حفظ مؤقت في settings حتى يؤكد المستخدم بالكود (مدة 10 دقائق)
+    pending_key = 'pending_totp_' + user_email.replace('@', '_at_').replace('.', '_')
+    try:
+      old = app_tables.settings.get(setting_key=pending_key)
+      if old:
+        old.delete()
+    except Exception:
+      pass
+    expires_at = (datetime.now() + timedelta(minutes=10)).isoformat()
+    app_tables.settings.add_row(
+      setting_key=pending_key,
+      setting_value=json.dumps({'secret': secret, 'expires_at': expires_at}),
+      setting_type='json',
+      description='Pending TOTP setup',
+      updated_at=datetime.now()
+    )
+    return {
+      'success': True,
+      'provisioning_uri': uri,
+      'qr_base64': qr_base64,
+      'secret': secret
+    }
+  except Exception as e:
+    logger.error(f"TOTP setup start error: {e}")
+    return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def setup_totp_confirm(auth_token, code):
+  """
+  تأكيد تفعيل تطبيق المصادقة: المستخدم أدخل الكود من التطبيق، نتحقق ونحفظ الـ secret.
+  """
+  try:
+    import pyotp
+    res = validate_token(auth_token)
+    if not res.get('valid'):
+      return {'success': False, 'message': 'Please log in first'}
+    user_email = res.get('user', {}).get('email')
+    if not user_email:
+      return {'success': False, 'message': 'User not found'}
+    code = str(code or '').strip().replace(' ', '')
+    if len(code) != 6:
+      return {'success': False, 'message': 'Enter the 6-digit code from your app'}
+    pending_key = 'pending_totp_' + user_email.replace('@', '_at_').replace('.', '_')
+    setting = app_tables.settings.get(setting_key=pending_key)
+    if not setting or not setting.get('setting_value'):
+      return {'success': False, 'message': 'Setup expired or not started. Please start again.'}
+    try:
+      data = json.loads(setting['setting_value']) if isinstance(setting['setting_value'], str) else setting['setting_value']
+      secret = data.get('secret')
+      expires_at = data.get('expires_at')
+      if expires_at and datetime.now() > datetime.fromisoformat(expires_at.replace('Z', '+00:00')):
+        setting.delete()
+        return {'success': False, 'message': 'Setup expired. Please start again.'}
+    except Exception:
+      secret = setting['setting_value']
+    if not secret:
+      return {'success': False, 'message': 'Setup expired or not started. Please start again.'}
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(code, valid_window=1):
+      return {'success': False, 'message': 'Invalid code. Try again.'}
+    user = app_tables.users.get(email=user_email)
+    if not user:
+      setting.delete()
+      return {'success': False, 'message': 'User not found'}
+    user.update(totp_secret=secret)
+    setting.delete()
+    return {'success': True, 'message': 'Authenticator app enabled. Use it at next login.'}
+  except Exception as e:
+    logger.error(f"TOTP confirm error: {e}")
+    return {'success': False, 'message': str(e)}
+
+
+def verify_totp_for_user(user_email, token):
+  """التحقق من كود TOTP من تطبيق المصادقة."""
+  try:
+    import pyotp
+    user = app_tables.users.get(email=user_email)
+    if not user:
+      return False
+    secret = user.get('totp_secret')
+    if not secret:
+      return False
+    totp = pyotp.TOTP(secret)
+    return totp.verify(str(token).strip().replace(' ', ''), valid_window=1)
+  except Exception as e:
+    logger.error(f"TOTP verify error: {e}")
+    return False
+
+
+@anvil.server.callable
+def disable_totp(user_email, auth_token):
+  """
+  إلغاء تفعيل تطبيق المصادقة (يحتاج صلاحية: نفس المستخدم أو أدمن).
+  auth_token: توكن الجلسة الحالية.
+  """
+  user = app_tables.users.get(email=user_email)
+  if not user:
+    return {'success': False, 'message': 'User not found'}
+  is_admin, _ = require_admin(auth_token)
+  if is_admin:
+    user.update(totp_secret=None)
+    return {'success': True, 'message': 'Authenticator disabled'}
+  res = validate_token(auth_token)
+  if res.get('valid') and res.get('user', {}).get('email') == user_email:
+    user.update(totp_secret=None)
+    return {'success': True, 'message': 'Authenticator disabled'}
+  return {'success': False, 'message': 'Not authorized'}
 
 
 def send_admin_notification_email(new_user_email, new_user_name, new_user_phone):
@@ -953,7 +1204,7 @@ def register_user(email, password, full_name, phone=None):
             # إعادة إرسال OTP
             otp = generate_otp()
             store_otp(email, otp, 'verification')
-            send_otp_email(email, full_name, otp, 'verification')
+            send_otp(email, full_name, otp, 'verification')
             return {
                 'success': True,
                 'requires_verification': True,
@@ -987,7 +1238,7 @@ def register_user(email, password, full_name, phone=None):
         # إرسال OTP للتحقق من البريد
         otp = generate_otp()
         store_otp(email, otp, 'verification')
-        email_sent = send_otp_email(email, full_name, otp, 'verification')
+        email_sent = send_otp(email, full_name, otp, 'verification')
 
         # تسجيل في Audit Log
         log_audit('REGISTER_PENDING', 'users', user_id, None,
@@ -1084,7 +1335,7 @@ def resend_verification_otp(email):
 
     otp = generate_otp()
     store_otp(email, otp, 'verification')
-    send_otp_email(email, user['full_name'], otp, 'verification')
+    send_otp(email, user['full_name'], otp, 'verification')
 
     return {'success': True, 'message': 'Verification code sent'}
 
@@ -1170,20 +1421,30 @@ def login_user(email, password):
     # كلمة المرور صحيحة - ترقية الهاش إذا كان قديماً
     upgrade_password_hash(user, password)
 
-    # إرسال OTP للتحقق الثنائي
+    # إذا المستخدم مفعّل عنده تطبيق المصادقة (TOTP) - لا نرسل إيميل، نطلب كود من التطبيق فقط (مجاني)
+    if user.get('totp_secret'):
+        logger.info(f"2FA via Authenticator app for: {email}")
+        return {
+            'success': True,
+            'requires_2fa': True,
+            'use_authenticator': True,
+            'message': 'Enter the 6-digit code from your authenticator app'
+        }
+
+    # إرسال OTP للتحقق الثنائي (إيميل أو SMS حسب الإعداد)
     otp = generate_otp()
     store_otp(email, otp, '2fa')
-    email_sent = send_otp_email(email, user['full_name'], otp, '2fa')
+    email_sent = send_otp(email, user['full_name'], otp, '2fa')
 
     if email_sent:
         logger.info(f"2FA OTP sent to: {email}")
         return {
             'success': True,
             'requires_2fa': True,
+            'use_authenticator': False,
             'message': 'Verification code sent to your email'
         }
     else:
-        # في حالة فشل إرسال الإيميل، نرجع خطأ بدلاً من السماح بالدخول
         logger.error(f"Failed to send 2FA OTP to: {email}")
         return {
             'success': False,
@@ -1194,21 +1455,24 @@ def login_user(email, password):
 @anvil.server.callable
 def verify_login_otp(email, otp):
     """
-    التحقق من OTP وإتمام تسجيل الدخول
+    التحقق من OTP أو كود تطبيق المصادقة وإتمام تسجيل الدخول
     """
     ip_address = get_client_ip()
     email = str(email or '').strip().lower()
-
-    # التحقق من OTP
-    is_valid, message = verify_otp(email, otp, '2fa')
-
-    if not is_valid:
-        return {'success': False, 'message': message}
-
-    # البحث عن المستخدم
     user = app_tables.users.get(email=email)
     if not user:
         return {'success': False, 'message': 'User not found'}
+
+    # إذا المستخدم مفعّل عنده تطبيق المصادقة (TOTP) نتحقق من الكود من التطبيق
+    if user.get('totp_secret'):
+        if verify_totp_for_user(email, otp):
+            return complete_login(user, ip_address)
+        return {'success': False, 'message': 'Invalid or expired code. Try again.'}
+
+    # التحقق من OTP المرسل (إيميل/SMS)
+    is_valid, message = verify_otp(email, otp, '2fa')
+    if not is_valid:
+        return {'success': False, 'message': message}
 
     return complete_login(user, ip_address)
 
@@ -1277,7 +1541,7 @@ def resend_login_otp(email):
 
     otp = generate_otp()
     store_otp(email, otp, '2fa')
-    send_otp_email(email, user['full_name'], otp, '2fa')
+    send_otp(email, user['full_name'], otp, '2fa')
 
     return {'success': True, 'message': 'Verification code sent'}
 
@@ -1829,7 +2093,7 @@ def request_password_change(token, old_password, new_password):
     # إرسال OTP للتحقق
     otp = generate_otp()
     store_otp(user['email'], otp, 'password_change')
-    email_sent = send_otp_email(user['email'], user['full_name'], otp, 'password_reset')
+    email_sent = send_otp(user['email'], user['full_name'], otp, 'password_reset')
 
     if email_sent:
         return {
@@ -1965,7 +2229,7 @@ def request_password_reset(email):
     # إرسال OTP للمستخدم
     otp = generate_otp()
     store_otp(email, otp, 'password_reset')
-    email_sent = send_otp_email(email, user['full_name'], otp, 'password_reset')
+    email_sent = send_otp(email, user['full_name'], otp, 'password_reset')
 
     if email_sent:
         logger.info(f"Password reset OTP sent to: {email}")

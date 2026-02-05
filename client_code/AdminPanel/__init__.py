@@ -657,29 +657,34 @@ class AdminPanel(AdminPanelTemplate):
             var leftCol = firstGrid.querySelector('div[style*="background:#f8f9fa"]');
             if (!leftCol) return;
             
-            // نفس ستايل باقي الإعدادات - خلفية افتراضية وجدول data-table
-            var html = '<div id="machinePricesSection" style="background:#f8f9fa;padding:20px;border-radius:12px;margin-top:20px;border:1px solid #dee2e6;">';
-            html += '<h4 style="margin:0 0 8px;color:#374151;font-size:16px;">Machine Prices (USD)</h4>';
-            html += '<p style="margin:0 0 15px;color:#6b7280;font-size:12px;">المصدر الأساسي لجميع أسعار المكن في النظام (Calculator، العروض، العقود)</p>';
+            // ألوان وتنسيق جدول Machine Prices (القديم - ملون)
+            var typeColors = ['#90caf9', '#a5d6a7', '#ce93d8'];
+            var html = '<div id="machinePricesSection" style="background:#fff3e0;padding:20px;border-radius:12px;margin-top:20px;border:2px solid #ff9800;">';
+            html += '<h4 style="margin:0 0 15px;color:#e65100;">🏭 Machine Prices (USD)</h4>';
+            html += '<p style="margin:0 0 15px;color:#bf360c;font-size:12px;">المصدر الأساسي لجميع أسعار المكن في النظام (Calculator، العروض، العقود)</p>';
             
-            types.forEach(function(typeKey) {
+            types.forEach(function(typeKey, idx) {
+              var boxColor = typeColors[idx % typeColors.length];
               var shortLabel = typeKey.length > 25 ? typeKey.substring(0, 22) + '...' : typeKey;
-              html += '<div style="margin-bottom:16px;">';
-              html += '<h5 style="margin:0 0 8px;color:#374151;font-size:14px;">' + shortLabel + '</h5>';
-              html += '<table class="data-table" style="width:100%;margin-bottom:0;">';
-              html += '<thead><tr><th>Colors \\ Width</th>';
+              html += '<div style="background:' + boxColor + ';padding:12px;border-radius:8px;margin-bottom:12px;">';
+              html += '<h5 style="margin:0 0 10px;color:#333;">' + shortLabel + '</h5>';
+              html += '<table style="width:100%;border-collapse:collapse;background:#fff;border-radius:6px;overflow:hidden;font-size:13px;">';
+              html += '<thead><tr style="background:#f5f5f5;">';
+              html += '<th style="padding:8px;border:1px solid #ddd;text-align:center;">Colors \\\\ Width</th>';
               widths.forEach(function(w) {
-                html += '<th>' + w + ' cm</th>';
+                html += '<th style="padding:8px;border:1px solid #ddd;text-align:center;">' + w + ' cm</th>';
               });
               html += '</tr></thead><tbody>';
               
               colors.forEach(function(c) {
                 html += '<tr>';
-                html += '<td style="font-weight:600;">' + c + ' Colors</td>';
+                html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;background:#f9f9f9;font-weight:bold;">' + c + ' Colors</td>';
                 widths.forEach(function(w) {
                   var price = prices[typeKey] && prices[typeKey][c] && prices[typeKey][c][w] ? prices[typeKey][c][w] : 0;
                   var inputId = 'mp_' + typeKey.replace(/\\s+/g, '_') + '_' + c + '_' + w;
-                  html += '<td><input type="number" id="' + inputId + '" value="' + price + '" class="data-table-input" style="width:80px;padding:4px;text-align:center;" data-machine="' + String(typeKey).replace(/"/g, '&quot;') + '" data-colors="' + c + '" data-width="' + w + '"></td>';
+                  html += '<td style="padding:4px;border:1px solid #ddd;text-align:center;">';
+                  html += '<input type="number" id="' + inputId + '" value="' + price + '" style="width:80px;padding:4px;border:1px solid #ccc;border-radius:4px;text-align:center;" data-machine="' + String(typeKey).replace(/"/g, '&quot;') + '" data-colors="' + c + '" data-width="' + w + '">';
+                  html += '</td>';
                 });
                 html += '</tr>';
               });
@@ -687,7 +692,7 @@ class AdminPanel(AdminPanelTemplate):
             });
             
             html += '<div style="margin-top:15px;text-align:center;">';
-            html += '<button class="action-btn" onclick="saveMachinePricesAll()">💾 Save All Machine Prices</button>';
+            html += '<button class="action-btn" onclick="saveMachinePricesAll()" style="padding:12px 30px;background:#ff9800;border:none;color:#fff;font-weight:bold;border-radius:8px;cursor:pointer;">💾 Save All Machine Prices</button>';
             html += '</div></div>';
             
             leftCol.insertAdjacentHTML('afterend', html);

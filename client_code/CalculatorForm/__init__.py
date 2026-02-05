@@ -5,6 +5,7 @@ from anvil.tables import app_tables
 import anvil.js
 import anvil.server
 import anvil
+import json
 
 
 class CalculatorForm(CalculatorFormTemplate):
@@ -155,33 +156,51 @@ class CalculatorForm(CalculatorFormTemplate):
         c.text = v or ""
 
   def form_show(self, **event_args):
-    """عند عرض النموذج: ربط سعر الصرف وإعدادات المكن من السيرفر + إعادة ربط الـ dropdowns"""
+    """جلب كل الإعدادات من السيرفر (بايثون) وتمريرها للصفحة حتى يعمل الكالكتور بدون استدعاءات من JS"""
     try:
-      # 1) سعر الصرف من الإعدادات (السيرفر هو المصدر)
+      # جلب كل إعدادات الكالكتور من السيرفر (لا نعتمد على استدعاءات من الثيم)
+      settings_payload = {}
       try:
         rate = anvil.server.call("get_setting", "exchange_rate")
         if rate is not None:
-          val = str(rate).strip().replace(",", ".")
-          if val and (val.replace(".", "").replace("-", "").isdigit()):
-            disp = "%.2f" % float(val)
-            anvil.js.window.eval(
-              "var el = document.getElementById('exchange_rate'); if (el) el.value = %s;"
-              % repr(disp)
-            )
-      except Exception:
-        pass
-      # 2) إعادة ربط الـ dropdowns
+          try:
+            settings_payload["exchangeRate"] = float(str(rate).replace(",", "."))
+          except (ValueError, TypeError):
+            pass
+        for key, py_key in [
+            ("shipping_sea", "shipping_sea"),
+            ("ths_cost", "ths_cost"),
+            ("clearance_expenses", "clearance_expenses"),
+            ("tax_rate", "tax_rate"),
+            ("bank_commission", "bank_commission"),
+        ]:
+          val = anvil.server.call("get_setting", key)
+          if val is not None:
+            try:
+              settings_payload[py_key] = float(val) if isinstance(val, (int, float)) else float(str(val).replace(",", "."))
+            except (ValueError, TypeError):
+              pass
+        result = anvil.server.call("get_machine_config")
+        if result and result.get("success") and result.get("config"):
+          settings_payload["config"] = result["config"]
+      except Exception as e:
+        print("CalculatorForm form_show get settings error:", e)
+      # تطبيق الإعدادات في الصفحة بعد تأخير قصير (لضمان وجود الـ DOM والسكربت)
+      json_str = json.dumps(settings_payload, default=str)
+      escaped = json_str.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
+      js = (
+        "var _apply = function() {"
+        "  if (window.applyCalculatorSettingsFromPython) {"
+        '    try { var d = JSON.parse("%s"); window.applyCalculatorSettingsFromPython(d); } catch(e) {}'
+        "  }"
+        "};"
+        "setTimeout(_apply, 200); setTimeout(_apply, 700);"
+      ) % escaped
+      anvil.js.window.eval(js)
+      # إعادة ربط الـ dropdowns المخصصة
       anvil.js.window.eval(
         "var _r=function(){ if (window.reinitCalculatorDropdowns) window.reinitCalculatorDropdowns(); };"
-        "setTimeout(_r, 150); setTimeout(_r, 500); setTimeout(_r, 1000);"
-      )
-      # 3) تحديث كل الإعدادات من السيرفر (سعر الصرف + الحسابات) وتحديث دروب داون المكن (نوع، ألوان، مقاسات)
-      anvil.js.window.eval(
-        "var _load = function() {"
-        "  if (window.loadSettingsFromServer) window.loadSettingsFromServer();"
-        "  if (window.loadMachineConfigFromServer) window.loadMachineConfigFromServer();"
-        "};"
-        "setTimeout(_load, 100); setTimeout(_load, 600);"
+        "setTimeout(_r, 250); setTimeout(_r, 800);"
       )
     except Exception:
       pass

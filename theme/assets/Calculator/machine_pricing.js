@@ -381,6 +381,34 @@
   // تعريض تحميل إعدادات المكن من السيرفر (أنواع الماكينة، الألوان، المقاسات) لاستدعائها عند فتح الكالكتور
   window.loadMachineConfigFromServer = loadMachineConfigFromServer;
 
+  /**
+   * تطبيق إعدادات جُلبت من بايثون (السيرفر) - الكالكتور يعتمد على هذا عندما لا تعمل استدعاءات السيرفر من JS
+   * data: { exchangeRate, config: { types, colors, widths }, shipping_sea, ths_cost, clearance_expenses, tax_rate, bank_commission }
+   */
+  window.applyCalculatorSettingsFromPython = function(data) {
+    if (!data) return;
+    try {
+      if (typeof data.exchangeRate !== 'undefined' && data.exchangeRate != null && !isNaN(parseFloat(data.exchangeRate))) {
+        EXCHANGE_RATE = parseFloat(data.exchangeRate);
+        var exEl = document.getElementById("exchange_rate");
+        if (exEl) exEl.value = EXCHANGE_RATE.toFixed(2);
+      }
+      if (data.shipping_sea != null && !isNaN(data.shipping_sea)) CONFIG.SHIPPING_SEA = parseFloat(data.shipping_sea);
+      if (data.ths_cost != null && !isNaN(data.ths_cost)) CONFIG.THS = parseFloat(data.ths_cost);
+      if (data.clearance_expenses != null && !isNaN(data.clearance_expenses)) CONFIG.EXPENSES_CLEARANCE = parseFloat(data.clearance_expenses);
+      if (data.tax_rate != null && !isNaN(data.tax_rate)) CONFIG.TAX_RATE = parseFloat(data.tax_rate);
+      if (data.bank_commission != null && !isNaN(data.bank_commission)) CONFIG.BANK_COMMISSION = parseFloat(data.bank_commission);
+      var c = data.config;
+      if (c && c.types && c.types.length) updateMachineTypeDropdown(c.types);
+      if (c && c.colors && c.colors.length) updateColorsDropdown(c.colors);
+      if (c && c.widths && c.widths.length) updateWidthsDropdown(c.widths);
+      if (typeof window.recalcAll === 'function') window.recalcAll();
+      window._settingsLoaded = true;
+    } catch (e) {
+      console.warn('applyCalculatorSettingsFromPython error:', e);
+    }
+  };
+
   // Load config and prices after settings
   setTimeout(loadMachinePricesFromServer, 1000);
   setTimeout(loadMachineConfigFromServer, 1200);

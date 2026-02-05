@@ -15,6 +15,19 @@ import anvil.server
 import anvil.js
 
 
+def _open_route(hash_val):
+    """فتح النموذج حسب الـ hash (نسخة محلية لتجنب استيراد LauncherForm في Anvil)."""
+    if not hash_val or hash_val == "#":
+        hash_val = "#launcher"
+    _map = {
+        "#calculator": "CalculatorForm", "#clients": "ClientListForm", "#database": "DatabaseForm",
+        "#admin": "AdminPanel", "#import": "DataImportForm", "#quotation-print": "QuotationPrintForm",
+        "#contract-print": "ContractPrintForm", "#login": "LoginForm", "#launcher": "LauncherForm",
+    }
+    form_name = _map.get(hash_val, "LauncherForm")
+    open_form(form_name)
+
+
 class DataImportForm(DataImportFormTemplate):
     def __init__(self, **properties):
         self.init_components(**properties)
@@ -37,12 +50,11 @@ class DataImportForm(DataImportFormTemplate):
         self.check_route()
 
     def check_route(self):
-        """التوجيه حسب الـ hash (مصدر واحد: shared.routing)"""
+        """التوجيه حسب الـ hash"""
         hash_val = anvil.js.window.location.hash or ""
         if not hash_val or hash_val == "#":
             hash_val = "#login"
-        from LauncherForm import open_route
-        open_route(hash_val)
+        _open_route(hash_val)
 
     def _get_auth_info(self):
         """Get auth token and user email from session"""

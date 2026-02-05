@@ -16,6 +16,19 @@ import anvil.js
 import json
 
 
+def _open_route(hash_val):
+    """فتح النموذج حسب الـ hash (نسخة محلية لتجنب استيراد LauncherForm في Anvil)."""
+    if not hash_val or hash_val == "#":
+        hash_val = "#launcher"
+    _map = {
+        "#calculator": "CalculatorForm", "#clients": "ClientListForm", "#database": "DatabaseForm",
+        "#admin": "AdminPanel", "#import": "DataImportForm", "#quotation-print": "QuotationPrintForm",
+        "#contract-print": "ContractPrintForm", "#login": "LoginForm", "#launcher": "LauncherForm",
+    }
+    form_name = _map.get(hash_val, "LauncherForm")
+    open_form(form_name)
+
+
 class AdminPanel(AdminPanelTemplate):
     def __init__(self, **properties):
         self.init_components(**properties)
@@ -1306,8 +1319,7 @@ class AdminPanel(AdminPanelTemplate):
         if hash_val == "#admin":
             pass  # نبقى على الأدمن
         else:
-            from LauncherForm import open_route
-            open_route(hash_val)
+            _open_route(hash_val)
 
     # =========================================================
     # معلومات المستخدم

@@ -18,6 +18,19 @@ import anvil.js
 import json
 
 
+def _open_route(hash_val):
+    """فتح النموذج حسب الـ hash (نسخة محلية لتجنب استيراد LauncherForm في Anvil)."""
+    if not hash_val or hash_val == "#":
+        hash_val = "#launcher"
+    _map = {
+        "#calculator": "CalculatorForm", "#clients": "ClientListForm", "#database": "DatabaseForm",
+        "#admin": "AdminPanel", "#import": "DataImportForm", "#quotation-print": "QuotationPrintForm",
+        "#contract-print": "ContractPrintForm", "#login": "LoginForm", "#launcher": "LauncherForm",
+    }
+    form_name = _map.get(hash_val, "LauncherForm")
+    open_form(form_name)
+
+
 class LoginForm(LoginFormTemplate):
     def __init__(self, **properties):
         self.init_components(**properties)
@@ -88,12 +101,11 @@ class LoginForm(LoginFormTemplate):
         self.check_route()
 
     def check_route(self):
-        """التوجيه حسب الـ hash (مصدر واحد: shared.routing)"""
+        """التوجيه حسب الـ hash"""
         hash_val = anvil.js.window.location.hash or "#launcher"
         if not hash_val or hash_val == "#":
             hash_val = "#launcher"
-        from LauncherForm import open_route
-        open_route(hash_val)
+        _open_route(hash_val)
 
     # =========================================
     # Bridge functions for JavaScript

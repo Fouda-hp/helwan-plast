@@ -2903,10 +2903,30 @@ def get_calculator_settings():
         return result
 
 
+def _normalize_prices_keys(prices):
+    """تطبيع مفاتيح الأسعار إلى نص (لضمان توافق مع الكالكتور). البنية: type -> color -> width -> price."""
+    if not prices or not isinstance(prices, dict):
+        return prices
+    out = {}
+    for mtype, by_color in prices.items():
+        if not isinstance(by_color, dict):
+            out[str(mtype)] = by_color
+            continue
+        out[str(mtype)] = {}
+        for color, by_width in by_color.items():
+            if not isinstance(by_width, dict):
+                out[str(mtype)][str(color)] = by_width
+                continue
+            out[str(mtype)][str(color)] = {
+                str(w): (float(p) if p is not None else 0) for w, p in by_width.items()
+            }
+    return out
+
+
 def _options_from_machine_prices(prices):
     """
     استخراج الخيارات المتاحة للكالكتور من جدول الأسعار (فقط المقاسات ذات سعر > 0).
-    يرجع: types, typeColors[type], typeColorWidths[type][color]
+    يرجع: types, typeColors[type], typeColorWidths[type][color] — كل المفاتيح نصوص.
     """
     if not prices or not isinstance(prices, dict):
         return {'types': [], 'typeColors': {}, 'typeColorWidths': {}}
@@ -2916,18 +2936,20 @@ def _options_from_machine_prices(prices):
     for mtype, by_color in prices.items():
         if not by_color or not isinstance(by_color, dict):
             continue
+        mtype_str = str(mtype)
         colors_with_price = []
-        type_color_widths[mtype] = {}
+        type_color_widths[mtype_str] = {}
         for color, by_width in by_color.items():
             if not by_width or not isinstance(by_width, dict):
                 continue
-            widths_with_price = [w for w, p in by_width.items() if p is not None and float(p) > 0]
+            widths_with_price = [str(w) for w, p in by_width.items() if p is not None and float(p) > 0]
             if widths_with_price:
-                colors_with_price.append(str(color))
-                type_color_widths[mtype][str(color)] = sorted(widths_with_price, key=lambda x: int(x) if str(x).isdigit() else 0)
+                color_str = str(color)
+                colors_with_price.append(color_str)
+                type_color_widths[mtype_str][color_str] = sorted(widths_with_price, key=lambda x: int(x) if str(x).isdigit() else 0)
         if colors_with_price:
-            types.append(mtype)
-            type_colors[mtype] = sorted(colors_with_price, key=lambda x: int(x) if str(x).isdigit() else 0)
+            types.append(mtype_str)
+            type_colors[mtype_str] = sorted(colors_with_price, key=lambda x: int(x) if str(x).isdigit() else 0)
     return {'types': types, 'typeColors': type_colors, 'typeColorWidths': type_color_widths}
 
 
@@ -2962,12 +2984,14 @@ def get_machine_prices():
                 prices = default_prices
         else:
             prices = default_prices
+        prices = _normalize_prices_keys(prices)
         options = _options_from_machine_prices(prices)
         return {'success': True, 'prices': prices, 'options': options}
     except Exception as e:
         logger.error(f"Error getting machine prices: {e}")
-        options = _options_from_machine_prices(default_prices)
-        return {'success': True, 'prices': default_prices, 'options': options}
+        prices = _normalize_prices_keys(default_prices)
+        options = _options_from_machine_prices(prices)
+        return {'success': True, 'prices': prices, 'options': options}
 
 
 @anvil.server.callable

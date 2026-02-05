@@ -225,6 +225,7 @@
           }
         }
         if (typeof window.recalcAll === 'function') window.recalcAll();
+        setTimeout(function() { if (typeof window.recalcAll === 'function') window.recalcAll(); }, 100);
       }
     } catch(e) {
       console.warn('Could not load machine prices from server, using defaults:', e);
@@ -461,10 +462,22 @@
     var t = machineType && machineType.value, c = colors && colors.value, w = width && width.value;
     if (!t || !c || !w) return 0;
     var byType = MACHINE_PRICES[t] || MACHINE_PRICES[String(t)];
+    if (!byType) {
+      var typeKey = Object.keys(MACHINE_PRICES || {}).find(function(k) { return String(k) === String(t); });
+      byType = typeKey ? MACHINE_PRICES[typeKey] : null;
+    }
     if (!byType) return 0;
-    var byColor = byType[c] || byType[String(c)];
-    if (!byColor) return 0;
-    var val = byColor[w] != null ? byColor[w] : byColor[String(w)];
+    var byColor = byType[c] != null ? byType[c] : (byType[String(c)] != null ? byType[String(c)] : null);
+    if (byColor == null) {
+      var colorKey = Object.keys(byType).find(function(k) { return String(k) === String(c); });
+      byColor = colorKey != null ? byType[colorKey] : null;
+    }
+    if (!byColor || typeof byColor !== 'object') return 0;
+    var val = byColor[w] != null ? byColor[w] : (byColor[String(w)] != null ? byColor[String(w)] : null);
+    if (val == null) {
+      var widthKey = Object.keys(byColor).find(function(k) { return String(k) === String(w); });
+      val = widthKey != null ? byColor[widthKey] : null;
+    }
     if (val == null || isNaN(parseFloat(val))) return 0;
     return parseFloat(val);
   }

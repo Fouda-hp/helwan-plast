@@ -256,9 +256,8 @@ def generate_otp():
   return ''.join([str(secrets.randbelow(10)) for _ in range(6)])
 
 
-@anvil.server.callable
-def get_otp_channel():
-  """قراءة قناة إرسال OTP من الإعدادات: email | sms | whatsapp (افتراضي: email)"""
+def _get_global_otp_channel():
+  """قناة OTP الافتراضية من الإعدادات (بدون اعتبار يوزر معين)"""
   try:
     s = app_tables.settings.get(setting_key='otp_channel')
     if s and s.get('setting_value'):
@@ -268,6 +267,21 @@ def get_otp_channel():
   except Exception:
     pass
   return 'email'
+
+
+@anvil.server.callable
+def get_otp_channel(user_email=None):
+  """
+  قراءة قناة إرسال OTP: إن وُجد user_email وله otp_method (email|sms|whatsapp) نستخدمها،
+  وإلا القناة العامة من الإعدادات. authenticator لا يُستخدم هنا (يُعالج في تسجيل الدخول).
+  """
+  if user_email:
+    user = app_tables.users.get(email=user_email)
+    if user:
+      um = (user.get('otp_method') or '').strip().lower()
+      if um in ('email', 'sms', 'whatsapp'):
+        return um
+  return _get_global_otp_channel()
 
 
 def send_otp_sms(phone_number, otp, purpose='verification'):
@@ -304,12 +318,14 @@ def send_otp_sms(phone_number, otp, purpose='verification'):
     return False
 
 
-def send_otp(user_email, user_name, otp, purpose='verification'):
+def send_otp(user_email, user_name, otp, purpose='verification', force_channel=None):
   """
-  إرسال OTP عبر القناة المختارة في الإعدادات (otp_channel: email | sms | whatsapp).
-  المصدر الأساسي لجميع إرسالات OTP في النظام.
+  إرسال OTP عبر القناة: إن وُجد force_channel (مثلاً 'email') نستخدمها،
+  وإلا قناة المستخدم أو القناة العامة.
   """
-  channel = get_otp_channel()
+  if force_channel == 'email':
+    return send_otp_email(user_email, user_name, otp, purpose)
+  channel = get_otp_channel(user_email)
   if channel == 'sms':
     user = app_tables.users.get(email=user_email)
     phone = user.get('phone') if user else None
@@ -512,6 +528,16 @@ def _get_totp_secret_for_user(user):
     return pyotp.random_base32()
   except Exception:
     return None
+
+
+@anvil.server.callable
+def user_has_totp_enabled(auth_token):
+  """يرجع True إذا المستخدم الحالي فعّل تطبيق المصادقة (لديه totp_secret). للاستخدام في اللانشر لإخفاء الرابط بعد التفعيل."""
+  res = validate_token(auth_token)
+  if not res.get('valid'):
+    return False
+  user = app_tables.users.get(email=res['user']['email'])
+  return bool(user and user.get('totp_secret'))
 
 
 @anvil.server.callable
@@ -1201,10 +1227,10 @@ def register_user(email, password, full_name, phone=None):
     if existing:
         # إذا كان المستخدم موجود ولكن لم يتحقق من إيميله بعد
         if not existing.get('email_verified', True):
-            # إعادة إرسال OTP
+            # إعادة إرسال OTP (أول تسجيل = إيميل افتراضي)
             otp = generate_otp()
             store_otp(email, otp, 'verification')
-            send_otp(email, full_name, otp, 'verification')
+            send_otp(email, full_name, otp, 'verification', force_channel='email')
             return {
                 'success': True,
                 'requires_verification': True,
@@ -1235,10 +1261,10 @@ def register_user(email, password, full_name, phone=None):
         # إضافة كلمة المرور لسجل كلمات المرور
         add_to_password_history(email, password_hash_value)
 
-        # إرسال OTP للتحقق من البريد
+        # إرسال OTP للتحقق من البريد (أول مرة تسجيل = إيميل افتراضي)
         otp = generate_otp()
         store_otp(email, otp, 'verification')
-        email_sent = send_otp(email, full_name, otp, 'verification')
+        email_sent = send_otp(email, full_name, otp, 'verification', force_channel='email')
 
         # تسجيل في Audit Log
         log_audit('REGISTER_PENDING', 'users', user_id, None,
@@ -1335,7 +1361,7 @@ def resend_verification_otp(email):
 
     otp = generate_otp()
     store_otp(email, otp, 'verification')
-    send_otp(email, user['full_name'], otp, 'verification')
+    send_otp(email, user['full_name'], otp, 'verification', force_channel='email')
 
     return {'success': True, 'message': 'Verification code sent'}
 
@@ -1431,10 +1457,14 @@ def login_user(email, password):
             'message': 'Enter the 6-digit code from your authenticator app'
         }
 
-    # إرسال OTP للتحقق الثنائي (إيميل أو SMS حسب الإعداد)
+    # أول دخول للمستخدم (لم يسجل دخول من قبل) = إرسال OTP بالإيميل افتراضياً
+    first_login = user.get('last_login') is None
+    force_email = first_login
+
+    # إرسال OTP للتحقق الثنائي (إيميل أو SMS/WhatsApp حسب إعداد المستخدم أو العام)
     otp = generate_otp()
     store_otp(email, otp, '2fa')
-    email_sent = send_otp(email, user['full_name'], otp, '2fa')
+    email_sent = send_otp(email, user['full_name'], otp, '2fa', force_channel='email' if force_email else None)
 
     if email_sent:
         logger.info(f"2FA OTP sent to: {email}")
@@ -1467,12 +1497,28 @@ def verify_login_otp(email, otp):
     if user.get('totp_secret'):
         if verify_totp_for_user(email, otp):
             return complete_login(user, ip_address)
-        return {'success': False, 'message': 'Invalid or expired code. Try again.'}
+        # فشل أول محاولة: إرسال كود جديد على الإيميل والمحاولة التالية تكون بالإيميل
+        otp_new = generate_otp()
+        store_otp(email, otp_new, '2fa')
+        send_otp_email(email, user['full_name'], otp_new, '2fa')
+        return {
+            'success': False,
+            'fallback_to_email': True,
+            'message': 'Invalid or expired code. A new code was sent to your email. Please check your email and try again.'
+        }
 
     # التحقق من OTP المرسل (إيميل/SMS)
     is_valid, message = verify_otp(email, otp, '2fa')
     if not is_valid:
-        return {'success': False, 'message': message}
+        # فشل أول محاولة: إرسال كود جديد على الإيميل والمحاولة التالية تكون بالإيميل
+        otp_new = generate_otp()
+        store_otp(email, otp_new, '2fa')
+        send_otp_email(email, user['full_name'], otp_new, '2fa')
+        return {
+            'success': False,
+            'fallback_to_email': True,
+            'message': 'Invalid or expired code. A new code was sent to your email. Please check your email and try again.'
+        }
 
     return complete_login(user, ip_address)
 
@@ -1905,10 +1951,30 @@ def get_all_users(token_or_email):
             'is_active': user['is_active'],
             'custom_permissions': user.get('custom_permissions'),
             'created_at': user['created_at'].isoformat() if user['created_at'] else '',
-            'last_login': user['last_login'].isoformat() if user['last_login'] else 'Never'
+            'last_login': user['last_login'].isoformat() if user['last_login'] else 'Never',
+            'otp_method': (user.get('otp_method') or '').strip().lower() or ''
         })
 
     return {'success': True, 'users': users}
+
+
+@anvil.server.callable
+def update_user_otp_method(token_or_email, user_email, method):
+    """
+    تحديث طريقة OTP للمستخدم (للأدمن فقط).
+    method: '' (افتراضي/عام) | 'email' | 'sms' | 'whatsapp' | 'authenticator'
+    """
+    is_authorized, error = require_admin(token_or_email)
+    if not is_authorized:
+        return error
+    method = (method or '').strip().lower()
+    if method and method not in ('email', 'sms', 'whatsapp', 'authenticator'):
+        return {'success': False, 'message': 'Invalid OTP method'}
+    user = app_tables.users.get(email=user_email)
+    if not user:
+        return {'success': False, 'message': 'User not found'}
+    user.update(otp_method=method if method else None)
+    return {'success': True, 'message': 'OTP method updated'}
 
 
 @anvil.server.callable

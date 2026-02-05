@@ -69,6 +69,7 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.rejectUserAPI = self.reject_user  # For new approval modal
         anvil.js.window.updateUserRole = self.update_user_role
         anvil.js.window.updateUserRoleWithPermissions = self.update_user_role_with_permissions
+        anvil.js.window.updateUserOtpMethodAPI = self.update_user_otp_method
         anvil.js.window.toggleUserActive = self.toggle_user_active
         anvil.js.window.resetUserPassword = self.reset_user_password
         anvil.js.window.getAvailablePermissions = self.get_available_permissions
@@ -1194,6 +1195,10 @@ class AdminPanel(AdminPanelTemplate):
     def update_user_role_with_permissions(self, user_id, new_role, permissions):
         """تحديث دور المستخدم مع صلاحيات مخصصة"""
         return anvil.server.call('update_user_role', self.get_auth(), user_id, new_role, permissions)
+
+    def update_user_otp_method(self, user_email, method):
+        """تحديث طريقة OTP للمستخدم (للأدمن)"""
+        return anvil.server.call('update_user_otp_method', self.get_auth(), user_email, method)
 
     def toggle_user_active(self, user_id):
         return anvil.server.call('toggle_user_active', self.get_auth(), user_id)

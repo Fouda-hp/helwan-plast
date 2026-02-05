@@ -26,6 +26,7 @@ class LauncherForm(LauncherFormTemplate):
         # TOTP (تطبيق المصادقة - مجاني)
         anvil.js.window.setupTotpStart = self.setup_totp_start
         anvil.js.window.setupTotpConfirm = self.setup_totp_confirm
+        anvil.js.window.userHasTotpEnabled = self.user_has_totp_enabled
 
         # نفحص الـ hash مرة واحدة عند التحميل
         self.check_route()
@@ -44,6 +45,10 @@ class LauncherForm(LauncherFormTemplate):
     def setup_totp_confirm(self, code):
         """تأكيد تفعيل تطبيق المصادقة بالكود من التطبيق"""
         return anvil.server.call('setup_totp_confirm', self.get_token(), code)
+
+    def user_has_totp_enabled(self):
+        """هل المستخدم الحالي فعّل تطبيق المصادقة؟ (لإخفاء الرابط بعد التفعيل)"""
+        return anvil.server.call('user_has_totp_enabled', self.get_token())
 
     def logout_user(self):
         """تسجيل الخروج"""
@@ -85,15 +90,16 @@ class LauncherForm(LauncherFormTemplate):
         self._inject_totp_link()
 
     def _inject_totp_link(self):
-        """إضافة رابط تفعيل تطبيق المصادقة (مجاني)"""
+        """إضافة رابط تفعيل تطبيق المصادقة (مجاني) - يظهر للمستخدم أول مرة فقط حتى يفعّل التطبيق"""
         js = r"""
         (function() {
           if (window._totpLinkInjected) return;
           window._totpLinkInjected = true;
+          function addLink() {
           var link = document.createElement('a');
           link.href = '#';
           link.id = 'launcherTotpLink';
-          link.style.cssText = 'display:block;text-align:center;margin-top:16px;font-size:12px;color:#1976d2;';
+          link.style.cssText = 'display:inline-block;margin-top:8px;font-size:13px;color:#1976d2;text-decoration:underline;';
           link.textContent = 'تفعيل تطبيق المصادقة (مجاني) | Enable Authenticator App';
           link.onclick = function(e) {
             e.preventDefault();
@@ -126,7 +132,12 @@ class LauncherForm(LauncherFormTemplate):
                   window.setupTotpConfirm(code).then(function(res) {
                     var msg = document.getElementById('totpSetupMessage');
                     msg.textContent = res && res.message ? res.message : '';
-                    if (res && res.success) { msg.style.color = 'green'; setTimeout(function() { modal.style.display = 'none'; }, 1500); }
+                    if (res && res.success) {
+                      msg.style.color = 'green';
+                      var lnk = document.getElementById('launcherTotpLink');
+                      if (lnk && lnk.parentNode) lnk.parentNode.remove();
+                      setTimeout(function() { modal.style.display = 'none'; }, 1500);
+                    }
                     else msg.style.color = 'red';
                   });
                 };
@@ -139,9 +150,23 @@ class LauncherForm(LauncherFormTemplate):
             }).catch(function(err) { alert('Error: ' + (err && err.message ? err.message : err)); });
           };
           var wrap = document.createElement('div');
-          wrap.style.textAlign = 'center';
+          wrap.style.cssText = 'text-align:center;margin-top:20px;padding-top:12px;border-top:1px solid #eee;';
           wrap.appendChild(link);
-          document.body.appendChild(wrap);
+          var card = document.querySelector('.launcher-card');
+          var footer = document.querySelector('.footer');
+          if (card && footer) {
+            card.insertBefore(wrap, footer);
+          } else {
+            document.body.appendChild(wrap);
+          }
+          }
+          if (window.userHasTotpEnabled && typeof window.userHasTotpEnabled === 'function') {
+            window.userHasTotpEnabled().then(function(hasTotp) {
+              if (!hasTotp) addLink();
+            }).catch(function() { addLink(); });
+          } else {
+            addLink();
+          }
         })();
         """
         try:

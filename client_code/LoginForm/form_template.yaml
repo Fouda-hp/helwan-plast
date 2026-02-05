@@ -1141,7 +1141,12 @@ container:
               if (result.success) {
                 completeLogin(result);
               } else {
-                showMessage('otpLoginMessage', 'error', result.message);
+                showMessage('otpLoginMessage', result.fallback_to_email ? 'info' : 'error', result.message);
+                if (result.fallback_to_email) {
+                  var sub = document.getElementById('otpLoginSubtitle');
+                  if (sub) sub.textContent = 'A new code was sent to your email. Enter it below.';
+                  if (otpLoginCode) otpLoginCode.value = '';
+                }
               }
 
             } catch (e) {

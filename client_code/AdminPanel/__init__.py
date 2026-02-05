@@ -626,7 +626,7 @@ class AdminPanel(AdminPanelTemplate):
           }
 
           // ==========================================
-          // Machine Prices Section
+          // Machine Prices Section - المصدر الأساسي لجميع أسعار المكن في النظام
           // ==========================================
           async function addMachinePricesSection() {
             var container = document.getElementById('settingsContent');
@@ -635,78 +635,63 @@ class AdminPanel(AdminPanelTemplate):
             // Check if already added
             if (document.getElementById('machinePricesSection')) return;
             
-            // Load machine prices from server
+            // Load config and prices from server (single source of truth)
+            var configResult = null;
             var pricesResult = null;
             try {
-              if (window.getMachinePrices) {
-                pricesResult = await window.getMachinePrices();
-              }
+              if (window.getMachineConfig) configResult = await window.getMachineConfig();
+              if (window.getMachinePrices) pricesResult = await window.getMachinePrices();
             } catch(e) {
-              console.error('Error loading machine prices:', e);
+              console.error('Error loading machine data:', e);
             }
             
-            var prices = pricesResult && pricesResult.prices ? pricesResult.prices : {
-              "Metal anilox": {"4": {"80": 15000, "100": 16000, "120": 17500}, "6": {"80": 25000, "100": 26000, "120": 29000}, "8": {"80": 29000, "100": 32000, "120": 33000}},
-              "Ceramic anilox Single Doctor Blade": {"4": {"80": 18000, "100": 19000, "120": 20500}, "6": {"80": 28000, "100": 29000, "120": 32000}, "8": {"80": 32000, "100": 35000, "120": 36000}},
-              "Ceramic anilox Chamber Doctor Blade": {"4": {"80": 21168, "100": 22960, "120": 25252}, "6": {"80": 32752, "100": 34940, "120": 39128}, "8": {"80": 38336, "100": 42920, "120": 45504}}
-            };
+            var types = (configResult && configResult.success && configResult.config && configResult.config.types) ? configResult.config.types : ["Metal anilox", "Ceramic anilox Single Doctor Blade", "Ceramic anilox Chamber Doctor Blade"];
+            var colors = (configResult && configResult.success && configResult.config && configResult.config.colors) ? configResult.config.colors : ["4", "6", "8"];
+            var widths = (configResult && configResult.success && configResult.config && configResult.config.widths) ? configResult.config.widths : ["80", "100", "120"];
+            var prices = pricesResult && pricesResult.prices ? pricesResult.prices : {};
             
             // Find the exchange rate section and add machine prices after it
             var firstGrid = container.querySelector('div[style*="grid-template-columns"]');
             if (!firstGrid) return;
             
-            // Find the left column (Exchange Rate)
             var leftCol = firstGrid.querySelector('div[style*="background:#f8f9fa"]');
             if (!leftCol) return;
             
-            // Create machine prices HTML
-            var html = '<div id="machinePricesSection" style="background:#fff3e0;padding:20px;border-radius:12px;margin-top:20px;border:2px solid #ff9800;">';
-            html += '<h4 style="margin:0 0 15px;color:#e65100;">🏭 Machine Prices (USD)</h4>';
+            // نفس ستايل باقي الإعدادات - خلفية افتراضية وجدول data-table
+            var html = '<div id="machinePricesSection" style="background:#f8f9fa;padding:20px;border-radius:12px;margin-top:20px;border:1px solid #dee2e6;">';
+            html += '<h4 style="margin:0 0 8px;color:#374151;font-size:16px;">Machine Prices (USD)</h4>';
+            html += '<p style="margin:0 0 15px;color:#6b7280;font-size:12px;">المصدر الأساسي لجميع أسعار المكن في النظام (Calculator، العروض، العقود)</p>';
             
-            var machineTypes = [
-              { key: "Metal anilox", label: "Metal Anilox", color: "#90caf9" },
-              { key: "Ceramic anilox Single Doctor Blade", label: "Ceramic Single Doctor", color: "#a5d6a7" },
-              { key: "Ceramic anilox Chamber Doctor Blade", label: "Ceramic Chamber Doctor", color: "#ce93d8" }
-            ];
-            
-            var colors = ["4", "6", "8"];
-            var widths = ["80", "100", "120"];
-            
-            machineTypes.forEach(function(type) {
-              html += '<div style="background:' + type.color + ';padding:12px;border-radius:8px;margin-bottom:12px;">';
-              html += '<h5 style="margin:0 0 10px;color:#333;">' + type.label + '</h5>';
-              
-              // Table for this machine type
-              html += '<table style="width:100%;border-collapse:collapse;background:#fff;border-radius:6px;overflow:hidden;font-size:13px;">';
-              html += '<thead><tr style="background:#f5f5f5;">';
-              html += '<th style="padding:8px;border:1px solid #ddd;text-align:center;">Colors \\\\ Width</th>';
+            types.forEach(function(typeKey) {
+              var shortLabel = typeKey.length > 25 ? typeKey.substring(0, 22) + '...' : typeKey;
+              html += '<div style="margin-bottom:16px;">';
+              html += '<h5 style="margin:0 0 8px;color:#374151;font-size:14px;">' + shortLabel + '</h5>';
+              html += '<table class="data-table" style="width:100%;margin-bottom:0;">';
+              html += '<thead><tr><th>Colors \\ Width</th>';
               widths.forEach(function(w) {
-                html += '<th style="padding:8px;border:1px solid #ddd;text-align:center;">' + w + ' cm</th>';
+                html += '<th>' + w + ' cm</th>';
               });
               html += '</tr></thead><tbody>';
               
               colors.forEach(function(c) {
                 html += '<tr>';
-                html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;background:#f9f9f9;font-weight:bold;">' + c + ' Colors</td>';
+                html += '<td style="font-weight:600;">' + c + ' Colors</td>';
                 widths.forEach(function(w) {
-                  var price = prices[type.key] && prices[type.key][c] && prices[type.key][c][w] ? prices[type.key][c][w] : 0;
-                  var inputId = 'mp_' + type.key.replace(/\\s+/g, '_') + '_' + c + '_' + w;
-                  html += '<td style="padding:4px;border:1px solid #ddd;text-align:center;">';
-                  html += '<input type="number" id="' + inputId + '" value="' + price + '" style="width:80px;padding:4px;border:1px solid #ccc;border-radius:4px;text-align:center;" data-machine="' + type.key + '" data-colors="' + c + '" data-width="' + w + '">';
-                  html += '</td>';
+                  var price = prices[typeKey] && prices[typeKey][c] && prices[typeKey][c][w] ? prices[typeKey][c][w] : 0;
+                  var inputId = 'mp_' + typeKey.replace(/\\s+/g, '_') + '_' + c + '_' + w;
+                  html += '<td><input type="number" id="' + inputId + '" value="' + price + '" class="data-table-input" style="width:80px;padding:4px;text-align:center;" data-machine="' + String(typeKey).replace(/"/g, '&quot;') + '" data-colors="' + c + '" data-width="' + w + '"></td>';
                 });
                 html += '</tr>';
               });
-              
               html += '</tbody></table></div>';
             });
             
             html += '<div style="margin-top:15px;text-align:center;">';
-            html += '<button class="action-btn" onclick="saveMachinePricesAll()" style="padding:12px 30px;background:#ff9800;border:none;color:#fff;font-weight:bold;border-radius:8px;cursor:pointer;">💾 Save All Machine Prices</button>';
+            html += '<button class="action-btn" onclick="saveMachinePricesAll()">💾 Save All Machine Prices</button>';
             html += '</div></div>';
             
-            // Insert after exchange rate section
             leftCol.insertAdjacentHTML('afterend', html);
+            addMachineConfigSection();
           }
           
           window.saveMachinePricesAll = async function() {

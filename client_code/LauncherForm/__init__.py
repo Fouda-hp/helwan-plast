@@ -90,89 +90,82 @@ class LauncherForm(LauncherFormTemplate):
         self._inject_totp_link()
 
     def _inject_totp_link(self):
-        """إضافة رابط تفعيل تطبيق المصادقة (مجاني) - يظهر للمستخدم أول مرة فقط حتى يفعّل التطبيق"""
+        """إظهار رابط تفعيل تطبيق المصادقة (موجود في القالب) وربط النقر - يظهر للمستخدم أول مرة فقط حتى يفعّل التطبيق"""
         js = r"""
         (function() {
           if (window._totpLinkInjected) return;
           window._totpLinkInjected = true;
-          function addLink() {
-          var link = document.createElement('a');
-          link.href = '#';
-          link.id = 'launcherTotpLink';
-          link.style.cssText = 'display:inline-block;margin-top:12px;margin-bottom:8px;font-size:14px;color:#1976d2;text-decoration:underline;';
-          link.textContent = 'تفعيل تطبيق المصادقة (مجاني) | Enable Authenticator App';
-          link.onclick = function(e) {
-            e.preventDefault();
-            if (!window.setupTotpStart || !window.setupTotpConfirm) return;
-            window.setupTotpStart().then(function(r) {
-              if (!r || !r.success) {
-                alert(r && r.message ? r.message : 'Failed to start setup');
-                return;
-              }
-              var modal = document.getElementById('totpSetupModal');
-              if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'totpSetupModal';
-                modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;';
-                modal.innerHTML = '<div style="background:#fff;padding:24px;border-radius:12px;max-width:320px;text-align:center;">' +
-                  '<h4 style="margin:0 0 12px;">Enable Authenticator</h4>' +
-                  '<p style="font-size:13px;color:#666;margin:0 0 12px;">Scan QR with Google Authenticator or similar app</p>' +
-                  '<div id="totpQrContainer"></div>' +
-                  '<p id="totpSecretText" style="font-size:11px;word-break:break-all;margin:8px 0;"></p>' +
-                  '<input type="text" id="totpCodeInput" placeholder="000000" maxlength="6" style="width:120px;padding:8px;font-size:18px;text-align:center;margin:8px 0;">' +
-                  '<br><button id="totpConfirmBtn" style="padding:8px 20px;background:#1976d2;color:#fff;border:none;border-radius:8px;cursor:pointer;">Confirm</button>' +
-                  ' <button id="totpCancelBtn" style="padding:8px 16px;background:#999;color:#fff;border:none;border-radius:8px;cursor:pointer;">Cancel</button>' +
-                  '<p id="totpSetupMessage" style="margin-top:12px;font-size:13px;"></p></div>';
-                modal.onclick = function(ev) { if (ev.target === modal) modal.style.display = 'none'; };
-                document.body.appendChild(modal);
-                document.getElementById('totpCancelBtn').onclick = function() { modal.style.display = 'none'; };
-                document.getElementById('totpConfirmBtn').onclick = function() {
-                  var code = document.getElementById('totpCodeInput').value.trim();
-                  if (code.length !== 6) { document.getElementById('totpSetupMessage').textContent = 'Enter 6 digits'; return; }
-                  window.setupTotpConfirm(code).then(function(res) {
-                    var msg = document.getElementById('totpSetupMessage');
-                    msg.textContent = res && res.message ? res.message : '';
-                    if (res && res.success) {
-                      msg.style.color = 'green';
-                      var lnk = document.getElementById('launcherTotpLink');
-                      if (lnk && lnk.parentNode) lnk.parentNode.remove();
-                      setTimeout(function() { modal.style.display = 'none'; }, 1500);
-                    }
-                    else msg.style.color = 'red';
-                  });
-                };
-              }
-              document.getElementById('totpQrContainer').innerHTML = '<img src="data:image/png;base64,' + r.qr_base64 + '" alt="QR" style="max-width:200px;">';
-              document.getElementById('totpSecretText').textContent = 'Or enter key: ' + (r.secret || '');
-              document.getElementById('totpCodeInput').value = '';
-              document.getElementById('totpSetupMessage').textContent = '';
-              modal.style.display = 'flex';
-            }).catch(function(err) { alert('Error: ' + (err && err.message ? err.message : err)); });
-          };
-          var wrap = document.createElement('div');
-          wrap.className = 'totp-link-wrap';
-          wrap.style.cssText = 'text-align:center;margin-top:20px;padding-top:12px;border-top:1px solid #eee;';
-          wrap.appendChild(link);
-          var card = document.querySelector('.launcher-card');
-          var footer = document.querySelector('.footer');
-          if (card && footer) {
-            card.insertBefore(wrap, footer);
-          } else if (card) {
-            card.appendChild(wrap);
-          } else {
-            document.body.appendChild(wrap);
-          }
+          function attachLinkBehavior() {
+            var link = document.getElementById('launcherTotpLink');
+            var wrap = document.getElementById('totpLinkWrap');
+            if (!link || !wrap) return;
+            link.onclick = function(e) {
+              e.preventDefault();
+              if (!window.setupTotpStart || !window.setupTotpConfirm) return;
+              window.setupTotpStart().then(function(r) {
+                if (!r || !r.success) {
+                  alert(r && r.message ? r.message : 'Failed to start setup');
+                  return;
+                }
+                var modal = document.getElementById('totpSetupModal');
+                if (!modal) {
+                  modal = document.createElement('div');
+                  modal.id = 'totpSetupModal';
+                  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;';
+                  modal.innerHTML = '<div style="background:#fff;padding:24px;border-radius:12px;max-width:320px;text-align:center;">' +
+                    '<h4 style="margin:0 0 12px;">Enable Authenticator</h4>' +
+                    '<p style="font-size:13px;color:#666;margin:0 0 12px;">Scan QR with Google Authenticator or similar app</p>' +
+                    '<div id="totpQrContainer"></div>' +
+                    '<p id="totpSecretText" style="font-size:11px;word-break:break-all;margin:8px 0;"></p>' +
+                    '<input type="text" id="totpCodeInput" placeholder="000000" maxlength="6" style="width:120px;padding:8px;font-size:18px;text-align:center;margin:8px 0;">' +
+                    '<br><button id="totpConfirmBtn" style="padding:8px 20px;background:#1976d2;color:#fff;border:none;border-radius:8px;cursor:pointer;">Confirm</button>' +
+                    ' <button id="totpCancelBtn" style="padding:8px 16px;background:#999;color:#fff;border:none;border-radius:8px;cursor:pointer;">Cancel</button>' +
+                    '<p id="totpSetupMessage" style="margin-top:12px;font-size:13px;"></p></div>';
+                  modal.onclick = function(ev) { if (ev.target === modal) modal.style.display = 'none'; };
+                  document.body.appendChild(modal);
+                  document.getElementById('totpCancelBtn').onclick = function() { modal.style.display = 'none'; };
+                  document.getElementById('totpConfirmBtn').onclick = function() {
+                    var code = document.getElementById('totpCodeInput').value.trim();
+                    if (code.length !== 6) { document.getElementById('totpSetupMessage').textContent = 'Enter 6 digits'; return; }
+                    window.setupTotpConfirm(code).then(function(res) {
+                      var msg = document.getElementById('totpSetupMessage');
+                      msg.textContent = res && res.message ? res.message : '';
+                      if (res && res.success) {
+                        msg.style.color = 'green';
+                        var w = document.getElementById('totpLinkWrap');
+                        if (w) w.style.display = 'none';
+                        setTimeout(function() { modal.style.display = 'none'; }, 1500);
+                      }
+                      else msg.style.color = 'red';
+                    });
+                  };
+                }
+                document.getElementById('totpQrContainer').innerHTML = '<img src="data:image/png;base64,' + r.qr_base64 + '" alt="QR" style="max-width:200px;">';
+                document.getElementById('totpSecretText').textContent = 'Or enter key: ' + (r.secret || '');
+                document.getElementById('totpCodeInput').value = '';
+                document.getElementById('totpSetupMessage').textContent = '';
+                modal.style.display = 'flex';
+              }).catch(function(err) { alert('Error: ' + (err && err.message ? err.message : err)); });
+            };
           }
           function doInject() {
             if (window.userHasTotpEnabled && typeof window.userHasTotpEnabled === 'function') {
               window.userHasTotpEnabled().then(function(hasTotp) {
-                if (!hasTotp) addLink();
-              }).catch(function() { addLink(); });
+                attachLinkBehavior();
+                var wrap = document.getElementById('totpLinkWrap');
+                if (wrap && !hasTotp) wrap.style.display = 'block';
+              }).catch(function() {
+                attachLinkBehavior();
+                var wrap = document.getElementById('totpLinkWrap');
+                if (wrap) wrap.style.display = 'block';
+              });
             } else {
-              addLink();
+              attachLinkBehavior();
+              var wrap = document.getElementById('totpLinkWrap');
+              if (wrap) wrap.style.display = 'block';
             }
           }
-          if (document.querySelector('.launcher-card')) {
+          if (document.getElementById('totpLinkWrap')) {
             doInject();
           } else {
             setTimeout(function() { doInject(); }, 400);

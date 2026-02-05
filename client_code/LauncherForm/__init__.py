@@ -95,40 +95,44 @@ class LauncherForm(LauncherFormTemplate):
         (function() {
           if (window._totpLinkInjected) return;
           window._totpLinkInjected = true;
-          function attachAndMaybeHide() {
-            var link = document.getElementById('launcherTotpLink');
-            var wrap = document.getElementById('totpLinkWrap');
-            if (!link || !wrap) return;
-            link.onclick = function(e) {
-              e.preventDefault();
-              e.stopPropagation();
-              if (!window.setupTotpStart || !window.setupTotpConfirm) return false;
-              window.setupTotpStart().then(function(r) {
-                if (!r || !r.success) {
-                  alert(r && r.message ? r.message : 'Failed to start setup');
-                  return;
-                }
-                var modal = document.getElementById('totpSetupModal');
-                if (!modal) {
-                  modal = document.createElement('div');
-                  modal.id = 'totpSetupModal';
-                  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;';
-                  modal.innerHTML = '<div style="background:#fff;padding:24px;border-radius:12px;max-width:320px;text-align:center;">' +
-                    '<h4 style="margin:0 0 12px;">Enable Authenticator</h4>' +
-                    '<p style="font-size:13px;color:#666;margin:0 0 12px;">Scan QR with Google Authenticator or similar app</p>' +
-                    '<div id="totpQrContainer"></div>' +
-                    '<p id="totpSecretText" style="font-size:11px;word-break:break-all;margin:8px 0;"></p>' +
-                    '<input type="text" id="totpCodeInput" placeholder="000000" maxlength="6" style="width:120px;padding:8px;font-size:18px;text-align:center;margin:8px 0;">' +
-                    '<br><button id="totpConfirmBtn" style="padding:8px 20px;background:#1976d2;color:#fff;border:none;border-radius:8px;cursor:pointer;">Confirm</button>' +
-                    ' <button id="totpCancelBtn" style="padding:8px 16px;background:#999;color:#fff;border:none;border-radius:8px;cursor:pointer;">Cancel</button>' +
-                    '<p id="totpSetupMessage" style="margin-top:12px;font-size:13px;"></p></div>';
-                  modal.onclick = function(ev) { if (ev.target === modal) modal.style.display = 'none'; };
-                  document.body.appendChild(modal);
-                  document.getElementById('totpCancelBtn').onclick = function() { modal.style.display = 'none'; };
-                  document.getElementById('totpConfirmBtn').onclick = function() {
-                    var code = document.getElementById('totpCodeInput').value.trim();
-                    if (code.length !== 6) { document.getElementById('totpSetupMessage').textContent = 'Enter 6 digits'; return; }
-                    window.setupTotpConfirm(code).then(function(res) {
+          function startTotpSetup() {
+            if (!window.setupTotpStart || typeof window.setupTotpStart !== 'function') {
+              alert('Please refresh the page and try again.');
+              return;
+            }
+            var p = window.setupTotpStart();
+            if (!p || typeof p.then !== 'function') {
+              alert('Setup is not available. Please refresh the page.');
+              return;
+            }
+            p.then(function(r) {
+              if (!r || !r.success) {
+                alert(r && r.message ? r.message : 'Failed to start setup');
+                return;
+              }
+              var modal = document.getElementById('totpSetupModal');
+              if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'totpSetupModal';
+                modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;';
+                modal.innerHTML = '<div style="background:#fff;padding:24px;border-radius:12px;max-width:320px;text-align:center;">' +
+                  '<h4 style="margin:0 0 12px;">Enable Authenticator</h4>' +
+                  '<p style="font-size:13px;color:#666;margin:0 0 12px;">Scan QR with Google Authenticator or similar app</p>' +
+                  '<div id="totpQrContainer"></div>' +
+                  '<p id="totpSecretText" style="font-size:11px;word-break:break-all;margin:8px 0;"></p>' +
+                  '<input type="text" id="totpCodeInput" placeholder="000000" maxlength="6" style="width:120px;padding:8px;font-size:18px;text-align:center;margin:8px 0;">' +
+                  '<br><button id="totpConfirmBtn" style="padding:8px 20px;background:#1976d2;color:#fff;border:none;border-radius:8px;cursor:pointer;">Confirm</button>' +
+                  ' <button id="totpCancelBtn" style="padding:8px 16px;background:#999;color:#fff;border:none;border-radius:8px;cursor:pointer;">Cancel</button>' +
+                  '<p id="totpSetupMessage" style="margin-top:12px;font-size:13px;"></p></div>';
+                modal.onclick = function(ev) { if (ev.target === modal) modal.style.display = 'none'; };
+                document.body.appendChild(modal);
+                document.getElementById('totpCancelBtn').onclick = function() { modal.style.display = 'none'; };
+                document.getElementById('totpConfirmBtn').onclick = function() {
+                  var code = document.getElementById('totpCodeInput').value.trim();
+                  if (code.length !== 6) { document.getElementById('totpSetupMessage').textContent = 'Enter 6 digits'; return; }
+                  var p2 = window.setupTotpConfirm && window.setupTotpConfirm(code);
+                  if (p2 && typeof p2.then === 'function') {
+                    p2.then(function(res) {
                       var msg = document.getElementById('totpSetupMessage');
                       msg.textContent = res && res.message ? res.message : '';
                       if (res && res.success) {
@@ -136,24 +140,36 @@ class LauncherForm(LauncherFormTemplate):
                         var w = document.getElementById('totpLinkWrap');
                         if (w) w.style.display = 'none';
                         setTimeout(function() { modal.style.display = 'none'; }, 1500);
-                      }
-                      else msg.style.color = 'red';
-                    });
-                  };
-                }
-                document.getElementById('totpQrContainer').innerHTML = '<img src="data:image/png;base64,' + r.qr_base64 + '" alt="QR" style="max-width:200px;">';
-                document.getElementById('totpSecretText').textContent = 'Or enter key: ' + (r.secret || '');
-                document.getElementById('totpCodeInput').value = '';
-                document.getElementById('totpSetupMessage').textContent = '';
-                modal.style.display = 'flex';
-              }).catch(function(err) { alert('Error: ' + (err && err.message ? err.message : err)); });
-              return false;
-            };
-            if (window.userHasTotpEnabled && typeof window.userHasTotpEnabled === 'function') {
-              window.userHasTotpEnabled().then(function(hasTotp) {
-                if (hasTotp && wrap) wrap.style.display = 'none';
-              }).catch(function() {});
+                      } else { msg.style.color = 'red'; }
+                    }).catch(function(err) { alert('Error: ' + (err && err.message ? err.message : err)); });
+                  }
+                };
+              }
+              document.getElementById('totpQrContainer').innerHTML = '<img src="data:image/png;base64,' + r.qr_base64 + '" alt="QR" style="max-width:200px;">';
+              document.getElementById('totpSecretText').textContent = 'Or enter key: ' + (r.secret || '');
+              document.getElementById('totpCodeInput').value = '';
+              document.getElementById('totpSetupMessage').textContent = '';
+              modal.style.display = 'flex';
+            }).catch(function(err) { alert('Error: ' + (err && err.message ? err.message : err)); });
+          }
+          function attachAndMaybeHide() {
+            var wrap = document.getElementById('totpLinkWrap');
+            if (wrap && window.userHasTotpEnabled && typeof window.userHasTotpEnabled === 'function') {
+              var p = window.userHasTotpEnabled();
+              if (p && typeof p.then === 'function') {
+                p.then(function(hasTotp) { if (hasTotp) wrap.style.display = 'none'; }).catch(function() {});
+              }
             }
+            document.body.addEventListener('click', function(e) {
+              var t = e.target;
+              if (!t) return;
+              var link = t.id === 'launcherTotpLink' ? t : (t.closest && t.closest('#launcherTotpLink'));
+              if (!link) return;
+              e.preventDefault();
+              e.stopPropagation();
+              startTotpSetup();
+              return false;
+            }, true);
           }
           function run() {
             if (document.getElementById('totpLinkWrap')) {

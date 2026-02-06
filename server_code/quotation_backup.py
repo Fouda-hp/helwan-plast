@@ -19,7 +19,7 @@ BACKUP_RETENTION_WEEKS = 30
 
 def get_backup_drive_folder():
     """الحصول على مجلد النسخ الاحتياطية في Google Drive (app_files)."""
-    for name in ('Backups', 'Helwan_Plast_Backups', 'backups'):
+    for name in ('Backups', 'Helwan_Plast_Backups', 'backups', 'backup', 'Backup'):
         folder = getattr(app_files, name, None)
         if folder is not None and hasattr(folder, 'create_file'):
             return folder

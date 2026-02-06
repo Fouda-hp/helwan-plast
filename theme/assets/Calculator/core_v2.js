@@ -157,14 +157,9 @@ window.resetFormToNew = async function () {
       countInput.style.background = "";
     }
 
-    // Clear cost by finding the readonly input in the same row
-    if (sizeInput) {
-      const row = sizeInput.closest("tr");
-      if (row) {
-        const costInput = row.querySelector("td:last-child input[readonly]");
-        if (costInput) costInput.value = "";
-      }
-    }
+    // Clear cost input
+    const costInput = document.getElementById(`Cost${i}`);
+    if (costInput) costInput.value = "";
   }
 
   // 🔥 Reset STATE

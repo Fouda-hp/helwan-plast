@@ -257,6 +257,7 @@ if (typeof window.debugError !== 'function') window.debugError = function () {};
     for (var i = 1; i <= 12; i++) {
       setValue("Size in CM" + i, "");
       setValue("Count" + i, "");
+      setValue("Cost" + i, "");
     }
 
     // Fill cylinders (delayed)
@@ -264,8 +265,10 @@ if (typeof window.debugError !== 'function') window.debugError = function () {};
       for (var i = 1; i <= 12; i++) {
         var size = getCylinderValue(record, "Size in CM", i);
         var count = getCylinderValue(record, "Count", i);
+        var cost = getCylinderValue(record, "Cost", i);
         if (size) setValue("Size in CM" + i, size);
         if (count) setValue("Count" + i, count);
+        if (cost) setValue("Cost" + i, cost);
       }
 
       window.cylindersInitialized = true;

@@ -490,6 +490,13 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
         'Quotation#': int(quotation_number),
         'Date': date_value,
         'Client Name': client_name or safe_strip(form_data.get('Client Name')),  # حفظ اسم العميل
+        'Company': safe_strip(form_data.get('Company')),
+        'Phone': safe_strip(form_data.get('Phone')),
+        'Country': safe_strip(form_data.get('Country')),
+        'Address': safe_strip(form_data.get('Address')),
+        'Email': safe_strip(form_data.get('Email')),
+        'Sales Rep': safe_strip(form_data.get('sales_rep') or form_data.get('Sales Rep')),
+        'Source': safe_strip(form_data.get('Source')),
         'Notes': safe_strip(form_data.get('Notes')),
 
         'Model': safe_strip(form_data.get('Model')),
@@ -776,8 +783,8 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
 
             row_data = {
                 "Client Code": client_code,
-                "Quotation#": r["Quotation#"],
-                "Date": r["Date"].isoformat() if r.get("Date") else "",
+                "Quotation#": r.get("Quotation#", ""),
+                "Date": r.get("Date").isoformat() if r.get("Date") and hasattr(r.get("Date"), 'isoformat') else str(r.get("Date", "")),
                 "Client Name": client_name,
                 "Company": company,
                 "Phone": phone,
@@ -811,7 +818,7 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
                 "Pricing Mode": r.get("Pricing Mode", ""),
                 "Overseas clients": r.get("Overseas clients", ""),
                 "Contract": r.get("Contract", ""),
-                "Expected delivery time": r["Expected delivery time"].isoformat() if r.get("Expected delivery time") else "",
+                "Expected delivery time": r.get("Expected delivery time").isoformat() if r.get("Expected delivery time") and hasattr(r.get("Expected delivery time"), 'isoformat') else str(r.get("Expected delivery time", "")),
                 "is_deleted": r.get("is_deleted", False)
             }
 
@@ -892,15 +899,15 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
         rows = []
         for r in page_rows:
             rows.append({
-                "Client Code": r["Client Code"],
-                "Client Name": r["Client Name"],
-                "Company": r["Company"],
-                "Phone": r["Phone"],
-                "Country": r["Country"],
-                "Address": r["Address"],
-                "Email": r["Email"],
-                "Sales Rep": r["Sales Rep"],
-                "Source": r["Source"],
+                "Client Code": r.get("Client Code", ""),
+                "Client Name": r.get("Client Name", ""),
+                "Company": r.get("Company", ""),
+                "Phone": r.get("Phone", ""),
+                "Country": r.get("Country", ""),
+                "Address": r.get("Address", ""),
+                "Email": r.get("Email", ""),
+                "Sales Rep": r.get("Sales Rep", ""),
+                "Source": r.get("Source", ""),
                 "Date": r.get("Date").isoformat() if r.get("Date") and hasattr(r.get("Date"), 'isoformat') else str(r.get("Date") or ""),
                 "is_deleted": r.get("is_deleted", False)
             })

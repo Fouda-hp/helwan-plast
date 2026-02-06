@@ -150,7 +150,7 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
     for (let i = 1; i <= 12; i++) {
       const s = document.getElementById(`Size in CM${i}`);
       const c = document.getElementById(`Count${i}`);
-      const costEl = s?.closest("tr")?.querySelector("td:last-child input");
+      const costEl = document.getElementById(`Cost${i}`) || s?.closest("tr")?.querySelector("td:last-child input");
       if (!s || !c || !costEl) continue;
 
       const size = parseFloat(s.value);

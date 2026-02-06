@@ -731,7 +731,8 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
         return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
     try:
         q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by(sort_col, sort_asc)]) if not include_deleted else app_tables.quotations.search(order_by=[anvil_order_by(sort_col, sort_asc)])
-    except (TypeError, AttributeError):
+    except Exception:
+        # Fallback: بعض بيئات Anvil ترفض order_by (مثل "No such column 'order_by'")
         q_iter = app_tables.quotations.search(is_deleted=False) if not include_deleted else app_tables.quotations.search()
 
     try:
@@ -868,7 +869,8 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
     try:
         try:
             c_iter = app_tables.clients.search(is_deleted=False, order_by=[anvil_order_by(sort_col, sort_asc)]) if not include_deleted else app_tables.clients.search(order_by=[anvil_order_by(sort_col, sort_asc)])
-        except (TypeError, AttributeError):
+        except Exception:
+            # Fallback: بعض بيئات Anvil ترفض order_by (مثل "No such column 'order_by'")
             c_iter = app_tables.clients.search(is_deleted=False) if not include_deleted else app_tables.clients.search()
 
         total = 0
@@ -1849,7 +1851,7 @@ def get_quotations_list(search='', include_deleted=False, token_or_email=None, p
 
         try:
             q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by('Quotation#', False)]) if not include_deleted else app_tables.quotations.search(order_by=[anvil_order_by('Quotation#', False)])
-        except (TypeError, AttributeError):
+        except Exception:
             q_iter = app_tables.quotations.search(is_deleted=False) if not include_deleted else app_tables.quotations.search()
 
         total_count = 0

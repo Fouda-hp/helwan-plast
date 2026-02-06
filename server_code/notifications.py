@@ -61,7 +61,7 @@ def get_user_notifications(token_or_email, limit=50, unread_only=False):
         limit = max(1, min(200, int(limit) if limit is not None else 50))
         try:
             rows = list(app_tables.notifications.search(user_email=user_email, order_by=[anvil_order_by('created_at', False)]))
-        except (TypeError, AttributeError):
+        except Exception:
             rows = list(app_tables.notifications.search(user_email=user_email))
             rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
         if unread_only:

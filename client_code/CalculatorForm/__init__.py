@@ -154,7 +154,8 @@ class CalculatorForm(CalculatorFormTemplate):
     return anvil.server.call("get_all_clients", 1, 20, '', False, auth)
 
   def get_active_users_for_dropdown(self):
-    return anvil.server.call("get_active_users_for_dropdown")
+    auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email')
+    return anvil.server.call("get_active_users_for_dropdown", auth)
 
   # =================================================
   # LOAD DATA

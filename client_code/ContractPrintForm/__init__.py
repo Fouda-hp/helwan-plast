@@ -3,7 +3,6 @@ from anvil import *
 import anvil.server
 import anvil.js
 import json
-import html as html_escape_module
 import logging
 from datetime import datetime, date
 
@@ -14,7 +13,8 @@ def _h(value):
     """HTML-escape a value to prevent XSS injection"""
     if value is None:
         return ''
-    return html_escape_module.escape(str(value))
+    s = str(value)
+    return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#x27;')
 
 
 class ContractPrintForm(ContractPrintFormTemplate):

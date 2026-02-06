@@ -2,7 +2,6 @@ from ._anvil_designer import QuotationPrintFormTemplate
 from anvil import *
 import anvil.server
 import anvil.js
-import html as html_escape_module
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,7 +11,8 @@ def _h(value):
     """HTML-escape a value to prevent XSS injection"""
     if value is None:
         return ''
-    return html_escape_module.escape(str(value))
+    s = str(value)
+    return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#x27;')
 
 
 class QuotationPrintForm(QuotationPrintFormTemplate):

@@ -7,6 +7,7 @@ import json
 import logging
 from datetime import datetime, date
 
+import anvil
 from anvil.google.drive import app_files
 from anvil.tables import app_tables
 
@@ -21,8 +22,15 @@ def get_backup_drive_folder():
     """الحصول على مجلد النسخ الاحتياطية في Google Drive (app_files)."""
     for name in ('Backups', 'Helwan_Plast_Backups', 'backups', 'backup', 'Backup'):
         folder = getattr(app_files, name, None)
-        if folder is not None and hasattr(folder, 'create_file'):
+        if folder is not None:
+            if hasattr(folder, 'create_file'):
+                return folder
+            # بعض إصدارات Anvil تُرجع كائن بدون create_file - نجرب إرجاعه
+            logger.info("app_files.%s found (type=%s) but no create_file. Trying anyway.", name, type(folder).__name__)
             return folder
+    # طباعة المتاح للتصحيح
+    available = [a for a in dir(app_files) if not a.startswith('_')]
+    logger.warning("No backup folder found. Available app_files: %s", available)
     return None
 
 
@@ -84,7 +92,20 @@ def upload_backup_to_drive(json_bytes, filename):
         upload_bytes, is_encrypted = encrypt_backup(json_bytes)
         content_type = 'application/octet-stream' if is_encrypted else 'application/json'
         upload_filename = filename + '.enc' if is_encrypted else filename
-        folder.create_file(upload_filename, content_bytes=upload_bytes, content_type=content_type)
+        logger.info("Uploading backup to Drive: %s (folder type: %s, size: %d bytes)", upload_filename, type(folder).__name__, len(upload_bytes))
+        try:
+            folder.create_file(upload_filename, content_bytes=upload_bytes, content_type=content_type)
+        except AttributeError:
+            # بعض إصدارات Anvil تستخدم أسماء مختلفة للطريقة
+            import anvil.google.drive
+            media = anvil.BlobMedia(content_type, upload_bytes, name=upload_filename)
+            folder.add_file(media)
+        except TypeError as te:
+            # محاولة بمعاملات مختلفة
+            logger.warning("create_file TypeError: %s - trying alternative signature", te)
+            import anvil
+            media = anvil.BlobMedia(content_type, upload_bytes, name=upload_filename)
+            folder.create_file(upload_filename, media)
         enc_msg = " (مشفر)" if is_encrypted else ""
         return True, f'تم الرفع إلى Google Drive{enc_msg}: {upload_filename}'
     except Exception as e:

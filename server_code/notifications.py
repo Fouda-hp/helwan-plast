@@ -49,8 +49,7 @@ def create_notification(user_email, notif_type, payload):
 def _user_email_from_token(token_or_email):
     if not token_or_email:
         return None
-    if '@' in str(token_or_email):
-        return str(token_or_email).strip().lower()
+    # ⛔ لا يتم قبول البريد كتوكن - يجب التحقق من الجلسة دائماً
     result = AuthManager.validate_token(token_or_email)
     if result and result.get('valid') and result.get('user'):
         return (result.get('user', {}).get('email') or '').strip().lower()

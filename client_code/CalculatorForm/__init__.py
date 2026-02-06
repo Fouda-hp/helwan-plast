@@ -1,8 +1,4 @@
 from ._anvil_designer import CalculatorFormTemplate
-import anvil.users
-import anvil.google.auth, anvil.google.drive
-from anvil.google.drive import app_files
-from anvil.tables import app_tables
 import anvil.js
 import anvil.server
 import anvil
@@ -19,7 +15,7 @@ class CalculatorForm(CalculatorFormTemplate):
   # =================================================
   def __init__(self, **properties):
     self.init_components(**properties)
-    
+
     # ---------- Bind form_show event to load settings
     self.add_event_handler('show', self.form_show)
 
@@ -29,14 +25,14 @@ class CalculatorForm(CalculatorFormTemplate):
 
     # ---------- Overlays & save
     anvil.js.window.getQuotationsForOverlay = self.get_quotations_for_overlay
-    anvil.js.window.getQuotationHeaders = self.get_quotation_headers
     anvil.js.window.getClientsForOverlay = self.get_clients_for_overlay
     anvil.js.window.callPythonSave = self.save_button_click
 
     # ---------- Load from overlays
-    anvil.js.window.loadQuotationFromOverlay = self._load_quotation_from_js
-    anvil.js.window.loadClientFromOverlay = self._load_client_from_js
-    
+    # ملاحظة: loadQuotationFromOverlay و loadClientFromOverlay
+    # يتم تعريفهما في quotations.js و clients.js (التنفيذ الكامل مع DOM/cylinders/checkboxes)
+    # لذلك لا نُعيد تعريفهما هنا لتجنب التعارض
+
     # ---------- Get active users for Sales Rep dropdown
     anvil.js.window.getActiveUsersForDropdown = self.get_active_users_for_dropdown
 
@@ -55,12 +51,6 @@ class CalculatorForm(CalculatorFormTemplate):
 
   def get_next_quotation_number_js(self):
     return anvil.server.call("get_next_quotation_number")
-
-  def _load_quotation_from_js(self, data):
-    self.load_quotation(data)
-
-  def _load_client_from_js(self, data):
-    self.load_client(data)
 
   # =================================================
   # HELPERS
@@ -139,13 +129,6 @@ class CalculatorForm(CalculatorFormTemplate):
   # =================================================
   # OVERLAYS
   # =================================================
-  def get_quotation_headers(self):
-    try:
-      cols = app_tables.quotations.list_columns()
-      return [c.get('name', c.name if hasattr(c, 'name') else str(c)) for c in cols]
-    except Exception:
-      return []
-
   def get_quotations_for_overlay(self):
     auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email')
     return anvil.server.call("get_all_quotations", 1, 20, '', False, auth)
@@ -159,20 +142,14 @@ class CalculatorForm(CalculatorFormTemplate):
     return anvil.server.call("get_active_users_for_dropdown", auth)
 
   # =================================================
-  # LOAD DATA
+  # FORM SHOW - LOAD SETTINGS
   # =================================================
-  def load_client(self, data):
-    if not data:
-      return
-    for k, v in data.items():
-      c = self.find_component(k)
-      if c and hasattr(c, "text"):
-        c.text = v or ""
-
   def form_show(self, **event_args):
     """جلب كل الإعدادات من السيرفر في استدعاء واحد وتمريرها للصفحة."""
     try:
-      anvil.js.window.eval("if (window.localStorage) window.localStorage.setItem('hp_last_page', '#calculator');")
+      ls = anvil.js.window.localStorage
+      if ls:
+        ls.setItem('hp_last_page', '#calculator')
     except Exception:
       pass
     try:
@@ -201,35 +178,28 @@ class CalculatorForm(CalculatorFormTemplate):
         settings_payload["machinePrices"] = data["machinePrices"]
       if data.get("cylinderPrices") is not None:
         settings_payload["cylinderPrices"] = data["cylinderPrices"]
-      json_str = json.dumps(settings_payload, default=str)
-      escaped = json_str.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
+      # تمرير البيانات مباشرة عبر anvil.js بدون eval
       try:
-        set_global = 'var _p = JSON.parse("%s"); window.__calculatorSettingsFromPython = _p; if (window.top && window.top !== window) window.top.__calculatorSettingsFromPython = _p;' % escaped
-        anvil.js.window.eval(set_global)
+        json_str = json.dumps(settings_payload, default=str)
+        parsed = anvil.js.window.JSON.parse(json_str)
+        anvil.js.window.__calculatorSettingsFromPython = parsed
+        try:
+          if anvil.js.window.top and anvil.js.window.top != anvil.js.window:
+            anvil.js.window.top.__calculatorSettingsFromPython = parsed
+        except Exception:
+          pass
       except Exception:
         pass
+      # تطبيق الإعدادات مع تقليل عدد الاستدعاءات (2 بدل 5) وإزالة التكرار
       apply_js = (
         "var _d = (window.__calculatorSettingsFromPython || (window.top && window.top.__calculatorSettingsFromPython));"
-        "var _apply = function() { if (window.applyCalculatorSettingsFromPython && _d) { try { window.applyCalculatorSettingsFromPython(_d); if (window.recalcAll) setTimeout(window.recalcAll, 50); } catch(e) {} } };"
-        "var _r = function() { if (window.reinitCalculatorDropdowns) window.reinitCalculatorDropdowns(); };"
-        "setTimeout(_apply, 150); setTimeout(_apply, 500); setTimeout(_apply, 1200); setTimeout(_apply, 2500); setTimeout(_apply, 4000);"
-        "setTimeout(_r, 250); setTimeout(_r, 800); setTimeout(_r, 1500); setTimeout(_r, 3000);"
+        "var _applied = false;"
+        "var _apply = function() { if (_applied) return; if (window.applyCalculatorSettingsFromPython && _d) { try { _applied = true; window.applyCalculatorSettingsFromPython(_d); if (window.calculateAll) setTimeout(window.calculateAll, 50); } catch(e) { _applied = false; } } };"
+        "var _rDone = false;"
+        "var _r = function() { if (_rDone) return; if (window.reinitCalculatorDropdowns) { _rDone = true; window.reinitCalculatorDropdowns(); } };"
+        "setTimeout(_apply, 300); setTimeout(_apply, 2000);"
+        "setTimeout(_r, 500); setTimeout(_r, 2000);"
       )
       anvil.js.window.eval(apply_js)
-      anvil.js.window.eval(
-        "var _r=function(){ if (window.reinitCalculatorDropdowns) window.reinitCalculatorDropdowns(); };"
-        "setTimeout(_r, 250); setTimeout(_r, 800); setTimeout(_r, 1500); setTimeout(_r, 3000);"
-      )
     except Exception as e:
       logger.debug("CalculatorForm form_show error: %s", e)
-
-  def load_quotation(self, data):
-    if not data:
-      return
-    for k, v in data.items():
-      c = self.find_component(k)
-      if c:
-        if hasattr(c, "checked"):
-          c.checked = (v == "YES")
-        elif hasattr(c, "text"):
-          c.text = v or ""

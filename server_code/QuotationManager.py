@@ -89,13 +89,7 @@ def _require_authenticated(token_or_email):
         user = result.get('user', {})
         return True, user.get('email', 'unknown'), None
 
-    # محاولة التحقق بالبريد الإلكتروني
-    if '@' in str(token_or_email):
-        from anvil.tables import app_tables as _at
-        user_row = _at.users.get(email=str(token_or_email).strip().lower())
-        if user_row and user_row.get('is_active') and user_row.get('is_approved'):
-            return True, str(token_or_email).strip().lower(), None
-
+    # ⛔ لا يتم قبول البريد الإلكتروني كتوكن - يجب استخدام session token فقط
     return False, None, {'success': False, 'message': 'Invalid or expired session'}
 
 
@@ -526,6 +520,7 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
         'In Stock': safe_float(form_data.get('In Stock')),
         'New Order': safe_float(form_data.get('New Order')),
         'Pricing Mode': safe_strip(form_data.get('Pricing Mode')),
+        'Overseas clients': safe_strip(form_data.get('Overseas clients') or form_data.get('overseas_clients')),
 
         'is_deleted': False,
         'updated_by': user_email,
@@ -2051,28 +2046,35 @@ def get_contract(quotation_number, token_or_email=None):
 
 
 @anvil.server.callable
-def get_contracts_list(search='', token_or_email=None):
+def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
     """
-    Get list of all contracts - يتطلب صلاحية view
+    Get list of contracts with pagination - يتطلب صلاحية view
     """
     is_valid, _, error = _require_permission(token_or_email, 'view')
     if not is_valid:
-        return {'success': False, 'data': [], 'count': 0, 'message': 'Permission denied'}
+        return {'success': False, 'data': [], 'count': 0, 'total': 0, 'message': 'Permission denied'}
     try:
+        page = max(1, int(page) if page else 1)
+        page_size = max(1, min(200, int(page_size) if page_size else 50))
+
         all_rows = list(app_tables.contracts.search())
-        
+
         # Filter by search
         if search:
             search = search.lower()
-            all_rows = [r for r in all_rows 
+            all_rows = [r for r in all_rows
                        if search in str(r.get('client_name', '') or '').lower()
                        or search in str(r.get('contract_number', '') or '').lower()]
-        
+
         # Sort by created_at descending
         all_rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
-        
+
+        total = len(all_rows)
+        start = (page - 1) * page_size
+        page_rows = all_rows[start:start + page_size]
+
         data = []
-        for r in all_rows:
+        for r in page_rows:
             data.append({
                 'contract_number': r.get('contract_number'),
                 'quotation_number': r.get('quotation_number'),
@@ -2083,11 +2085,11 @@ def get_contracts_list(search='', token_or_email=None):
                 'created_at': r.get('created_at').isoformat() if r.get('created_at') and hasattr(r.get('created_at'), 'isoformat') else ''
             })
 
-        return {'success': True, 'data': data, 'count': len(data)}
+        return {'success': True, 'data': data, 'count': len(data), 'total': total, 'page': page, 'page_size': page_size}
 
     except Exception as e:
         logger.error(f"Error getting contracts list: {e}")
-        return {'success': False, 'message': str(e), 'data': []}
+        return {'success': False, 'message': str(e), 'data': [], 'total': 0}
 
 
 # =========================================================
@@ -2248,7 +2250,7 @@ def create_backup(token_or_email):
             )
         except Exception:
             pass
-        return {'success': True, 'file': media, 'filename': filename, 'drive_uploaded': drive_ok, 'drive_message': drive_msg if not drive_ok else None}
+        return {'success': True, 'file': media, 'filename': filename, 'drive_uploaded': drive_ok, 'drive_message': drive_msg}
     except Exception as e:
         logger.exception("create_backup error")
         return {'success': False, 'message': str(e)}
@@ -2345,33 +2347,70 @@ def restore_backup(token_or_email, backup_media):
                 logger.critical("ROLLBACK FAILED for clients: %s", rb_err)
             return {'success': False, 'message': 'فشلت الاستعادة - تم استرجاع البيانات السابقة'}
 
-        clear_table(app_tables.quotations)
-        stats['quotations'] = restore_table(app_tables.quotations, data.get('quotations', []))
+        # ===== استعادة باقي الجداول مع حماية rollback كاملة =====
         try:
-            clear_table(app_tables.contracts)
-            restore_table(app_tables.contracts, data.get('contracts', []))
-            stats['contracts'] = len(data.get('contracts', []))
+            clear_table(app_tables.quotations)
+            stats['quotations'] = restore_table(app_tables.quotations, data.get('quotations', []))
         except Exception as e:
-            logger.warning("restore contracts: %s", e)
-        for item in data.get('settings', []):
-            sk = item.get('setting_key')
-            if not sk:
-                continue
+            logger.error("Failed restoring quotations: %s", e)
+            restore_failed = True
+
+        if not restore_failed:
             try:
-                existing = app_tables.settings.get(setting_key=sk)
-                if existing:
-                    existing.update(setting_value=item.get('setting_value'), setting_type=item.get('setting_type', 'text'))
-                else:
-                    app_tables.settings.add_row(setting_key=sk, setting_value=item.get('setting_value'), setting_type=item.get('setting_type', 'text'))
-                stats['settings'] += 1
+                clear_table(app_tables.contracts)
+                restore_table(app_tables.contracts, data.get('contracts', []))
+                stats['contracts'] = len(data.get('contracts', []))
             except Exception as e:
-                logger.warning("restore setting %s: %s", sk, e)
-        try:
-            clear_table(app_tables.machine_specs)
-            restore_table(app_tables.machine_specs, data.get('machine_specs', []))
-            stats['machine_specs'] = len(data.get('machine_specs', []))
-        except Exception as e:
-            logger.warning("restore machine_specs: %s", e)
+                logger.warning("restore contracts (non-critical): %s", e)
+
+        if not restore_failed:
+            for item in data.get('settings', []):
+                sk = item.get('setting_key')
+                if not sk:
+                    continue
+                try:
+                    existing = app_tables.settings.get(setting_key=sk)
+                    if existing:
+                        existing.update(setting_value=item.get('setting_value'), setting_type=item.get('setting_type', 'text'))
+                    else:
+                        app_tables.settings.add_row(setting_key=sk, setting_value=item.get('setting_value'), setting_type=item.get('setting_type', 'text'))
+                    stats['settings'] += 1
+                except Exception as e:
+                    logger.warning("restore setting %s: %s", sk, e)
+
+        if not restore_failed:
+            try:
+                clear_table(app_tables.machine_specs)
+                restore_table(app_tables.machine_specs, data.get('machine_specs', []))
+                stats['machine_specs'] = len(data.get('machine_specs', []))
+            except Exception as e:
+                logger.warning("restore machine_specs (non-critical): %s", e)
+
+        # ===== Full Rollback إذا فشلت أي عملية أساسية =====
+        if restore_failed:
+            logger.critical("Restore FAILED after partial restore - full rollback to pre-restore state")
+            try:
+                clear_table(app_tables.clients)
+                restore_table(app_tables.clients, pre_restore_backup.get('clients', []))
+            except Exception as rb_err:
+                logger.critical("ROLLBACK FAILED for clients: %s", rb_err)
+            try:
+                clear_table(app_tables.quotations)
+                restore_table(app_tables.quotations, pre_restore_backup.get('quotations', []))
+            except Exception as rb_err:
+                logger.critical("ROLLBACK FAILED for quotations: %s", rb_err)
+            try:
+                clear_table(app_tables.contracts)
+                restore_table(app_tables.contracts, pre_restore_backup.get('contracts', []))
+            except Exception as rb_err:
+                logger.critical("ROLLBACK FAILED for contracts: %s", rb_err)
+            try:
+                clear_table(app_tables.machine_specs)
+                restore_table(app_tables.machine_specs, pre_restore_backup.get('machine_specs', []))
+            except Exception as rb_err:
+                logger.critical("ROLLBACK FAILED for machine_specs: %s", rb_err)
+            return {'success': False, 'message': 'فشلت الاستعادة - تم استرجاع جميع البيانات السابقة'}
+
         AuthManager.log_audit(
             'BACKUP_RESTORE', 'backup', data.get('export_date', ''),
             None, stats,

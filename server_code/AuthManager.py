@@ -256,11 +256,12 @@ def store_otp(user_email, otp, purpose='verification'):
     for old in old_otps:
       old.delete()
 
-      # إضافة OTP جديد
+      # إضافة OTP جديد (مُشفّر بـ SHA-256)
+    otp_hash = hashlib.sha256(str(otp).encode('utf-8')).hexdigest()
     app_tables.otp_codes.add_row(
       otp_id=str(uuid.uuid4()),
       user_email=user_email,
-      otp_code=otp,
+      otp_code=otp_hash,
       purpose=purpose,
       created_at=datetime.now(),
       expires_at=datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
@@ -277,13 +278,22 @@ def verify_otp(user_email, otp, purpose='verification'):
     التحقق من صحة OTP
     """
   try:
-    # البحث عن OTP باستخدام search بدلاً من get لتجنب أخطاء "More than one row"
+    # البحث عن OTP باستخدام hash (SHA-256) للمقارنة
+    otp_hash = hashlib.sha256(str(otp).encode('utf-8')).hexdigest()
     otp_records = list(app_tables.otp_codes.search(
       user_email=user_email,
-      otp_code=otp,
+      otp_code=otp_hash,
       purpose=purpose,
       is_used=False
     ))
+    # Fallback: دعم OTP القديم (plaintext) خلال فترة الانتقال
+    if not otp_records:
+        otp_records = list(app_tables.otp_codes.search(
+          user_email=user_email,
+          otp_code=str(otp),
+          purpose=purpose,
+          is_used=False
+        ))
 
     if not otp_records:
       return False, "Invalid or expired code"
@@ -469,10 +479,14 @@ def clear_rate_limits(token_or_email=None):
 
 
 @anvil.server.callable
-def clear_my_rate_limit():
+def clear_my_rate_limit(token_or_email=None):
     """
-    مسح Rate Limit للـ IP الحالي - يمكن استدعاؤها من العميل
+    مسح Rate Limit للـ IP الحالي - يتطلب مصادقة
     """
+    if token_or_email:
+        session = validate_session(token_or_email)
+        if not session:
+            return {'success': False, 'message': 'Authentication required'}
     try:
         ip_address = get_client_ip()
         count = 0
@@ -1675,9 +1689,12 @@ def check_admin_exists():
 @anvil.server.callable
 def diagnose_admin_access(email, token=None):
     """
-    تشخيص مشكلة صلاحيات الأدمن
+    تشخيص مشكلة صلاحيات الأدمن - يتطلب صلاحية أدمن
     تُرجع معلومات مفصلة للتصحيح
     """
+    is_authorized, error = require_admin(token)
+    if not is_authorized:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Admin access required'}
     result = {
         'email_check': None,
         'user_found': False,
@@ -2101,10 +2118,14 @@ def update_setting(token_or_email, key, value):
 
 
 @anvil.server.callable
-def get_setting(key):
+def get_setting(key, token_or_email=None):
     """
-    الحصول على قيمة إعداد معين (متاح للجميع)
+    الحصول على قيمة إعداد معين - يتطلب مصادقة
     """
+    if token_or_email:
+        session = validate_session(token_or_email)
+        if not session:
+            return None
     setting = app_tables.settings.get(setting_key=key)
 
     if not setting:
@@ -2244,10 +2265,15 @@ def _options_from_machine_prices(prices):
 
 
 @anvil.server.callable
-def get_machine_prices():
+def get_machine_prices(token_or_email=None):
     """
     المصدر الأساسي لجميع أسعار المكن. يرجع الأسعار + خيارات الدروب داون (فقط مقاسات سعرها > 0).
+    يتطلب مصادقة اختيارية.
     """
+    if token_or_email:
+        session = validate_session(token_or_email)
+        if not session:
+            return {'prices': {}, 'priceOptions': {}}
     default_prices = {
         "Metal anilox": {
             "4": {"80": 15000, "100": 16000, "120": 17500},
@@ -2713,8 +2739,10 @@ def check_session_activity(token):
         return {'valid': False, 'message': 'Session expired'}
 
     try:
-        # تحديث وقت آخر نشاط
-        session_record = app_tables.sessions.get(session_token=token)
+        # تحديث وقت آخر نشاط - استخدام hash للبحث في DB
+        from .auth_sessions import _hash_token
+        token_hash = _hash_token(token)
+        session_record = app_tables.sessions.get(session_token=token_hash)
         if session_record:
             # تمديد الجلسة إذا كان المستخدم نشطاً
             new_expires = datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES)
@@ -2744,7 +2772,9 @@ def get_session_info(token):
         return {'valid': False}
 
     try:
-        session_record = app_tables.sessions.get(session_token=token)
+        from .auth_sessions import _hash_token
+        token_hash = _hash_token(token)
+        session_record = app_tables.sessions.get(session_token=token_hash)
         if session_record:
             remaining = (session_record['expires_at'] - datetime.now()).total_seconds() / 60
 

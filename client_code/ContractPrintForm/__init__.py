@@ -100,11 +100,11 @@ class ContractPrintForm(ContractPrintFormTemplate):
         select = anvil.js.window.document.getElementById('quotationSelect')
         if not select:
             return
-        select.innerHTML = f'<option value="">-- Select Quotation ({len(quotations)}) --</option>'
+        select.innerHTML = f'<option value="">-- Select Quotation ({_h(len(quotations))}) --</option>'
         for q in quotations:
-            q_num = q.get('Quotation#', '')
-            client = q.get('Client Name', '')
-            model = q.get('Model', '')
+            q_num = _h(q.get('Quotation#', ''))
+            client = _h(q.get('Client Name', ''))
+            model = _h(q.get('Model', ''))
             option_text = f"#{q_num} - {client} - {model}"
             select.innerHTML += f'<option value="{q_num}">{option_text}</option>'
 

@@ -206,23 +206,26 @@ class LoginForm(LoginFormTemplate):
 
     def _save_auth_everywhere(self, user_email='', user_name='', user_role='', auth_token=''):
         """حفظ التوكن ومعلومات المستخدم في sessionStorage فقط (انتهاء الجلسة عند إغلاق التاب)"""
-        js = r"""
-        (function(email, name, role, token) {
-          try {
-            var set = function(s) {
-              if (!s) return;
-              s.setItem('user_email', email || '');
-              s.setItem('user_name', name || '');
-              s.setItem('user_role', role || '');
-              if (token) s.setItem('auth_token', token);
-            };
-            if (window.sessionStorage) set(window.sessionStorage);
-            if (window.top && window.top !== window && window.top.sessionStorage) set(window.top.sessionStorage);
-          } catch(e) {}
-        })(%s, %s, %s, %s);
-        """ % (json.dumps(user_email or ''), json.dumps(user_name or ''), json.dumps(user_role or ''), json.dumps(auth_token or ''))
         try:
-            anvil.js.window.eval(js)
+            ss = anvil.js.window.sessionStorage
+            if ss:
+                ss.setItem('user_email', user_email or '')
+                ss.setItem('user_name', user_name or '')
+                ss.setItem('user_role', user_role or '')
+                if auth_token:
+                    ss.setItem('auth_token', auth_token)
+            # حفظ أيضاً في الإطار الأعلى إن وُجد
+            try:
+                if anvil.js.window.top and anvil.js.window.top != anvil.js.window:
+                    top_ss = anvil.js.window.top.sessionStorage
+                    if top_ss:
+                        top_ss.setItem('user_email', user_email or '')
+                        top_ss.setItem('user_name', user_name or '')
+                        top_ss.setItem('user_role', user_role or '')
+                        if auth_token:
+                            top_ss.setItem('auth_token', auth_token)
+            except Exception:
+                pass
         except Exception:
             pass
 

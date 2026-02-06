@@ -612,6 +612,8 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
       if (qNum) quotationInput.value = qNum;
     } catch (e) {
       console.error("Quotation number error:", e);
+    } finally {
+      window.QUOTATION_LOCKED = false;
     }
   }
 

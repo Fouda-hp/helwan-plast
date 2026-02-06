@@ -95,6 +95,9 @@
   // ----------------------------------------
   function initCustomSelects() {
     document.querySelectorAll(".ui-select").forEach(select => {
+      if (select.dataset.eventsAttached) return; // تجنب تكرار الأحداث
+      select.dataset.eventsAttached = "1";
+
       const trigger = select.querySelector(".ui-select-trigger");
       const valueBox = select.querySelector(".ui-select-value");
       const options = select.querySelectorAll(".ui-option");
@@ -102,12 +105,13 @@
 
       if (!trigger || !realSelect) return;
 
-      trigger.onclick = () => {
+      trigger.onclick = (e) => {
         select.classList.toggle("open");
+        e.stopPropagation();
       };
 
       options.forEach(option => {
-        option.onclick = () => {
+        option.onclick = (e) => {
           options.forEach(o => o.classList.remove("selected"));
           option.classList.add("selected");
 
@@ -120,6 +124,7 @@
           }
 
           select.classList.remove("open");
+          e.stopPropagation();
         };
       });
     });
@@ -128,15 +133,16 @@
   // ----------------------------------------
   // Auto numbering on first load
   // ----------------------------------------
-  (function waitForInitialAutoNumbering() {
+  (function waitForInitialAutoNumbering(retries) {
+    retries = retries || 0;
     if (
       typeof window.initDefaultValues === "function" &&
       typeof window.getNextClientCode === "function" &&
       typeof window.getNextQuotationNumber === "function"
     ) {
       window.initDefaultValues();
-    } else {
-      setTimeout(waitForInitialAutoNumbering, 100);
+    } else if (retries < 50) {
+      setTimeout(function() { waitForInitialAutoNumbering(retries + 1); }, 100);
     }
   })();
 

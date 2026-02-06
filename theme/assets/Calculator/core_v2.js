@@ -73,6 +73,8 @@ window.initDefaultValues = async function () {
 // -------------------------------
 // Wait for Python bridges
 // -------------------------------
+var _autoNumberRetries = 0;
+var _autoNumberMaxRetries = 50; // 50 × 100ms = 5 ثوانٍ كحد أقصى
 function waitForAutoNumbering() {
   if (
     typeof window.getNextClientCode === "function" &&
@@ -82,8 +84,11 @@ function waitForAutoNumbering() {
       window.__autoNumbersInitialized = true;
       window.initDefaultValues();
     }
-  } else {
+  } else if (_autoNumberRetries < _autoNumberMaxRetries) {
+    _autoNumberRetries++;
     setTimeout(waitForAutoNumbering, 100);
+  } else {
+    console.warn("waitForAutoNumbering: max retries reached, Python bridges not available");
   }
 }
 

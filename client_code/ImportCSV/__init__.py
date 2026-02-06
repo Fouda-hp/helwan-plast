@@ -1,5 +1,6 @@
 from ._anvil_designer import ImportCSVTemplate
 from anvil import *
+import anvil.users
 import anvil.google.auth, anvil.google.drive
 from anvil.google.drive import app_files
 import anvil.server

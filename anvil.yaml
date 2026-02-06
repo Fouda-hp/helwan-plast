@@ -679,6 +679,29 @@ db_schema:
       type: string
     server: full
     title: USERS
+  notifications:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: id
+      type: string
+    - admin_ui: {width: 200}
+      name: user_email
+      type: string
+    - admin_ui: {width: 200}
+      name: type
+      type: string
+    - admin_ui: {width: 300}
+      name: payload
+      type: string
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: read_at
+      type: datetime
+    server: full
+    title: NOTIFICATIONS
 dependencies: []
 metadata: {logo_img: 'asset:helwan_logo-logo.png', robots: 'noindex, nofollow', title: Helwan Plast - Printer System}
 name: Helwan Plast System

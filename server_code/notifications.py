@@ -7,11 +7,14 @@ notifications.py - نظام الإشعارات (Enterprise / SaaS)
 
 import uuid
 import json
+import logging
 from datetime import datetime
 
 from anvil.tables import app_tables
 from anvil.tables import order_by as anvil_order_by
 import anvil.server
+
+logger = logging.getLogger(__name__)
 
 # استيراد AuthManager متوافق مع Anvil (نسبي أو مطلق)
 try:
@@ -36,8 +39,8 @@ def create_notification(user_email, notif_type, payload):
             created_at=datetime.now(),
             read_at=None
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to create notification for %s: %s", user_email, e)
 
 
 def _user_email_from_token(token_or_email):

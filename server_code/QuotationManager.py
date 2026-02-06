@@ -414,7 +414,7 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
 
     return {
         "success": True,
-        "message": " + ".join(actions),
+        "message": " & ".join(actions),
         "client_code": client_code,
         "quotation_number": quotation_number if is_quotation else None
     }
@@ -555,7 +555,7 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
 # الحذف الناعم (مع التحقق من الصلاحيات)
 # =========================================================
 @anvil.server.callable
-def soft_delete_client(client_code, token_or_email='admin'):
+def soft_delete_client(client_code, token_or_email=None):
     """حذف عميل (يتطلب صلاحية الحذف؛ مدير مع delete_own يحذف سجلاته فقط)"""
     is_valid, user_email, auth_err = _require_authenticated(token_or_email)
     if not is_valid:
@@ -586,7 +586,7 @@ def soft_delete_client(client_code, token_or_email='admin'):
 
 
 @anvil.server.callable
-def soft_delete_quotation(quotation_number, token_or_email='admin'):
+def soft_delete_quotation(quotation_number, token_or_email=None):
     """حذف عرض (يتطلب صلاحية الحذف؛ مدير مع delete_own يحذف سجلاته فقط)"""
     is_valid, user_email, auth_err = _require_authenticated(token_or_email)
     if not is_valid:
@@ -617,7 +617,7 @@ def soft_delete_quotation(quotation_number, token_or_email='admin'):
 
 
 @anvil.server.callable
-def restore_client(client_code, token_or_email='admin'):
+def restore_client(client_code, token_or_email=None):
     """استعادة عميل محذوف (يتطلب صلاحية الحذف؛ delete_own = استعادة سجلاتك فقط)"""
     is_valid, user_email, auth_err = _require_authenticated(token_or_email)
     if not is_valid:
@@ -643,7 +643,7 @@ def restore_client(client_code, token_or_email='admin'):
 
 
 @anvil.server.callable
-def restore_quotation(quotation_number, token_or_email='admin'):
+def restore_quotation(quotation_number, token_or_email=None):
     """استعادة عرض محذوف (يتطلب صلاحية الحذف؛ manager مع delete_own يستعيد سجلاته فقط)"""
     is_valid, user_email, auth_err = _require_authenticated(token_or_email)
     if not is_valid:

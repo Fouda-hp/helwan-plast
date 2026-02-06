@@ -3,10 +3,18 @@ from anvil import *
 import anvil.server
 import anvil.js
 import json
+import html as html_escape_module
 import logging
 from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
+
+
+def _h(value):
+    """HTML-escape a value to prevent XSS injection"""
+    if value is None:
+        return ''
+    return html_escape_module.escape(str(value))
 
 
 class ContractPrintForm(ContractPrintFormTemplate):
@@ -117,7 +125,11 @@ class ContractPrintForm(ContractPrintFormTemplate):
         select = anvil.js.window.document.getElementById('quotationSelect')
         if not select or not select.value:
             return
-        q_num = int(select.value)
+        try:
+            q_num = int(select.value)
+        except (ValueError, TypeError):
+            self._show_msg('Invalid quotation number selected')
+            return
         result = self.load_quotation_for_print(q_num)
         if result and result.get('success'):
             self.current_data = result.get('data', {})
@@ -509,11 +521,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
             user_email = anvil.js.window.sessionStorage.getItem('user_email') or 'system'
             auth = anvil.js.window.sessionStorage.getItem('auth_token') or user_email
             result = anvil.server.call('save_contract', contract_data, user_email, auth)
-            if result.get('success'):
+            if result and result.get('success'):
                 is_ar = self.current_lang == 'ar'
                 Notification('تم حفظ العقد بنجاح' if is_ar else 'Contract saved', style='success').show()
             else:
-                self._show_msg(result.get('message', 'Unknown error'))
+                err_msg = result.get('message', 'Unknown error') if result else 'Server returned empty response'
+                self._show_msg(err_msg)
         except Exception as e:
             self._show_msg(str(e))
 
@@ -572,22 +585,22 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # Header
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")} / {data.get("quotation_date_ar" if is_ar else "quotation_date_en", "")}</div>'
-        html += f'<div class="address">{c.get("company_address_ar" if is_ar else "company_address_en", "")}</div>'
-        html += f'<div class="contact">{data.get("sales_rep_phone", "")}</div>'
-        html += f'<div class="contact">{data.get("sales_rep_email", "")}</div>'
+        html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
+        html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
+        html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
+        html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
         html += '</div>'
         html += '<div class="header-left">'
         html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-        html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
-        html += f'<div class="website">{c.get("company_website", "")}</div>'
+        html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
+        html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
         html += '</div>'
         html += '</div>'
 
         # Contract Info (Changed from Quotation)
         html += '<div class="quotation-info">'
         html += f'<div class="quotation-number">{"عقد رقم" if is_ar else "Contract No.:"} <span>C-{q_num}</span></div>'
-        html += f'<div class="client-info">{"السادة - شركة /" if is_ar else "To: / Company:"} <span>{data.get("client_name", "")}</span></div>'
+        html += f'<div class="client-info">{"السادة - شركة /" if is_ar else "To: / Company:"} <span>{_h(data.get("client_name", ""))}</span></div>'
         html += f'<div class="greeting">{"تحية طيبة وبعد،" if is_ar else "Dear Sir/Madam,"}</div>'
         intro = 'تم الاتفاق بين الطرفين على توريد ماكينة الطباعة التالية طبقاً للمواصفات الموضحة أدناه:' if is_ar else 'Both parties have agreed to supply the following printing machine according to the specifications detailed below:'
         html += f'<div class="intro-text">{intro}</div>'
@@ -697,15 +710,15 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # Header (repeated)
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")} / {data.get("quotation_date_ar" if is_ar else "quotation_date_en", "")}</div>'
-        html += f'<div class="address">{c.get("company_address_ar" if is_ar else "company_address_en", "")}</div>'
-        html += f'<div class="contact">{data.get("sales_rep_phone", "")}</div>'
-        html += f'<div class="contact">{data.get("sales_rep_email", "")}</div>'
+        html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
+        html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
+        html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
+        html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
         html += '</div>'
         html += '<div class="header-left">'
         html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-        html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
-        html += f'<div class="website">{c.get("company_website", "")}</div>'
+        html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
+        html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
         html += '</div>'
         html += '</div>'
 
@@ -981,15 +994,15 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # Header (repeated)
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")} / {data.get("quotation_date_ar" if is_ar else "quotation_date_en", "")}</div>'
-        html += f'<div class="address">{c.get("company_address_ar" if is_ar else "company_address_en", "")}</div>'
-        html += f'<div class="contact">{data.get("sales_rep_phone", "")}</div>'
-        html += f'<div class="contact">{data.get("sales_rep_email", "")}</div>'
+        html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
+        html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
+        html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
+        html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
         html += '</div>'
         html += '<div class="header-left">'
         html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-        html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
-        html += f'<div class="website">{c.get("company_website", "")}</div>'
+        html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
+        html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
         html += '</div>'
         html += '</div>'
 
@@ -1048,12 +1061,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
         html += f'''
         <div style="text-align:center;min-width:200px;">
             <div style="font-weight:bold;margin-bottom:10px;">{"الطرف الأول" if is_ar else "First Party"}</div>
-            <div>{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>
+            <div>{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>
             <div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">{"التوقيع" if is_ar else "Signature"}</div>
         </div>
         <div style="text-align:center;min-width:200px;">
             <div style="font-weight:bold;margin-bottom:10px;">{"الطرف الثاني" if is_ar else "Second Party"}</div>
-            <div>{data.get('client_name', '')}</div>
+            <div>{_h(data.get('client_name', ''))}</div>
             <div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">{"التوقيع" if is_ar else "Signature"}</div>
         </div>
         '''

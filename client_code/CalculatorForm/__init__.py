@@ -92,8 +92,8 @@ class CalculatorForm(CalculatorFormTemplate):
         new_code = anvil.server.call("get_or_create_client_code", name, phone)
         if new_code:
           code.text = str(new_code)
-      except Exception:
-        pass
+      except Exception as e:
+        logger.debug("Auto client code error: %s", e)
 
   # =================================================
   # AUTO QUOTATION NUMBER
@@ -113,8 +113,8 @@ class CalculatorForm(CalculatorFormTemplate):
       )
       if next_no is not None:
         qn.text = str(next_no)
-    except Exception:
-      pass
+    except Exception as e:
+      logger.debug("Auto quotation number error: %s", e)
 
   # =================================================
   # SAVE

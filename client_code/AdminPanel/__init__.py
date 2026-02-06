@@ -81,6 +81,7 @@ class AdminPanel(AdminPanelTemplate):
         # Audit Logs
         anvil.js.window.getAuditLogs = self.get_audit_logs
         anvil.js.window.getMyNotifications = self.get_my_notifications
+        anvil.js.window.clearAllMyNotifications = self.clear_all_my_notifications
 
         # Clients & Quotations
         anvil.js.window.getAllClients = self.get_all_clients
@@ -402,32 +403,51 @@ class AdminPanel(AdminPanelTemplate):
                 document.removeEventListener('click', closeDropdown);
               }
               setTimeout(function() { document.addEventListener('click', closeDropdown); }, 0);
+              function renderList(res) {
+                var list = (res && res.success && res.notifications) ? res.notifications : [];
+                var header = '<div style="padding:12px;border-bottom:1px solid #eee;font-weight:700;color:#1a1a2e;display:flex;justify-content:space-between;align-items:center;">';
+                header += '<span>الإشعارات</span>';
+                header += '<button type="button" id="adminNotificationsClearAll" style="background:#f0f0f0;border:1px solid #ddd;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;">تفريغ القائمة</button></div>';
+                if (list.length === 0) {
+                  dropdown.innerHTML = header + '<div style="padding:16px;text-align:center;color:#666;font-size:14px;">لا توجد إشعارات</div>';
+                  var clearBtn = dropdown.querySelector('#adminNotificationsClearAll');
+                  if (clearBtn) clearBtn.onclick = function() { closeDropdown(); };
+                  return;
+                }
+                var html = header;
+                list.forEach(function(n) {
+                  var ts = (n.timestamp || '').replace('T', ' ').substring(0, 19);
+                  var desc = (n.action_description || n.action || '-');
+                  var bg = n.read_at ? '#fff' : 'rgba(0,120,215,0.06)';
+                  html += '<div style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333;background:' + bg + ';">';
+                  html += '<div style="color:#999;font-size:11px;margin-bottom:4px;">' + ts + '</div>';
+                  html += '<div>' + (desc.length > 80 ? desc.substring(0, 77) + '...' : desc) + '</div></div>';
+                });
+                dropdown.innerHTML = html;
+                var clearBtn = dropdown.querySelector('#adminNotificationsClearAll');
+                if (clearBtn && window.clearAllMyNotifications) {
+                  clearBtn.onclick = function(ev) {
+                    ev.stopPropagation();
+                    var prom = window.clearAllMyNotifications();
+                    if (prom && typeof prom.then === 'function') {
+                      prom.then(function() { renderList({ success: true, notifications: [] }); });
+                    } else {
+                      renderList({ success: true, notifications: [] });
+                    }
+                  };
+                }
+              }
               if (!window.getMyNotifications) {
                 dropdown.innerHTML = '<div style="padding:16px;text-align:center;color:#666;">لا توجد إشعارات</div>';
                 return;
               }
               var p = window.getMyNotifications();
               if (p && typeof p.then === 'function') {
-                p.then(function(res) {
-                  var list = (res && res.success && res.notifications) ? res.notifications : [];
-                  if (list.length === 0) {
-                    dropdown.innerHTML = '<div style="padding:16px;text-align:center;color:#666;font-size:14px;">لا توجد إشعارات</div>';
-                    return;
-                  }
-                  var html = '<div style="padding:12px;border-bottom:1px solid #eee;font-weight:700;color:#1a1a2e;">الإشعارات</div>';
-                  list.forEach(function(n) {
-                    var ts = (n.timestamp || '').replace('T', ' ').substring(0, 19);
-                    var desc = (n.action_description || n.action || '-');
-                    html += '<div style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333;">';
-                    html += '<div style="color:#999;font-size:11px;margin-bottom:4px;">' + ts + '</div>';
-                    html += '<div>' + (desc.length > 80 ? desc.substring(0, 77) + '...' : desc) + '</div></div>';
-                  });
-                  dropdown.innerHTML = html;
-                }).catch(function() {
+                p.then(renderList).catch(function() {
                   dropdown.innerHTML = '<div style="padding:16px;text-align:center;color:#666;">لا توجد إشعارات</div>';
                 });
               } else {
-                dropdown.innerHTML = '<div style="padding:16px;text-align:center;color:#666;">لا توجد إشعارات</div>';
+                renderList(p || {});
               }
             };
             wrap.appendChild(btn);
@@ -1668,8 +1688,44 @@ class AdminPanel(AdminPanelTemplate):
         return anvil.server.call('get_audit_logs', self.get_auth(), limit, offset, filters)
 
     def get_my_notifications(self):
-        """إشعارات المستخدم الحالي (سجل تدقيق) — للأيقونة في الهيدر"""
-        return anvil.server.call('get_my_audit_logs', self.get_auth(), 50)
+        """إشعارات المستخدم الحالي من جدول notifications (للأيقونة في الهيدر)."""
+        res = anvil.server.call('get_user_notifications', self.get_auth(), 50, False)
+        if not res.get('success') or not res.get('data'):
+            return {'success': True, 'notifications': []}
+        notifications = []
+        import json as _json
+        for n in res['data']:
+            payload = n.get('payload') or {}
+            if isinstance(payload, str):
+                try:
+                    payload = _json.loads(payload)
+                except Exception:
+                    payload = {}
+            desc = payload.get('message') or payload.get('action') or n.get('type', '')
+            if n.get('type') == 'quotation_saved':
+                desc = 'تم حفظ عرض سعر #' + str(payload.get('quotation_number', ''))
+            elif n.get('type') == 'contract_saved':
+                desc = 'تم حفظ عقد ' + str(payload.get('contract_number', ''))
+            elif n.get('type') == 'user_approved':
+                desc = 'تمت الموافقة على حسابك بدور ' + str(payload.get('role', ''))
+            elif n.get('type') == 'user_rejected':
+                desc = 'تم رفض طلب التسجيل'
+            elif n.get('type') == 'backup_created':
+                desc = 'تم إنشاء نسخة احتياطية: ' + str(payload.get('filename', ''))
+            elif n.get('type') == 'backup_restored':
+                desc = 'تمت استعادة نسخة احتياطية'
+            notifications.append({
+                'id': n.get('id'),
+                'timestamp': n.get('created_at') or '',
+                'action_description': desc,
+                'action': n.get('type', ''),
+                'read_at': n.get('read_at'),
+            })
+        return {'success': True, 'notifications': notifications}
+
+    def clear_all_my_notifications(self):
+        """تفريغ قائمة الإشعارات (تعليم الكل كمقروء)."""
+        return anvil.server.call('clear_all_notifications', self.get_auth())
 
     # =========================================================
     # Clients & Quotations

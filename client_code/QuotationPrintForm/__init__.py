@@ -2,9 +2,17 @@ from ._anvil_designer import QuotationPrintFormTemplate
 from anvil import *
 import anvil.server
 import anvil.js
+import html as html_escape_module
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _h(value):
+    """HTML-escape a value to prevent XSS injection"""
+    if value is None:
+        return ''
+    return html_escape_module.escape(str(value))
 
 
 class QuotationPrintForm(QuotationPrintFormTemplate):
@@ -153,9 +161,10 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                 self.current_data = result.get('data')
                 self.render_template()
             else:
-                template_content.innerHTML = f'<div class="empty-state"><h3>Error</h3><p>{result.get("message", "Failed to load")}</p></div>'
+                err_msg = _h(result.get("message", "Failed to load") if result else "Server returned empty response")
+                template_content.innerHTML = f'<div class="empty-state"><h3>Error</h3><p>{err_msg}</p></div>'
         except Exception as e:
-            template_content.innerHTML = f'<div class="empty-state"><h3>Error</h3><p>{str(e)}</p></div>'
+            template_content.innerHTML = f'<div class="empty-state"><h3>Error</h3><p>{_h(str(e))}</p></div>'
 
     def switch_language(self, lang):
         """Switch display language"""
@@ -228,22 +237,22 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         # Header
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")} / {data.get("quotation_date_ar" if is_ar else "quotation_date_en", "")}</div>'
-        html += f'<div class="address">{c.get("company_address_ar" if is_ar else "company_address_en", "")}</div>'
-        html += f'<div class="contact">{data.get("sales_rep_phone", "")}</div>'
-        html += f'<div class="contact">{data.get("sales_rep_email", "")}</div>'
+        html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
+        html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
+        html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
+        html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
         html += '</div>'
         html += '<div class="header-left">'
         html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-        html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
-        html += f'<div class="website">{c.get("company_website", "")}</div>'
+        html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
+        html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
         html += '</div>'
         html += '</div>'
 
         # Quotation Info
         html += '<div class="quotation-info">'
         html += f'<div class="quotation-number">{"عرض سعر رقم" if is_ar else "Quotation No.:"} <span>{data.get("quotation_number", "")}</span></div>'
-        html += f'<div class="client-info">{"السادة - شركة /" if is_ar else "To: / Company:"} <span>{data.get("client_name", "")}</span></div>'
+        html += f'<div class="client-info">{"السادة - شركة /" if is_ar else "To: / Company:"} <span>{_h(data.get("client_name", ""))}</span></div>'
         html += f'<div class="greeting">{"تحية طيبة وبعد،" if is_ar else "Dear Sir/Madam,"}</div>'
         intro = 'نحن نتشرف بتقديم عرض السعر التالي لماكينة الطباعة طبقاً للمواصفات الموضحة أدناه:' if is_ar else 'We are pleased to submit our quotation for the following printing machine in accordance with the specifications detailed below:'
         html += f'<div class="intro-text">{intro}</div>'
@@ -355,15 +364,15 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         # Header (repeated)
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")} / {data.get("quotation_date_ar" if is_ar else "quotation_date_en", "")}</div>'
-        html += f'<div class="address">{c.get("company_address_ar" if is_ar else "company_address_en", "")}</div>'
-        html += f'<div class="contact">{data.get("sales_rep_phone", "")}</div>'
-        html += f'<div class="contact">{data.get("sales_rep_email", "")}</div>'
+        html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
+        html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
+        html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
+        html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
         html += '</div>'
         html += '<div class="header-left">'
         html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-        html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
-        html += f'<div class="website">{c.get("company_website", "")}</div>'
+        html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
+        html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
         html += '</div>'
         html += '</div>'
 
@@ -646,15 +655,15 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         # Header (repeated)
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div class="location-date">{c.get("quotation_location_ar" if is_ar else "quotation_location_en", "")} / {data.get("quotation_date_ar" if is_ar else "quotation_date_en", "")}</div>'
-        html += f'<div class="address">{c.get("company_address_ar" if is_ar else "company_address_en", "")}</div>'
-        html += f'<div class="contact">{data.get("sales_rep_phone", "")}</div>'
-        html += f'<div class="contact">{data.get("sales_rep_email", "")}</div>'
+        html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
+        html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
+        html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
+        html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
         html += '</div>'
         html += '<div class="header-left">'
         html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-        html += f'<div class="company-name">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
-        html += f'<div class="website">{c.get("company_website", "")}</div>'
+        html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
+        html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
         html += '</div>'
         html += '</div>'
 

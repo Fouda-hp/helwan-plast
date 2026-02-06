@@ -12,12 +12,12 @@
       return;
     }
 
-    console.log("🎨 Colors change handler attached");
+    if (typeof window.debugLog === 'function') window.debugLog("Colors change handler attached");
 
     // Add event listener with high priority
     colorsSelect.addEventListener("change", function() {
       const newColorsValue = this.value;
-      console.log("🔄 Colors changed to:", newColorsValue);
+      if (typeof window.debugLog === 'function') window.debugLog("Colors changed to:", newColorsValue);
 
       if (!newColorsValue) return;
 

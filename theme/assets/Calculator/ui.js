@@ -277,6 +277,8 @@
               window.resetFormToNew?.();
             } else if (result?.message) {
               showAlert("error", result.message);
+            } else {
+              showAlert("error", "Save failed – no response from server.");
             }
           });
           return;
@@ -295,6 +297,8 @@
             window.resetFormToNew?.();
           } else if (result?.message) {
             showAlert("error", result.message);
+          } else {
+            showAlert("error", "Save failed – no response from server.");
           }
         });
       };

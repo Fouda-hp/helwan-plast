@@ -427,13 +427,24 @@ if (typeof window.debugError !== 'function') window.debugError = function () {};
 
         try {
           var result = await window.getQuotationsForOverlay?.();
-
-          if (!result || (result.data && result.data.length === 0) || (Array.isArray(result) && result.length === 0)) {
-            if (list) list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
+          if (!result) {
+            if (list) list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#c62828;">Error loading quotations</td></tr>';
+            return;
+          }
+          if (result.success === false && result.message) {
+            if (list) list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#c62828;">' + (result.message || 'Error loading quotations') + '</td></tr>';
             return;
           }
 
           allQuotations = result.data || result;
+          if (!Array.isArray(allQuotations)) {
+            if (list) list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
+            return;
+          }
+          if (allQuotations.length === 0) {
+            if (list) list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
+            return;
+          }
 
           // Sort by Quotation# ascending
           allQuotations.sort(function(a, b) {

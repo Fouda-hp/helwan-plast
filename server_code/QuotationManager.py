@@ -715,114 +715,122 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
     عروض مع ترقيم على السيرفر: فلتر is_deleted في الاستعلام، عدّ وجمع الصفحة فقط.
     Backward compatible: data, page, per_page, total, total_pages.
     """
-    page = max(1, int(page) if page is not None else DEFAULT_PAGE)
-    per_page = max(1, min(500, int(per_page) if per_page is not None else DEFAULT_PAGE_SIZE))
-    sort_col = sort_by or 'Quotation#'
-    sort_asc = (str(sort_dir or 'asc').lower() != 'desc')
+    try:
+        page = max(1, int(page) if page is not None else DEFAULT_PAGE)
+        per_page = max(1, min(500, int(per_page) if per_page is not None else DEFAULT_PAGE_SIZE))
+        sort_col = sort_by or 'Quotation#'
+        sort_asc = (str(sort_dir or 'asc').lower() != 'desc')
 
-    is_valid, _, error = _require_permission(token_or_email, 'view')
-    if not is_valid:
-        return {"data": [], "page": page, "per_page": per_page, "total": 0, "total_pages": 0}
+        is_valid, _, error = _require_permission(token_or_email, 'view')
+        if not is_valid:
+            return {"data": [], "page": page, "per_page": per_page, "total": 0, "total_pages": 0}
 
-    search_lower = (search or '').strip().lower()
+        search_lower = (search or '').strip().lower()
+    except Exception as e:
+        logger.exception("get_all_quotations params/permission: %s", e)
+        return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
     try:
         q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by(sort_col, sort_asc)]) if not include_deleted else app_tables.quotations.search(order_by=[anvil_order_by(sort_col, sort_asc)])
     except (TypeError, AttributeError):
         q_iter = app_tables.quotations.search(is_deleted=False) if not include_deleted else app_tables.quotations.search()
 
-    all_clients = list(app_tables.clients.search())
-    clients_dict = {str(c['Client Code']): c for c in all_clients}
+    try:
+        all_clients = list(app_tables.clients.search())
+        clients_dict = {str(c['Client Code']): c for c in all_clients}
 
-    total = 0
-    page_rows = []
-    skip = (page - 1) * per_page
-    for r in q_iter:
-        if not _quotation_matches_search(r, search_lower, clients_dict):
-            continue
-        total += 1
-        if total > MAX_PAGINATION_SCAN:
-            break
-        if skip > 0:
-            skip -= 1
-            continue
-        if len(page_rows) < per_page:
-            page_rows.append(r)
+        total = 0
+        page_rows = []
+        skip = (page - 1) * per_page
+        for r in q_iter:
+            if not _quotation_matches_search(r, search_lower, clients_dict):
+                continue
+            total += 1
+            if total > MAX_PAGINATION_SCAN:
+                break
+            if skip > 0:
+                skip -= 1
+                continue
+            if len(page_rows) < per_page:
+                page_rows.append(r)
 
-    total_pages = (total + per_page - 1) // per_page if total else 0
-    rows = []
-    for r in page_rows:
-        client_code = r.get('Client Code') or ''
-        client = clients_dict.get(str(client_code))
+        total_pages = (total + per_page - 1) // per_page if total else 0
+        rows = []
+        for r in page_rows:
+            client_code = r.get('Client Code') or ''
+            client = clients_dict.get(str(client_code))
 
-        # استخدام اسم العميل من العرض أو من جدول العملاء
-        client_name = r.get('Client Name') or ''
-        if not client_name and client:
-            client_name = client.get('Client Name', '')
+            # استخدام اسم العميل من العرض أو من جدول العملاء
+            client_name = r.get('Client Name') or ''
+            if not client_name and client:
+                client_name = client.get('Client Name', '')
 
-        # استخدام البيانات من الـ quotation أو من جدول العملاء
-        company = r.get('Company') or (client.get('Company', '') if client else '')
-        phone = r.get('Phone') or (client.get('Phone', '') if client else '')
-        country = r.get('Country') or (client.get('Country', '') if client else '')
-        address = r.get('Address') or (client.get('Address', '') if client else '')
-        email = r.get('Email') or (client.get('Email', '') if client else '')
-        sales_rep = r.get('Sales Rep') or (client.get('Sales Rep', '') if client else '')
-        source = r.get('Source') or (client.get('Source', '') if client else '')
+            # استخدام البيانات من الـ quotation أو من جدول العملاء
+            company = r.get('Company') or (client.get('Company', '') if client else '')
+            phone = r.get('Phone') or (client.get('Phone', '') if client else '')
+            country = r.get('Country') or (client.get('Country', '') if client else '')
+            address = r.get('Address') or (client.get('Address', '') if client else '')
+            email = r.get('Email') or (client.get('Email', '') if client else '')
+            sales_rep = r.get('Sales Rep') or (client.get('Sales Rep', '') if client else '')
+            source = r.get('Source') or (client.get('Source', '') if client else '')
 
-        row_data = {
-            "Client Code": client_code,
-            "Quotation#": r["Quotation#"],
-            "Date": r["Date"].isoformat() if r.get("Date") else "",
-            "Client Name": client_name,
-            "Company": company,
-            "Phone": phone,
-            "Country": country,
-            "Address": address,
-            "Email": email,
-            "Sales Rep": sales_rep,
-            "Source": source,
-            "Given Price": r.get("Given Price", ""),
-            "Agreed Price": r.get("Agreed Price", ""),
-            "Notes": r.get("Notes", ""),
-            "Model": r.get("Model", ""),
-            "Machine type": r.get("Machine type", ""),
-            "Number of colors": r.get("Number of colors", ""),
-            "Machine width": r.get("Machine width", ""),
-            "Material": r.get("Material", ""),
-            "Winder": r.get("Winder", ""),
-            "Video inspection": r.get("Video inspection", ""),
-            "PLC": r.get("PLC", ""),
-            "Slitter": r.get("Slitter", ""),
-            "Pneumatic Unwind": r.get("Pneumatic Unwind", ""),
-            "Hydraulic Station Unwind": r.get("Hydraulic Station Unwind", ""),
-            "Pneumatic Rewind": r.get("Pneumatic Rewind", ""),
-            "Surface Rewind": r.get("Surface Rewind", ""),
-            "Standard Machine FOB cost": r.get("Standard Machine FOB cost", ""),
-            "Machine FOB cost With Cylinders": r.get("Machine FOB cost With Cylinders", ""),
-            "FOB price for over seas clients": r.get("FOB price for over seas clients", ""),
-            "Exchange Rate": r.get("Exchange Rate", ""),
-            "In Stock": r.get("In Stock", ""),
-            "New Order": r.get("New Order", ""),
-            "Pricing Mode": r.get("Pricing Mode", ""),
-            "Overseas clients": r.get("Overseas clients", ""),
-            "Contract": r.get("Contract", ""),
-            "Expected delivery time": r["Expected delivery time"].isoformat() if r.get("Expected delivery time") else "",
-            "is_deleted": r.get("is_deleted", False)
+            row_data = {
+                "Client Code": client_code,
+                "Quotation#": r["Quotation#"],
+                "Date": r["Date"].isoformat() if r.get("Date") else "",
+                "Client Name": client_name,
+                "Company": company,
+                "Phone": phone,
+                "Country": country,
+                "Address": address,
+                "Email": email,
+                "Sales Rep": sales_rep,
+                "Source": source,
+                "Given Price": r.get("Given Price", ""),
+                "Agreed Price": r.get("Agreed Price", ""),
+                "Notes": r.get("Notes", ""),
+                "Model": r.get("Model", ""),
+                "Machine type": r.get("Machine type", ""),
+                "Number of colors": r.get("Number of colors", ""),
+                "Machine width": r.get("Machine width", ""),
+                "Material": r.get("Material", ""),
+                "Winder": r.get("Winder", ""),
+                "Video inspection": r.get("Video inspection", ""),
+                "PLC": r.get("PLC", ""),
+                "Slitter": r.get("Slitter", ""),
+                "Pneumatic Unwind": r.get("Pneumatic Unwind", ""),
+                "Hydraulic Station Unwind": r.get("Hydraulic Station Unwind", ""),
+                "Pneumatic Rewind": r.get("Pneumatic Rewind", ""),
+                "Surface Rewind": r.get("Surface Rewind", ""),
+                "Standard Machine FOB cost": r.get("Standard Machine FOB cost", ""),
+                "Machine FOB cost With Cylinders": r.get("Machine FOB cost With Cylinders", ""),
+                "FOB price for over seas clients": r.get("FOB price for over seas clients", ""),
+                "Exchange Rate": r.get("Exchange Rate", ""),
+                "In Stock": r.get("In Stock", ""),
+                "New Order": r.get("New Order", ""),
+                "Pricing Mode": r.get("Pricing Mode", ""),
+                "Overseas clients": r.get("Overseas clients", ""),
+                "Contract": r.get("Contract", ""),
+                "Expected delivery time": r["Expected delivery time"].isoformat() if r.get("Expected delivery time") else "",
+                "is_deleted": r.get("is_deleted", False)
+            }
+
+            for i in range(1, 13):
+                row_data[f"Size in CM{i}"] = r.get(f"Size in CM{i}", "")
+                row_data[f"Count{i}"] = r.get(f"Count{i}", "")
+                row_data[f"Cost{i}"] = r.get(f"Cost{i}", "")
+
+            rows.append(row_data)
+
+        return {
+            "data": rows,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages
         }
-
-        for i in range(1, 13):
-            row_data[f"Size in CM{i}"] = r.get(f"Size in CM{i}", "")
-            row_data[f"Count{i}"] = r.get(f"Count{i}", "")
-            row_data[f"Cost{i}"] = r.get(f"Cost{i}", "")
-
-        rows.append(row_data)
-
-    return {
-        "data": rows,
-        "page": page,
-        "per_page": per_page,
-        "total": total,
-        "total_pages": total_pages
-    }
+    except Exception as e:
+        logger.exception("get_all_quotations: %s", e)
+        return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
 
 
 def _client_matches_search(r, search_lower):
@@ -843,60 +851,68 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
     عملاء مع ترقيم على السيرفر: فلتر is_deleted في الاستعلام، عدّ وجمع الصفحة فقط.
     Backward compatible: data, page, per_page, total, total_pages.
     """
-    page = max(1, int(page) if page is not None else DEFAULT_PAGE)
-    per_page = max(1, min(500, int(per_page) if per_page is not None else DEFAULT_PAGE_SIZE))
-    sort_col = sort_by or 'Client Code'
-    sort_asc = (str(sort_dir or 'desc').lower() != 'desc')
-
-    is_valid, _, error = _require_permission(token_or_email, 'view')
-    if not is_valid:
-        return {"data": [], "page": page, "per_page": per_page, "total": 0, "total_pages": 0}
-
-    search_lower = (search or '').strip().lower()
     try:
-        c_iter = app_tables.clients.search(is_deleted=False, order_by=[anvil_order_by(sort_col, sort_asc)]) if not include_deleted else app_tables.clients.search(order_by=[anvil_order_by(sort_col, sort_asc)])
-    except (TypeError, AttributeError):
-        c_iter = app_tables.clients.search(is_deleted=False) if not include_deleted else app_tables.clients.search()
+        page = max(1, int(page) if page is not None else DEFAULT_PAGE)
+        per_page = max(1, min(500, int(per_page) if per_page is not None else DEFAULT_PAGE_SIZE))
+        sort_col = sort_by or 'Client Code'
+        sort_asc = (str(sort_dir or 'desc').lower() != 'desc')
 
-    total = 0
-    page_rows = []
-    skip = (page - 1) * per_page
-    for r in c_iter:
-        if not _client_matches_search(r, search_lower):
-            continue
-        total += 1
-        if total > MAX_PAGINATION_SCAN:
-            break
-        if skip > 0:
-            skip -= 1
-            continue
-        if len(page_rows) < per_page:
-            page_rows.append(r)
+        is_valid, _, error = _require_permission(token_or_email, 'view')
+        if not is_valid:
+            return {"data": [], "page": page, "per_page": per_page, "total": 0, "total_pages": 0}
 
-    total_pages = (total + per_page - 1) // per_page if total else 0
-    rows = []
-    for r in page_rows:
-        rows.append({
-            "Client Code": r["Client Code"],
-            "Client Name": r["Client Name"],
-            "Company": r["Company"],
-            "Phone": r["Phone"],
-            "Country": r["Country"],
-            "Address": r["Address"],
-            "Email": r["Email"],
-            "Sales Rep": r["Sales Rep"],
-            "Source": r["Source"],
-            "Date": r.get("Date").isoformat() if r.get("Date") and hasattr(r.get("Date"), 'isoformat') else str(r.get("Date") or ""),
-            "is_deleted": r.get("is_deleted", False)
-        })
+        search_lower = (search or '').strip().lower()
+    except Exception as e:
+        logger.exception("get_all_clients params/permission: %s", e)
+        return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
+    try:
+        try:
+            c_iter = app_tables.clients.search(is_deleted=False, order_by=[anvil_order_by(sort_col, sort_asc)]) if not include_deleted else app_tables.clients.search(order_by=[anvil_order_by(sort_col, sort_asc)])
+        except (TypeError, AttributeError):
+            c_iter = app_tables.clients.search(is_deleted=False) if not include_deleted else app_tables.clients.search()
 
-    return {
-        "data": rows,
-        "page": page,
-        "per_page": per_page,
-        "total": total,
-        "total_pages": total_pages
-    }
+        total = 0
+        page_rows = []
+        skip = (page - 1) * per_page
+        for r in c_iter:
+            if not _client_matches_search(r, search_lower):
+                continue
+            total += 1
+            if total > MAX_PAGINATION_SCAN:
+                break
+            if skip > 0:
+                skip -= 1
+                continue
+            if len(page_rows) < per_page:
+                page_rows.append(r)
+
+        total_pages = (total + per_page - 1) // per_page if total else 0
+        rows = []
+        for r in page_rows:
+            rows.append({
+                "Client Code": r["Client Code"],
+                "Client Name": r["Client Name"],
+                "Company": r["Company"],
+                "Phone": r["Phone"],
+                "Country": r["Country"],
+                "Address": r["Address"],
+                "Email": r["Email"],
+                "Sales Rep": r["Sales Rep"],
+                "Source": r["Source"],
+                "Date": r.get("Date").isoformat() if r.get("Date") and hasattr(r.get("Date"), 'isoformat') else str(r.get("Date") or ""),
+                "is_deleted": r.get("is_deleted", False)
+            })
+
+        return {
+            "data": rows,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages
+        }
+    except Exception as e:
+        logger.exception("get_all_clients: %s", e)
+        return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
 
 
 # =========================================================

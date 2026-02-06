@@ -326,14 +326,25 @@ if (typeof window.debugError !== 'function') window.debugError = function () {};
 
         try {
           var result = await window.getClientsForOverlay?.();
-
-          if (!result || (result.data && result.data.length === 0) || (Array.isArray(result) && result.length === 0)) {
-            if (list) list.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:30px;color:#666;">No clients found</td></tr>';
+          if (!result) {
+            if (list) list.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:30px;color:#c62828;">Error loading clients</td></tr>';
+            return;
+          }
+          if (result.success === false && result.message) {
+            if (list) list.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:30px;color:#c62828;">' + (result.message || 'Error loading clients') + '</td></tr>';
             return;
           }
 
           // Handle both old format (array) and new format (object with data)
           allClients = result.data || result;
+          if (!Array.isArray(allClients)) {
+            if (list) list.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:30px;color:#666;">No clients found</td></tr>';
+            return;
+          }
+          if (allClients.length === 0) {
+            if (list) list.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:30px;color:#666;">No clients found</td></tr>';
+            return;
+          }
 
           // Sort by Client Code ascending
           allClients.sort(function(a, b) {

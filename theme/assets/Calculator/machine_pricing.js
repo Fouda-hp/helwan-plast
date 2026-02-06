@@ -1,6 +1,7 @@
 // ========================================
 // machine_pricing.js - محدث مع تحميل الإعدادات من السيرفر
 // ========================================
+if (typeof window.debugLog !== 'function') window.debugLog = function () {};
 
 (function () {
   if (window.__machinePricingLoaded) return;

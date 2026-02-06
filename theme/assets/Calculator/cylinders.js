@@ -2,6 +2,9 @@
 // cylinders.js - محدث مع تحميل الأسعار من السيرفر
 // مُحسّن: استخدام halfUpRound الموحدة + إزالة console.log + إصلاح Race Conditions
 // ===============================
+if (typeof window.debugLog !== 'function') window.debugLog = function () {};
+if (typeof window.debugError !== 'function') window.debugError = function () {};
+if (typeof window.debugWarn !== 'function') window.debugWarn = function () {};
 
 // Prevent double loading
 if (typeof window.__cylindersLoaded !== 'undefined') {

@@ -1,6 +1,7 @@
 // ========================================
 // quotations.js - WITH SEARCH, PAGINATION & LOADING
 // ========================================
+if (typeof window.debugError !== 'function') window.debugError = function () {};
 
 (function () {
   if (window.__quotationsLoaded) return;
@@ -203,7 +204,7 @@
   window.loadQuotationFromOverlay = function (record) {
     if (!record) return;
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8b3fb622-0491-4420-8d50-0b29370f6f0d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quotations.js:loadQuotationFromOverlay',message:'load quotation',data:{quotationNum:record["Quotation#"]||record["quotation_number"],clientCode:record["Client Code"]||record["client_code"]},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(function(){});
+    if (typeof window.location !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) { fetch('http://127.0.0.1:7242/ingest/8b3fb622-0491-4420-8d50-0b29370f6f0d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quotations.js:loadQuotationFromOverlay',message:'load quotation',data:{quotationNum:record["Quotation#"]||record["quotation_number"],clientCode:record["Client Code"]||record["client_code"]},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(function(){}); }
     // #endregion
     window.LOADING_FROM_QUOTATION = true;
     window.cylindersInitialized = false;
@@ -428,13 +429,13 @@
         if (searchInput) searchInput.value = '';
 
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8b3fb622-0491-4420-8d50-0b29370f6f0d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quotations.js:getQuotationsForOverlay',message:'calling getQuotationsForOverlay',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(function(){});
+        if (typeof window.location !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) { fetch('http://127.0.0.1:7242/ingest/8b3fb622-0491-4420-8d50-0b29370f6f0d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quotations.js:getQuotationsForOverlay',message:'calling getQuotationsForOverlay',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(function(){}); }
         // #endregion
         try {
           var result = await window.getQuotationsForOverlay?.();
 
           // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8b3fb622-0491-4420-8d50-0b29370f6f0d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quotations.js:getQuotationsForOverlay',message:'result received',data:{hasData:!!result,dataLen:(result&&result.data)?result.data.length:(Array.isArray(result)?result.length:0)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(function(){});
+          if (typeof window.location !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) { fetch('http://127.0.0.1:7242/ingest/8b3fb622-0491-4420-8d50-0b29370f6f0d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quotations.js:getQuotationsForOverlay',message:'result received',data:{hasData:!!result,dataLen:(result&&result.data)?result.data.length:(Array.isArray(result)?result.length:0)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(function(){}); }
           // #endregion
           if (!result || (result.data && result.data.length === 0) || (Array.isArray(result) && result.length === 0)) {
             if (list) list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';

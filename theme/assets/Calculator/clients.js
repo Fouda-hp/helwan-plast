@@ -1,6 +1,7 @@
 // ========================================
 // clients.js - WITH SEARCH, PAGINATION & LOADING
 // ========================================
+if (typeof window.debugError !== 'function') window.debugError = function () {};
 
 (function () {
   if (window.__clientsLoaded) return;

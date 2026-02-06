@@ -30,8 +30,15 @@ from .auth_email import send_email_smtp, send_approval_email, EMAIL_SERVICE_AVAI
 from .auth_password import hash_password, verify_password, upgrade_password_hash, add_to_password_history, check_password_history
 from .auth_sessions import generate_session_token, create_session, validate_session, destroy_session, cleanup_expired_sessions
 from .auth_rate_limit import check_rate_limit
-from .auth_permissions import check_permission, is_admin, is_admin_by_email, require_admin, require_permission
-from . import auth_totp
+# استيراد مطلق متوافق مع Anvil (الوحدة قد لا تُحمّل كـ Helwan_Plast.auth_permissions)
+try:
+    from .auth_permissions import check_permission, is_admin, is_admin_by_email, require_admin, require_permission
+except ImportError:
+    from auth_permissions import check_permission, is_admin, is_admin_by_email, require_admin, require_permission
+try:
+    from . import auth_totp
+except ImportError:
+    import auth_totp
 
 # =========================================================
 # OTP Generation and Verification

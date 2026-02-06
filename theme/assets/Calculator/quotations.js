@@ -147,11 +147,18 @@ if (typeof window.debugError !== 'function') window.debugError = function () {};
 
     pageData.forEach(function(r) {
       var tr = document.createElement("tr");
-      var clientName = r["Client Name"] || r["client_name"] || "";
-      tr.innerHTML =
-        '<td style="padding:12px 15px;border-bottom:1px solid #eee;">' + (r["Quotation#"] || "") + '</td>' +
-        '<td style="padding:12px 15px;border-bottom:1px solid #eee;">' + clientName + '</td>' +
-        '<td style="padding:12px 15px;border-bottom:1px solid #eee;">' + (r["Date"] || "") + '</td>';
+      var td1 = document.createElement("td");
+      td1.style.cssText = "padding:12px 15px;border-bottom:1px solid #eee;";
+      td1.textContent = r["Quotation#"] || "";
+      var td2 = document.createElement("td");
+      td2.style.cssText = "padding:12px 15px;border-bottom:1px solid #eee;";
+      td2.textContent = r["Client Name"] || r["client_name"] || "";
+      var td3 = document.createElement("td");
+      td3.style.cssText = "padding:12px 15px;border-bottom:1px solid #eee;";
+      td3.textContent = r["Date"] || "";
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+      tr.appendChild(td3);
       tr.style.cursor = "pointer";
       tr.style.transition = "background 0.2s";
       tr.onmouseover = function() { this.style.background = "#f5f5f5"; };
@@ -432,7 +439,16 @@ if (typeof window.debugError !== 'function') window.debugError = function () {};
             return;
           }
           if (result.success === false && result.message) {
-            if (list) list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#c62828;">' + (result.message || 'Error loading quotations') + '</td></tr>';
+            if (list) {
+              var errTr = document.createElement("tr");
+              var errTd = document.createElement("td");
+              errTd.colSpan = 3;
+              errTd.style.cssText = "text-align:center;padding:30px;color:#c62828;";
+              errTd.textContent = result.message || 'Error loading quotations';
+              errTr.appendChild(errTd);
+              list.innerHTML = '';
+              list.appendChild(errTr);
+            }
             return;
           }
 

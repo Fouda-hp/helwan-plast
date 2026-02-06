@@ -170,26 +170,8 @@
   };
 
   // ----------------------------------------
-  // OK modal
+  // showOkModal defined after IIFE (line ~365) with smart type detection
   // ----------------------------------------
-  window.showOkModal = function (message) {
-    let modal = byId("okModal");
-    if (!modal) {
-      modal = document.createElement("div");
-      modal.id = "okModal";
-      modal.innerHTML = `
-        <div class="modal-backdrop">
-          <div class="modal-box">
-            <p id="okModalMsg"></p>
-            <button id="okModalBtn">OK</button>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-      modal.querySelector("#okModalBtn").onclick = () => modal.remove();
-    }
-    modal.querySelector("#okModalMsg").innerText = message;
-  };
 
   window.showPricingModeModal = function (onSelect) {
     let modal = document.getElementById("pricingModeModal");
@@ -344,21 +326,26 @@
 })(); // ✅ قفل الـ IIFE
 
 function showAlert(type, message) {
-  const overlay = document.getElementById("alertOverlay");
-  const modal   = overlay.querySelector(".alert-modal");
-  const msgBox  = document.getElementById("alertMessage");
-  const typeBox = modal.querySelector(".alert-type");
+  var overlay = document.getElementById("alertOverlay");
+  if (!overlay) return;
+  var modal   = overlay.querySelector(".alert-modal");
+  var msgBox  = document.getElementById("alertMessage");
+  var typeBox = modal ? modal.querySelector(".alert-type") : null;
+  if (!modal || !msgBox) return;
 
   modal.className = "alert-modal alert-" + type;
-  typeBox.textContent = type.toUpperCase();
+  if (typeBox) typeBox.textContent = type.toUpperCase();
   msgBox.textContent = message;
 
   overlay.style.display = "flex";
 }
+window.showAlert = showAlert;
 
 function hideAlert() {
-  document.getElementById("alertOverlay").style.display = "none";
+  var el = document.getElementById("alertOverlay");
+  if (el) el.style.display = "none";
 }
+window.hideAlert = hideAlert;
 // =====================================
 // Smart Alias -> Auto Alert Type Selector
 // =====================================

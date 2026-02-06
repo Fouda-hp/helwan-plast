@@ -446,10 +446,13 @@ def send_admin_notification_email(new_user_email, new_user_name, new_user_phone)
 # =========================================================
 
 @anvil.server.callable
-def clear_rate_limits():
+def clear_rate_limits(token_or_email=None):
     """
     مسح كل سجلات Rate Limit - للاستخدام الإداري فقط
     """
+    is_authorized, error = require_admin(token_or_email)
+    if not is_authorized:
+        return error
     try:
         count = 0
         for record in app_tables.rate_limits.search():
@@ -481,10 +484,13 @@ def clear_my_rate_limit():
 
 
 @anvil.server.callable
-def reset_user_login_attempts(email):
+def reset_user_login_attempts(email, token_or_email=None):
   """
-  إعادة تعيين محاولات تسجيل الدخول للمستخدم
+  إعادة تعيين محاولات تسجيل الدخول للمستخدم - يتطلب صلاحية أدمن
   """
+  is_authorized, error = require_admin(token_or_email)
+  if not is_authorized:
+    return error
   try:
     user = app_tables.users.get(email=email)
     if user:
@@ -1000,37 +1006,27 @@ def validate_token(token):
 @anvil.server.callable
 def debug_admin_check(token_or_email):
     """
-    Debug function to check admin access - للتشخيص
+    Debug function to check admin access - للتشخيص (يتطلب صلاحية أدمن)
     """
+    is_authorized, error = require_admin(token_or_email)
+    if not is_authorized:
+        return {'success': False, 'message': 'Admin access required'}
+
     result = {
         'token_received': token_or_email[:50] if token_or_email else 'None',
         'session_valid': False,
-        'session_data': None,
         'user_found': False,
-        'user_data': None,
-        'is_admin_result': False
+        'is_admin_result': True
     }
 
-    # Check session
     session = validate_session(token_or_email)
     if session:
         result['session_valid'] = True
-        result['session_data'] = session
 
-    # Check if email
     if token_or_email and '@' in str(token_or_email):
         user = app_tables.users.get(email=str(token_or_email).lower())
         if user:
             result['user_found'] = True
-            result['user_data'] = {
-                'email': user['email'],
-                'role': user['role'],
-                'is_active': user['is_active'],
-                'is_approved': user['is_approved']
-            }
-
-    # Check is_admin
-    result['is_admin_result'] = is_admin(token_or_email)
 
     return result
 
@@ -2471,8 +2467,7 @@ def get_my_audit_logs(token_or_email, limit=50):
     if not user_email:
         return {'success': False, 'notifications': []}
     try:
-        all_logs = list(app_tables.audit_log.search())
-        my_logs = [l for l in all_logs if l.get('user_email') and str(l['user_email']).strip().lower() == user_email]
+        my_logs = list(app_tables.audit_log.search(user_email=user_email))
         my_logs.sort(key=lambda x: x['timestamp'] or datetime.min, reverse=True)
         notifications = []
         for log in my_logs[:limit]:
@@ -2647,11 +2642,16 @@ def delete_user_permanently(token_or_email, user_id):
 # Audit Log Cleanup (Auto-delete logs older than 15 days)
 # =========================================================
 @anvil.server.callable
-def cleanup_old_audit_logs(days=15):
+def cleanup_old_audit_logs(days=15, token_or_email=None):
     """
     حذف سجلات التدقيق القديمة (أكثر من 15 يوم)
     يمكن استدعاؤها يدوياً أو عبر scheduled task
     """
+    # السماح بالاستدعاء الداخلي (بدون token) من auto_cleanup أو scheduled tasks
+    if token_or_email is not None:
+        is_authorized, error = require_admin(token_or_email)
+        if not is_authorized:
+            return error
     try:
         cutoff_date = get_utc_now() - timedelta(days=days)
         deleted_count = 0

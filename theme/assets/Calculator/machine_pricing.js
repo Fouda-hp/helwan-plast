@@ -42,7 +42,7 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
       if (data.config && data.config.types && data.config.types.length) updateMachineTypeDropdown(data.config.types);
       if (data.config && data.config.colors && data.config.colors.length) updateColorsDropdown(data.config.colors);
       if (data.config && data.config.widths && data.config.widths.length) updateWidthsDropdown(data.config.widths);
-      if (typeof window.recalcAll === 'function') window.recalcAll();
+      if (typeof window.calculateAll === 'function') window.calculateAll();
       window._settingsLoaded = true;
     } catch (e) {
       window.debugWarn('Could not load settings from server, using defaults:', e);
@@ -82,9 +82,8 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
   // دوال مساعدة
   // ----------------------------------------
 
-  function halfUpRound(v) {
-    return Math.floor(v + 0.5);
-  }
+  // استخدام halfUpRound الموحدة من utils.js مع fallback
+  var halfUpRound = window.halfUpRound || function(v) { return Math.floor(v + 0.5); };
 
   function mapMachineType(v) {
     v = String(v || "").toLowerCase();
@@ -235,7 +234,7 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
           refreshColorsAndWidthsFromOptions();
         }
         // recalc مرة واحدة فقط بدلاً من 3 مرات (إصلاح Race Condition)
-        if (typeof window.recalcAll === 'function') window.recalcAll();
+        if (typeof window.calculateAll === 'function') window.calculateAll();
       }
     } catch(e) {
       window.debugWarn('Could not load machine prices from server, using defaults:', e);
@@ -437,7 +436,7 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
         if (c.colors && c.colors.length) updateColorsDropdown(c.colors);
         if (c.widths && c.widths.length) updateWidthsDropdown(c.widths);
       }
-      if (typeof window.recalcAll === 'function') window.recalcAll();
+      if (typeof window.calculateAll === 'function') window.calculateAll();
       window._settingsLoaded = true;
     } catch (e) {
       window.debugWarn('applyCalculatorSettingsFromPython error:', e);
@@ -472,7 +471,7 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
   (window.safeSetTimeout || setTimeout)(function() {
     var d = window.__calculatorSettingsFromPython || (window.top && window.top !== window && window.top.__calculatorSettingsFromPython);
     if (window.applyCalculatorSettingsFromPython && d) try { window.applyCalculatorSettingsFromPython(d); } catch(e) {}
-    if (typeof window.recalcAll === 'function') window.recalcAll();
+    if (typeof window.calculateAll === 'function') window.calculateAll();
   }, 2000);
 
   function getMachineBasePrice() {

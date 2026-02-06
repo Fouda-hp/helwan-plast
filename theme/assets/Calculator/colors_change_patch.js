@@ -8,7 +8,10 @@
     const widthSelect = document.getElementById("Machine width");
 
     if (!colorsSelect || !widthSelect) {
-      setTimeout(waitForElements, 100);
+      if (waitForElements._retries === undefined) waitForElements._retries = 0;
+      if (++waitForElements._retries < 50) {
+        setTimeout(waitForElements, 100);
+      }
       return;
     }
 

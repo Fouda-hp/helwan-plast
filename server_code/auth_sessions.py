@@ -64,11 +64,13 @@ def validate_session(token):
 
         # Fallback: دعم التوكنات القديمة (بدون hash) خلال فترة الانتقال
         if not session:
-            session = app_tables.sessions.get(session_token=token, is_active=True)
-            if session:
-                # ترقية تلقائية: تحويل التوكن القديم إلى hash
-                session.update(session_token=token_hash)
-                logger.info("Migrated legacy token to hashed format for %s", session['user_email'])
+            try:
+                session = app_tables.sessions.get(session_token=token, is_active=True)
+                if session:
+                    session.update(session_token=token_hash)
+                    logger.info("Migrated legacy token to hashed format for %s", session['user_email'])
+            except Exception as e:
+                logger.warning("Legacy token lookup failed: %s", e)
 
         if not session:
             return None
@@ -79,7 +81,7 @@ def validate_session(token):
                     session.update(is_active=False)
                     return None
             except (TypeError, ValueError):
-                pass
+                logger.warning("Invalid expires_at format for session: %s", session.get('user_email', 'unknown'))
         user = app_tables.users.get(email=session['user_email'])
         if not user:
             session.update(is_active=False)
@@ -109,7 +111,10 @@ def destroy_session(token):
 
         # Fallback: دعم التوكنات القديمة
         if not session:
-            session = app_tables.sessions.get(session_token=token)
+            try:
+                session = app_tables.sessions.get(session_token=token)
+            except Exception as e:
+                logger.warning("Legacy token destroy lookup failed: %s", e)
 
         if session:
             session.update(is_active=False)

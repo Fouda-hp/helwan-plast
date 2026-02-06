@@ -1012,11 +1012,10 @@ def get_dashboard_stats(token_or_email=None):
                 "this_month_quotations": 0, "this_month_value": 0,
                 "deleted_clients": 0, "deleted_quotations": 0}
 
-    clients = list(app_tables.clients.search())
-    quotations = list(app_tables.quotations.search())
-
-    active_clients = [c for c in clients if not c.get('is_deleted', False)]
-    active_quotations = [q for q in quotations if not q.get('is_deleted', False)]
+    active_clients = list(app_tables.clients.search(is_deleted=False))
+    active_quotations = list(app_tables.quotations.search(is_deleted=False))
+    deleted_clients_count = len(list(app_tables.clients.search(is_deleted=True)))
+    deleted_quotations_count = len(list(app_tables.quotations.search(is_deleted=True)))
 
     total_agreed = sum(q['Agreed Price'] or 0 for q in active_quotations)
 
@@ -1037,8 +1036,8 @@ def get_dashboard_stats(token_or_email=None):
         "total_value": total_agreed,
         "this_month_quotations": len(this_month_quotations),
         "this_month_value": this_month_value,
-        "deleted_clients": len(clients) - len(active_clients),
-        "deleted_quotations": len(quotations) - len(active_quotations)
+        "deleted_clients": deleted_clients_count,
+        "deleted_quotations": deleted_quotations_count
     }
 
 

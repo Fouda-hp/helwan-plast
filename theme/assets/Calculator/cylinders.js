@@ -300,7 +300,7 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
 
         sizeInput.addEventListener("blur", () => {
           if (checkDuplicateSizes()) {
-            showAlert(
+            (window.showAlert || window.showOkModal || function(){})(
               "error",
               "Duplicate size detected!\n\n" +
               "Each size can only be entered once.\n" +

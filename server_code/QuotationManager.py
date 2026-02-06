@@ -21,25 +21,6 @@ import uuid
 import logging
 import csv
 import io
-import os
-import json
-import time
-
-# #region agent log
-try:
-    _DEBUG_LOG_PATH = os.path.join(os.path.dirname(__file__), "..", ".cursor", "debug.log")
-except NameError:
-    _DEBUG_LOG_PATH = None  # __file__ not defined (e.g. Anvil server)
-def _agent_log(location, message, data=None, hypothesis_id=None):
-    if _DEBUG_LOG_PATH is None:
-        return
-    try:
-        line = json.dumps({"location": location, "message": message, "data": data or {}, "timestamp": int(time.time() * 1000), "sessionId": "debug-session", "hypothesisId": hypothesis_id or ""}) + "\n"
-        with open(_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(line)
-    except Exception:
-        pass
-# #endregion
 
 # استيراد الدوال المشتركة من AuthManager
 from . import AuthManager
@@ -76,9 +57,6 @@ def _require_authenticated(token_or_email):
     التحقق من أن المستخدم مسجل دخول (أي دور ما عدا viewer)
     يُرجع tuple: (is_valid, user_email, error_response)
     """
-    # #region agent log
-    _agent_log("QuotationManager.py:_require_authenticated", "entry", {"token_or_email_is_none": token_or_email is None, "is_email": "@" in str(token_or_email or "")}, "H1")
-    # #endregion
     if not token_or_email:
         return False, None, {'success': False, 'message': 'Authentication required'}
 
@@ -86,9 +64,6 @@ def _require_authenticated(token_or_email):
     result = AuthManager.validate_token(token_or_email)
     if result and result.get('valid'):
         user = result.get('user', {})
-        # #region agent log
-        _agent_log("QuotationManager.py:_require_authenticated", "exit", {"is_valid": True, "via": "token"}, "H1")
-        # #endregion
         return True, user.get('email', 'unknown'), None
 
     # محاولة التحقق بالبريد الإلكتروني
@@ -96,14 +71,8 @@ def _require_authenticated(token_or_email):
         from anvil.tables import app_tables as _at
         user_row = _at.users.get(email=str(token_or_email).strip().lower())
         if user_row and user_row.get('is_active') and user_row.get('is_approved'):
-            # #region agent log
-            _agent_log("QuotationManager.py:_require_authenticated", "exit", {"is_valid": True, "via": "email"}, "H1")
-            # #endregion
             return True, str(token_or_email).strip().lower(), None
 
-    # #region agent log
-    _agent_log("QuotationManager.py:_require_authenticated", "exit", {"is_valid": False}, "H1")
-    # #endregion
     return False, None, {'success': False, 'message': 'Invalid or expired session'}
 
 
@@ -324,9 +293,6 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
     دالة الحفظ الرئيسية مع الترقيم التلقائي وسجل التدقيق
     يتطلب مستخدم مسجل دخول بصلاحية create أو edit (ما عدا viewer)
     """
-    # #region agent log
-    _agent_log("QuotationManager.py:save_quotation", "entry", {"token_or_email_is_none": token_or_email is None, "user_email": str(user_email or "")[:50], "has_client_code": "Client Code" in (form_data or {})}, "H2")
-    # #endregion
     # ===== التحقق من الصلاحيات =====
     auth_key = token_or_email or user_email
     if auth_key == 'system':
@@ -774,14 +740,8 @@ def restore_quotation(quotation_number, token_or_email='admin'):
 @anvil.server.callable
 def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, token_or_email=None):
     """الحصول على العروض مع الترقيم والبحث - محسّن لمشكلة N+1"""
-    # #region agent log
-    _agent_log("QuotationManager.py:get_all_quotations", "entry", {"token_or_email_is_none": token_or_email is None, "page": page}, "H1")
-    # #endregion
     is_valid, _, error = _require_permission(token_or_email, 'view')
     if not is_valid:
-        # #region agent log
-        _agent_log("QuotationManager.py:get_all_quotations", "exit permission denied", {"is_valid": False}, "H1")
-        # #endregion
         return {"data": [], "page": 1, "per_page": per_page, "total": 0, "total_pages": 0}
 
     all_rows = list(app_tables.quotations.search())
@@ -909,9 +869,6 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
 
         rows.append(row_data)
 
-    # #region agent log
-    _agent_log("QuotationManager.py:get_all_quotations", "exit success", {"total": total, "page": page}, "H1")
-    # #endregion
     return {
         "data": rows,
         "page": page,
@@ -924,9 +881,6 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
 @anvil.server.callable
 def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token_or_email=None):
     """الحصول على العملاء مع الترقيم والبحث"""
-    # #region agent log
-    _agent_log("QuotationManager.py:get_all_clients", "entry", {"token_or_email_is_none": token_or_email is None, "page": page}, "H1")
-    # #endregion
     is_valid, _, error = _require_permission(token_or_email, 'view')
     if not is_valid:
         return {"data": [], "page": 1, "per_page": per_page, "total": 0, "total_pages": 0}
@@ -2175,7 +2129,7 @@ def get_contract(quotation_number, token_or_email=None):
             payments = []
             try:
                 payments = json.loads(row['payments_json'] or '[]')
-            except Exception:
+            except Exception as e:
                 pass
             
             return {'success': True, 'data': {
@@ -2493,7 +2447,7 @@ def create_backup(token_or_email):
             s = AuthManager.validate_token(token_or_email)
             if s.get('valid') and s.get('user'):
                 user_email = s['user'].get('email', '')
-        except Exception:
+        except Exception as e:
             pass
     user_email = user_email or 'admin'
 
@@ -2558,7 +2512,7 @@ def restore_backup(token_or_email, backup_media):
             s = AuthManager.validate_token(token_or_email)
             if s.get('valid') and s.get('user'):
                 user_email = s['user'].get('email', '')
-        except Exception:
+        except Exception as e:
             pass
     stats = {'clients': 0, 'quotations': 0, 'contracts': 0, 'settings': 0, 'machine_specs': 0}
     try:

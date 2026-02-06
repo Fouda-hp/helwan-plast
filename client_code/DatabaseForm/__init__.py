@@ -24,18 +24,21 @@ class DatabaseForm(DatabaseFormTemplate):
         anvil.js.window.pyExportClients = self.export_clients
         anvil.js.window.pyExportQuotations = self.export_quotations
 
+    def _auth(self):
+        return anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+
     def get_clients(self, page, per_page, search, include_deleted):
         """Get clients data"""
-        return anvil.server.call('get_all_clients', page, per_page, search, include_deleted)
+        return anvil.server.call('get_all_clients', page, per_page, search, include_deleted, self._auth())
 
     def get_quotations(self, page, per_page, search, include_deleted):
         """Get quotations data"""
-        return anvil.server.call('get_all_quotations', page, per_page, search, include_deleted)
+        return anvil.server.call('get_all_quotations', page, per_page, search, include_deleted, self._auth())
 
     def export_clients(self, include_deleted):
         """Export clients data"""
-        return anvil.server.call('export_clients_data', include_deleted)
+        return anvil.server.call('export_clients_data', include_deleted, self._auth())
 
     def export_quotations(self, include_deleted):
         """Export quotations data"""
-        return anvil.server.call('export_quotations_data', include_deleted)
+        return anvil.server.call('export_quotations_data', include_deleted, self._auth())

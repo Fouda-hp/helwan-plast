@@ -26,7 +26,7 @@ def get_client_ip():
             client = context.client
             if hasattr(client, 'ip') and client.ip:
                 return client.ip
-    except Exception:
+    except Exception as e:
         pass
     return 'unknown'
 

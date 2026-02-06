@@ -79,7 +79,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
     def load_quotations_list(self):
         try:
-            result = anvil.server.call('get_quotations_list', '', include_deleted=False)
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+            result = anvil.server.call('get_quotations_list', '', False, auth)
             if result and result.get('success'):
                 self.all_quotations = result.get('data', [])
                 self.populate_dropdown(self.all_quotations)
@@ -506,7 +507,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
         try:
             # Get user email for audit log
             user_email = anvil.js.window.sessionStorage.getItem('user_email') or 'system'
-            result = anvil.server.call('save_contract', contract_data, user_email)
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or user_email
+            result = anvil.server.call('save_contract', contract_data, user_email, auth)
             if result.get('success'):
                 is_ar = self.current_lang == 'ar'
                 Notification('تم حفظ العقد بنجاح' if is_ar else 'Contract saved', style='success').show()
@@ -1126,7 +1128,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
             return
         try:
             q_num = self.current_data.get('quotation_number', 0)
-            result = anvil.server.call('export_quotation_excel', q_num)
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+            result = anvil.server.call('export_quotation_excel', q_num, auth)
             if result.get('success'):
                 media = result.get('file')
                 if media:
@@ -1148,7 +1151,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
     def search_quotations_for_print(self, query=''):
         try:
-            result = anvil.server.call('get_quotations_list', query, include_deleted=False)
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+            result = anvil.server.call('get_quotations_list', query, False, auth)
             return result
         except Exception as e:
             return {'success': False, 'message': str(e)}

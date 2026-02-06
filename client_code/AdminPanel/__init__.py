@@ -1552,7 +1552,7 @@ class AdminPanel(AdminPanelTemplate):
     # Dashboard
     # =========================================================
     def get_dashboard_stats(self):
-        return anvil.server.call('get_dashboard_stats')
+        return anvil.server.call('get_dashboard_stats', self.get_auth())
 
     # =========================================================
     # User Management
@@ -1608,10 +1608,10 @@ class AdminPanel(AdminPanelTemplate):
     # Clients & Quotations
     # =========================================================
     def get_all_clients(self, page, per_page, search, include_deleted):
-        return anvil.server.call('get_all_clients', page, per_page, search, include_deleted)
+        return anvil.server.call('get_all_clients', page, per_page, search, include_deleted, self.get_auth())
 
     def get_all_quotations(self, page, per_page, search, include_deleted):
-        return anvil.server.call('get_all_quotations', page, per_page, search, include_deleted)
+        return anvil.server.call('get_all_quotations', page, per_page, search, include_deleted, self.get_auth())
 
     def soft_delete_client(self, client_code):
         return anvil.server.call('soft_delete_client', client_code, self.get_auth())
@@ -1629,10 +1629,10 @@ class AdminPanel(AdminPanelTemplate):
     # Export
     # =========================================================
     def export_clients_data(self, include_deleted):
-        return anvil.server.call('export_clients_data', include_deleted)
+        return anvil.server.call('export_clients_data', include_deleted, self.get_auth())
 
     def export_quotations_data(self, include_deleted):
-        return anvil.server.call('export_quotations_data', include_deleted)
+        return anvil.server.call('export_quotations_data', include_deleted, self.get_auth())
 
     def create_backup(self):
         """إنشاء وتحميل نسخة احتياطية (عملاء، عروض، عقود، إعدادات، مواصفات). للأدمن فقط."""

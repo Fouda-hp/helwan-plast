@@ -13,24 +13,6 @@ import json
 import uuid
 import re
 import logging
-import os
-
-# #region agent log
-try:
-    _DEBUG_LOG_PATH = os.path.join(os.path.dirname(__file__), "..", ".cursor", "debug.log")
-except NameError:
-    _DEBUG_LOG_PATH = None  # __file__ not defined (e.g. Anvil server)
-def _agent_log(location, message, data=None, hypothesis_id=None):
-    if _DEBUG_LOG_PATH is None:
-        return
-    try:
-        import time
-        line = json.dumps({"location": location, "message": message, "data": data or {}, "timestamp": int(time.time() * 1000), "sessionId": "debug-session", "hypothesisId": hypothesis_id or ""}) + "\n"
-        with open(_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(line)
-    except Exception:
-        pass
-# #endregion
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -65,7 +47,7 @@ def _get_global_otp_channel():
       ch = str(s['setting_value']).strip().lower()
       if ch in ('email', 'sms', 'whatsapp'):
         return ch
-  except Exception:
+  except Exception as e:
     pass
   return 'email'
 
@@ -378,7 +360,7 @@ def setup_totp_start(auth_token):
       old = app_tables.settings.get(setting_key=pending_key)
       if old:
         old.delete()
-    except Exception:
+    except Exception as e:
       pass
     expires_at = (datetime.now() + timedelta(minutes=10)).isoformat()
     app_tables.settings.add_row(
@@ -825,9 +807,6 @@ def login_user(email, password):
     تسجيل دخول المستخدم - الخطوة الأولى
     يتحقق من البريد وكلمة المرور ثم يرسل OTP
     """
-    # #region agent log
-    _agent_log("AuthManager.py:login_user", "login_user entry", {"email": str(email or "").strip()[:50], "has_password": bool(password)}, "H3")
-    # #endregion
     ip_address = get_client_ip()
 
     # التحقق من Rate Limit
@@ -921,18 +900,10 @@ def login_user(email, password):
 
     if email_sent:
         logger.info(f"2FA OTP sent to: {email}")
-        out = {'success': True, 'requires_2fa': True, 'use_authenticator': False, 'message': 'Verification code sent to your email'}
-        # #region agent log
-        _agent_log("AuthManager.py:login_user", "login_user exit", {"success": True, "requires_2fa": True}, "H3")
-        # #endregion
-        return out
+        return {'success': True, 'requires_2fa': True, 'use_authenticator': False, 'message': 'Verification code sent to your email'}
     else:
         logger.error(f"Failed to send 2FA OTP to: {email}")
-        out = {'success': False, 'message': 'Failed to send verification code. Please try again later.'}
-        # #region agent log
-        _agent_log("AuthManager.py:login_user", "login_user exit", {"success": False}, "H3")
-        # #endregion
-        return out
+        return {'success': False, 'message': 'Failed to send verification code. Please try again later.'}
 
 
 @anvil.server.callable
@@ -1073,15 +1044,9 @@ def validate_token(token):
     """
     التحقق من صحة الجلسة وإرجاع معلومات المستخدم
     """
-    # #region agent log
-    _agent_log("AuthManager.py:validate_token", "validate_token entry", {"has_token": bool(token), "token_len": len(str(token or ""))}, "H1")
-    # #endregion
     session = validate_session(token)
 
     if not session:
-        # #region agent log
-        _agent_log("AuthManager.py:validate_token", "validate_token exit", {"valid": False}, "H1")
-        # #endregion
         return {'valid': False}
 
     user = app_tables.users.get(email=session['email'])
@@ -1100,14 +1065,18 @@ def validate_token(token):
             session_row = app_tables.sessions.get(session_token=token, is_active=True)
         if session_row:
             session_row.update(expires_at=datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES))
-    except Exception:
+    except Exception as e:
         pass
 
-    out = {'valid': True, 'user': {'email': user['email'], 'full_name': user['full_name'], 'role': user['role'], 'phone': user.get('phone', '')}}
-    # #region agent log
-    _agent_log("AuthManager.py:validate_token", "validate_token exit", {"valid": True, "email": user.get("email", "")}, "H1")
-    # #endregion
-    return out
+    return {
+        'valid': True,
+        'user': {
+            'email': user['email'],
+            'full_name': user['full_name'],
+            'role': user['role'],
+            'phone': user.get('phone', '')
+        }
+    }
 
 
 # =========================================================

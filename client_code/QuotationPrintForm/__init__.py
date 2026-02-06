@@ -1,5 +1,6 @@
 from ._anvil_designer import QuotationPrintFormTemplate
 from anvil import *
+import anvil.users
 import anvil.server
 import anvil.js
 import logging

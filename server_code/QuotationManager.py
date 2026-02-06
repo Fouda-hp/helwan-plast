@@ -25,11 +25,25 @@ import io
 
 # استيراد الدوال المشتركة من AuthManager ونظام الإشعارات ووحدات الترقيم والنسخ الاحتياطي
 from . import AuthManager
-from . import notifications as notifications_module
-from . import quotation_numbers
-from .quotation_numbers import _get_next_number
-from . import quotation_backup
-from . import quotation_pdf
+# استيراد الوحدات متوافق مع Anvil (نسبي أو مطلق)
+try:
+    from . import notifications as notifications_module
+except ImportError:
+    import notifications as notifications_module
+try:
+    from . import quotation_numbers
+    from .quotation_numbers import _get_next_number
+except ImportError:
+    import quotation_numbers
+    from quotation_numbers import _get_next_number
+try:
+    from . import quotation_backup
+except ImportError:
+    import quotation_backup
+try:
+    from . import quotation_pdf
+except ImportError:
+    import quotation_pdf
 
 # =========================================================
 # إعداد نظام التسجيل (Logging)

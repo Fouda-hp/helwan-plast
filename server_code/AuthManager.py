@@ -1106,7 +1106,10 @@ def approve_user(token_or_email, user_id, role='viewer', custom_permissions=None
     logger.info(f"User approved: {user_email} with role {role}")
 
     try:
-        from . import notifications as notif_mod
+        try:
+            from . import notifications as notif_mod
+        except ImportError:
+            import notifications as notif_mod
         notif_mod.create_notification(user_email, 'user_approved', {'role': role, 'approved_by': admin_email})
     except Exception:
         pass
@@ -1140,7 +1143,10 @@ def reject_user(token_or_email, user_id):
     admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
 
     try:
-        from . import notifications as notif_mod
+        try:
+            from . import notifications as notif_mod
+        except ImportError:
+            import notifications as notif_mod
         notif_mod.create_notification(user_email, 'user_rejected', {'rejected_by': admin_email})
     except Exception:
         pass

@@ -429,7 +429,7 @@ class AdminPanel(AdminPanelTemplate):
               } else {
                 dropdown.innerHTML = '<div style="padding:16px;text-align:center;color:#666;">لا توجد إشعارات</div>';
               }
-            });
+            };
             wrap.appendChild(btn);
             section.insertBefore(wrap, section.firstChild);
           }

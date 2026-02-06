@@ -80,6 +80,7 @@ class AdminPanel(AdminPanelTemplate):
 
         # Audit Logs
         anvil.js.window.getAuditLogs = self.get_audit_logs
+        anvil.js.window.getMyNotifications = self.get_my_notifications
 
         # Clients & Quotations
         anvil.js.window.getAllClients = self.get_all_clients
@@ -370,6 +371,67 @@ class AdminPanel(AdminPanelTemplate):
             }
             window.updateBackupNavLabel = updateBackupNavLabel;
             updateBackupNavLabel();
+          }
+
+          function insertNotificationBell() {
+            var section = document.querySelector('.header-user-section');
+            if (!section || document.getElementById('adminNotificationBell')) return;
+            var wrap = document.createElement('div');
+            wrap.id = 'adminNotificationBell';
+            wrap.style.cssText = 'position:relative;display:flex;align-items:center;';
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.setAttribute('aria-label', 'Notifications');
+            btn.style.cssText = 'background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;';
+            btn.innerHTML = '&#128276;';
+            btn.onclick = function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              var dd = document.getElementById('adminNotificationsDropdown');
+              if (dd) {
+                dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+                return;
+              }
+              var dropdown = document.createElement('div');
+              dropdown.id = 'adminNotificationsDropdown';
+              dropdown.style.cssText = 'position:absolute;top:100%;right:0;margin-top:8px;background:#fff;border:1px solid #ddd;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.2);min-width:320px;max-width:400px;max-height:400px;overflow:auto;z-index:10001;';
+              dropdown.innerHTML = '<div style="padding:12px;text-align:center;color:#999;">جاري التحميل...</div>';
+              wrap.appendChild(dropdown);
+              function closeDropdown() {
+                if (dropdown.parentNode) dropdown.style.display = 'none';
+                document.removeEventListener('click', closeDropdown);
+              }
+              setTimeout(function() { document.addEventListener('click', closeDropdown); }, 0);
+              if (!window.getMyNotifications) {
+                dropdown.innerHTML = '<div style="padding:16px;text-align:center;color:#666;">لا توجد إشعارات</div>';
+                return;
+              }
+              var p = window.getMyNotifications();
+              if (p && typeof p.then === 'function') {
+                p.then(function(res) {
+                  var list = (res && res.success && res.notifications) ? res.notifications : [];
+                  if (list.length === 0) {
+                    dropdown.innerHTML = '<div style="padding:16px;text-align:center;color:#666;font-size:14px;">لا توجد إشعارات</div>';
+                    return;
+                  }
+                  var html = '<div style="padding:12px;border-bottom:1px solid #eee;font-weight:700;color:#1a1a2e;">الإشعارات</div>';
+                  list.forEach(function(n) {
+                    var ts = (n.timestamp || '').replace('T', ' ').substring(0, 19);
+                    var desc = (n.action_description || n.action || '-');
+                    html += '<div style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333;">';
+                    html += '<div style="color:#999;font-size:11px;margin-bottom:4px;">' + ts + '</div>';
+                    html += '<div>' + (desc.length > 80 ? desc.substring(0, 77) + '...' : desc) + '</div></div>';
+                  });
+                  dropdown.innerHTML = html;
+                }).catch(function() {
+                  dropdown.innerHTML = '<div style="padding:16px;text-align:center;color:#666;">لا توجد إشعارات</div>';
+                });
+              } else {
+                dropdown.innerHTML = '<div style="padding:16px;text-align:center;color:#666;">لا توجد إشعارات</div>';
+              }
+            });
+            wrap.appendChild(btn);
+            section.insertBefore(wrap, section.firstChild);
           }
 
           function patchSaveSetting() {
@@ -1458,6 +1520,7 @@ class AdminPanel(AdminPanelTemplate):
           function run() {
             insertDataImportNav();
             insertBackupNav();
+            insertNotificationBell();
             patchSaveSetting();
             patchLoadSettings();
             patchLoadAuditLogs();
@@ -1603,6 +1666,10 @@ class AdminPanel(AdminPanelTemplate):
     # =========================================================
     def get_audit_logs(self, limit, offset, filters):
         return anvil.server.call('get_audit_logs', self.get_auth(), limit, offset, filters)
+
+    def get_my_notifications(self):
+        """إشعارات المستخدم الحالي (سجل تدقيق) — للأيقونة في الهيدر"""
+        return anvil.server.call('get_my_audit_logs', self.get_auth(), 50)
 
     # =========================================================
     # Clients & Quotations

@@ -175,10 +175,10 @@ class CalculatorForm(CalculatorFormTemplate):
     except Exception:
       pass
     try:
-      # استدعاء واحد بدل 7 — تقليل ثقل الشبكة
-      data = anvil.server.call("get_calculator_settings")
-      if not data:
-        data = {}
+      auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email')
+      data = anvil.server.call("get_calculator_settings", auth)
+      if not data or data.get("success") is False:
+        data = {} if not data else {k: v for k, v in data.items() if k not in ("success", "message")}
       settings_payload = {}
       if data.get("exchangeRate") is not None:
         try:

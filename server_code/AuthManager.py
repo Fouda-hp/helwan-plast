@@ -2330,11 +2330,29 @@ def get_setting(key):
 
 
 @anvil.server.callable
-def get_calculator_settings():
+def get_calculator_settings(token_or_email=None):
     """
-    جلب كل إعدادات الكالكتور في استدعاء واحد (تقليل عدد الـ round-trips).
-    يرجع: exchangeRate, shipping_sea, ths_cost, clearance_expenses, tax_rate, bank_commission, config
+    جلب كل إعدادات الكالكتور في استدعاء واحد.
+    متاحة لأدوار: admin و manager فقط.
     """
+    if not token_or_email:
+        return {'success': False, 'message': 'المصادقة مطلوبة. يرجى تسجيل الدخول.'}
+    session = validate_session(token_or_email)
+    user_email = None
+    if session and session.get('email'):
+        user_email = session['email']
+    elif token_or_email and '@' in str(token_or_email):
+        u = app_tables.users.get(email=str(token_or_email).strip().lower())
+        if u and u.get('is_active') and u.get('is_approved'):
+            user_email = u['email']
+    if not user_email:
+        return {'success': False, 'message': 'جلسة غير صالحة أو منتهية. يرجى تسجيل الدخول مرة أخرى.'}
+    user_row = app_tables.users.get(email=user_email)
+    if not user_row:
+        return {'success': False, 'message': 'المستخدم غير موجود.'}
+    role = (user_row.get('role') or '').strip().lower()
+    if role not in ('admin', 'manager'):
+        return {'success': False, 'message': 'صلاحية غير كافية: يتطلب دور مدير نظام أو مدير للوصول إلى إعدادات الحاسبة.'}
     result = {
         'exchangeRate': None,
         'shipping_sea': None,
@@ -2365,9 +2383,12 @@ def get_calculator_settings():
         cp = get_setting('cylinder_prices')
         if cp and isinstance(cp, dict):
             result['cylinderPrices'] = cp
+        result['success'] = True
         return result
     except Exception as e:
         logger.error(f"get_calculator_settings error: {e}")
+        result['success'] = False
+        result['message'] = str(e)
         return result
 
 
@@ -2629,6 +2650,43 @@ def save_machine_config(token_or_email, config):
 # =========================================================
 # سجل التدقيق
 # =========================================================
+@anvil.server.callable
+def get_my_audit_logs(token_or_email, limit=50):
+    """
+    إرجاع إشعارات (سجل تدقيق) للمستخدم الحالي فقط — للأيقونة في لوحة الأدمن.
+    ترتيب من الأحدث إلى الأقدم.
+    """
+    if not token_or_email:
+        return {'success': False, 'notifications': []}
+    session = validate_session(token_or_email)
+    user_email = None
+    if session and session.get('email'):
+        user_email = session['email']
+    elif token_or_email and '@' in str(token_or_email):
+        u = app_tables.users.get(email=str(token_or_email).strip().lower())
+        if u and u.get('is_active') and u.get('is_approved'):
+            user_email = u['email']
+    if not user_email:
+        return {'success': False, 'notifications': []}
+    try:
+        all_logs = list(app_tables.audit_log.search())
+        my_logs = [l for l in all_logs if l.get('user_email') and str(l['user_email']).strip().lower() == user_email]
+        my_logs.sort(key=lambda x: x['timestamp'] or datetime.min, reverse=True)
+        notifications = []
+        for log in my_logs[:limit]:
+            notifications.append({
+                'timestamp': log['timestamp'].isoformat() if log.get('timestamp') else '',
+                'action': log.get('action', ''),
+                'action_description': log.get('action_description', ''),
+                'table_name': log.get('table_name', ''),
+                'record_id': str(log.get('record_id', ''))
+            })
+        return {'success': True, 'notifications': notifications}
+    except Exception as e:
+        logger.error("get_my_audit_logs: %s", e)
+        return {'success': False, 'notifications': []}
+
+
 @anvil.server.callable
 def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
     """

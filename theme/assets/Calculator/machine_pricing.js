@@ -26,8 +26,9 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
     if (_settingsLoading) return; // منع التحميل المتكرر
     _settingsLoading = true;
     try {
-      const data = await window.anvil?.server?.call('get_calculator_settings');
-      if (!data) return;
+      var auth = (typeof sessionStorage !== 'undefined' && (sessionStorage.getItem('auth_token') || sessionStorage.getItem('user_email'))) || null;
+      const data = await window.anvil?.server?.call('get_calculator_settings', auth);
+      if (!data || data.success === false) return;
       if (data.exchangeRate != null && !isNaN(data.exchangeRate)) {
         EXCHANGE_RATE = parseFloat(data.exchangeRate);
         var exEl = document.getElementById("exchange_rate");

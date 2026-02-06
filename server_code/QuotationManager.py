@@ -112,13 +112,13 @@ def check_delete_permission(token_or_email):
 
 
 # =========================================================
-# دوال الترقيم التلقائي
+# دوال الترقيم التلقائي (عامة - قراءة فقط - لا تعديل في قاعدة البيانات)
 # =========================================================
 @anvil.server.callable
 def get_next_client_code():
     """
-    الحصول على رمز العميل التالي
-    يُستخدم عند تحميل الصفحة أو زر NEW
+    الحصول على رمز العميل التالي (قراءة فقط، لا يعدّل قاعدة البيانات).
+    يُستخدم عند تحميل الصفحة أو زر NEW.
     """
     return _get_next_number('clients', 'Client Code')
 
@@ -126,8 +126,8 @@ def get_next_client_code():
 @anvil.server.callable
 def get_next_quotation_number():
     """
-    الحصول على رقم العرض التالي
-    يُستخدم عند تحميل الصفحة أو زر NEW
+    الحصول على رقم العرض التالي (قراءة فقط، لا يعدّل قاعدة البيانات).
+    يُستخدم عند تحميل الصفحة أو زر NEW.
     """
     return _get_next_number('quotations', 'Quotation#')
 
@@ -2360,6 +2360,13 @@ def run_scheduled_backup():
             logger.info("Backup uploaded to Google Drive: %s", filename)
         else:
             logger.warning("Backup not uploaded to Drive: %s", drive_msg)
+            AuthManager.log_audit(
+                'BACKUP_DRIVE_UPLOAD_FAILED', 'backup', filename,
+                None, {'export_date': backup['export_date'], 'source': 'scheduled', 'error': drive_msg},
+                user_email='scheduled', ip_address='system',
+                user_name='نظام (مجدول)',
+                action_description=f"فشل رفع النسخة المجدولة إلى Google Drive: {filename} — {drive_msg}"
+            )
         AuthManager.log_audit(
             'BACKUP_SCHEDULED', 'backup', filename,
             None, {'export_date': backup['export_date'], 'source': 'scheduled', 'drive_uploaded': drive_ok},
@@ -2455,6 +2462,13 @@ def create_backup(token_or_email):
         backup, json_bytes, filename = _build_backup_payload()
         media = anvil.BlobMedia('application/json', json_bytes, name=filename)
         drive_ok, drive_msg = _upload_backup_to_drive(json_bytes, filename)
+        if not drive_ok:
+            AuthManager.log_audit(
+                'BACKUP_DRIVE_UPLOAD_FAILED', 'backup', filename,
+                None, {'export_date': backup['export_date'], 'error': drive_msg},
+                user_email=user_email, ip_address=ip_address,
+                action_description=f"فشل رفع النسخة الاحتياطية إلى Google Drive: {filename} — {drive_msg}"
+            )
         AuthManager.log_audit(
             'BACKUP_EXPORT', 'backup', filename,
             None, {'export_date': backup['export_date'], 'tables': list(backup.keys()), 'drive_uploaded': drive_ok},

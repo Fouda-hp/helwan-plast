@@ -13,9 +13,12 @@ import unittest
 from datetime import date
 from unittest.mock import MagicMock, patch
 
-# جعل جذر المشروع (والد server_code) في المسار
-_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if _root not in sys.path:
+# جعل جذر المشروع (والد server_code) في المسار — آمن عند عدم تعريف __file__ (مثل Anvil)
+try:
+    _root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+except NameError:
+    _root = os.getcwd()
+if _root and _root not in sys.path:
     sys.path.insert(0, _root)
 
 # Mock anvil قبل استيراد أي وحدة من server_code

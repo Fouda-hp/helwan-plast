@@ -16,8 +16,13 @@ import logging
 import os
 
 # #region agent log
-_DEBUG_LOG_PATH = os.path.join(os.path.dirname(__file__), "..", ".cursor", "debug.log")
+try:
+    _DEBUG_LOG_PATH = os.path.join(os.path.dirname(__file__), "..", ".cursor", "debug.log")
+except NameError:
+    _DEBUG_LOG_PATH = None  # __file__ not defined (e.g. Anvil server)
 def _agent_log(location, message, data=None, hypothesis_id=None):
+    if _DEBUG_LOG_PATH is None:
+        return
     try:
         import time
         line = json.dumps({"location": location, "message": message, "data": data or {}, "timestamp": int(time.time() * 1000), "sessionId": "debug-session", "hypothesisId": hypothesis_id or ""}) + "\n"

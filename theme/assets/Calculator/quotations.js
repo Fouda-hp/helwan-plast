@@ -24,18 +24,11 @@
     return document.getElementById(id);
   }
 
-  // Debounce helper for search optimization
-  function debounce(fn, delay) {
+  // Use shared debounce from utils.js
+  var debounce = window.debounce || function(fn, delay) {
     var timer;
-    return function() {
-      var context = this;
-      var args = arguments;
-      clearTimeout(timer);
-      timer = setTimeout(function() {
-        fn.apply(context, args);
-      }, delay);
-    };
-  }
+    return function() { var c=this,a=arguments; clearTimeout(timer); timer=setTimeout(function(){fn.apply(c,a);},delay||300); };
+  };
 
   function getField(record, names) {
     for (var i = 0; i < names.length; i++) {
@@ -209,7 +202,9 @@
   // ----------------------------------------
   window.loadQuotationFromOverlay = function (record) {
     if (!record) return;
-
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8b3fb622-0491-4420-8d50-0b29370f6f0d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quotations.js:loadQuotationFromOverlay',message:'load quotation',data:{quotationNum:record["Quotation#"]||record["quotation_number"],clientCode:record["Client Code"]||record["client_code"]},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(function(){});
+    // #endregion
     window.LOADING_FROM_QUOTATION = true;
     window.cylindersInitialized = false;
 
@@ -432,9 +427,15 @@
         searchQuery = '';
         if (searchInput) searchInput.value = '';
 
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8b3fb622-0491-4420-8d50-0b29370f6f0d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quotations.js:getQuotationsForOverlay',message:'calling getQuotationsForOverlay',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(function(){});
+        // #endregion
         try {
           var result = await window.getQuotationsForOverlay?.();
 
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8b3fb622-0491-4420-8d50-0b29370f6f0d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quotations.js:getQuotationsForOverlay',message:'result received',data:{hasData:!!result,dataLen:(result&&result.data)?result.data.length:(Array.isArray(result)?result.length:0)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(function(){});
+          // #endregion
           if (!result || (result.data && result.data.length === 0) || (Array.isArray(result) && result.length === 0)) {
             if (list) list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#666;">No quotations found</td></tr>';
             return;
@@ -451,7 +452,7 @@
 
           if (list) renderQuotationList(allQuotations, list, 1);
         } catch (e) {
-          console.error("Error loading quotations:", e);
+          window.debugError("Error loading quotations:", e);
           if (list) list.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#c62828;">Error loading quotations</td></tr>';
         }
       };

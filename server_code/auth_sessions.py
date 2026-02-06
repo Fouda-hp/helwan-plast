@@ -1,8 +1,10 @@
 """
 auth_sessions.py - إدارة الجلسات (إنشاء، التحقق، إنهاء، تنظيف)
+مع تشفير التوكن في قاعدة البيانات (hash فقط) + تنظيف تلقائي مجدول
 """
 
 import secrets
+import hashlib
 import logging
 from datetime import datetime, timedelta
 from anvil.tables import app_tables
@@ -12,12 +14,18 @@ from .auth_constants import SESSION_DURATION_MINUTES, MAX_SESSIONS_PER_USER
 logger = logging.getLogger(__name__)
 
 
+def _hash_token(token):
+    """تشفير التوكن باستخدام SHA-256 للتخزين في قاعدة البيانات"""
+    return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
+
 def generate_session_token():
     return secrets.token_urlsafe(64)
 
 
 def create_session(user_email, role, ip_address=None, user_agent=None):
     token = generate_session_token()
+    token_hash = _hash_token(token)
     expires = datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES)
     ip = ip_address or 'unknown'
     try:
@@ -31,7 +39,7 @@ def create_session(user_email, role, ip_address=None, user_agent=None):
             valid_sessions.sort(key=lambda s: s['created_at'])
             valid_sessions[0].update(is_active=False)
         app_tables.sessions.add_row(
-            session_token=token,
+            session_token=token_hash,
             user_email=user_email,
             user_role=role,
             created_at=datetime.now(),
@@ -41,7 +49,7 @@ def create_session(user_email, role, ip_address=None, user_agent=None):
             is_active=True
         )
         logger.info("Session created for %s from IP %s", user_email, ip)
-        return token
+        return token  # يُرجع التوكن الأصلي للمستخدم (الـ hash فقط في DB)
     except Exception as e:
         logger.error("Session creation error: %s", e)
         return None
@@ -51,7 +59,17 @@ def validate_session(token):
     if not token:
         return None
     try:
-        session = app_tables.sessions.get(session_token=token, is_active=True)
+        token_hash = _hash_token(token)
+        session = app_tables.sessions.get(session_token=token_hash, is_active=True)
+
+        # Fallback: دعم التوكنات القديمة (بدون hash) خلال فترة الانتقال
+        if not session:
+            session = app_tables.sessions.get(session_token=token, is_active=True)
+            if session:
+                # ترقية تلقائية: تحويل التوكن القديم إلى hash
+                session.update(session_token=token_hash)
+                logger.info("Migrated legacy token to hashed format for %s", session['user_email'])
+
         if not session:
             return None
         expires_at = session.get('expires_at')
@@ -86,7 +104,13 @@ def destroy_session(token):
     if not token:
         return False
     try:
-        session = app_tables.sessions.get(session_token=token)
+        token_hash = _hash_token(token)
+        session = app_tables.sessions.get(session_token=token_hash)
+
+        # Fallback: دعم التوكنات القديمة
+        if not session:
+            session = app_tables.sessions.get(session_token=token)
+
         if session:
             session.update(is_active=False)
             return True
@@ -97,10 +121,17 @@ def destroy_session(token):
 
 
 def cleanup_expired_sessions():
+    """تنظيف الجلسات المنتهية - يمكن استدعاؤها يدوياً أو عبر Scheduler"""
     try:
         now = datetime.now()
+        cleaned = 0
         for s in app_tables.sessions.search(is_active=True):
             if s.get('expires_at') and s['expires_at'] < now:
                 s.update(is_active=False)
+                cleaned += 1
+        if cleaned > 0:
+            logger.info("Cleaned up %d expired sessions", cleaned)
+        return cleaned
     except Exception as e:
         logger.error("Cleanup sessions error: %s", e)
+        return 0

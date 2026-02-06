@@ -110,8 +110,8 @@ def log_audit(action, table_name, record_id, old_data, new_data,
         try:
             row_data['user_name'] = (user_name or 'system').strip()[:200]
             row_data['action_description'] = (desc or '').strip()[:500]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Could not set user_name/action_description in audit: %s", e)
         try:
             app_tables.audit_log.add_row(**row_data)
         except Exception as col_err:

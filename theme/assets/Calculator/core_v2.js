@@ -43,6 +43,9 @@ function setTodayDate() {
 // Init default values
 // -------------------------------
 window.initDefaultValues = async function () {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/8b3fb622-0491-4420-8d50-0b29370f6f0d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'core_v2.js:initDefaultValues',message:'initDefaultValues entry',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(function(){});
+  // #endregion
   try {
     const cc = document.getElementById("client_code");
     const qn = document.getElementById("Quotation#");
@@ -64,7 +67,10 @@ window.initDefaultValues = async function () {
     }
 
   } catch (e) {
-    console.error("Init default values error:", e);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8b3fb622-0491-4420-8d50-0b29370f6f0d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'core_v2.js:initDefaultValues',message:'initDefaultValues error',data:{err:String(e&&e.message)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H5'})}).catch(function(){});
+    // #endregion
+    window.debugError("Init default values error:", e);
   }
 };
 
@@ -87,7 +93,7 @@ function waitForAutoNumbering() {
 
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("✅ core.js loaded");
+  window.debugLog("core.js loaded");
   waitForAutoNumbering();
 });
 

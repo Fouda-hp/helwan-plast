@@ -129,9 +129,9 @@ class CalculatorForm(CalculatorFormTemplate):
 
   def _save_to_server(self, form_data):
     try:
-      # Get user email from sessionStorage (جلسة تنتهي عند إغلاق التاب)
       user_email = anvil.js.window.sessionStorage.getItem('user_email') or 'system'
-      return anvil.server.call("save_quotation", form_data, user_email)
+      auth = anvil.js.window.sessionStorage.getItem('auth_token') or user_email
+      return anvil.server.call("save_quotation", form_data, user_email, auth)
     except Exception as e:
       return {"success": False, "message": str(e)}
 
@@ -146,10 +146,12 @@ class CalculatorForm(CalculatorFormTemplate):
       return []
 
   def get_quotations_for_overlay(self):
-    return anvil.server.call("get_all_quotations")
+    auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email')
+    return anvil.server.call("get_all_quotations", 1, 20, '', False, auth)
 
   def get_clients_for_overlay(self):
-    return anvil.server.call("get_all_clients")
+    auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email')
+    return anvil.server.call("get_all_clients", 1, 20, '', False, auth)
 
   def get_active_users_for_dropdown(self):
     return anvil.server.call("get_active_users_for_dropdown")

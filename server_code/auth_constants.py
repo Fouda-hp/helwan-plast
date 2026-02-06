@@ -2,14 +2,13 @@
 auth_constants.py - ثوابت وإعدادات المصادقة والتفويض
 """
 
-import hashlib
 import logging
 
 logger = logging.getLogger(__name__)
 
 # ========== قفل الحساب والجلسات ==========
-MAX_LOGIN_ATTEMPTS = 50
-LOCKOUT_DURATION_MINUTES = 5
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_DURATION_MINUTES = 30
 SESSION_DURATION_MINUTES = 60
 MAX_SESSIONS_PER_USER = 5
 RATE_LIMIT_WINDOW_MINUTES = 15
@@ -24,13 +23,14 @@ try:
     ADMIN_NOTIFICATION_EMAIL = anvil.secrets.get_secret('ADMIN_EMAIL') or "mohamedadelfouda@helwanplast.com"
     _emergency_key = anvil.secrets.get_secret('EMERGENCY_KEY')
     if not _emergency_key:
-        logger.warning("EMERGENCY_KEY not set in secrets! Using fallback key.")
-        _emergency_key = "HP_EMERGENCY_" + str(hashlib.sha256(b"helwan_plast_2024").hexdigest()[:16])
-    EMERGENCY_SECRET_KEY = _emergency_key
+        logger.critical("EMERGENCY_KEY not set in Anvil Secrets! Emergency endpoints DISABLED.")
+        EMERGENCY_SECRET_KEY = None
+    else:
+        EMERGENCY_SECRET_KEY = _emergency_key
 except Exception as e:
-    logger.error("Failed to load secrets: %s", e)
+    logger.critical("Failed to load secrets: %s - Emergency endpoints DISABLED.", e)
     ADMIN_NOTIFICATION_EMAIL = "mohamedadelfouda@helwanplast.com"
-    EMERGENCY_SECRET_KEY = "HP_EMERGENCY_" + str(hashlib.sha256(b"helwan_plast_2024").hexdigest()[:16])
+    EMERGENCY_SECRET_KEY = None
 
 # ========== صلاحيات الأدوار ==========
 ROLES = {

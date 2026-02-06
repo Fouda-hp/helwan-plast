@@ -13,6 +13,19 @@ import json
 import uuid
 import re
 import logging
+import os
+
+# #region agent log
+_DEBUG_LOG_PATH = os.path.join(os.path.dirname(__file__), "..", ".cursor", "debug.log")
+def _agent_log(location, message, data=None, hypothesis_id=None):
+    try:
+        import time
+        line = json.dumps({"location": location, "message": message, "data": data or {}, "timestamp": int(time.time() * 1000), "sessionId": "debug-session", "hypothesisId": hypothesis_id or ""}) + "\n"
+        with open(_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(line)
+    except Exception:
+        pass
+# #endregion
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -663,12 +676,12 @@ def register_user(email, password, full_name, phone=None):
             otp = generate_otp()
             store_otp(email, otp, 'verification')
             send_otp(email, full_name, otp, 'verification', force_channel='email')
-            return {
-                'success': True,
-                'requires_verification': True,
-                'message': 'Verification code resent to your email'
-            }
-        return {'success': False, 'message': 'Email already registered'}
+        # رسالة موحدة لمنع User Enumeration
+        return {
+            'success': True,
+            'requires_verification': True,
+            'message': 'If this email is valid, a verification code has been sent'
+        }
 
     # إنشاء المستخدم (غير مُتحقق منه)
     user_id = str(uuid.uuid4())
@@ -807,6 +820,9 @@ def login_user(email, password):
     تسجيل دخول المستخدم - الخطوة الأولى
     يتحقق من البريد وكلمة المرور ثم يرسل OTP
     """
+    # #region agent log
+    _agent_log("AuthManager.py:login_user", "login_user entry", {"email": str(email or "").strip()[:50], "has_password": bool(password)}, "H3")
+    # #endregion
     ip_address = get_client_ip()
 
     # التحقق من Rate Limit
@@ -900,18 +916,18 @@ def login_user(email, password):
 
     if email_sent:
         logger.info(f"2FA OTP sent to: {email}")
-        return {
-            'success': True,
-            'requires_2fa': True,
-            'use_authenticator': False,
-            'message': 'Verification code sent to your email'
-        }
+        out = {'success': True, 'requires_2fa': True, 'use_authenticator': False, 'message': 'Verification code sent to your email'}
+        # #region agent log
+        _agent_log("AuthManager.py:login_user", "login_user exit", {"success": True, "requires_2fa": True}, "H3")
+        # #endregion
+        return out
     else:
         logger.error(f"Failed to send 2FA OTP to: {email}")
-        return {
-            'success': False,
-            'message': 'Failed to send verification code. Please try again later.'
-        }
+        out = {'success': False, 'message': 'Failed to send verification code. Please try again later.'}
+        # #region agent log
+        _agent_log("AuthManager.py:login_user", "login_user exit", {"success": False}, "H3")
+        # #endregion
+        return out
 
 
 @anvil.server.callable
@@ -1052,9 +1068,15 @@ def validate_token(token):
     """
     التحقق من صحة الجلسة وإرجاع معلومات المستخدم
     """
+    # #region agent log
+    _agent_log("AuthManager.py:validate_token", "validate_token entry", {"has_token": bool(token), "token_len": len(str(token or ""))}, "H1")
+    # #endregion
     session = validate_session(token)
 
     if not session:
+        # #region agent log
+        _agent_log("AuthManager.py:validate_token", "validate_token exit", {"valid": False}, "H1")
+        # #endregion
         return {'valid': False}
 
     user = app_tables.users.get(email=session['email'])
@@ -1065,21 +1087,22 @@ def validate_token(token):
 
     # تمديد الجلسة عند كل استخدام (sliding expiration) حتى لا تنتهي أثناء الاستخدام
     try:
-        session_row = app_tables.sessions.get(session_token=token)
+        from .auth_sessions import _hash_token
+        token_hash = _hash_token(token)
+        session_row = app_tables.sessions.get(session_token=token_hash, is_active=True)
+        # Fallback: دعم التوكنات القديمة (بدون hash)
+        if not session_row:
+            session_row = app_tables.sessions.get(session_token=token, is_active=True)
         if session_row:
             session_row.update(expires_at=datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES))
     except Exception:
         pass
 
-    return {
-        'valid': True,
-        'user': {
-            'email': user['email'],
-            'full_name': user['full_name'],
-            'role': user['role'],
-            'phone': user.get('phone', '')
-        }
-    }
+    out = {'valid': True, 'user': {'email': user['email'], 'full_name': user['full_name'], 'role': user['role'], 'phone': user.get('phone', '')}}
+    # #region agent log
+    _agent_log("AuthManager.py:validate_token", "validate_token exit", {"valid": True, "email": user.get("email", "")}, "H1")
+    # #endregion
+    return out
 
 
 # =========================================================
@@ -1197,8 +1220,8 @@ def require_admin(token_or_email):
         if user_by_id and user_by_id['role'] == 'admin' and user_by_id['is_active'] and user_by_id['is_approved']:
             logger.info("Admin access granted via user_id")
             return True, None
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("require_admin user_id lookup: %s", e)
 
     logger.warning(f"Admin access denied for: {token_preview}...")
     return False, {'success': False, 'message': 'Admin access required'}
@@ -1418,11 +1441,23 @@ def update_user_otp_method(token_or_email, user_email, method):
 
 
 @anvil.server.callable
-def get_active_users_for_dropdown():
+def get_active_users_for_dropdown(token_or_email=None):
     """
     الحصول على أسماء المستخدمين النشطين فقط لاستخدامها في dropdown
-    لا يحتاج صلاحيات أدمن
+    يتطلب مستخدم مسجل دخول
     """
+    if not token_or_email:
+        return {'success': False, 'message': 'Authentication required', 'users': []}
+
+    # التحقق من أن المستخدم مسجل دخول
+    result = validate_token(token_or_email) if not ('@' in str(token_or_email)) else None
+    if result and not result.get('valid'):
+        return {'success': False, 'message': 'Invalid session', 'users': []}
+    elif not result and '@' in str(token_or_email):
+        user_check = app_tables.users.get(email=str(token_or_email).strip().lower())
+        if not user_check or not user_check.get('is_active') or not user_check.get('is_approved'):
+            return {'success': False, 'message': 'Invalid user', 'users': []}
+
     try:
         users = []
         for user in app_tables.users.search(is_active=True, is_approved=True):
@@ -1927,9 +1962,23 @@ def diagnose_admin_access(email, token=None):
 def fix_admin_user(email, secret_key):
     """
     إصلاح حساب الأدمن - تأكيد أنه is_active و is_approved
-    يتطلب مفتاح سري من Environment Variables
+    يتطلب مفتاح سري من Anvil Secrets (لا يعمل بدون إعداده)
     """
+    ip_address = get_client_ip()
+
+    # التحقق من أن المفتاح مُعَد أصلاً
+    if not EMERGENCY_SECRET_KEY:
+        logger.critical(f"fix_admin_user called but EMERGENCY_KEY not configured. IP: {ip_address}")
+        return {'success': False, 'message': 'Emergency access is disabled. Set EMERGENCY_KEY in Anvil Secrets.'}
+
+    # Rate Limiting لمنع Brute Force
+    if not check_rate_limit(ip_address, 'emergency_admin'):
+        logger.warning(f"Rate limit exceeded on fix_admin_user from IP: {ip_address}")
+        return {'success': False, 'message': 'Too many attempts. Please try again later.'}
+
     if secret_key != EMERGENCY_SECRET_KEY:
+        log_audit('FAILED_EMERGENCY_FIX', 'users', None, None,
+                  {'email': email, 'reason': 'Invalid secret key'}, email or 'unknown', ip_address)
         return {'success': False, 'message': 'Invalid secret key'}
 
     email = str(email or '').strip().lower()
@@ -1967,22 +2016,38 @@ def fix_admin_user(email, secret_key):
 def reset_admin_password_emergency(email, new_password, secret_key):
     """
     إعادة تعيين كلمة مرور الأدمن (للطوارئ فقط)
-    تتطلب مفتاح سري من Environment Variables
+    تتطلب مفتاح سري من Anvil Secrets (لا يعمل بدون إعداده)
 
     إذا لم يكن المستخدم موجوداً، سيتم إنشاء حساب أدمن جديد
     """
     ip_address = get_client_ip()
 
     try:
+        # التحقق من أن المفتاح مُعَد أصلاً
+        if not EMERGENCY_SECRET_KEY:
+            logger.critical(f"reset_admin_password_emergency called but EMERGENCY_KEY not configured. IP: {ip_address}")
+            return {'success': False, 'message': 'Emergency access is disabled. Set EMERGENCY_KEY in Anvil Secrets.'}
+
+        # Rate Limiting لمنع Brute Force
+        if not check_rate_limit(ip_address, 'emergency_admin'):
+            logger.warning(f"Rate limit exceeded on emergency reset from IP: {ip_address}")
+            return {'success': False, 'message': 'Too many attempts. Please try again later.'}
+
         # التحقق من المفتاح السري
         if secret_key != EMERGENCY_SECRET_KEY:
             log_audit('FAILED_EMERGENCY_RESET', 'users', None, None,
                       {'email': email, 'reason': 'Invalid secret key'}, email, ip_address)
             return {'success': False, 'message': 'Invalid secret key'}
 
-        # التحقق من كلمة المرور الجديدة
-        if not new_password or len(new_password) < 6:
-            return {'success': False, 'message': 'Password must be at least 6 characters'}
+        # التحقق من كلمة المرور الجديدة (نفس متطلبات التسجيل العادي)
+        if not new_password or len(new_password) < 8:
+            return {'success': False, 'message': 'Password must be at least 8 characters'}
+        if not re.search(r'[A-Z]', new_password):
+            return {'success': False, 'message': 'Password must contain at least one uppercase letter'}
+        if not re.search(r'[a-z]', new_password):
+            return {'success': False, 'message': 'Password must contain at least one lowercase letter'}
+        if not re.search(r'[0-9]', new_password):
+            return {'success': False, 'message': 'Password must contain at least one digit'}
 
         email = str(email or '').strip().lower()
 
@@ -2856,3 +2921,32 @@ def get_session_info(token):
         pass
 
     return {'valid': True}
+
+
+# =========================================================
+# تنظيف الجلسات المنتهية تلقائياً (Scheduler)
+# =========================================================
+@anvil.server.background_task
+def scheduled_session_cleanup():
+    """
+    مهمة مجدولة لتنظيف الجلسات المنتهية.
+    يجب إعدادها في Anvil Scheduler لتعمل كل ساعة.
+    Anvil → Background Tasks → Add Task → scheduled_session_cleanup → Every hour
+    """
+    try:
+        cleaned = cleanup_expired_sessions()
+        logger.info(f"Scheduled session cleanup completed: {cleaned} sessions cleaned")
+        return {'success': True, 'cleaned': cleaned}
+    except Exception as e:
+        logger.error(f"Scheduled session cleanup error: {e}")
+        return {'success': False, 'error': str(e)}
+
+
+@anvil.server.callable
+def manual_session_cleanup(token_or_email):
+    """تنظيف يدوي للجلسات المنتهية (للأدمن فقط)"""
+    is_authorized, error = require_admin(token_or_email)
+    if not is_authorized:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied'}
+    cleaned = cleanup_expired_sessions()
+    return {'success': True, 'message': f'تم تنظيف {cleaned} جلسة منتهية'}

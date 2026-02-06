@@ -20,7 +20,10 @@
   };
 
   // تحميل الإعدادات من السيرفر — استدعاء واحد بدل 6 (أخف على الشبكة)
+  var _settingsLoading = false; // Race condition guard
   async function loadSettingsFromServer() {
+    if (_settingsLoading) return; // منع التحميل المتكرر
+    _settingsLoading = true;
     try {
       const data = await window.anvil?.server?.call('get_calculator_settings');
       if (!data) return;
@@ -40,7 +43,9 @@
       if (typeof window.recalcAll === 'function') window.recalcAll();
       window._settingsLoaded = true;
     } catch (e) {
-      console.warn('Could not load settings from server, using defaults:', e);
+      window.debugWarn('Could not load settings from server, using defaults:', e);
+    } finally {
+      _settingsLoading = false;
     }
   }
 
@@ -212,7 +217,10 @@
   }
 
   // Load machine prices from server — المصدر الوحيد لـ Standard Machine FOB cost وخيارات الدروب داون
+  var _pricesLoading = false; // Race condition guard
   async function loadMachinePricesFromServer() {
+    if (_pricesLoading) return; // منع التحميل المتكرر
+    _pricesLoading = true;
     try {
       var call = (window.anvil && window.anvil.server && window.anvil.server.call) || (window.top && window.top.anvil && window.top.anvil.server && window.top.anvil.server.call);
       if (!call) return;
@@ -224,12 +232,13 @@
           updateMachineTypeDropdown(PRICE_OPTIONS.types);
           refreshColorsAndWidthsFromOptions();
         }
+        // recalc مرة واحدة فقط بدلاً من 3 مرات (إصلاح Race Condition)
         if (typeof window.recalcAll === 'function') window.recalcAll();
-        setTimeout(function() { if (typeof window.recalcAll === 'function') window.recalcAll(); }, 150);
-        setTimeout(function() { if (typeof window.recalcAll === 'function') window.recalcAll(); }, 500);
       }
     } catch(e) {
-      console.warn('Could not load machine prices from server, using defaults:', e);
+      window.debugWarn('Could not load machine prices from server, using defaults:', e);
+    } finally {
+      _pricesLoading = false;
     }
   }
 
@@ -245,7 +254,7 @@
         if (config.widths && config.widths.length > 0) updateWidthsDropdown(config.widths);
       }
     } catch(e) {
-      console.warn('Could not load machine config from server:', e);
+      window.debugWarn('Could not load machine config from server:', e);
     }
   }
 
@@ -429,7 +438,7 @@
       if (typeof window.recalcAll === 'function') window.recalcAll();
       window._settingsLoaded = true;
     } catch (e) {
-      console.warn('applyCalculatorSettingsFromPython error:', e);
+      window.debugWarn('applyCalculatorSettingsFromPython error:', e);
     }
   };
 
@@ -442,21 +451,23 @@
       window.applyCalculatorSettingsFromPython(d);
     } catch (e) {}
   }
-  tryApplyStoredSettings();
-  setTimeout(tryApplyStoredSettings, 400);
-  setTimeout(tryApplyStoredSettings, 1000);
-  setTimeout(tryApplyStoredSettings, 2200);
-  var _pollCount = 0;
-  var _pollId = setInterval(function() {
+  // محاولة تطبيق الإعدادات مع حد أقصى للمحاولات (إصلاح Memory Leak)
+  var _settingsApplied = false;
+  function tryApplyOnce() {
+    if (_settingsApplied) return;
     tryApplyStoredSettings();
-    if (++_pollCount >= 12) clearInterval(_pollId);
-  }, 500);
+    if (window._settingsLoaded) _settingsApplied = true;
+  }
+  tryApplyOnce();
+  (window.safeSetTimeout || setTimeout)(tryApplyOnce, 400);
+  (window.safeSetTimeout || setTimeout)(tryApplyOnce, 1200);
+  (window.safeSetTimeout || setTimeout)(tryApplyOnce, 2500);
 
   // تحميل الأسعار والكونفيج بعد الإعدادات — تأخير كافٍ حتى يكون الـ DOM جاهزاً
-  setTimeout(loadMachinePricesFromServer, 600);
-  setTimeout(loadMachineConfigFromServer, 900);
-  // بعد تحميل الأسعار: إعادة تطبيق إعدادات بايثون ثم إعادة حساب (حتى لو فتح الصفحة بسرعة)
-  setTimeout(function() {
+  (window.safeSetTimeout || setTimeout)(loadMachinePricesFromServer, 600);
+  (window.safeSetTimeout || setTimeout)(loadMachineConfigFromServer, 900);
+  // بعد تحميل الأسعار: إعادة تطبيق إعدادات بايثون ثم إعادة حساب
+  (window.safeSetTimeout || setTimeout)(function() {
     var d = window.__calculatorSettingsFromPython || (window.top && window.top !== window && window.top.__calculatorSettingsFromPython);
     if (window.applyCalculatorSettingsFromPython && d) try { window.applyCalculatorSettingsFromPython(d); } catch(e) {}
     if (typeof window.recalcAll === 'function') window.recalcAll();
@@ -544,7 +555,7 @@
       EXCHANGE_RATE = parseFloat(newRate);
       const exchangeInput = document.getElementById("exchange_rate");
       if (exchangeInput) exchangeInput.value = EXCHANGE_RATE.toFixed(2);
-      console.log('📈 Exchange rate updated to:', EXCHANGE_RATE);
+      window.debugLog('Exchange rate updated to:', EXCHANGE_RATE);
       if (isModelReady()) {
         calculateAll();
       }
@@ -558,11 +569,12 @@
   });
 
   // تحديث الإعدادات كل 5 دقائق فقط (تقليل الحمل — الإعدادات لا تتغير كثيراً)
-  setInterval(function() {
+  // حد أقصى 48 مرة (4 ساعات) لمنع Memory Leak
+  (window.safeSetInterval || setInterval)(function() {
     if (window.anvil?.server?.call) {
       loadSettingsFromServer();
     }
-  }, 300000);
+  }, 300000, 48);
 
   // ----------------------------------------
   // الحسابات الأساسية

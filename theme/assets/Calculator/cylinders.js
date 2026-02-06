@@ -1,17 +1,17 @@
 // ===============================
 // cylinders.js - محدث مع تحميل الأسعار من السيرفر
+// مُحسّن: استخدام halfUpRound الموحدة + إزالة console.log + إصلاح Race Conditions
 // ===============================
 
-// 🔒 Prevent double loading
+// Prevent double loading
 if (typeof window.__cylindersLoaded !== 'undefined') {
-  console.warn("⚠️ cylinders.js already loaded - skipping");
+  window.debugWarn("cylinders.js already loaded - skipping");
 } else {
 
   window.__cylindersLoaded = true;
 
   // ----------------------------------------
   // أسعار الأسطوانات — المصدر الوحيد: جدول Cylinder Prices (USD per cm) في السيتنج
-  // استدعاء واحد get_setting('cylinder_prices') بدل 6 استدعاءات (تقليل البطء)
   // ----------------------------------------
   let CM_PRICES = {80:3.49, 100:3.59, 120:4.05, 130:4.5, 140:5.026, 160:5.4};
   const DEFAULT_SIZES = [25,30,35,40,45,50,60];
@@ -33,7 +33,7 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
       const data = await window.anvil?.server?.call('get_setting', 'cylinder_prices');
       applyCylinderPricesMap(data);
     } catch (e) {
-      console.warn('Could not load cylinder prices from server, using defaults:', e);
+      window.debugWarn('Could not load cylinder prices from server, using defaults:', e);
     }
   }
 
@@ -48,11 +48,11 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
   window.updateCylinderPrice = function(width, price) {
     if (CM_PRICES.hasOwnProperty(width) && price && !isNaN(price)) {
       CM_PRICES[width] = parseFloat(price);
-      console.log(`🔧 Cylinder price for ${width}cm updated to:`, CM_PRICES[width]);
+      window.debugLog('Cylinder price for ' + width + 'cm updated to:', CM_PRICES[width]);
     }
   };
 
-  // 🔁 Central pricing trigger - with guard against infinite loops
+  // Central pricing trigger - with guard against infinite loops
   let isRecalculating = false;
 
   function triggerFullRecalculation() {
@@ -77,7 +77,7 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
     if (isInitializingCylinders) return; // Prevent re-entry
 
     isInitializingCylinders = true;
-    console.log("🔄 Initializing cylinder table with colors:", colorsValue);
+    window.debugLog("Initializing cylinder table with colors:", colorsValue);
 
     try {
       for (let i = 1; i <= 12; i++) {
@@ -128,7 +128,10 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
   };
 
   window.calculateCylinders = function (machineWidth, colorsValue) {
-    console.log("💰 Calculating cylinders - Width:", machineWidth, "Colors:", colorsValue);
+    window.debugLog("Calculating cylinders - Width:", machineWidth, "Colors:", colorsValue);
+
+    // استخدام halfUpRound الموحدة من utils.js
+    var _round = window.halfUpRound || function(v) { return Math.floor(v + 0.5); };
 
     let totalCost = 0;
     let totalCount = 0;
@@ -137,7 +140,7 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
     const colorCount = parseInt(colorsValue || 0, 10);
 
     if (!pricePerCM) {
-      console.warn("⚠️ No price found for width:", machineWidth);
+      window.debugWarn("No price found for width:", machineWidth);
       return;
     }
 
@@ -155,33 +158,33 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
         continue;
       }
 
-      // 🔥 SPECIAL HANDLING FOR 40cm
+      // SPECIAL HANDLING FOR 40cm
       if (size === 40) {
         totalCount += count;
 
         if (count <= colorCount) {
           costEl.value = "FREE";
-          console.log(`  Row ${i}: 40cm × ${count} = FREE (≤ ${colorCount})`);
+          window.debugLog('  Row ' + i + ': 40cm x ' + count + ' = FREE (<= ' + colorCount + ')');
         } else {
           const excessCount = count - colorCount;
-          const rowCost = size * excessCount * pricePerCM;
+          const rowCost = _round(size * excessCount * pricePerCM);
           costEl.value = rowCost.toFixed(2);
           totalCost += rowCost;
-          console.log(`  Row ${i}: 40cm × ${excessCount} (excess) = ${rowCost.toFixed(2)}`);
+          window.debugLog('  Row ' + i + ': 40cm x ' + excessCount + ' (excess) = ' + rowCost.toFixed(2));
         }
         continue;
       }
 
-      // Normal calculation for other sizes
-      const rowCost = size * count * pricePerCM;
+      // Normal calculation for other sizes - using unified halfUpRound
+      const rowCost = _round(size * count * pricePerCM);
       costEl.value = rowCost.toFixed(2);
       totalCost += rowCost;
       totalCount += count;
 
-      console.log(`  Row ${i}: ${size}cm × ${count} = ${rowCost.toFixed(2)}`);
+      window.debugLog('  Row ' + i + ': ' + size + 'cm x ' + count + ' = ' + rowCost.toFixed(2));
     }
 
-    window.STATE.cylindersUSD = Math.round(totalCost);
+    window.STATE.cylindersUSD = _round(totalCost);
     window.STATE.cylindersCount = totalCount;
 
     const totalRow = document.querySelector(".total-row");
@@ -192,7 +195,7 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
       }
     }
 
-    console.log("✅ Total Count:", totalCount, "Total Cost:", window.STATE.cylindersUSD);
+    window.debugLog("Total Count:", totalCount, "Total Cost:", window.STATE.cylindersUSD);
   };
 
   // ===============================
@@ -269,9 +272,11 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
   }
 
   // ===============================
-  // Init Validation
+  // Init Validation - with retry limit to prevent memory leak
   // ===============================
   (function initCylinderValidation() {
+    var _initRetries = 0;
+    var MAX_RETRIES = 20;
 
     function init() {
       for (let i = 1; i <= 12; i++) {
@@ -279,7 +284,9 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
         const countInput = document.getElementById(`Count${i}`);
 
         if (!sizeInput || !countInput) {
-          setTimeout(init, 100);
+          if (++_initRetries < MAX_RETRIES) {
+            (window.safeSetTimeout || setTimeout)(init, 100);
+          }
           return;
         }
 
@@ -288,12 +295,11 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
           triggerFullRecalculation();
         });
 
-
         sizeInput.addEventListener("blur", () => {
           if (checkDuplicateSizes()) {
             showAlert(
               "error",
-              "⚠️ Duplicate size detected!\n\n" +
+              "Duplicate size detected!\n\n" +
               "Each size can only be entered once.\n" +
               "Please use different sizes or adjust the count."
             );
@@ -309,7 +315,6 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
           const colorsValue = document.getElementById("Number of colors")?.value;
           const widthValue = document.getElementById("Machine width")?.value;
           if (colorsValue && widthValue) {
-            console.log("🔄 Recalculating from count input...");
             triggerFullRecalculation();
           }
         });
@@ -318,7 +323,6 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
           const colorsValue = document.getElementById("Number of colors")?.value;
           const widthValue = document.getElementById("Machine width")?.value;
           if (colorsValue && widthValue) {
-            console.log("🔄 Recalculating from count blur...");
             triggerFullRecalculation();
           }
         });

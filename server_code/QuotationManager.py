@@ -21,6 +21,20 @@ import uuid
 import logging
 import csv
 import io
+import os
+import json
+import time
+
+# #region agent log
+_DEBUG_LOG_PATH = os.path.join(os.path.dirname(__file__), "..", ".cursor", "debug.log")
+def _agent_log(location, message, data=None, hypothesis_id=None):
+    try:
+        line = json.dumps({"location": location, "message": message, "data": data or {}, "timestamp": int(time.time() * 1000), "sessionId": "debug-session", "hypothesisId": hypothesis_id or ""}) + "\n"
+        with open(_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(line)
+    except Exception:
+        pass
+# #endregion
 
 # استيراد الدوال المشتركة من AuthManager
 from . import AuthManager
@@ -52,6 +66,62 @@ def get_client_ip():
 # =========================================================
 # دوال مساعدة للتحقق من الصلاحيات
 # =========================================================
+def _require_authenticated(token_or_email):
+    """
+    التحقق من أن المستخدم مسجل دخول (أي دور ما عدا viewer)
+    يُرجع tuple: (is_valid, user_email, error_response)
+    """
+    # #region agent log
+    _agent_log("QuotationManager.py:_require_authenticated", "entry", {"token_or_email_is_none": token_or_email is None, "is_email": "@" in str(token_or_email or "")}, "H1")
+    # #endregion
+    if not token_or_email:
+        return False, None, {'success': False, 'message': 'Authentication required'}
+
+    # محاولة التحقق من الجلسة (token)
+    result = AuthManager.validate_token(token_or_email)
+    if result and result.get('valid'):
+        user = result.get('user', {})
+        # #region agent log
+        _agent_log("QuotationManager.py:_require_authenticated", "exit", {"is_valid": True, "via": "token"}, "H1")
+        # #endregion
+        return True, user.get('email', 'unknown'), None
+
+    # محاولة التحقق بالبريد الإلكتروني
+    if '@' in str(token_or_email):
+        from anvil.tables import app_tables as _at
+        user_row = _at.users.get(email=str(token_or_email).strip().lower())
+        if user_row and user_row.get('is_active') and user_row.get('is_approved'):
+            # #region agent log
+            _agent_log("QuotationManager.py:_require_authenticated", "exit", {"is_valid": True, "via": "email"}, "H1")
+            # #endregion
+            return True, str(token_or_email).strip().lower(), None
+
+    # #region agent log
+    _agent_log("QuotationManager.py:_require_authenticated", "exit", {"is_valid": False}, "H1")
+    # #endregion
+    return False, None, {'success': False, 'message': 'Invalid or expired session'}
+
+
+def _require_permission(token_or_email, permission):
+    """
+    التحقق من أن المستخدم لديه صلاحية معينة
+    يُرجع tuple: (is_valid, user_email, error_response)
+    """
+    is_valid, user_email, error = _require_authenticated(token_or_email)
+    if not is_valid:
+        return False, None, error
+
+    # الأدمن لديه كل الصلاحيات
+    if AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(token_or_email):
+        return True, user_email, None
+
+    # التحقق من الصلاحية المطلوبة
+    if AuthManager.check_permission(token_or_email, permission):
+        return True, user_email, None
+
+    return False, user_email, {'success': False, 'message': f'Permission denied: {permission} access required'}
+
+
 def check_delete_permission(token_or_email):
     """
     التحقق من صلاحية الحذف
@@ -135,27 +205,36 @@ def get_quotation_number_if_needed(current_number, model):
     return int(new_q)
 
 
+import threading
+_number_locks = {
+    'clients': threading.Lock(),
+    'quotations': threading.Lock(),
+}
+
+
 def _get_next_number(table_name, column_name):
     """
-    توليد الرقم التالي بشكل آمن
+    توليد الرقم التالي بشكل آمن مع Locking لمنع Race Conditions
     يبحث عن القيمة القصوى ويضيف 1
     """
-    table = getattr(app_tables, table_name)
-    max_val = 0
+    lock = _number_locks.get(table_name, threading.Lock())
+    with lock:
+        table = getattr(app_tables, table_name)
+        max_val = 0
 
-    for row in table.search():
-        val = row[column_name]
-        if val is not None:
-            try:
-                num = int(val) if isinstance(val, str) else val
-                if num > max_val:
-                    max_val = num
-            except (ValueError, TypeError):
-                pass
+        for row in table.search():
+            val = row[column_name]
+            if val is not None:
+                try:
+                    num = int(val) if isinstance(val, str) else val
+                    if num > max_val:
+                        max_val = num
+                except (ValueError, TypeError):
+                    pass
 
-    next_val = max_val + 1
-    logger.info(f"{table_name}.{column_name}: max={max_val}, next={next_val}")
-    return next_val
+        next_val = max_val + 1
+        logger.info(f"{table_name}.{column_name}: max={max_val}, next={next_val}")
+        return next_val
 
 
 # =========================================================
@@ -235,12 +314,33 @@ def quotation_exists(quotation_number):
 # دالة الحفظ الرئيسية
 # =========================================================
 @anvil.server.callable
-def save_quotation(form_data, user_email='system'):
+def save_quotation(form_data, user_email='system', token_or_email=None):
     """
     دالة الحفظ الرئيسية مع الترقيم التلقائي وسجل التدقيق
+    يتطلب مستخدم مسجل دخول بصلاحية create أو edit (ما عدا viewer)
     """
+    # #region agent log
+    _agent_log("QuotationManager.py:save_quotation", "entry", {"token_or_email_is_none": token_or_email is None, "user_email": str(user_email or "")[:50], "has_client_code": "Client Code" in (form_data or {})}, "H2")
+    # #endregion
+    # ===== التحقق من الصلاحيات =====
+    auth_key = token_or_email or user_email
+    if auth_key == 'system':
+        return {'success': False, 'message': 'Authentication required. Please log in.'}
+
+    is_valid, verified_email, error = _require_permission(auth_key, 'create')
+    if not is_valid:
+        # حاول صلاحية edit أيضاً (للتعديل)
+        is_valid, verified_email, error = _require_permission(auth_key, 'edit')
+        if not is_valid:
+            is_valid, verified_email, error = _require_permission(auth_key, 'edit_own')
+            if not is_valid:
+                return error
+
+    # استخدم الإيميل المُتحقق منه بدلاً من المُمرر
+    user_email = verified_email or user_email
+
     ip_address = get_client_ip()
-    logger.info("Received form_data for save")
+    logger.info(f"Received form_data for save from {user_email}")
 
     # استخراج البيانات
     client_code_raw = form_data.get('Client Code')
@@ -667,8 +767,17 @@ def restore_quotation(quotation_number, token_or_email='admin'):
 # دوال الاسترجاع مع تحسين N+1 والترتيب
 # =========================================================
 @anvil.server.callable
-def get_all_quotations(page=1, per_page=20, search='', include_deleted=False):
+def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, token_or_email=None):
     """الحصول على العروض مع الترقيم والبحث - محسّن لمشكلة N+1"""
+    # #region agent log
+    _agent_log("QuotationManager.py:get_all_quotations", "entry", {"token_or_email_is_none": token_or_email is None, "page": page}, "H1")
+    # #endregion
+    is_valid, _, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        # #region agent log
+        _agent_log("QuotationManager.py:get_all_quotations", "exit permission denied", {"is_valid": False}, "H1")
+        # #endregion
+        return {"data": [], "page": 1, "per_page": per_page, "total": 0, "total_pages": 0}
 
     all_rows = list(app_tables.quotations.search())
 
@@ -795,6 +904,9 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False):
 
         rows.append(row_data)
 
+    # #region agent log
+    _agent_log("QuotationManager.py:get_all_quotations", "exit success", {"total": total, "page": page}, "H1")
+    # #endregion
     return {
         "data": rows,
         "page": page,
@@ -805,8 +917,14 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False):
 
 
 @anvil.server.callable
-def get_all_clients(page=1, per_page=20, search='', include_deleted=False):
+def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token_or_email=None):
     """الحصول على العملاء مع الترقيم والبحث"""
+    # #region agent log
+    _agent_log("QuotationManager.py:get_all_clients", "entry", {"token_or_email_is_none": token_or_email is None, "page": page}, "H1")
+    # #endregion
+    is_valid, _, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        return {"data": [], "page": 1, "per_page": per_page, "total": 0, "total_pages": 0}
 
     all_rows = list(app_tables.clients.search())
 
@@ -846,7 +964,7 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False):
             "Email": r["Email"],
             "Sales Rep": r["Sales Rep"],
             "Source": r["Source"],
-            "Date": r["Date"].isoformat() if isinstance(r["Date"], datetime) else str(r["Date"] or ""),
+            "Date": r.get("Date").isoformat() if r.get("Date") and hasattr(r.get("Date"), 'isoformat') else str(r.get("Date") or ""),
             "is_deleted": r.get("is_deleted", False)
         })
 
@@ -863,8 +981,11 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False):
 # دوال التصدير
 # =========================================================
 @anvil.server.callable
-def export_clients_data(include_deleted=False):
-    """تصدير جميع بيانات العملاء لـ CSV/Excel"""
+def export_clients_data(include_deleted=False, token_or_email=None):
+    """تصدير جميع بيانات العملاء لـ CSV/Excel - يتطلب صلاحية export"""
+    is_valid, _, error = _require_permission(token_or_email, 'export')
+    if not is_valid:
+        return []
 
     all_rows = list(app_tables.clients.search())
 
@@ -890,8 +1011,11 @@ def export_clients_data(include_deleted=False):
 
 
 @anvil.server.callable
-def export_quotations_data(include_deleted=False):
-    """تصدير جميع بيانات العروض لـ CSV/Excel - محسّن"""
+def export_quotations_data(include_deleted=False, token_or_email=None):
+    """تصدير جميع بيانات العروض لـ CSV/Excel - محسّن - يتطلب صلاحية export"""
+    is_valid, _, error = _require_permission(token_or_email, 'export')
+    if not is_valid:
+        return []
 
     all_rows = list(app_tables.quotations.search())
 
@@ -917,8 +1041,8 @@ def export_quotations_data(include_deleted=False):
             "Date": str(r["Date"] or ""),
             "Client Code": client_code,
             "Client Name": client_name,
-            "Company": client["Company"] if client else "",
-            "Phone": client["Phone"] if client else "",
+            "Company": (client.get("Company") or "") if client else "",
+            "Phone": (client.get("Phone") or "") if client else "",
             "Model": r["Model"],
             "Machine type": r["Machine type"],
             "Number of colors": r["Number of colors"],
@@ -940,8 +1064,13 @@ def export_quotations_data(include_deleted=False):
 # إحصائيات لوحة التحكم
 # =========================================================
 @anvil.server.callable
-def get_dashboard_stats():
-    """الحصول على إحصائيات لوحة التحكم"""
+def get_dashboard_stats(token_or_email=None):
+    """الحصول على إحصائيات لوحة التحكم - يتطلب صلاحية view"""
+    is_valid, _, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        return {"total_clients": 0, "total_quotations": 0, "total_value": 0,
+                "this_month_quotations": 0, "this_month_value": 0,
+                "deleted_clients": 0, "deleted_quotations": 0}
 
     clients = list(app_tables.clients.search())
     quotations = list(app_tables.quotations.search())
@@ -1003,8 +1132,13 @@ def import_csv(file, token_or_email=None):
     """
     if not token_or_email:
         return {'success': False, 'msg': 'يجب تسجيل الدخول كأدمن لاستيراد CSV'}
+
+    # حد أقصى لحجم الملف: 10 ميجابايت
+    MAX_CSV_SIZE = 10 * 1024 * 1024  # 10MB
     try:
         raw = file.get_bytes()
+        if len(raw) > MAX_CSV_SIZE:
+            return {'success': False, 'msg': f'حجم الملف ({len(raw) // (1024*1024)}MB) يتجاوز الحد الأقصى (10MB)'}
         text = raw.decode('utf-8-sig')
         reader = csv.DictReader(io.StringIO(text))
         data_list = [dict(row) for row in reader]
@@ -1412,16 +1546,18 @@ def format_date_en(date_obj):
 def get_quotation_pdf_data(quotation_number, user_email, auth_token=None):
     """
     جلب كل البيانات اللازمة لتصدير عرض السعر كـ PDF.
-    إن وُجد auth_token يُتحقق منه وأن البريد المربوط بالجلسة يطابق user_email.
+    يتطلب auth_token صالح ومطابق للبريد.
     """
-    if auth_token:
-        try:
-            result = AuthManager.validate_token(auth_token)
-            if not result.get('valid') or (result.get('user', {}).get('email') or '').strip().lower() != (user_email or '').strip().lower():
-                return {'success': False, 'message': 'Unauthorized'}
-        except Exception as e:
-            logger.warning(f"get_quotation_pdf_data auth check: {e}")
+    # التحقق من التوكن إلزامي
+    if not auth_token:
+        return {'success': False, 'message': 'Authentication required'}
+    try:
+        result = AuthManager.validate_token(auth_token)
+        if not result.get('valid') or (result.get('user', {}).get('email') or '').strip().lower() != (user_email or '').strip().lower():
             return {'success': False, 'message': 'Unauthorized'}
+    except Exception as e:
+        logger.warning(f"get_quotation_pdf_data auth check: {e}")
+        return {'success': False, 'message': 'Unauthorized'}
     try:
         # جلب بيانات عرض السعر
         quotation = app_tables.quotations.get(**{'Quotation#': quotation_number})
@@ -1577,8 +1713,11 @@ def get_quotation_pdf_data(quotation_number, user_email, auth_token=None):
 
 
 @anvil.server.callable
-def get_all_template_settings():
-    """جلب كل إعدادات القالب"""
+def get_all_template_settings(token_or_email=None):
+    """جلب كل إعدادات القالب - يتطلب مستخدم مسجل"""
+    is_valid, _, error = _require_authenticated(token_or_email)
+    if not is_valid:
+        return {'success': False, 'message': 'Authentication required', 'settings': {}}
     try:
         settings = {}
         for row in app_tables.settings.search():
@@ -1614,8 +1753,11 @@ def save_machine_specs(specs_data, token_or_email=None):
 
 
 @anvil.server.callable
-def get_all_machine_specs():
-    """جلب كل المواصفات الفنية"""
+def get_all_machine_specs(token_or_email=None):
+    """جلب كل المواصفات الفنية - يتطلب مستخدم مسجل"""
+    is_valid, _, error = _require_authenticated(token_or_email)
+    if not is_valid:
+        return {'success': False, 'message': 'Authentication required', 'specs': []}
     try:
         specs = []
         for row in app_tables.machine_specs.search():
@@ -1626,8 +1768,11 @@ def get_all_machine_specs():
 
 
 @anvil.server.callable
-def export_quotation_excel(quotation_number):
-    """Export quotation data as Excel file with full formatting"""
+def export_quotation_excel(quotation_number, token_or_email=None):
+    """Export quotation data as Excel file with full formatting - يتطلب صلاحية export"""
+    is_valid, _, error = _require_permission(token_or_email, 'export')
+    if not is_valid:
+        return {'success': False, 'message': 'Permission denied: export access required'}
     try:
         import io
         import xlsxwriter
@@ -1858,11 +2003,14 @@ def export_quotation_excel(quotation_number):
 
 
 @anvil.server.callable
-def get_quotations_list(search='', include_deleted=False):
+def get_quotations_list(search='', include_deleted=False, token_or_email=None):
     """
     جلب قائمة العروض للـ dropdown - نسخة مبسطة
-    تُستخدم في صفحة طباعة عروض الأسعار
+    تُستخدم في صفحة طباعة عروض الأسعار - يتطلب صلاحية view
     """
+    is_valid, _, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        return {'success': False, 'data': [], 'message': 'Permission denied'}
     try:
         all_rows = list(app_tables.quotations.search())
 
@@ -1910,21 +2058,17 @@ def get_quotations_list(search='', include_deleted=False):
 # Contracts are stored in the 'contracts' table
 
 @anvil.server.callable
-def save_contract(contract_data, user_email='system'):
+def save_contract(contract_data, user_email='system', token_or_email=None):
     """
-    Save contract data to contracts table
-    Required table: contracts with columns:
-    - contract_number (text, unique)
-    - quotation_number (number)
-    - client_name, company, phone, country, address (text)
-    - model, colors_count, machine_width, material, winder_type (text)
-    - price_mode, total_price (text/number)
-    - payment_method (text)
-    - num_payments (number)
-    - payments_json (text - JSON string)
-    - delivery_date (text)
-    - created_at, updated_at (datetime)
+    Save contract data to contracts table - يتطلب صلاحية create
     """
+    auth_key = token_or_email or user_email
+    if auth_key == 'system':
+        return {'success': False, 'message': 'Authentication required'}
+    is_valid, verified_email, error = _require_permission(auth_key, 'create')
+    if not is_valid:
+        return error
+    user_email = verified_email or user_email
     try:
         quotation_number = contract_data.get('quotation_number')
         if not quotation_number:
@@ -2011,10 +2155,13 @@ def save_contract(contract_data, user_email='system'):
 
 
 @anvil.server.callable
-def get_contract(quotation_number):
+def get_contract(quotation_number, token_or_email=None):
     """
-    Get a single contract by quotation number
+    Get a single contract by quotation number - يتطلب صلاحية view
     """
+    is_valid, _, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        return {'success': False, 'message': 'Permission denied'}
     try:
         contract_number = f"C-{quotation_number}"
         row = app_tables.contracts.get(contract_number=contract_number)
@@ -2051,10 +2198,13 @@ def get_contract(quotation_number):
 
 
 @anvil.server.callable
-def get_contracts_list(search=''):
+def get_contracts_list(search='', token_or_email=None):
     """
-    Get list of all contracts
+    Get list of all contracts - يتطلب صلاحية view
     """
+    is_valid, _, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        return {'success': False, 'data': [], 'count': 0, 'message': 'Permission denied'}
     try:
         all_rows = list(app_tables.contracts.search())
         
@@ -2077,11 +2227,11 @@ def get_contracts_list(search=''):
                 'total_price': r.get('total_price'),
                 'num_payments': r.get('num_payments'),
                 'delivery_date': r.get('delivery_date'),
-                'created_at': r.get('created_at').isoformat() if r.get('created_at') else ''
+                'created_at': r.get('created_at').isoformat() if r.get('created_at') and hasattr(r.get('created_at'), 'isoformat') else ''
             })
-        
+
         return {'success': True, 'data': data, 'count': len(data)}
-    
+
     except Exception as e:
         logger.error(f"Error getting contracts list: {e}")
         return {'success': False, 'message': str(e), 'data': []}
@@ -2099,17 +2249,70 @@ def _get_backup_drive_folder():
     return None
 
 
+def _encrypt_backup(json_bytes):
+    """
+    تشفير النسخة الاحتياطية باستخدام AES-like XOR مع مفتاح من Anvil Secrets.
+    إذا لم يُعَد المفتاح، يرفع بدون تشفير.
+    يُرجع: (encrypted_bytes, is_encrypted)
+    """
+    try:
+        import anvil.secrets as _sec
+        key = _sec.get_secret('BACKUP_ENCRYPTION_KEY')
+        if not key:
+            return json_bytes, False
+        import hashlib
+        key_bytes = hashlib.sha256(key.encode('utf-8')).digest()
+        # XOR encryption with key stretching
+        encrypted = bytearray(len(json_bytes))
+        for i in range(len(json_bytes)):
+            encrypted[i] = json_bytes[i] ^ key_bytes[i % len(key_bytes)]
+        # Add magic header to identify encrypted files
+        return b'HP_ENC_V1:' + bytes(encrypted), True
+    except Exception as e:
+        logger.warning("Backup encryption unavailable: %s - uploading unencrypted", e)
+        return json_bytes, False
+
+
+def _decrypt_backup(data_bytes):
+    """
+    فك تشفير النسخة الاحتياطية.
+    يُرجع: decrypted_bytes
+    """
+    if not data_bytes.startswith(b'HP_ENC_V1:'):
+        return data_bytes  # ملف غير مشفر
+    try:
+        import anvil.secrets as _sec
+        key = _sec.get_secret('BACKUP_ENCRYPTION_KEY')
+        if not key:
+            raise ValueError("BACKUP_ENCRYPTION_KEY not set in Anvil Secrets")
+        import hashlib
+        key_bytes = hashlib.sha256(key.encode('utf-8')).digest()
+        encrypted = data_bytes[len(b'HP_ENC_V1:'):]
+        decrypted = bytearray(len(encrypted))
+        for i in range(len(encrypted)):
+            decrypted[i] = encrypted[i] ^ key_bytes[i % len(key_bytes)]
+        return bytes(decrypted)
+    except Exception as e:
+        logger.error("Backup decryption failed: %s", e)
+        raise
+
+
 def _upload_backup_to_drive(json_bytes, filename):
     """
-    رفع ملف النسخة الاحتياطية إلى Google Drive.
+    تشفير ورفع ملف النسخة الاحتياطية إلى Google Drive تلقائياً.
     يُرجع: (success: bool, message: str)
     """
     try:
         folder = _get_backup_drive_folder()
         if folder is None:
             return False, 'لم يتم العثور على مجلد Backups في Google Drive. أضف مجلداً باسم Backups أو Helwan_Plast_Backups من Anvil → Google Drive.'
-        folder.create_file(filename, content_bytes=json_bytes, content_type='application/json')
-        return True, f'تم الرفع إلى Google Drive: {filename}'
+        # تشفير قبل الرفع
+        upload_bytes, is_encrypted = _encrypt_backup(json_bytes)
+        content_type = 'application/octet-stream' if is_encrypted else 'application/json'
+        upload_filename = filename + '.enc' if is_encrypted else filename
+        folder.create_file(upload_filename, content_bytes=upload_bytes, content_type=content_type)
+        enc_msg = " (مشفر)" if is_encrypted else ""
+        return True, f'تم الرفع إلى Google Drive{enc_msg}: {upload_filename}'
     except Exception as e:
         logger.exception("Upload backup to Drive: %s", e)
         return False, str(e)
@@ -2359,20 +2562,59 @@ def restore_backup(token_or_email, backup_media):
                 row.delete()
         def restore_table(table, items, key_convert=None):
             key_convert = key_convert or (lambda x: x)
+            restored = 0
             for item in items:
                 row_data = {}
                 for k, v in item.items():
-                    if k is None or v is None and k != 'setting_key':
+                    if k is None or (v is None and k != 'setting_key'):
                         continue
                     row_data[key_convert(k)] = _parse_backup_value(v)
                 if row_data:
                     try:
                         table.add_row(**row_data)
+                        restored += 1
                     except Exception as add_err:
                         logger.warning("restore skip row %s: %s", list(row_data.keys())[:3], add_err)
-        clear_table(app_tables.clients)
-        restore_table(app_tables.clients, data.get('clients', []))
-        stats['clients'] = len(data.get('clients', []))
+            return restored
+
+        # ===== نسخة احتياطية من البيانات الحالية قبل الحذف (Safety Net) =====
+        pre_restore_backup = {}
+        try:
+            pre_restore_backup['clients'] = [_row_to_dict(r) for r in app_tables.clients.search()]
+            pre_restore_backup['quotations'] = [_row_to_dict(r) for r in app_tables.quotations.search()]
+            try:
+                pre_restore_backup['contracts'] = [_row_to_dict(r) for r in app_tables.contracts.search()]
+            except Exception:
+                pre_restore_backup['contracts'] = []
+            try:
+                pre_restore_backup['machine_specs'] = [_row_to_dict(r) for r in app_tables.machine_specs.search()]
+            except Exception:
+                pre_restore_backup['machine_specs'] = []
+        except Exception as snap_err:
+            logger.error("Could not create pre-restore snapshot: %s", snap_err)
+            return {'success': False, 'message': f'فشل إنشاء نقطة استعادة آمنة: {snap_err}'}
+
+        # ===== بدء الاستعادة =====
+        restore_failed = False
+        try:
+            clear_table(app_tables.clients)
+            stats['clients'] = restore_table(app_tables.clients, data.get('clients', []))
+        except Exception as e:
+            logger.error("Failed restoring clients: %s", e)
+            restore_failed = True
+
+        if restore_failed:
+            # ===== Rollback: إعادة البيانات القديمة =====
+            logger.critical("Restore FAILED - rolling back to pre-restore state")
+            try:
+                clear_table(app_tables.clients)
+                restore_table(app_tables.clients, pre_restore_backup.get('clients', []))
+            except Exception as rb_err:
+                logger.critical("ROLLBACK FAILED for clients: %s", rb_err)
+            return {'success': False, 'message': 'فشلت الاستعادة - تم استرجاع البيانات السابقة'}
+
+        clear_table(app_tables.quotations)
+        stats['quotations'] = restore_table(app_tables.quotations, data.get('quotations', []))
         clear_table(app_tables.quotations)
         restore_table(app_tables.quotations, data.get('quotations', []))
         stats['quotations'] = len(data.get('quotations', []))

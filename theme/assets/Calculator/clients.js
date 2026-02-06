@@ -20,18 +20,11 @@
     return document.getElementById(id);
   }
 
-  // Debounce helper for search optimization
-  function debounce(fn, delay) {
+  // Use shared debounce from utils.js
+  var debounce = window.debounce || function(fn, delay) {
     var timer;
-    return function() {
-      var context = this;
-      var args = arguments;
-      clearTimeout(timer);
-      timer = setTimeout(function() {
-        fn.apply(context, args);
-      }, delay);
-    };
-  }
+    return function() { var c=this,a=arguments; clearTimeout(timer); timer=setTimeout(function(){fn.apply(c,a);},delay||300); };
+  };
 
   function setValue(id, value) {
     var el = byId(id);
@@ -182,7 +175,7 @@
         );
         if (code) codeInput.value = code;
       } catch (e) {
-        console.error("Client code error:", e);
+        window.debugError("Client code error:", e);
       }
     }
 
@@ -350,7 +343,7 @@
 
           if (list) renderClientList(allClients, list, 1);
         } catch (e) {
-          console.error("Error loading clients:", e);
+          window.debugError("Error loading clients:", e);
           if (list) list.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:30px;color:#c62828;">Error loading clients</td></tr>';
         }
       };

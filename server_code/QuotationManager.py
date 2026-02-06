@@ -2257,6 +2257,38 @@ def create_backup(token_or_email):
 
 
 @anvil.server.callable
+def diagnose_backup_drive(token_or_email):
+    """تشخيص مشكلة رفع الباك أب على Google Drive"""
+    is_authorized, error = AuthManager.require_admin(token_or_email)
+    if not is_authorized:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied'}
+    try:
+        from anvil.google.drive import app_files as _af
+        available = [a for a in dir(_af) if not a.startswith('_')]
+        result = {'available_app_files': available}
+        for name in ('Backups', 'Helwan_Plast_Backups', 'backups', 'backup', 'Backup'):
+            folder = getattr(_af, name, None)
+            if folder is not None:
+                result['found_name'] = name
+                result['folder_type'] = type(folder).__name__
+                result['folder_dir'] = [a for a in dir(folder) if not a.startswith('_')][:20]
+                result['has_create_file'] = hasattr(folder, 'create_file')
+                result['has_list_files'] = hasattr(folder, 'list_files')
+                try:
+                    files = list(folder.list_files()) if hasattr(folder, 'list_files') else []
+                    result['file_count'] = len(files)
+                    result['file_names'] = [getattr(f, 'name', str(f))[:50] for f in files[:5]]
+                except Exception as e:
+                    result['list_files_error'] = str(e)
+                break
+        if 'found_name' not in result:
+            result['error'] = 'No backup folder found in app_files'
+        return {'success': True, **result}
+    except Exception as e:
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
 def restore_backup(token_or_email, backup_media):
     """
     استعادة كاملة من نسخة احتياطية (Restore Point).

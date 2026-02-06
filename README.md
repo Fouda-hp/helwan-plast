@@ -16,11 +16,22 @@ The app in this repository is built with [Anvil](https://anvil.works?utm_source=
 
 ### الجداول المطلوبة في Anvil Data Tables
 يجب أن تكون الجداول التالية موجودة ومطابقة للـ schema في `anvil.yaml`:  
-`users`, `sessions`, `clients`, `quotations`, `contracts`, `audit_log`, `machine_specs`, `settings`, `otp_codes`, `password_history`, `pending_passwords`, `rate_limits`.
+`users`, `sessions`, `clients`, `quotations`, `contracts`, `audit_log`, `machine_specs`, `settings`, `otp_codes`, `password_history`, `pending_passwords`, `rate_limits`, `notifications`, `scheduled_backups`.
 
 ### الإعدادات والأسرار
-- **Anvil Secrets:** ضبط `ADMIN_EMAIL` و`EMERGENCY_KEY` (لإعادة تعيين كلمة مرور الأدمن في الطوارئ). لاستخدام OTP عبر SMS/WhatsApp: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (واختياريًا `TWILIO_WHATSAPP_FROM`).
+- **Anvil Secrets:** راجع `SECRETS.md` للقائمة الكاملة. الحد الأدنى: `ADMIN_EMAIL`, `EMERGENCY_KEY`. للنسخ الاحتياطي المشفّر: `BACKUP_ENCRYPTION_KEY`. لاستخدام OTP عبر SMS/WhatsApp: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (واختياريًا `TWILIO_WHATSAPP_FROM`).
 - **قناة OTP:** في جدول `settings` يمكن إضافة سجل بالمفتاح `otp_channel` والقيمة `email` أو `sms` أو `whatsapp`. للتفاصيل انظر `OTP_CHANNEL_SETUP.md`.
+
+### تشغيل الاختبارات (Unit Tests)
+من جذر المشروع (مجلد التطبيق):
+```bash
+python -m unittest server_code.tests.test_enterprise -v
+```
+أو مع pytest:
+```bash
+python -m pytest server_code/tests/test_enterprise.py -v
+```
+الاختبارات تستخدم mock لـ Anvil عند التشغيل خارج بيئة Anvil.
 
 ### مجلد Q
 مجلد `Q/` يحتوي على مولد عروض أسعار محلي (سكربتات Python مع reportlab) للاستخدام خارج Anvil. تشغيله يتطلب: `reportlab`, `arabic-reshaper`, `python-bidi`.

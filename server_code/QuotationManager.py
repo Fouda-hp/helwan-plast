@@ -15,15 +15,21 @@ QuotationManager.py - إدارة العملاء والعروض السعرية
 
 import anvil.server
 from anvil.tables import app_tables
-from datetime import datetime
+from anvil.tables import order_by as anvil_order_by
+from datetime import datetime, date, timedelta
 import json
 import uuid
 import logging
 import csv
 import io
 
-# استيراد الدوال المشتركة من AuthManager
+# استيراد الدوال المشتركة من AuthManager ونظام الإشعارات ووحدات الترقيم والنسخ الاحتياطي
 from . import AuthManager
+from . import notifications as notifications_module
+from . import quotation_numbers
+from .quotation_numbers import _get_next_number
+from . import quotation_backup
+from . import quotation_pdf
 
 # =========================================================
 # إعداد نظام التسجيل (Logging)
@@ -98,119 +104,19 @@ def _require_permission(token_or_email, permission):
 
 def check_delete_permission(token_or_email):
     """
-    التحقق من صلاحية الحذف
+    التحقق من صلاحية الحذف.
+    يُرجع (has_permission, error_dict, scope) حيث scope = 'full' (أدمن أو delete) أو 'own' (delete_own فقط).
     """
-    # الأدمن لديه صلاحية كاملة
     if AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(token_or_email):
-        return True, None
-
-    # التحقق من صلاحية delete
+        return True, None, 'full'
     if token_or_email and AuthManager.check_permission(token_or_email, 'delete'):
-        return True, None
-
-    return False, {'success': False, 'message': 'Permission denied: delete access required'}
-
-
-# =========================================================
-# دوال الترقيم التلقائي (عامة - قراءة فقط - لا تعديل في قاعدة البيانات)
-# =========================================================
-@anvil.server.callable
-def get_next_client_code():
-    """
-    الحصول على رمز العميل التالي (قراءة فقط، لا يعدّل قاعدة البيانات).
-    يُستخدم عند تحميل الصفحة أو زر NEW.
-    """
-    return _get_next_number('clients', 'Client Code')
+        return True, None, 'full'
+    if token_or_email and AuthManager.check_permission(token_or_email, 'delete_own'):
+        return True, None, 'own'
+    return False, {'success': False, 'message': 'Permission denied: delete or delete_own required'}, None
 
 
-@anvil.server.callable
-def get_next_quotation_number():
-    """
-    الحصول على رقم العرض التالي (قراءة فقط، لا يعدّل قاعدة البيانات).
-    يُستخدم عند تحميل الصفحة أو زر NEW.
-    """
-    return _get_next_number('quotations', 'Quotation#')
-
-
-@anvil.server.callable
-def get_or_create_client_code(client_name, phone):
-    """
-    البحث عن عميل بالهاتف أو إنشاء رمز جديد
-    الهاتف يجب أن يكون فريداً
-    """
-    if not phone:
-        return None
-
-    phone = str(phone).strip()
-    client_name = str(client_name).strip() if client_name else ""
-
-    logger.info(f"Checking phone='{phone}'")
-
-    # البحث بالهاتف فقط (باستثناء المحذوف)
-    row = app_tables.clients.get(Phone=phone, is_deleted=False)
-
-    if row:
-        code = str(row["Client Code"])
-        logger.info(f"Existing phone found, client_code={code}")
-        return code
-
-    # هاتف جديد -> عميل جديد
-    new_code = _get_next_number('clients', 'Client Code')
-    logger.info(f"New phone, generated client_code={new_code}")
-    return str(new_code)
-
-
-@anvil.server.callable
-def get_quotation_number_if_needed(current_number, model):
-    """
-    الحصول على رقم العرض إذا لزم الأمر
-    يُستدعى من JavaScript عند بناء كود النموذج
-    """
-    if current_number:
-        logger.info(f"Quotation number already exists: {current_number}")
-        return int(current_number)
-
-    if not model:
-        logger.info("No model provided")
-        return None
-
-    new_q = _get_next_number('quotations', 'Quotation#')
-    logger.info(f"Generated new quotation number: {new_q}")
-    return int(new_q)
-
-
-import threading
-_number_locks = {
-    'clients': threading.Lock(),
-    'quotations': threading.Lock(),
-}
-
-
-def _get_next_number(table_name, column_name):
-    """
-    توليد الرقم التالي بشكل آمن مع Locking لمنع Race Conditions
-    يبحث عن القيمة القصوى ويضيف 1
-    """
-    lock = _number_locks.get(table_name, threading.Lock())
-    with lock:
-        table = getattr(app_tables, table_name)
-        max_val = 0
-
-        for row in table.search():
-            val = row[column_name]
-            if val is not None:
-                try:
-                    num = int(val) if isinstance(val, str) else val
-                    if num > max_val:
-                        max_val = num
-                except (ValueError, TypeError):
-                    pass
-
-        next_val = max_val + 1
-        logger.info(f"{table_name}.{column_name}: max={max_val}, next={next_val}")
-        return next_val
-
-
+# دوال الترقيم: مُعرّفة في quotation_numbers ويُستدعى _get_next_number داخلياً من هنا
 # =========================================================
 # دوال التحقق المساعدة
 # =========================================================
@@ -482,6 +388,16 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
 
     actions = [a for a in (client_action, quotation_action) if a]
 
+    if is_quotation and user_email:
+        try:
+            notifications_module.create_notification(
+                user_email,
+                'quotation_saved',
+                {'quotation_number': quotation_number, 'client_code': client_code, 'action': quotation_action}
+            )
+        except Exception:
+            pass
+
     return {
         "success": True,
         "message": " + ".join(actions),
@@ -626,102 +542,112 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
 # =========================================================
 @anvil.server.callable
 def soft_delete_client(client_code, token_or_email='admin'):
-    """حذف عميل (يتطلب صلاحية الحذف)"""
+    """حذف عميل (يتطلب صلاحية الحذف؛ مدير مع delete_own يحذف سجلاته فقط)"""
+    is_valid, user_email, auth_err = _require_authenticated(token_or_email)
+    if not is_valid:
+        return auth_err or {"success": False, "message": "Authentication required"}
 
-    # التحقق من الصلاحية
-    has_permission, error = check_delete_permission(token_or_email)
+    has_permission, error, scope = check_delete_permission(token_or_email)
     if not has_permission:
         return error
 
     ip_address = get_client_ip()
-    user_email = token_or_email if '@' in str(token_or_email) else 'admin'
-
     row = app_tables.clients.get(**{"Client Code": str(client_code)})
     if not row:
         return {"success": False, "message": "Client not found"}
 
-    old_data = {"is_deleted": row.get('is_deleted', False)}
+    if scope == 'own':
+        record_owner = (row.get('created_by') or '').strip().lower()
+        if record_owner and record_owner != (user_email or '').strip().lower():
+            return {"success": False, "message": "Permission denied: you can only delete records you created"}
 
+    old_data = {"is_deleted": row.get('is_deleted', False)}
     row.update(
         is_deleted=True,
         deleted_at=datetime.now(),
         deleted_by=user_email
     )
-
     log_audit('SOFT_DELETE', 'clients', client_code, old_data, {"is_deleted": True}, user_email, ip_address)
-
     return {"success": True, "message": "Client deleted successfully"}
 
 
 @anvil.server.callable
 def soft_delete_quotation(quotation_number, token_or_email='admin'):
-    """حذف عرض (يتطلب صلاحية الحذف)"""
+    """حذف عرض (يتطلب صلاحية الحذف؛ مدير مع delete_own يحذف سجلاته فقط)"""
+    is_valid, user_email, auth_err = _require_authenticated(token_or_email)
+    if not is_valid:
+        return auth_err or {"success": False, "message": "Authentication required"}
 
-    # التحقق من الصلاحية
-    has_permission, error = check_delete_permission(token_or_email)
+    has_permission, error, scope = check_delete_permission(token_or_email)
     if not has_permission:
         return error
 
     ip_address = get_client_ip()
-    user_email = token_or_email if '@' in str(token_or_email) else 'admin'
-
     row = app_tables.quotations.get(**{"Quotation#": int(quotation_number)})
     if not row:
         return {"success": False, "message": "Quotation not found"}
 
-    old_data = {"is_deleted": row.get('is_deleted', False)}
+    if scope == 'own':
+        record_owner = (row.get('created_by') or '').strip().lower()
+        if record_owner and record_owner != (user_email or '').strip().lower():
+            return {"success": False, "message": "Permission denied: you can only delete records you created"}
 
+    old_data = {"is_deleted": row.get('is_deleted', False)}
     row.update(
         is_deleted=True,
         deleted_at=datetime.now(),
         deleted_by=user_email
     )
-
     log_audit('SOFT_DELETE', 'quotations', quotation_number, old_data, {"is_deleted": True}, user_email, ip_address)
-
     return {"success": True, "message": "Quotation deleted successfully"}
 
 
 @anvil.server.callable
 def restore_client(client_code, token_or_email='admin'):
-    """استعادة عميل محذوف (يتطلب صلاحية الحذف)"""
+    """استعادة عميل محذوف (يتطلب صلاحية الحذف؛ delete_own = استعادة سجلاتك فقط)"""
+    is_valid, user_email, auth_err = _require_authenticated(token_or_email)
+    if not is_valid:
+        return auth_err or {"success": False, "message": "Authentication required"}
 
-    has_permission, error = check_delete_permission(token_or_email)
+    has_permission, error, scope = check_delete_permission(token_or_email)
     if not has_permission:
         return error
 
     ip_address = get_client_ip()
-    user_email = token_or_email if '@' in str(token_or_email) else 'admin'
-
     row = app_tables.clients.get(**{"Client Code": str(client_code)})
     if not row:
         return {"success": False, "message": "Client not found"}
 
-    row.update(
-        is_deleted=False,
-        deleted_at=None,
-        deleted_by=None
-    )
+    if scope == 'own':
+        record_owner = (row.get('created_by') or '').strip().lower()
+        if record_owner and record_owner != (user_email or '').strip().lower():
+            return {"success": False, "message": "Permission denied: you can only restore records you created"}
 
+    row.update(is_deleted=False, deleted_at=None, deleted_by=None)
     log_audit('RESTORE', 'clients', client_code, {"is_deleted": True}, {"is_deleted": False}, user_email, ip_address)
-
     return {"success": True, "message": "Client restored successfully"}
 
 
 @anvil.server.callable
 def restore_quotation(quotation_number, token_or_email='admin'):
-    """استعادة عرض محذوف (يتطلب صلاحية الحذف)"""
+    """استعادة عرض محذوف (يتطلب صلاحية الحذف؛ manager مع delete_own يستعيد سجلاته فقط)"""
+    is_valid, user_email, auth_err = _require_authenticated(token_or_email)
+    if not is_valid:
+        return auth_err or {"success": False, "message": "Authentication required"}
 
-    has_permission, error = check_delete_permission(token_or_email)
+    has_permission, error, scope = check_delete_permission(token_or_email)
     if not has_permission:
         return error
 
     ip_address = get_client_ip()
-    user_email = token_or_email if '@' in str(token_or_email) else 'admin'
-
     row = app_tables.quotations.get(**{"Quotation#": int(quotation_number)})
     if not row:
         return {"success": False, "message": "Quotation not found"}
+
+    if scope == 'own':
+        created_by = (row.get('created_by') or '').strip().lower()
+        if created_by != user_email:
+            return {"success": False, "message": "Permission denied: you can only restore records you created"}
 
     row.update(
         is_deleted=False,
@@ -735,73 +661,80 @@ def restore_quotation(quotation_number, token_or_email='admin'):
 
 
 # =========================================================
-# دوال الاسترجاع مع تحسين N+1 والترتيب
+# Pagination: server-side, no full-table load (Enterprise)
+# =========================================================
+DEFAULT_PAGE = 1
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGINATION_SCAN = 50000
+
+def _quotation_matches_search(r, search_lower, clients_dict):
+    if not search_lower:
+        return True
+    client_code = str(r.get('Client Code', ''))
+    client = clients_dict.get(client_code)
+    client_name = (r.get('Client Name') or '').lower()
+    if not client_name and client:
+        client_name = (client.get('Client Name') or '').lower()
+    company = (r.get('Company') or '').lower()
+    if not company and client:
+        company = (client.get('Company') or '').lower()
+    phone = (r.get('Phone') or '').lower()
+    if not phone and client:
+        phone = (client.get('Phone') or '').lower()
+    country = (r.get('Country') or '').lower()
+    if not country and client:
+        country = (client.get('Country') or '').lower()
+    return (
+        search_lower in client_name or search_lower in company or search_lower in phone or
+        search_lower in country or search_lower in str(r.get('Quotation#', '')).lower() or
+        search_lower in str(r.get('Model', '')).lower() or search_lower in (r.get('Notes') or '').lower()
+    )
+
+
+# =========================================================
+# دوال الاسترجاع مع ترقيم حقيقي على السيرفر
 # =========================================================
 @anvil.server.callable
-def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, token_or_email=None):
-    """الحصول على العروض مع الترقيم والبحث - محسّن لمشكلة N+1"""
+def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, token_or_email=None,
+                       sort_by=None, sort_dir='asc'):
+    """
+    عروض مع ترقيم على السيرفر: فلتر is_deleted في الاستعلام، عدّ وجمع الصفحة فقط.
+    Backward compatible: data, page, per_page, total, total_pages.
+    """
+    page = max(1, int(page) if page is not None else DEFAULT_PAGE)
+    per_page = max(1, min(500, int(per_page) if per_page is not None else DEFAULT_PAGE_SIZE))
+    sort_col = sort_by or 'Quotation#'
+    sort_asc = (str(sort_dir or 'asc').lower() != 'desc')
+
     is_valid, _, error = _require_permission(token_or_email, 'view')
     if not is_valid:
-        return {"data": [], "page": 1, "per_page": per_page, "total": 0, "total_pages": 0}
+        return {"data": [], "page": page, "per_page": per_page, "total": 0, "total_pages": 0}
 
-    all_rows = list(app_tables.quotations.search())
+    search_lower = (search or '').strip().lower()
+    try:
+        q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by(sort_col, sort_asc)]) if not include_deleted else app_tables.quotations.search(order_by=[anvil_order_by(sort_col, sort_asc)])
+    except (TypeError, AttributeError):
+        q_iter = app_tables.quotations.search(is_deleted=False) if not include_deleted else app_tables.quotations.search()
 
-    # تصفية المحذوف
-    if not include_deleted:
-        all_rows = [r for r in all_rows if not r.get('is_deleted', False)]
-
-    # جلب جميع العملاء مرة واحدة (حل مشكلة N+1)
     all_clients = list(app_tables.clients.search())
     clients_dict = {str(c['Client Code']): c for c in all_clients}
 
-    # فلتر البحث
-    if search:
-        search = search.lower()
-        filtered = []
-        for r in all_rows:
-            client_code = str(r.get('Client Code', ''))
-            client = clients_dict.get(client_code)
+    total = 0
+    page_rows = []
+    skip = (page - 1) * per_page
+    for r in q_iter:
+        if not _quotation_matches_search(r, search_lower, clients_dict):
+            continue
+        total += 1
+        if total > MAX_PAGINATION_SCAN:
+            break
+        if skip > 0:
+            skip -= 1
+            continue
+        if len(page_rows) < per_page:
+            page_rows.append(r)
 
-            # البحث في اسم العميل المحفوظ في العرض أو في جدول العملاء
-            client_name = (r.get('Client Name') or '').lower()
-            if not client_name and client:
-                client_name = (client.get('Client Name') or '').lower()
-
-            # البحث في الشركة من الـ quotation أو من جدول العملاء
-            company = (r.get('Company') or '').lower()
-            if not company and client:
-                company = (client.get('Company') or '').lower()
-
-            # البحث في التليفون من الـ quotation أو من جدول العملاء
-            phone = (r.get('Phone') or '').lower()
-            if not phone and client:
-                phone = (client.get('Phone') or '').lower()
-
-            # البحث في البلد
-            country = (r.get('Country') or '').lower()
-            if not country and client:
-                country = (client.get('Country') or '').lower()
-
-            if (search in client_name or
-                search in company or
-                search in phone or
-                search in country or
-                search in str(r.get('Quotation#', '')) or
-                search in str(r.get('Model', '')).lower() or
-                search in (r.get('Notes') or '').lower()):
-                filtered.append(r)
-        all_rows = filtered
-
-    # ترتيب تصاعدي حسب رقم العرض
-    all_rows.sort(key=lambda x: x.get('Quotation#') or 0, reverse=False)
-
-    total = len(all_rows)
-    total_pages = (total + per_page - 1) // per_page
-
-    start = (page - 1) * per_page
-    end = start + per_page
-    page_rows = all_rows[start:end]
-
+    total_pages = (total + per_page - 1) // per_page if total else 0
     rows = []
     for r in page_rows:
         client_code = r.get('Client Code') or ''
@@ -878,39 +811,55 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
     }
 
 
+def _client_matches_search(r, search_lower):
+    if not search_lower:
+        return True
+    return (
+        search_lower in (r.get('Client Name') or '').lower() or
+        search_lower in (r.get('Company') or '').lower() or
+        search_lower in (r.get('Phone') or '').lower() or
+        search_lower in str(r.get('Client Code', '')).lower()
+    )
+
+
 @anvil.server.callable
-def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token_or_email=None):
-    """الحصول على العملاء مع الترقيم والبحث"""
+def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token_or_email=None,
+                    sort_by=None, sort_dir='desc'):
+    """
+    عملاء مع ترقيم على السيرفر: فلتر is_deleted في الاستعلام، عدّ وجمع الصفحة فقط.
+    Backward compatible: data, page, per_page, total, total_pages.
+    """
+    page = max(1, int(page) if page is not None else DEFAULT_PAGE)
+    per_page = max(1, min(500, int(per_page) if per_page is not None else DEFAULT_PAGE_SIZE))
+    sort_col = sort_by or 'Client Code'
+    sort_asc = (str(sort_dir or 'desc').lower() != 'desc')
+
     is_valid, _, error = _require_permission(token_or_email, 'view')
     if not is_valid:
-        return {"data": [], "page": 1, "per_page": per_page, "total": 0, "total_pages": 0}
+        return {"data": [], "page": page, "per_page": per_page, "total": 0, "total_pages": 0}
 
-    all_rows = list(app_tables.clients.search())
+    search_lower = (search or '').strip().lower()
+    try:
+        c_iter = app_tables.clients.search(is_deleted=False, order_by=[anvil_order_by(sort_col, sort_asc)]) if not include_deleted else app_tables.clients.search(order_by=[anvil_order_by(sort_col, sort_asc)])
+    except (TypeError, AttributeError):
+        c_iter = app_tables.clients.search(is_deleted=False) if not include_deleted else app_tables.clients.search()
 
-    # تصفية المحذوف
-    if not include_deleted:
-        all_rows = [r for r in all_rows if not r.get('is_deleted', False)]
+    total = 0
+    page_rows = []
+    skip = (page - 1) * per_page
+    for r in c_iter:
+        if not _client_matches_search(r, search_lower):
+            continue
+        total += 1
+        if total > MAX_PAGINATION_SCAN:
+            break
+        if skip > 0:
+            skip -= 1
+            continue
+        if len(page_rows) < per_page:
+            page_rows.append(r)
 
-    # فلتر البحث
-    if search:
-        search = search.lower()
-        all_rows = [r for r in all_rows if (
-            search in (r['Client Name'] or '').lower() or
-            search in (r['Company'] or '').lower() or
-            search in (r['Phone'] or '').lower() or
-            search in str(r['Client Code']).lower()
-        )]
-
-    # ترتيب حسب رمز العميل (تنازلي)
-    all_rows.sort(key=lambda x: int(x['Client Code']) if str(x['Client Code']).isdigit() else 0, reverse=True)
-
-    total = len(all_rows)
-    total_pages = (total + per_page - 1) // per_page
-
-    start = (page - 1) * per_page
-    end = start + per_page
-    page_rows = all_rows[start:end]
-
+    total_pages = (total + per_page - 1) // per_page if total else 0
     rows = []
     for r in page_rows:
         rows.append({
@@ -1467,40 +1416,6 @@ def get_machine_specs(model):
         return None
 
 
-def format_number(num):
-    """تنسيق الأرقام بالفواصل"""
-    try:
-        if num is None:
-            return "0"
-        return "{:,.0f}".format(float(num))
-    except (ValueError, TypeError):
-        return str(num)
-
-
-def format_date_ar(date_obj):
-    """تنسيق التاريخ بالعربي"""
-    if not date_obj:
-        return ""
-    months_ar = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-                 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
-    try:
-        return f"{date_obj.day} {months_ar[date_obj.month - 1]}"
-    except (AttributeError, IndexError):
-        return str(date_obj)
-
-
-def format_date_en(date_obj):
-    """تنسيق التاريخ بالإنجليزي"""
-    if not date_obj:
-        return ""
-    months_en = ['January', 'February', 'March', 'April', 'May', 'June',
-                 'July', 'August', 'September', 'October', 'November', 'December']
-    try:
-        return f"{date_obj.day} {months_en[date_obj.month - 1]}"
-    except (AttributeError, IndexError):
-        return str(date_obj)
-
-
 @anvil.server.callable
 def get_quotation_pdf_data(quotation_number, user_email, auth_token=None):
     """
@@ -1574,96 +1489,13 @@ def get_quotation_pdf_data(quotation_number, user_email, auth_token=None):
             tech_specs_settings = {}
 
         # جلب المواصفات الفنية للماكينة
-        model = q_data.get('Model', '')
-        machine_specs = get_machine_specs(model)
+        machine_specs = get_machine_specs(q_data.get('Model', ''))
 
-        # تجهيز السلندرات
-        cylinders = []
-        for i in range(1, 13):
-            size = q_data.get(f'Size in CM{i}')
-            count = q_data.get(f'Count{i}')
-            if size and count:
-                cylinders.append({'size': size, 'count': count})
-
-        # حساب المبالغ المالية
-        total_price = float(q_data.get('Agreed Price') or 0)
-        down_percent = float(company_settings['down_payment_percent'])
-        shipping_percent = float(company_settings['before_shipping_percent'])
-        delivery_percent = float(company_settings['before_delivery_percent'])
-
-        down_amount = total_price * (down_percent / 100)
-        shipping_amount = total_price * (shipping_percent / 100)
-        delivery_amount = total_price * (delivery_percent / 100)
-
-        # تجهيز البيانات النهائية
-        pdf_data = {
-            # معلومات المستخدم اللي سجل الدخول
-            'user_name': user_info['name'],
-            'user_phone': user_info['phone'],
-            
-            # معلومات السيلز ريب (للهيدر)
-            'sales_rep_name': sales_rep_info['name'],
-            'sales_rep_phone': sales_rep_info['phone'],
-            'sales_rep_email': sales_rep_info['email'],
-
-            # معلومات الشركة
-            'company': company_settings,
-
-            # معلومات عرض السعر
-            'quotation_number': q_data.get('Quotation#', ''),
-            'quotation_date': q_data.get('Date'),
-            'quotation_date_ar': format_date_ar(q_data.get('Date')),
-            'quotation_date_en': format_date_en(q_data.get('Date')),
-
-            # معلومات العميل
-            'client_name': q_data.get('Client Name', ''),
-            'client_company': q_data.get('Company', ''),
-            'client_phone': q_data.get('Phone', ''),
-            'client_address': q_data.get('Address', ''),
-
-            # معلومات الماكينة
-            'model': model,
-            'machine_type': q_data.get('Machine type', ''),
-            'colors_count': q_data.get('Number of colors', ''),
-            'machine_width': q_data.get('Machine width', ''),
-            'winder': q_data.get('Winder', ''),
-            'material': q_data.get('Material', ''),
-            'video_inspection': q_data.get('Video inspection', 'NO'),
-            'plc': q_data.get('PLC', 'NO'),
-            'slitter': q_data.get('Slitter', 'NO'),
-
-            # Unwind/Rewind options
-            'pneumatic_unwind': q_data.get('Pneumatic Unwind', 'NO'),
-            'hydraulic_station_unwind': q_data.get('Hydraulic Station Unwind', 'NO'),
-            'pneumatic_rewind': q_data.get('Pneumatic Rewind', 'NO'),
-            'surface_rewind': q_data.get('Surface Rewind', 'NO'),
-
-            # المواصفات الفنية
-            'machine_specs': machine_specs,
-
-            # السلندرات
-            'cylinders': cylinders,
-
-            # المعلومات المالية
-            'total_price': format_number(total_price),
-            'total_price_raw': total_price,
-            'pricing_mode': q_data.get('Pricing Mode', ''),
-            'down_payment_percent': down_percent,
-            'down_payment_amount': format_number(down_amount),
-            'before_shipping_percent': shipping_percent,
-            'before_shipping_amount': format_number(shipping_amount),
-            'before_delivery_percent': delivery_percent,
-            'before_delivery_amount': format_number(delivery_amount),
-
-            # التسليم
-            'delivery_location': q_data.get('Address', ''),
-            'expected_delivery': q_data.get('Expected delivery time'),
-            'expected_delivery_formatted': str(q_data.get('Expected delivery time') or ''),
-
-            # إعدادات جدول المواصفات الفنية
-            'tech_specs_settings': tech_specs_settings,
-        }
-
+        # بناء بيانات PDF عبر quotation_pdf
+        pdf_data = quotation_pdf.build_pdf_data(
+            q_data, user_info, sales_rep_info,
+            company_settings, machine_specs, tech_specs_settings
+        )
         return {'success': True, 'data': pdf_data}
 
     except Exception as e:
@@ -1961,54 +1793,61 @@ def export_quotation_excel(quotation_number, token_or_email=None):
         return {'success': False, 'message': str(e)}
 
 
+def _quotation_list_matches_search(r, search_lower):
+    if not search_lower:
+        return True
+    return (
+        search_lower in str(r.get('Client Name', '') or '').lower() or
+        search_lower in str(r.get('Model', '') or '').lower() or
+        search_lower in str(r.get('Quotation#', '') or '').lower()
+    )
+
+
 @anvil.server.callable
-def get_quotations_list(search='', include_deleted=False, token_or_email=None):
+def get_quotations_list(search='', include_deleted=False, token_or_email=None, page=1, page_size=500):
     """
-    جلب قائمة العروض للـ dropdown - نسخة مبسطة
-    تُستخدم في صفحة طباعة عروض الأسعار - يتطلب صلاحية view
+    قائمة العروض للـ dropdown - ترقيم على السيرفر، لا تحميل كل الصفوف.
+    Backward compatible: نفس الشكل {success, data}؛ إرجاع total_count و page و page_size عند الاستخدام.
     """
     is_valid, _, error = _require_permission(token_or_email, 'view')
     if not is_valid:
-        return {'success': False, 'data': [], 'message': 'Permission denied'}
+        return {'success': False, 'data': [], 'message': 'Permission denied', 'total_count': 0}
     try:
-        all_rows = list(app_tables.quotations.search())
+        page = max(1, int(page) if page is not None else 1)
+        page_size = max(1, min(1000, int(page_size) if page_size is not None else 500))
+        search_lower = (search or '').strip().lower()
 
-        # تصفية المحذوف
-        if not include_deleted:
-            all_rows = [r for r in all_rows if not r.get('is_deleted', False)]
+        try:
+            q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by('Quotation#', False)]) if not include_deleted else app_tables.quotations.search(order_by=[anvil_order_by('Quotation#', False)])
+        except (TypeError, AttributeError):
+            q_iter = app_tables.quotations.search(is_deleted=False) if not include_deleted else app_tables.quotations.search()
 
-        # فلتر البحث
-        if search:
-            search = search.lower()
-            filtered = []
-            for r in all_rows:
-                client_name = str(r.get('Client Name', '') or '').lower()
-                model = str(r.get('Model', '') or '').lower()
-                q_num = str(r.get('Quotation#', '') or '').lower()
-
-                if search in client_name or search in model or search in q_num:
-                    filtered.append(r)
-            all_rows = filtered
-
-        # ترتيب تنازلي حسب رقم العرض
-        all_rows.sort(key=lambda x: x.get('Quotation#') or 0, reverse=True)
-
-        # تجهيز البيانات
+        total_count = 0
         data = []
-        for r in all_rows:
-            data.append({
-                'Quotation#': r.get('Quotation#'),
-                'Client Name': r.get('Client Name', ''),
-                'Model': r.get('Model', ''),
-                'Date': r.get('Date').isoformat() if r.get('Date') else '',
-                'Agreed Price': r.get('Agreed Price', 0)
-            })
+        skip = (page - 1) * page_size
+        for r in q_iter:
+            if not _quotation_list_matches_search(r, search_lower):
+                continue
+            total_count += 1
+            if total_count > MAX_PAGINATION_SCAN:
+                break
+            if skip > 0:
+                skip -= 1
+                continue
+            if len(data) < page_size:
+                data.append({
+                    'Quotation#': r.get('Quotation#'),
+                    'Client Name': r.get('Client Name', ''),
+                    'Model': r.get('Model', ''),
+                    'Date': r.get('Date').isoformat() if r.get('Date') else '',
+                    'Agreed Price': r.get('Agreed Price', 0)
+                })
 
-        return {'success': True, 'data': data}
+        return {'success': True, 'data': data, 'total_count': total_count, 'page': page, 'page_size': page_size}
 
     except Exception as e:
-        logger.error(f"Error in get_quotations_list: {e}")
-        return {'success': False, 'message': str(e), 'data': []}
+        logger.exception("get_quotations_list error")
+        return {'success': False, 'message': str(e), 'data': [], 'total_count': 0}
 
 
 # =========================================================
@@ -2064,6 +1903,13 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
                 )
                 logger.info(f"Contract {contract_number} updated by {user_email}")
                 log_audit('UPDATE', 'contracts', contract_number, old_data, contract_data, user_email, ip_address)
+                try:
+                    notifications_module.create_notification(
+                        user_email, 'contract_saved',
+                        {'contract_number': contract_number, 'quotation_number': quotation_number}
+                    )
+                except Exception:
+                    pass
                 return {'success': True, 'message': 'Contract updated', 'contract_number': contract_number}
         except Exception as e:
             logger.warning(f"Contract lookup failed: {e}")
@@ -2094,6 +1940,13 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
             )
             logger.info(f"Contract {contract_number} created by {user_email}")
             log_audit('CREATE', 'contracts', contract_number, None, contract_data, user_email, ip_address)
+            try:
+                notifications_module.create_notification(
+                    user_email, 'contract_saved',
+                    {'contract_number': contract_number, 'quotation_number': quotation_number}
+                )
+            except Exception:
+                pass
             return {'success': True, 'message': 'Contract saved', 'contract_number': contract_number}
             
         except Exception as e:
@@ -2197,145 +2050,8 @@ def get_contracts_list(search='', token_or_email=None):
 
 
 # =========================================================
-# النسخ الاحتياطي (يدوي + مجدول + Google Drive + استعادة)
+# النسخ الاحتياطي (يدوي + مجدول + Google Drive + استعادة) — المنطق في quotation_backup
 # =========================================================
-def _get_backup_drive_folder():
-    """الحصول على مجلد النسخ الاحتياطية في Google Drive (app_files)."""
-    for name in ('Backups', 'Helwan_Plast_Backups', 'backups'):
-        folder = getattr(app_files, name, None)
-        if folder is not None and hasattr(folder, 'create_file'):
-            return folder
-    return None
-
-
-def _encrypt_backup(json_bytes):
-    """
-    تشفير النسخة الاحتياطية باستخدام AES-like XOR مع مفتاح من Anvil Secrets.
-    إذا لم يُعَد المفتاح، يرفع بدون تشفير.
-    يُرجع: (encrypted_bytes, is_encrypted)
-    """
-    try:
-        import anvil.secrets as _sec
-        key = _sec.get_secret('BACKUP_ENCRYPTION_KEY')
-        if not key:
-            return json_bytes, False
-        import hashlib
-        key_bytes = hashlib.sha256(key.encode('utf-8')).digest()
-        # XOR encryption with key stretching
-        encrypted = bytearray(len(json_bytes))
-        for i in range(len(json_bytes)):
-            encrypted[i] = json_bytes[i] ^ key_bytes[i % len(key_bytes)]
-        # Add magic header to identify encrypted files
-        return b'HP_ENC_V1:' + bytes(encrypted), True
-    except Exception as e:
-        logger.warning("Backup encryption unavailable: %s - uploading unencrypted", e)
-        return json_bytes, False
-
-
-def _decrypt_backup(data_bytes):
-    """
-    فك تشفير النسخة الاحتياطية.
-    يُرجع: decrypted_bytes
-    """
-    if not data_bytes.startswith(b'HP_ENC_V1:'):
-        return data_bytes  # ملف غير مشفر
-    try:
-        import anvil.secrets as _sec
-        key = _sec.get_secret('BACKUP_ENCRYPTION_KEY')
-        if not key:
-            raise ValueError("BACKUP_ENCRYPTION_KEY not set in Anvil Secrets")
-        import hashlib
-        key_bytes = hashlib.sha256(key.encode('utf-8')).digest()
-        encrypted = data_bytes[len(b'HP_ENC_V1:'):]
-        decrypted = bytearray(len(encrypted))
-        for i in range(len(encrypted)):
-            decrypted[i] = encrypted[i] ^ key_bytes[i % len(key_bytes)]
-        return bytes(decrypted)
-    except Exception as e:
-        logger.error("Backup decryption failed: %s", e)
-        raise
-
-
-def _upload_backup_to_drive(json_bytes, filename):
-    """
-    تشفير ورفع ملف النسخة الاحتياطية إلى Google Drive تلقائياً.
-    يُرجع: (success: bool, message: str)
-    """
-    try:
-        folder = _get_backup_drive_folder()
-        if folder is None:
-            return False, 'لم يتم العثور على مجلد Backups في Google Drive. أضف مجلداً باسم Backups أو Helwan_Plast_Backups من Anvil → Google Drive.'
-        # تشفير قبل الرفع
-        upload_bytes, is_encrypted = _encrypt_backup(json_bytes)
-        content_type = 'application/octet-stream' if is_encrypted else 'application/json'
-        upload_filename = filename + '.enc' if is_encrypted else filename
-        folder.create_file(upload_filename, content_bytes=upload_bytes, content_type=content_type)
-        enc_msg = " (مشفر)" if is_encrypted else ""
-        return True, f'تم الرفع إلى Google Drive{enc_msg}: {upload_filename}'
-    except Exception as e:
-        logger.exception("Upload backup to Drive: %s", e)
-        return False, str(e)
-
-
-def _row_to_dict(row, exclude_keys=None):
-    """تحويل صف جدول إلى dict مع استبعاد مفاتيح حساسة."""
-    exclude_keys = exclude_keys or set()
-    try:
-        d = dict(row)
-        for k in list(d.keys()):
-            if k in exclude_keys:
-                d.pop(k, None)
-        return d
-    except Exception:
-        return {}
-
-
-def _build_backup_payload():
-    """
-    بناء محتوى النسخة الاحتياطية (بدون تحقق صلاحية).
-    يُستخدم من create_backup (يدوي) و run_scheduled_backup (مجدول).
-    يُرجع: (backup_dict, json_bytes, filename)
-    """
-    export_time = datetime.now()
-    export_date_str = export_time.strftime('%Y-%m-%d %H:%M:%S')
-    filename_date = export_time.strftime('%Y%m%d_%H%M')
-    backup = {
-        'export_date': export_date_str,
-        'app': 'Helwan_Plast',
-        'version': 1,
-        'clients': [],
-        'quotations': [],
-        'contracts': [],
-        'machine_specs': [],
-        'settings': []
-    }
-    sensitive_setting_keys = ('pending_totp_', 'password', 'secret', 'totp_')
-    for row in app_tables.clients.search():
-        backup['clients'].append(_row_to_dict(row))
-    for row in app_tables.quotations.search():
-        backup['quotations'].append(_row_to_dict(row))
-    try:
-        for row in app_tables.contracts.search():
-            backup['contracts'].append(_row_to_dict(row))
-    except Exception:
-        backup['contracts'] = []
-    try:
-        for row in app_tables.machine_specs.search():
-            backup['machine_specs'].append(_row_to_dict(row))
-    except Exception:
-        backup['machine_specs'] = []
-    for row in app_tables.settings.search():
-        key = (row.get('setting_key') or '').lower()
-        if any(s in key for s in sensitive_setting_keys):
-            continue
-        backup['settings'].append({
-            'setting_key': row.get('setting_key'),
-            'setting_value': row.get('setting_value'),
-            'setting_type': row.get('setting_type')
-        })
-    json_bytes = json.dumps(backup, ensure_ascii=False, indent=2, default=str).encode('utf-8')
-    filename = f"Helwan_Plast_backup_{filename_date}.json"
-    return backup, json_bytes, filename
 
 
 @anvil.server.background_task
@@ -2345,7 +2061,7 @@ def run_scheduled_backup():
     تحفظ الملف في جدول scheduled_backups، ترفعه إلى Google Drive، وتُسجّل في سجل التدقيق.
     """
     try:
-        backup, json_bytes, filename = _build_backup_payload()
+        backup, json_bytes, filename = quotation_backup.build_backup_payload()
         media = anvil.BlobMedia('application/json', json_bytes, name=filename)
         try:
             app_tables.scheduled_backups.add_row(
@@ -2355,9 +2071,13 @@ def run_scheduled_backup():
             )
         except Exception as tbl_err:
             logger.warning("scheduled_backups table add_row failed (table or column may be missing): %s", tbl_err)
-        drive_ok, drive_msg = _upload_backup_to_drive(json_bytes, filename)
+        drive_ok, drive_msg = quotation_backup.upload_backup_to_drive(json_bytes, filename)
         if drive_ok:
             logger.info("Backup uploaded to Google Drive: %s", filename)
+            try:
+                quotation_backup.apply_backup_retention()
+            except Exception as ret_e:
+                logger.warning("Backup retention after scheduled upload: %s", ret_e)
         else:
             logger.warning("Backup not uploaded to Drive: %s", drive_msg)
             AuthManager.log_audit(
@@ -2459,9 +2179,9 @@ def create_backup(token_or_email):
     user_email = user_email or 'admin'
 
     try:
-        backup, json_bytes, filename = _build_backup_payload()
+        backup, json_bytes, filename = quotation_backup.build_backup_payload()
         media = anvil.BlobMedia('application/json', json_bytes, name=filename)
-        drive_ok, drive_msg = _upload_backup_to_drive(json_bytes, filename)
+        drive_ok, drive_msg = quotation_backup.upload_backup_to_drive(json_bytes, filename)
         if not drive_ok:
             AuthManager.log_audit(
                 'BACKUP_DRIVE_UPLOAD_FAILED', 'backup', filename,
@@ -2469,31 +2189,28 @@ def create_backup(token_or_email):
                 user_email=user_email, ip_address=ip_address,
                 action_description=f"فشل رفع النسخة الاحتياطية إلى Google Drive: {filename} — {drive_msg}"
             )
+        else:
+            try:
+                quotation_backup.apply_backup_retention()
+            except Exception as ret_e:
+                logger.warning("Backup retention after upload: %s", ret_e)
         AuthManager.log_audit(
             'BACKUP_EXPORT', 'backup', filename,
             None, {'export_date': backup['export_date'], 'tables': list(backup.keys()), 'drive_uploaded': drive_ok},
             user_email=user_email, ip_address=ip_address,
             action_description=f"تحميل نسخة احتياطية - {filename}" + (" + Google Drive" if drive_ok else "")
         )
+        try:
+            notifications_module.create_notification(
+                user_email, 'backup_created',
+                {'filename': filename, 'drive_uploaded': drive_ok}
+            )
+        except Exception:
+            pass
         return {'success': True, 'file': media, 'filename': filename, 'drive_uploaded': drive_ok, 'drive_message': drive_msg if not drive_ok else None}
     except Exception as e:
         logger.exception("create_backup error")
         return {'success': False, 'message': str(e)}
-
-
-def _parse_backup_value(v):
-    """تحويل قيمة من JSON النسخة الاحتياطية إلى نوع صحيح (date, datetime)."""
-    if v is None:
-        return None
-    if isinstance(v, str) and v.strip():
-        try:
-            if 'T' in v or ' ' in v:
-                return datetime.fromisoformat(v.replace('Z', '+00:00')[:26])
-            if len(v) == 10 and v[4] == '-' and v[7] == '-':
-                return datetime.strptime(v, '%Y-%m-%d').date()
-        except (ValueError, TypeError):
-            pass
-    return v
 
 
 @anvil.server.callable
@@ -2511,6 +2228,7 @@ def restore_backup(token_or_email, backup_media):
         return {'success': False, 'message': 'لم يُرفع ملف النسخة الاحتياطية'}
     try:
         raw = backup_media.get_bytes()
+        raw = quotation_backup.decrypt_backup(raw)
         data = json.loads(raw.decode('utf-8'))
     except Exception as e:
         logger.exception("restore_backup parse: %s", e)
@@ -2541,7 +2259,7 @@ def restore_backup(token_or_email, backup_media):
                 for k, v in item.items():
                     if k is None or (v is None and k != 'setting_key'):
                         continue
-                    row_data[key_convert(k)] = _parse_backup_value(v)
+                    row_data[key_convert(k)] = quotation_backup.parse_backup_value(v)
                 if row_data:
                     try:
                         table.add_row(**row_data)
@@ -2553,14 +2271,14 @@ def restore_backup(token_or_email, backup_media):
         # ===== نسخة احتياطية من البيانات الحالية قبل الحذف (Safety Net) =====
         pre_restore_backup = {}
         try:
-            pre_restore_backup['clients'] = [_row_to_dict(r) for r in app_tables.clients.search()]
-            pre_restore_backup['quotations'] = [_row_to_dict(r) for r in app_tables.quotations.search()]
+            pre_restore_backup['clients'] = [quotation_backup.row_to_dict(r) for r in app_tables.clients.search()]
+            pre_restore_backup['quotations'] = [quotation_backup.row_to_dict(r) for r in app_tables.quotations.search()]
             try:
-                pre_restore_backup['contracts'] = [_row_to_dict(r) for r in app_tables.contracts.search()]
+                pre_restore_backup['contracts'] = [quotation_backup.row_to_dict(r) for r in app_tables.contracts.search()]
             except Exception:
                 pre_restore_backup['contracts'] = []
             try:
-                pre_restore_backup['machine_specs'] = [_row_to_dict(r) for r in app_tables.machine_specs.search()]
+                pre_restore_backup['machine_specs'] = [quotation_backup.row_to_dict(r) for r in app_tables.machine_specs.search()]
             except Exception:
                 pre_restore_backup['machine_specs'] = []
         except Exception as snap_err:
@@ -2588,9 +2306,6 @@ def restore_backup(token_or_email, backup_media):
 
         clear_table(app_tables.quotations)
         stats['quotations'] = restore_table(app_tables.quotations, data.get('quotations', []))
-        clear_table(app_tables.quotations)
-        restore_table(app_tables.quotations, data.get('quotations', []))
-        stats['quotations'] = len(data.get('quotations', []))
         try:
             clear_table(app_tables.contracts)
             restore_table(app_tables.contracts, data.get('contracts', []))
@@ -2622,6 +2337,13 @@ def restore_backup(token_or_email, backup_media):
             user_email=user_email, ip_address=ip_address,
             action_description=f"استعادة من نسخة احتياطية - {data.get('export_date', '')} - عملاء:{stats['clients']} عروض:{stats['quotations']}"
         )
+        try:
+            notifications_module.create_notification(
+                user_email, 'backup_restored',
+                {'export_date': data.get('export_date', ''), 'stats': stats}
+            )
+        except Exception:
+            pass
         return {'success': True, 'message': 'تمت الاستعادة بنجاح', 'stats': stats}
     except Exception as e:
         logger.exception("restore_backup: %s", e)
@@ -2635,7 +2357,7 @@ def list_drive_backups(token_or_email):
     if not is_authorized:
         return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied', 'data': []}
     try:
-        folder = _get_backup_drive_folder()
+        folder = quotation_backup.get_backup_drive_folder()
         if folder is None:
             return {'success': False, 'message': 'لم يتم العثور على مجلد Backups في Google Drive', 'data': []}
         files = []
@@ -2663,13 +2385,14 @@ def restore_backup_from_drive(token_or_email, filename):
     if not filename:
         return {'success': False, 'message': 'اسم الملف مطلوب'}
     try:
-        folder = _get_backup_drive_folder()
+        folder = quotation_backup.get_backup_drive_folder()
         if folder is None:
             return {'success': False, 'message': 'لم يتم العثور على مجلد Backups في Google Drive'}
         f = folder.get(filename)
         if f is None:
             return {'success': False, 'message': f'الملف غير موجود: {filename}'}
         raw = f.get_bytes()
+        raw = quotation_backup.decrypt_backup(raw)
         media = anvil.BlobMedia('application/json', raw, name=filename)
         return restore_backup(token_or_email, media)
     except Exception as e:

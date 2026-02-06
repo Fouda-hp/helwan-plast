@@ -30,6 +30,8 @@ from .auth_email import send_email_smtp, send_approval_email, EMAIL_SERVICE_AVAI
 from .auth_password import hash_password, verify_password, upgrade_password_hash, add_to_password_history, check_password_history
 from .auth_sessions import generate_session_token, create_session, validate_session, destroy_session, cleanup_expired_sessions
 from .auth_rate_limit import check_rate_limit
+from .auth_permissions import check_permission, is_admin, is_admin_by_email, require_admin, require_permission
+from . import auth_totp
 
 # =========================================================
 # OTP Generation and Verification
@@ -313,9 +315,14 @@ def _get_totp_secret_for_user(user):
     return None
 
 
+def verify_totp_for_user(user_email, token):
+  """التحقق من كود TOTP (مُستدعى من AuthManager؛ التنفيذ في auth_totp)."""
+  return auth_totp.verify_totp_for_user(user_email, token)
+
+
 @anvil.server.callable
 def user_has_totp_enabled(auth_token):
-  """يرجع True إذا المستخدم الحالي فعّل تطبيق المصادقة (لديه totp_secret). للاستخدام في اللانشر لإخفاء الرابط بعد التفعيل."""
+  """يرجع True إذا المستخدم الحالي فعّل تطبيق المصادقة."""
   res = validate_token(auth_token)
   if not res.get('valid'):
     return False
@@ -325,136 +332,37 @@ def user_has_totp_enabled(auth_token):
 
 @anvil.server.callable
 def setup_totp_start(auth_token):
-  """
-  بدء تفعيل تطبيق المصادقة (Authenticator). يتطلب تسجيل دخول.
-  يرجع: provisioning_uri, qr_base64, secret. المستخدم يمسح QR ثم يدخل الكود في setup_totp_confirm.
-  """
-  try:
-    import pyotp
-    import qrcode
-    import base64
-    import io
-    if not auth_token or (isinstance(auth_token, str) and not auth_token.strip()):
-      return {'success': False, 'message': 'NO_TOKEN'}
-    res = validate_token(auth_token)
-    if not res.get('valid'):
-      return {'success': False, 'message': 'SESSION_EXPIRED'}
-    user_email = res.get('user', {}).get('email')
-    if not user_email:
-      return {'success': False, 'message': 'User not found'}
-    user = app_tables.users.get(email=user_email)
-    if not user:
-      return {'success': False, 'message': 'User not found'}
-    secret = pyotp.random_base32()
-    totp = pyotp.TOTP(secret)
-    issuer = 'Helwan Plast'
-    label = user_email
-    uri = totp.provisioning_uri(name=label, issuer_name=issuer)
-    img = qrcode.make(uri)
-    buf = io.BytesIO()
-    img.save(buf, format='PNG')
-    qr_base64 = base64.b64encode(buf.getvalue()).decode()
-    # حفظ مؤقت في settings حتى يؤكد المستخدم بالكود (مدة 10 دقائق)
-    pending_key = 'pending_totp_' + user_email.replace('@', '_at_').replace('.', '_')
-    try:
-      old = app_tables.settings.get(setting_key=pending_key)
-      if old:
-        old.delete()
-    except Exception as e:
-      pass
-    expires_at = (datetime.now() + timedelta(minutes=10)).isoformat()
-    app_tables.settings.add_row(
-      setting_key=pending_key,
-      setting_value=json.dumps({'secret': secret, 'expires_at': expires_at}),
-      setting_type='json',
-      description='Pending TOTP setup',
-      updated_at=datetime.now()
-    )
-    return {
-      'success': True,
-      'provisioning_uri': uri,
-      'qr_base64': qr_base64,
-      'secret': secret
-    }
-  except Exception as e:
-    logger.error(f"TOTP setup start error: {e}")
-    return {'success': False, 'message': str(e)}
+  """بدء تفعيل تطبيق المصادقة (Authenticator). يتطلب تسجيل دخول."""
+  if not auth_token or (isinstance(auth_token, str) and not auth_token.strip()):
+    return {'success': False, 'message': 'NO_TOKEN'}
+  res = validate_token(auth_token)
+  if not res.get('valid'):
+    return {'success': False, 'message': 'SESSION_EXPIRED'}
+  user_email = res.get('user', {}).get('email')
+  if not user_email:
+    return {'success': False, 'message': 'User not found'}
+  return auth_totp.setup_totp_start_impl(user_email)
 
 
 @anvil.server.callable
 def setup_totp_confirm(auth_token, code):
-  """
-  تأكيد تفعيل تطبيق المصادقة: المستخدم أدخل الكود من التطبيق، نتحقق ونحفظ الـ secret.
-  """
-  try:
-    import pyotp
-    res = validate_token(auth_token)
-    if not res.get('valid'):
-      return {'success': False, 'message': 'Please log in first'}
-    user_email = res.get('user', {}).get('email')
-    if not user_email:
-      return {'success': False, 'message': 'User not found'}
-    code = str(code or '').strip().replace(' ', '')
-    if len(code) != 6:
-      return {'success': False, 'message': 'Enter the 6-digit code from your app'}
-    pending_key = 'pending_totp_' + user_email.replace('@', '_at_').replace('.', '_')
-    setting = app_tables.settings.get(setting_key=pending_key)
-    if not setting or not setting.get('setting_value'):
-      return {'success': False, 'message': 'Setup expired or not started. Please start again.'}
-    try:
-      data = json.loads(setting['setting_value']) if isinstance(setting['setting_value'], str) else setting['setting_value']
-      secret = data.get('secret')
-      expires_at = data.get('expires_at')
-      if expires_at and datetime.now() > datetime.fromisoformat(expires_at.replace('Z', '+00:00')):
-        setting.delete()
-        return {'success': False, 'message': 'Setup expired. Please start again.'}
-    except Exception:
-      secret = setting['setting_value']
-    if not secret:
-      return {'success': False, 'message': 'Setup expired or not started. Please start again.'}
-    totp = pyotp.TOTP(secret)
-    if not totp.verify(code, valid_window=1):
-      return {'success': False, 'message': 'Invalid code. Try again.'}
-    user = app_tables.users.get(email=user_email)
-    if not user:
-      setting.delete()
-      return {'success': False, 'message': 'User not found'}
-    user.update(totp_secret=secret)
-    setting.delete()
-    return {'success': True, 'message': 'Authenticator app enabled. Use it at next login.'}
-  except Exception as e:
-    logger.error(f"TOTP confirm error: {e}")
-    return {'success': False, 'message': str(e)}
-
-
-def verify_totp_for_user(user_email, token):
-  """التحقق من كود TOTP من تطبيق المصادقة."""
-  try:
-    import pyotp
-    user = app_tables.users.get(email=user_email)
-    if not user:
-      return False
-    secret = user.get('totp_secret')
-    if not secret:
-      return False
-    totp = pyotp.TOTP(secret)
-    return totp.verify(str(token).strip().replace(' ', ''), valid_window=1)
-  except Exception as e:
-    logger.error(f"TOTP verify error: {e}")
-    return False
+  """تأكيد تفعيل تطبيق المصادقة بالكود من التطبيق."""
+  res = validate_token(auth_token)
+  if not res.get('valid'):
+    return {'success': False, 'message': 'Please log in first'}
+  user_email = res.get('user', {}).get('email')
+  if not user_email:
+    return {'success': False, 'message': 'User not found'}
+  return auth_totp.setup_totp_confirm_impl(user_email, code)
 
 
 @anvil.server.callable
 def disable_totp(user_email, auth_token):
-  """
-  إلغاء تفعيل تطبيق المصادقة (يحتاج صلاحية: نفس المستخدم أو أدمن).
-  auth_token: توكن الجلسة الحالية.
-  """
+  """إلغاء تفعيل تطبيق المصادقة (نفس المستخدم أو أدمن)."""
   user = app_tables.users.get(email=user_email)
   if not user:
     return {'success': False, 'message': 'User not found'}
-  is_admin, _ = require_admin(auth_token)
-  if is_admin:
+  if require_admin(auth_token)[0]:
     user.update(totp_secret=None)
     return {'success': True, 'message': 'Authenticator disabled'}
   res = validate_token(auth_token)
@@ -1080,138 +988,7 @@ def validate_token(token):
 
 
 # =========================================================
-# التحقق من الصلاحيات
-# =========================================================
-@anvil.server.callable
-def check_permission(token, action):
-    """
-    التحقق من صلاحية المستخدم لإجراء معين
-    """
-    session = validate_session(token)
-
-    if not session:
-        return False
-
-    role = session.get('role', '')
-
-    # الحصول على صلاحيات الدور
-    role_permissions = ROLES.get(role, [])
-
-    # التحقق من الصلاحية
-    if 'all' in role_permissions:
-        return True
-
-    if action in role_permissions:
-        return True
-
-    # التحقق من الصلاحيات المخصصة
-    user = app_tables.users.get(email=session['email'])
-    if user and user.get('custom_permissions'):
-        try:
-            custom = json.loads(user['custom_permissions'])
-            if action in custom:
-                return True
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    return False
-
-
-@anvil.server.callable
-def is_admin(token_or_email):
-    """
-    التحقق من أن المستخدم أدمن
-    يدعم: token الجلسة أو البريد الإلكتروني
-
-    الآن validate_session يتحقق من is_active و is_approved تلقائياً
-    """
-    if not token_or_email:
-        return False
-
-    # أولاً: إذا كان بريد إلكتروني، تحقق مباشرة
-    if '@' in str(token_or_email):
-        return is_admin_by_email(token_or_email)
-
-    # ثانياً: التحقق من الجلسة في قاعدة البيانات
-    # validate_session يتحقق من is_active و is_approved تلقائياً
-    session = validate_session(token_or_email)
-    if session and session.get('role') == 'admin':
-        return True
-
-    return False
-
-
-def is_admin_by_email(email):
-    """
-    التحقق من أن المستخدم أدمن بالبريد الإلكتروني
-    """
-    if not email:
-        logger.warning("is_admin_by_email: No email provided")
-        return False
-    user = app_tables.users.get(email=email.lower())
-    if not user:
-        logger.warning(f"is_admin_by_email: User not found for email: {email}")
-        return False
-    is_admin = user['role'] == 'admin' and user['is_active'] and user['is_approved']
-    logger.info(f"is_admin_by_email: {email} - role={user['role']}, is_active={user['is_active']}, is_approved={user['is_approved']}, result={is_admin}")
-    return is_admin
-
-
-def require_admin(token_or_email):
-    """
-    دالة مساعدة للتحقق من صلاحية الأدمن
-    تعود tuple: (is_admin, error_response)
-
-    تدعم:
-    - token الجلسة
-    - البريد الإلكتروني
-    - user_id
-    """
-    if not token_or_email:
-        logger.warning("require_admin: No token or email provided")
-        return False, {'success': False, 'message': 'Admin access required'}
-
-    token_preview = str(token_or_email)[:30] if token_or_email else 'None'
-    logger.info(f"require_admin checking: {token_preview}...")
-
-    # الطريقة 1: استخدام is_admin الموحدة (تدعم token و email)
-    if is_admin(token_or_email):
-        logger.info("Admin access granted via is_admin()")
-        return True, None
-
-    # الطريقة 2: محاولة استخراج البريد من الجلسة والتحقق منه
-    session = validate_session(token_or_email)
-    if session and session.get('email'):
-        email = session['email']
-        logger.info(f"Found session with email: {email}")
-        if is_admin_by_email(email):
-            logger.info("Admin access granted via session email")
-            return True, None
-
-    # الطريقة 3: محاولة إيجاد المستخدم بالـ token كـ user_id (للحالات الخاصة)
-    try:
-        user_by_id = app_tables.users.get(user_id=token_or_email)
-        if user_by_id and user_by_id['role'] == 'admin' and user_by_id['is_active'] and user_by_id['is_approved']:
-            logger.info("Admin access granted via user_id")
-            return True, None
-    except Exception as e:
-        logger.debug("require_admin user_id lookup: %s", e)
-
-    logger.warning(f"Admin access denied for: {token_preview}...")
-    return False, {'success': False, 'message': 'Admin access required'}
-
-
-def require_permission(token, permission):
-    """
-    دالة مساعدة للتحقق من صلاحية معينة
-    """
-    if not check_permission(token, permission):
-        return False, {'success': False, 'message': f'Permission denied: {permission}'}
-    return True, None
-
-
-# =========================================================
-# وظائف الأدمن
+# وظائف الأدمن (الصلاحيات من auth_permissions)
 # =========================================================
 @anvil.server.callable
 def debug_admin_check(token_or_email):
@@ -1321,6 +1098,12 @@ def approve_user(token_or_email, user_id, role='viewer', custom_permissions=None
 
     logger.info(f"User approved: {user_email} with role {role}")
 
+    try:
+        from . import notifications as notif_mod
+        notif_mod.create_notification(user_email, 'user_approved', {'role': role, 'approved_by': admin_email})
+    except Exception:
+        pass
+
     # إرسال إيميل للمستخدم
     email_sent = send_approval_email(user_email, user_name, role, approved=True)
 
@@ -1348,6 +1131,12 @@ def reject_user(token_or_email, user_id):
     user_email = user['email']
     user_name = user['full_name']
     admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
+
+    try:
+        from . import notifications as notif_mod
+        notif_mod.create_notification(user_email, 'user_rejected', {'rejected_by': admin_email})
+    except Exception:
+        pass
 
     # إرسال إيميل للمستخدم قبل الحذف
     email_sent = send_approval_email(user_email, user_name, '', approved=False)

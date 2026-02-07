@@ -39,9 +39,25 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
       if (data.clearance_expenses != null && !isNaN(data.clearance_expenses)) CONFIG.EXPENSES_CLEARANCE = parseFloat(data.clearance_expenses);
       if (data.tax_rate != null && !isNaN(data.tax_rate)) CONFIG.TAX_RATE = parseFloat(data.tax_rate);
       if (data.bank_commission != null && !isNaN(data.bank_commission)) CONFIG.BANK_COMMISSION = parseFloat(data.bank_commission);
-      if (data.config && data.config.types && data.config.types.length) updateMachineTypeDropdown(data.config.types);
-      if (data.config && data.config.colors && data.config.colors.length) updateColorsDropdown(data.config.colors);
-      if (data.config && data.config.widths && data.config.widths.length) updateWidthsDropdown(data.config.widths);
+      // تحميل أسعار المكن إن وُجدت (المصدر الأساسي للأسعار والخيارات)
+      if (data.machinePrices && typeof data.machinePrices === 'object') {
+        MACHINE_PRICES = normalizePricesKeys(data.machinePrices);
+      }
+      // الأولوية لـ priceOptions (مولّدة من جدول الأسعار - فقط المقاسات ذات سعر > 0)
+      // config (الثابت) يُستخدم فقط إذا لم يتوفر priceOptions
+      var opts = data.priceOptions;
+      if (opts && opts.types && opts.types.length) {
+        PRICE_OPTIONS = opts;
+        updateMachineTypeDropdown(opts.types);
+        refreshColorsAndWidthsFromOptions();
+      } else if (data.config && data.config.types && data.config.types.length) {
+        updateMachineTypeDropdown(data.config.types);
+        if (data.config.colors && data.config.colors.length) updateColorsDropdown(data.config.colors);
+        if (data.config.widths && data.config.widths.length) updateWidthsDropdown(data.config.widths);
+      }
+      if (data.cylinderPrices && window.applyCylinderPricesMap) {
+        window.applyCylinderPricesMap(data.cylinderPrices);
+      }
       if (typeof window.calculateAll === 'function') window.calculateAll();
       window._settingsLoaded = true;
     } catch (e) {
@@ -225,7 +241,8 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
     try {
       var call = (window.anvil && window.anvil.server && window.anvil.server.call) || (window.top && window.top.anvil && window.top.anvil.server && window.top.anvil.server.call);
       if (!call) return;
-      var result = await call('get_machine_prices');
+      var auth = (typeof sessionStorage !== 'undefined' && (sessionStorage.getItem('auth_token') || sessionStorage.getItem('user_email'))) || null;
+      var result = await call('get_machine_prices', auth);
       if (result && result.success && result.prices) {
         MACHINE_PRICES = normalizePricesKeys(result.prices);
         if (result.options && result.options.types && result.options.types.length > 0) {

@@ -192,10 +192,14 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         c = data.get('company', {})
         is_ar = (self.current_lang == 'ar')
 
-        # Get machine model and material for conditional logic
+        # Get machine model, machine type, and material for conditional logic
         model = str(data.get('model', '')).upper()
+        machine_type_str = str(data.get('machine_type', '') or data.get('model', '')).upper()
         material = str(data.get('material', '')).upper()
         plc_value = str(data.get('plc', '')).upper()
+        # Gear only when machine_type is Metal Anilox and material is NOT Nonwoven; else Belt
+        is_metal_anilox = 'METAL' in machine_type_str
+        is_nonwoven = 'NONWOVEN' in material
 
         # Determine machine type prefix - use machine_type field not model
         machine_type_base = data.get('machine_type', '') or data.get('model', '')
@@ -287,15 +291,11 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         html += f'<div class="section-title">{"المواصفات الفنية:" if is_ar else "Technical Specifications:"}</div>'
         html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
 
-        # Helper function to determine Belt/Gear drive for item 13
+        # Helper: Belt/Gear drive for item 13 (uses is_metal_anilox, is_nonwoven from above)
         def get_drive_type():
-            is_metal_anilox = 'METAL' in model
-            is_nonwoven = 'NONWOVEN' in material
-            # Belt drive if: Ceramic anilox OR NONWOVEN material
-            # Gear drive if: Metal anilox AND NOT NONWOVEN
             if is_metal_anilox and not is_nonwoven:
-                return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق الجيربوكس' if is_ar else 'Gear drive',
-                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر نظام الجير لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+                return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق التروس' if is_ar else 'Gear drive',
+                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر التروس لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
             else:
                 return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق السيور' if is_ar else 'Belt drive',
                         'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر السيور لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
@@ -383,12 +383,18 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         # Get values from quotation data
         winder_type = str(data.get('winder', '')).upper()
         is_double_winder = 'DOUBLE' in winder_type
-        colors_count = int(data.get('colors_count', 0) or 0)
-        machine_width = float(data.get('machine_width', 0) or 0)
+        try:
+            _colors = data.get('colors_count', 0)
+            colors_count = int(_colors) if _colors not in (None, '') else 0
+        except (TypeError, ValueError):
+            colors_count = 0
+        try:
+            _mw = data.get('machine_width', 0)
+            machine_width = float(_mw) if _mw not in (None, '') else 0.0
+        except (TypeError, ValueError):
+            machine_width = 0.0
 
-        # Determine if Belt or Gear drive
-        is_metal_anilox = 'METAL' in model
-        is_nonwoven = 'NONWOVEN' in material
+        # Determine if Belt or Gear drive (is_metal_anilox, is_nonwoven already set above)
         is_belt_drive = not (is_metal_anilox and not is_nonwoven)
 
         # Get settings values with defaults
@@ -438,7 +444,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         max_print_speed = belt_max_print_speed if is_belt_drive else gear_max_print_speed
 
         # Drive type display
-        drive_display = ("Belt Drive" if not is_ar else "سيور") if is_belt_drive else ("Gear Drive" if not is_ar else "جيربوكس")
+        drive_display = ("Belt Drive" if not is_ar else "سيور") if is_belt_drive else ("Gear Drive" if not is_ar else "تروس")
 
         # Yes/No fields
         def yes_no_value(field_name):

@@ -735,7 +735,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         is_belt_drive = not (is_metal_anilox and not is_nonwoven)
 
         # Get settings values
-        belt_max_machine_speed = int(c.get('belt_max_machine_speed', 120))
+        belt_max_machine_speed = int(c.get('belt_max_machine_speed', 150))
         belt_max_print_speed = int(c.get('belt_max_print_speed', 120))
         belt_print_length = c.get('belt_print_length', '300mm - 1300mm')
         gear_max_machine_speed = int(c.get('gear_max_machine_speed', 100))

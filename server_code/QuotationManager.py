@@ -1509,7 +1509,7 @@ def get_quotation_pdf_data(quotation_number, user_email, auth_token=None):
             'country_origin_en': get_setting_value('country_origin_en', 'China'),
             'anilox_type_ar': get_setting_value('anilox_type_ar', 'انيلوكس سيراميك'),
             'anilox_type_en': get_setting_value('anilox_type_en', 'Ceramic anilox'),
-            'belt_max_machine_speed': get_setting_value('belt_max_machine_speed', 120),
+            'belt_max_machine_speed': get_setting_value('belt_max_machine_speed', 150),
             'belt_max_print_speed': get_setting_value('belt_max_print_speed', 120),
             'belt_print_length': get_setting_value('belt_print_length', '300mm - 1300mm'),
             'gear_max_machine_speed': get_setting_value('gear_max_machine_speed', 100),

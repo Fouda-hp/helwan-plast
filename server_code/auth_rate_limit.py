@@ -1,5 +1,6 @@
 """
 auth_rate_limit.py - التحقق من حد الطلبات (Rate Limiting)
+V4.0 - Fixed timezone-aware datetime comparisons
 """
 
 import logging

@@ -24,7 +24,10 @@
       "Bash(findstr:*)",
       "Bash(powershell:*)",
       "Bash(find:*)",
-      "Bash(py -c \"import hashlib; print\\(''HP_EMERGENCY_'' + hashlib.sha256\\(b''helwan_plast_2024''\\).hexdigest\\(\\)[:16]\\)\")"
+      "Bash(py -c \"import hashlib; print\\(''HP_EMERGENCY_'' + hashlib.sha256\\(b''helwan_plast_2024''\\).hexdigest\\(\\)[:16]\\)\")",
+      "Bash(node:*)",
+      "Bash(dir:*)",
+      "Bash(ls:*)"
     ]
   }
 }

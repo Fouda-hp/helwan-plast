@@ -4,6 +4,7 @@ from anvil.files import data_files
 """
 auth_sessions.py - إدارة الجلسات (إنشاء، التحقق، إنهاء، تنظيف)
 مع تشفير التوكن في قاعدة البيانات (hash فقط) + تنظيف تلقائي مجدول
+V4.0 - Fixed timezone-aware datetime comparisons
 """
 
 import secrets

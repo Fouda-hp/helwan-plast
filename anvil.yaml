@@ -639,10 +639,10 @@ db_schema:
   settings:
     client: none
     columns:
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 0, width: 408}
       name: setting_key
       type: string
-    - admin_ui: {width: 200}
+    - admin_ui: {order: 1, width: 816}
       name: setting_value
       type: string
     - admin_ui: {width: 200}

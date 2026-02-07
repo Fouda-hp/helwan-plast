@@ -896,11 +896,14 @@ class AdminPanel(AdminPanelTemplate):
             var original = window.loadSettings;
             window.loadSettings = async function() {
               await original();
-              setTimeout(enhanceTechSpecsSettings, 50);
-              setTimeout(addMachinePricesSection, 100);
-              setTimeout(addCylinderPricesSection, 150);
-              setTimeout(addMachineConfigSection, 200);
-              setTimeout(addPricingAdjustmentsSection, 250);
+              // بناء كل الأقسام أولاً
+              await enhanceTechSpecsSettings();
+              await addMachinePricesSection();
+              await addCylinderPricesSection();
+              await addMachineConfigSection();
+              await addPricingAdjustmentsSection();
+              // ثم إعادة الترتيب مع visual headers
+              setTimeout(reorderSettingsPage, 100);
             };
             window.loadSettings.__patched = true;
           }
@@ -1768,6 +1771,91 @@ class AdminPanel(AdminPanelTemplate):
               if (window.showNotification) window.showNotification('success', 'Saved!', 'All markup percentages saved successfully');
             }
           };
+
+          // ==========================================
+          // Reorder Settings Page — ترتيب بصري مع Level Headers
+          // ==========================================
+          function reorderSettingsPage() {
+            var container = document.getElementById('settingsContent');
+            if (!container) return;
+
+            // === Helper: Find section by heading text ===
+            function findSectionByHeading(text) {
+              var allH4 = container.querySelectorAll('h4');
+              for (var i = 0; i < allH4.length; i++) {
+                if (allH4[i].textContent && allH4[i].textContent.indexOf(text) !== -1) {
+                  // الـ section هي أقرب parent div للـ h4
+                  var sec = allH4[i].closest('div[style*="background"]');
+                  if (sec && sec.parentNode === container) return sec;
+                  // fallback: لو الـ h4 مباشرة جوا الـ container
+                  if (allH4[i].parentNode === container) return null;
+                  var p = allH4[i].parentNode;
+                  while (p && p.parentNode !== container) p = p.parentNode;
+                  if (p) return p;
+                }
+              }
+              return null;
+            }
+
+            // === Collect all sections ===
+            var grid = container.querySelector('div[style*="grid-template-columns"]');
+            var machinePrices = document.getElementById('machinePricesSection');
+            var cylinderPrices = document.getElementById('cylinderPricesSection');
+            var machineConfig = document.getElementById('machineConfigSection');
+            var pricingAdj = document.getElementById('pricingAdjustmentsSection');
+            var quotationPdf = findSectionByHeading('Quotation PDF Template');
+            var techSpecs = findSectionByHeading('Technical Specifications');
+
+            // === Remove all from container (detach, don't destroy) ===
+            var sectionsToMove = [grid, machinePrices, cylinderPrices, machineConfig, pricingAdj, quotationPdf, techSpecs];
+            sectionsToMove.forEach(function(el) {
+              if (el && el.parentNode) el.parentNode.removeChild(el);
+            });
+
+            // === Remove any old level headers if re-running ===
+            container.querySelectorAll('.settings-level-header').forEach(function(h) { h.remove(); });
+
+            // === Clear remaining content in container ===
+            // (only remove divs that are not the loading spinner or error)
+            // Don't clear - just append in order
+
+            // === Level 1 Header ===
+            var level1 = document.createElement('div');
+            level1.className = 'settings-level-header';
+            level1.style.cssText = 'background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:16px 24px;border-radius:12px;margin:10px 0 20px 0;display:flex;align-items:center;gap:12px;';
+            level1.innerHTML = '<span style="font-size:24px;">💲</span><div><span style="font-size:18px;font-weight:700;">LEVEL 1 — Pricing Settings</span><p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.7);">Critical / Daily — الأسعار والتكاليف والنسب</p></div>';
+            container.appendChild(level1);
+
+            // === Level 1 Sections in order ===
+            // 1. Exchange Rate + Shipping (grid)
+            if (grid) container.appendChild(grid);
+
+            // 2. Machine Prices
+            if (machinePrices) container.appendChild(machinePrices);
+
+            // 3. Cylinder Prices
+            if (cylinderPrices) container.appendChild(cylinderPrices);
+
+            // 4. Machine Configuration
+            if (machineConfig) container.appendChild(machineConfig);
+
+            // 5. Pricing Adjustments (Material, Winder, Optional, Markup)
+            if (pricingAdj) container.appendChild(pricingAdj);
+
+            // === Level 2 Header ===
+            var level2 = document.createElement('div');
+            level2.className = 'settings-level-header';
+            level2.style.cssText = 'background:linear-gradient(135deg,#1b5e20,#2e7d32);color:#fff;padding:16px 24px;border-radius:12px;margin:40px 0 20px 0;display:flex;align-items:center;gap:12px;';
+            level2.innerHTML = '<span style="font-size:24px;">📑</span><div><span style="font-size:18px;font-weight:700;">LEVEL 2 — Quotation & Contract Settings</span><p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.7);">قوالب عروض الأسعار والمواصفات الفنية</p></div>';
+            container.appendChild(level2);
+
+            // === Level 2 Sections ===
+            // 6. Quotation PDF Template
+            if (quotationPdf) container.appendChild(quotationPdf);
+
+            // 7. Technical Specifications
+            if (techSpecs) container.appendChild(techSpecs);
+          }
 
           function run() {
             insertDataImportNav();

@@ -361,32 +361,44 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
   };
 
   // عند التحميل: تطبيق إعدادات بايثون إن وُجدت (من النافذة الحالية أو top)
+  function getStoredSettings() {
+    var stored = window.__calculatorSettingsFromPython;
+    if (!stored) {
+      try { stored = window.top && window.top !== window && window.top.__calculatorSettingsFromPython; } catch(e) {}
+    }
+    return stored || null;
+  }
+
   function tryApplyStoredSettings() {
-    var stored = window.__calculatorSettingsFromPython || (window.top && window.top !== window && window.top.__calculatorSettingsFromPython);
-    if (!stored) return;
+    var stored = getStoredSettings();
+    if (!stored) return false;
     try {
       var d = typeof stored === 'string' ? JSON.parse(stored) : stored;
       window.applyCalculatorSettingsFromPython(d);
-    } catch (e) {}
+      return true;
+    } catch (e) {
+      window.debugWarn('tryApplyStoredSettings error:', e);
+      return false;
+    }
   }
   // محاولة تطبيق الإعدادات مع حد أقصى للمحاولات (إصلاح Memory Leak)
   var _settingsApplied = false;
+  var _settingsRetries = 0;
   function tryApplyOnce() {
     if (_settingsApplied) return;
-    tryApplyStoredSettings();
+    if (tryApplyStoredSettings()) {
+      _settingsApplied = true;
+      window.debugLog('Settings applied on retry #' + _settingsRetries);
+      return;
+    }
     if (window._settingsLoaded) _settingsApplied = true;
+    _settingsRetries++;
   }
   tryApplyOnce();
-  (window.safeSetTimeout || setTimeout)(tryApplyOnce, 400);
-  (window.safeSetTimeout || setTimeout)(tryApplyOnce, 1200);
-  (window.safeSetTimeout || setTimeout)(tryApplyOnce, 2500);
-
-  // إعادة تطبيق الإعدادات بعد تأخير (في حال تأخر Python form_show)
-  (window.safeSetTimeout || setTimeout)(function() {
-    var d = window.__calculatorSettingsFromPython || (window.top && window.top !== window && window.top.__calculatorSettingsFromPython);
-    if (window.applyCalculatorSettingsFromPython && d) try { window.applyCalculatorSettingsFromPython(d); } catch(e) {}
-    if (typeof window.calculateAll === 'function') window.calculateAll();
-  }, 2000);
+  // محاولات متعددة بفترات متزايدة لانتظار Python form_show
+  [400, 800, 1500, 2500, 4000, 6000].forEach(function(delay) {
+    (window.safeSetTimeout || setTimeout)(tryApplyOnce, delay);
+  });
 
   function getMachineBasePrice() {
     var doc = document;

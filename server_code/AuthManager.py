@@ -1963,7 +1963,7 @@ def _initialize_default_settings():
     default_settings = [
         {
             'key': 'exchange_rate',
-            'value': '47.5',
+            'value': '47.1',
             'type': 'number',
             'description': 'Exchange Rate (USD to EGP)'
         },

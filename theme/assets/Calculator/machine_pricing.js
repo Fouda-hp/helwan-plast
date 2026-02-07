@@ -11,7 +11,7 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
   // الإعدادات - يتم تحميلها من السيرفر
   // القيم الافتراضية تُستخدم إذا فشل التحميل
   // ----------------------------------------
-  let EXCHANGE_RATE = 47.5;  // قيمة افتراضية
+  let EXCHANGE_RATE = 47.1;  // قيمة افتراضية
   let CONFIG = {
     SHIPPING_SEA: 3200,
     THS: 1000,

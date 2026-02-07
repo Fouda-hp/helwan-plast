@@ -749,15 +749,20 @@ class ContractPrintForm(ContractPrintFormTemplate):
         dryer_capacity = c.get('dryer_capacity', '2.2kw air blower × 2 units')
         main_motor_power = c.get('main_motor_power', '5 HP')
 
+        # Helper: convert English digits to Arabic digits
+        def to_ar(val):
+            ar_digits = {'0': '٠', '1': '١', '2': '٢', '3': '٣', '4': '٤', '5': '٥', '6': '٦', '7': '٧', '8': '٨', '9': '٩'}
+            return ''.join(ar_digits.get(ch, ch) for ch in str(val))
+
         # Calculate values - Number of Colors format (same as Quotation)
         if colors_count == 8:
-            colors_display = "8+0, 7+1, 6+2, 5+3, 4+4 reverse printing" if not is_ar else "8+0، 7+1، 6+2، 5+3، 4+4 طباعة عكسية"
+            colors_display = "8+0, 7+1, 6+2, 5+3, 4+4 reverse printing" if not is_ar else f"{to_ar('8+0')}، {to_ar('7+1')}، {to_ar('6+2')}، {to_ar('5+3')}، {to_ar('4+4')} طباعة عكسية"
         elif colors_count == 6:
-            colors_display = "6+0, 5+1, 4+2, 3+3 reverse printing" if not is_ar else "6+0، 5+1، 4+2، 3+3 طباعة عكسية"
+            colors_display = "6+0, 5+1, 4+2, 3+3 reverse printing" if not is_ar else f"{to_ar('6+0')}، {to_ar('5+1')}، {to_ar('4+2')}، {to_ar('3+3')} طباعة عكسية"
         elif colors_count == 4:
-            colors_display = "4+0, 3+1, 2+2 reverse printing" if not is_ar else "4+0، 3+1، 2+2 طباعة عكسية"
+            colors_display = "4+0, 3+1, 2+2 reverse printing" if not is_ar else f"{to_ar('4+0')}، {to_ar('3+1')}، {to_ar('2+2')} طباعة عكسية"
         else:
-            colors_display = str(colors_count)
+            colors_display = str(colors_count) if not is_ar else to_ar(colors_count)
 
         tension_units = 4 if is_double_winder else 2
         brake_system = 4 if is_double_winder else 2
@@ -885,25 +890,76 @@ class ContractPrintForm(ContractPrintFormTemplate):
         tech_specs_settings = data.get('tech_specs_settings', None)
         specs_list = normalize_specs(tech_specs_settings)
 
-        value_map = {
-            'model': data.get('model', '-'),
-            'colors_display': colors_display,
-            'printing_sides': '2',
-            'tension_units': str(tension_units),
-            'brake_system': str(brake_system),
-            'brake_power': brake_power,
-            'web_guiding': str(web_guiding),
-            'max_film_width': f"{max_film_width} mm",
-            'max_print_width': f"{max_print_width} mm",
-            'print_length': print_length,
-            'max_roll_diameter': f"{max_roll_diameter} mm",
-            'anilox_display': anilox_display,
-            'max_machine_speed': f"{max_machine_speed} m/min",
-            'max_print_speed': f"{max_print_speed} m/min",
-            'dryer_capacity': dryer_capacity,
-            'drive_display': drive_display,
-            'main_motor_power': main_motor_power,
-        }
+        # Arabic brake power formatting
+        def ar_brake_power(bp_str):
+            import re
+            parts = str(bp_str).split('+')
+            ar_parts = []
+            for part in parts:
+                part = part.strip()
+                m = re.match(r'(\d+)\s*pc\s*\((\d+)kg\)', part)
+                if m:
+                    ar_parts.append(f"{to_ar(m.group(1))} قطعة ({to_ar(m.group(2))} كجم)")
+                else:
+                    ar_parts.append(to_ar(part))
+            return ' + '.join(ar_parts)
+
+        # Arabic dryer capacity formatting
+        def ar_dryer(dc_str):
+            import re
+            m = re.match(r'([\d.]+)kw\s*air\s*blower\s*[×x]\s*(\d+)\s*units?', str(dc_str), re.IGNORECASE)
+            if m:
+                return f"{to_ar(m.group(1))} كيلو وات تجفيف هوائي × {to_ar(m.group(2))}"
+            return to_ar(dc_str)
+
+        # Arabic print length formatting
+        def ar_print_length(pl_str):
+            import re
+            m = re.match(r'(\d+)\s*mm\s*-\s*(\d+)\s*mm', str(pl_str), re.IGNORECASE)
+            if m:
+                return f"{to_ar(m.group(1))} مم - {to_ar(m.group(2))} مم"
+            return to_ar(pl_str)
+
+        if is_ar:
+            value_map = {
+                'model': data.get('model', '-'),
+                'colors_display': colors_display,
+                'printing_sides': to_ar('2'),
+                'tension_units': f"{to_ar(tension_units)} قطعة",
+                'brake_system': f"{to_ar(brake_system)} قطعة",
+                'brake_power': ar_brake_power(brake_power),
+                'web_guiding': f"{to_ar(web_guiding)} قطعة",
+                'max_film_width': f"{to_ar(max_film_width)} مم",
+                'max_print_width': f"{to_ar(max_print_width)} مم",
+                'print_length': ar_print_length(print_length),
+                'max_roll_diameter': f"{to_ar(max_roll_diameter)} مم",
+                'anilox_display': anilox_display,
+                'max_machine_speed': f"{to_ar(max_machine_speed)} متر في الدقيقة",
+                'max_print_speed': f"{to_ar(max_print_speed)} متر في الدقيقة",
+                'dryer_capacity': ar_dryer(dryer_capacity),
+                'drive_display': drive_display,
+                'main_motor_power': f"{to_ar(main_motor_power.replace('HP', '').replace('hp', '').strip())} حصان",
+            }
+        else:
+            value_map = {
+                'model': data.get('model', '-'),
+                'colors_display': colors_display,
+                'printing_sides': '2',
+                'tension_units': str(tension_units),
+                'brake_system': str(brake_system),
+                'brake_power': brake_power,
+                'web_guiding': str(web_guiding),
+                'max_film_width': f"{max_film_width} mm",
+                'max_print_width': f"{max_print_width} mm",
+                'print_length': print_length,
+                'max_roll_diameter': f"{max_roll_diameter} mm",
+                'anilox_display': anilox_display,
+                'max_machine_speed': f"{max_machine_speed} m/min",
+                'max_print_speed': f"{max_print_speed} m/min",
+                'dryer_capacity': dryer_capacity,
+                'drive_display': drive_display,
+                'main_motor_power': main_motor_power,
+            }
 
         def resolve_value(key):
             if key in value_map:

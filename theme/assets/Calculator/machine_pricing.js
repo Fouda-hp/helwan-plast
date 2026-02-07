@@ -632,4 +632,105 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
   window.mapMachineType = mapMachineType;
   window.mapWinder = mapWinder;
 
+  // ----------------------------------------
+  // BroadcastChannel Receiver — استقبال تحديثات الإعدادات من Admin Panel في الوقت الحقيقي
+  // ----------------------------------------
+  try {
+    var _settingsChannel = new BroadcastChannel('hp_settings_sync');
+    _settingsChannel.onmessage = function(event) {
+      if (!event.data || !event.data.key) return;
+      var key = event.data.key;
+      var val = event.data.value;
+      window.debugLog('[BroadcastChannel] Received setting update:', key, val);
+
+      try {
+        switch (key) {
+          // --- Exchange Rate ---
+          case 'exchange_rate':
+            if (val != null && !isNaN(parseFloat(val))) {
+              EXCHANGE_RATE = parseFloat(val);
+              var exEl = document.getElementById("exchange_rate");
+              if (exEl) {
+                exEl.value = EXCHANGE_RATE.toFixed(2);
+                exEl.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+            }
+            break;
+
+          // --- Shipping & Expenses (CONFIG) ---
+          case 'shipping_sea':
+            if (val != null && !isNaN(val)) CONFIG.SHIPPING_SEA = parseFloat(val);
+            break;
+          case 'ths_cost':
+            if (val != null && !isNaN(val)) CONFIG.THS = parseFloat(val);
+            break;
+          case 'clearance_expenses':
+            if (val != null && !isNaN(val)) CONFIG.EXPENSES_CLEARANCE = parseFloat(val);
+            break;
+          case 'tax_rate':
+            if (val != null && !isNaN(val)) CONFIG.TAX_RATE = parseFloat(val);
+            break;
+          case 'bank_commission':
+            if (val != null && !isNaN(val)) CONFIG.BANK_COMMISSION = parseFloat(val);
+            break;
+
+          // --- Material Adjustments ---
+          case 'material_adjustments':
+            if (val && typeof val === 'object') MATERIAL_ADJUSTMENTS = val;
+            break;
+
+          // --- Winder Adjustment ---
+          case 'winder_adjustment':
+            if (val && typeof val === 'object') WINDER_ADJUSTMENT = val;
+            break;
+
+          // --- Optional Equipment Adjustments ---
+          case 'optional_adjustments':
+            if (val && typeof val === 'object') OPTIONAL_ADJUSTMENTS = val;
+            break;
+
+          // --- Markup Percentages ---
+          case 'markups':
+            if (val && typeof val === 'object') {
+              if (val.overseas != null) MARKUPS.overseas = parseFloat(val.overseas);
+              if (val.local_instock_4color != null) MARKUPS.local_instock_4color = parseFloat(val.local_instock_4color);
+              if (val.local_instock_other != null) MARKUPS.local_instock_other = parseFloat(val.local_instock_other);
+              if (val.local_neworder_4color != null) MARKUPS.local_neworder_4color = parseFloat(val.local_neworder_4color);
+              if (val.local_neworder_other != null) MARKUPS.local_neworder_other = parseFloat(val.local_neworder_other);
+            }
+            break;
+
+          // --- Machine Prices ---
+          case 'machine_prices':
+            if (val && typeof val === 'object') {
+              MACHINE_PRICES = normalizePricesKeys(val);
+            }
+            break;
+
+          // --- Cylinder Prices ---
+          case 'cylinder_prices':
+            if (val && typeof val === 'object' && window.applyCylinderPricesMap) {
+              window.applyCylinderPricesMap(val);
+            }
+            break;
+
+          default:
+            window.debugLog('[BroadcastChannel] Unknown setting key:', key);
+            return; // لا نعمل recalculate لمفاتيح غير معروفة
+        }
+
+        // إعادة الحساب بعد أي تحديث
+        if (typeof window.calculateAll === 'function' && isModelReady()) {
+          window.calculateAll();
+          window.debugLog('[BroadcastChannel] Recalculated after', key, 'update');
+        }
+      } catch (e) {
+        window.debugWarn('[BroadcastChannel] Error applying setting:', key, e);
+      }
+    };
+    window.debugLog('[BroadcastChannel] Settings sync receiver initialized');
+  } catch (e) {
+    window.debugWarn('[BroadcastChannel] Not supported in this browser:', e);
+  }
+
 })();

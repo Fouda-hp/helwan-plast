@@ -455,6 +455,15 @@ class AdminPanel(AdminPanelTemplate):
             section.insertBefore(wrap, section.firstChild);
           }
 
+          // === Broadcast helper: إرسال تحديث لكل الـ tabs (Calculator etc.) ===
+          function broadcastSettingChange(key, value) {
+            try {
+              var bc = new BroadcastChannel('hp_settings_sync');
+              bc.postMessage({ key: key, value: value });
+              bc.close();
+            } catch(e) {}
+          }
+
           function patchSaveSetting() {
             // Override saveSetting completely to fix sync issues
             window.saveSetting = async function(key, isPercent) {
@@ -479,16 +488,8 @@ class AdminPanel(AdminPanelTemplate):
               try {
                 var result = await window.updateSetting(key, value);
                 if (result && result.success) {
-                  // Sync to localStorage for important settings
-                  if (key === 'exchange_rate') {
-                    localStorage.setItem('exchange_rate', String(input.value));
-                    // Dispatch storage event for other tabs
-                    window.dispatchEvent(new StorageEvent('storage', {
-                      key: 'exchange_rate',
-                      newValue: String(input.value)
-                    }));
-                  }
-                  
+                  broadcastSettingChange(key, value);
+
                   if (window.showNotification) {
                     window.showNotification('success', 'Saved!', key + ' updated successfully');
                   }
@@ -514,6 +515,7 @@ class AdminPanel(AdminPanelTemplate):
               try {
                 var result = await window.updateSetting(key, value);
                 if (result && result.success) {
+                  broadcastSettingChange(key, value);
                   if (window.showNotification) {
                     window.showNotification('success', 'Saved!', key + ' updated successfully');
                   }
@@ -1097,6 +1099,7 @@ class AdminPanel(AdminPanelTemplate):
               if (window.saveMachinePrices) {
                 var result = await window.saveMachinePrices(prices);
                 if (result && result.success) {
+                  broadcastSettingChange('machine_prices', prices);
                   if (window.showNotification) window.showNotification('success', 'Saved!', 'Machine prices saved successfully');
                 } else if (window.showNotification) window.showNotification('error', 'Error', result ? result.message : 'Error saving prices');
               } else if (window.showNotification) window.showNotification('warning', 'تنبيه', 'Save function not available. Please refresh the page.');
@@ -1195,6 +1198,7 @@ class AdminPanel(AdminPanelTemplate):
             try {
               var result = await window.updateSetting('cylinder_prices', obj);
               if (result && result.success) {
+                broadcastSettingChange('cylinder_prices', obj);
                 if (window.showNotification) window.showNotification('success', 'تم الحفظ', 'أسعار الأسطوانات محفوظة');
               } else if (window.showNotification) window.showNotification('error', 'خطأ', result ? result.message : 'Error');
             } catch(e) { if (window.showNotification) window.showNotification('error', 'خطأ', 'Error: ' + e); }
@@ -1700,6 +1704,7 @@ class AdminPanel(AdminPanelTemplate):
             try {
               var result = await window.updateSetting('material_adjustments', obj);
               if (result && result.success) {
+                broadcastSettingChange('material_adjustments', obj);
                 if (window.showNotification) window.showNotification('success', 'Saved!', 'Material adjustments saved');
               } else {
                 if (window.showNotification) window.showNotification('error', 'Error', result ? result.message : 'Error saving');
@@ -1717,6 +1722,7 @@ class AdminPanel(AdminPanelTemplate):
             try {
               var result = await window.updateSetting('winder_adjustment', obj);
               if (result && result.success) {
+                broadcastSettingChange('winder_adjustment', obj);
                 if (window.showNotification) window.showNotification('success', 'Saved!', 'Winder adjustment saved');
               } else {
                 if (window.showNotification) window.showNotification('error', 'Error', result ? result.message : 'Error saving');
@@ -1734,6 +1740,7 @@ class AdminPanel(AdminPanelTemplate):
             try {
               var result = await window.updateSetting('optional_adjustments', obj);
               if (result && result.success) {
+                broadcastSettingChange('optional_adjustments', obj);
                 if (window.showNotification) window.showNotification('success', 'Saved!', 'Equipment adjustments saved');
               } else {
                 if (window.showNotification) window.showNotification('error', 'Error', result ? result.message : 'Error saving');
@@ -1768,6 +1775,13 @@ class AdminPanel(AdminPanelTemplate):
               }
             }
             if (allOk) {
+              // Broadcast all markups as one message
+              var markups = {};
+              keys.forEach(function(k) {
+                var inp = document.getElementById('adj_' + k);
+                if (inp) markups[k.replace('markup_', '')] = parseFloat(inp.value);
+              });
+              broadcastSettingChange('markups', markups);
               if (window.showNotification) window.showNotification('success', 'Saved!', 'All markup percentages saved successfully');
             }
           };

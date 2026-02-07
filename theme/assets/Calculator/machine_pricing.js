@@ -28,6 +28,18 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
     try {
       var auth = (typeof sessionStorage !== 'undefined' && (sessionStorage.getItem('auth_token') || sessionStorage.getItem('user_email'))) || null;
       const data = await window.anvil?.server?.call('get_calculator_settings', auth);
+      console.log('[DIAG] get_calculator_settings result:', JSON.stringify({
+        success: data?.success,
+        hasPriceOptions: !!(data?.priceOptions),
+        priceOptionsTypes: data?.priceOptions?.types,
+        priceOptionsTypeColors: data?.priceOptions?.typeColors,
+        priceOptionsTypeColorWidths: data?.priceOptions?.typeColorWidths,
+        hasMachinePrices: !!(data?.machinePrices),
+        machinePricesKeys: data?.machinePrices ? Object.keys(data.machinePrices) : null,
+        hasConfig: !!(data?.config),
+        configWidths: data?.config?.widths,
+        message: data?.message
+      }, null, 2));
       if (!data || data.success === false) return;
       if (data.exchangeRate != null && !isNaN(data.exchangeRate)) {
         EXCHANGE_RATE = parseFloat(data.exchangeRate);
@@ -243,6 +255,13 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
       if (!call) return;
       var auth = (typeof sessionStorage !== 'undefined' && (sessionStorage.getItem('auth_token') || sessionStorage.getItem('user_email'))) || null;
       var result = await call('get_machine_prices', auth);
+      console.log('[DIAG] get_machine_prices result:', JSON.stringify({
+        success: result?.success,
+        hasOptions: !!(result?.options),
+        optionTypes: result?.options?.types,
+        optionTypeColorWidths: result?.options?.typeColorWidths,
+        pricesKeys: result?.prices ? Object.keys(result.prices) : null
+      }, null, 2));
       if (result && result.success && result.prices) {
         MACHINE_PRICES = normalizePricesKeys(result.prices);
         if (result.options && result.options.types && result.options.types.length > 0) {

@@ -263,8 +263,8 @@ def store_otp(user_email, otp, purpose='verification'):
       user_email=user_email,
       otp_code=otp_hash,
       purpose=purpose,
-      created_at=datetime.now(),
-      expires_at=datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
+      created_at=get_utc_now(),
+      expires_at=get_utc_now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
       is_used=False
     )
     return True
@@ -623,7 +623,7 @@ def register_user(email, password, full_name, phone=None):
             is_approved=False,
             is_active=True,
             email_verified=False,  # غير مُتحقق من الإيميل بعد
-            created_at=datetime.now(),
+            created_at=get_utc_now(),
             login_attempts=0,
             custom_permissions=None
         )
@@ -775,8 +775,8 @@ def login_user(email, password):
         return {'success': False, 'message': 'Please verify your email first'}
 
     # التحقق من القفل
-    if user['locked_until'] and user['locked_until'] > datetime.now():
-        remaining = (user['locked_until'] - datetime.now()).seconds // 60
+    if user['locked_until'] and user['locked_until'] > get_utc_now():
+        remaining = (user['locked_until'] - get_utc_now()).seconds // 60
         return {
             'success': False,
             'message': f'Account locked. Try again in {remaining} minutes.'
@@ -798,7 +798,7 @@ def login_user(email, password):
         if attempts >= MAX_LOGIN_ATTEMPTS:
             user.update(
                 login_attempts=attempts,
-                locked_until=datetime.now() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+                locked_until=get_utc_now() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
             )
             log_audit('ACCOUNT_LOCKED', 'users', user['user_id'], None,
                       {'email': email, 'attempts': attempts}, email, ip_address)
@@ -895,7 +895,7 @@ def complete_login(user, ip_address):
     user.update(
         login_attempts=0,
         locked_until=None,
-        last_login=datetime.now()
+        last_login=get_utc_now()
     )
 
     # ملاحظة: ترقية كلمة المرور من التشفير القديم تتم تلقائياً عند التحقق من كلمة المرور
@@ -1002,7 +1002,7 @@ def validate_token(token):
         if not session_row:
             session_row = app_tables.sessions.get(session_token=token, is_active=True)
         if session_row:
-            session_row.update(expires_at=datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES))
+            session_row.update(expires_at=get_utc_now() + timedelta(minutes=SESSION_DURATION_MINUTES))
     except Exception as e:
         pass
 
@@ -1106,7 +1106,7 @@ def approve_user(token_or_email, user_id, role='viewer', custom_permissions=None
         role=role,
         custom_permissions=permissions_json,
         approved_by=admin_email,
-        approved_at=datetime.now()
+        approved_at=get_utc_now()
     )
 
     log_audit('APPROVE_USER', 'users', user_id, None, {
@@ -1451,8 +1451,8 @@ def store_pending_password(email, password_hash):
             pending_id=str(uuid.uuid4()),
             user_email=email,
             new_password_hash=password_hash,
-            created_at=datetime.now(),
-            expires_at=datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
+            created_at=get_utc_now(),
+            expires_at=get_utc_now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
         )
         return True
     except Exception as e:
@@ -1492,7 +1492,7 @@ def complete_password_change(email):
         return {'success': False, 'message': 'No pending password change found'}
 
     # التحقق من انتهاء الصلاحية
-    if datetime.now() > pending['expires_at']:
+    if get_utc_now() > pending['expires_at']:
         pending.delete()
         return {'success': False, 'message': 'Password change request has expired'}
 
@@ -1862,7 +1862,7 @@ def reset_admin_password_emergency(email, new_password, secret_key):
                 role='admin',
                 is_approved=True,
                 is_active=True,
-                created_at=datetime.now(),
+                created_at=get_utc_now(),
                 login_attempts=0,
                 custom_permissions=None
             )
@@ -1936,7 +1936,7 @@ def setup_initial_admin(email, password, full_name, phone=None):
             role='admin',
             is_approved=True,
             is_active=True,
-            created_at=datetime.now(),
+            created_at=get_utc_now(),
             login_attempts=0,
             custom_permissions=None
         )
@@ -2023,7 +2023,7 @@ def _initialize_default_settings():
                 setting_type=setting['type'],
                 description=setting['description'],
                 updated_by='system',
-                updated_at=datetime.now()
+                updated_at=get_utc_now()
             )
 
 
@@ -2088,7 +2088,7 @@ def update_setting(token_or_email, key, value):
             setting_type=stype,
             description=f'Auto-created setting: {key}',
             updated_by=admin_email,
-            updated_at=datetime.now()
+            updated_at=get_utc_now()
         )
         log_audit('CREATE_SETTING', 'settings', key,
                   None,
@@ -2106,7 +2106,7 @@ def update_setting(token_or_email, key, value):
     setting.update(
         setting_value=new_value,
         updated_by=admin_email,
-        updated_at=datetime.now()
+        updated_at=get_utc_now()
     )
 
     log_audit('UPDATE_SETTING', 'settings', key,
@@ -2184,7 +2184,15 @@ def get_calculator_settings(token_or_email=None):
         'bank_commission': None,
         'config': None,
         'priceOptions': None,
-        'cylinderPrices': None
+        'cylinderPrices': None,
+        'materialAdjustments': None,
+        'winderAdjustment': None,
+        'optionalAdjustments': None,
+        'markup_overseas': None,
+        'markup_local_instock_4color': None,
+        'markup_local_instock_other': None,
+        'markup_local_neworder_4color': None,
+        'markup_local_neworder_other': None
     }
     try:
         result['exchangeRate'] = get_setting('exchange_rate')
@@ -2193,6 +2201,25 @@ def get_calculator_settings(token_or_email=None):
         result['clearance_expenses'] = get_setting('clearance_expenses')
         result['tax_rate'] = get_setting('tax_rate')
         result['bank_commission'] = get_setting('bank_commission')
+        # تعديلات الأسعار والنسب (JSON)
+        ma = get_setting('material_adjustments')
+        if ma and isinstance(ma, dict):
+            result['materialAdjustments'] = ma
+        wa = get_setting('winder_adjustment')
+        if wa and isinstance(wa, dict):
+            result['winderAdjustment'] = wa
+        oa = get_setting('optional_adjustments')
+        if oa and isinstance(oa, dict):
+            result['optionalAdjustments'] = oa
+        # نسب الربح (أرقام فردية)
+        for mk in ['markup_overseas', 'markup_local_instock_4color', 'markup_local_instock_other',
+                    'markup_local_neworder_4color', 'markup_local_neworder_other']:
+            val = get_setting(mk)
+            if val is not None:
+                try:
+                    result[mk] = float(val)
+                except (ValueError, TypeError):
+                    pass
         cfg = get_machine_config()
         if cfg and cfg.get('success') and cfg.get('config'):
             result['config'] = cfg['config']
@@ -2399,7 +2426,7 @@ def save_machine_prices(token_or_email, prices):
                 setting_value=json.dumps(prices),
                 setting_type='json',
                 updated_by=admin_email,
-                updated_at=datetime.now()
+                updated_at=get_utc_now()
             )
         else:
             app_tables.settings.add_row(
@@ -2408,7 +2435,7 @@ def save_machine_prices(token_or_email, prices):
                 setting_type='json',
                 description='Machine prices configuration',
                 updated_by=admin_email,
-                updated_at=datetime.now()
+                updated_at=get_utc_now()
             )
         
         log_audit('UPDATE_SETTING', 'settings', 'machine_prices',
@@ -2474,7 +2501,7 @@ def save_machine_config(token_or_email, config):
                 setting_value=json.dumps(config),
                 setting_type='json',
                 updated_by=admin_email,
-                updated_at=datetime.now()
+                updated_at=get_utc_now()
             )
         else:
             app_tables.settings.add_row(
@@ -2483,7 +2510,7 @@ def save_machine_config(token_or_email, config):
                 setting_type='json',
                 description='Machine configuration (types, colors, widths)',
                 updated_by=admin_email,
-                updated_at=datetime.now()
+                updated_at=get_utc_now()
             )
         
         # Also update machine prices to include new types/colors/widths
@@ -2525,7 +2552,7 @@ def save_machine_config(token_or_email, config):
                     prices_setting.update(
                         setting_value=json.dumps(prices),
                         updated_by=admin_email,
-                        updated_at=datetime.now()
+                        updated_at=get_utc_now()
                     )
             except json.JSONDecodeError:
                 pass
@@ -2812,10 +2839,10 @@ def check_session_activity(token):
         session_record = app_tables.sessions.get(session_token=token_hash)
         if session_record:
             # تمديد الجلسة إذا كان المستخدم نشطاً
-            new_expires = datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES)
+            new_expires = get_utc_now() + timedelta(minutes=SESSION_DURATION_MINUTES)
             session_record.update(
                 expires_at=new_expires,
-                last_activity=datetime.now()
+                last_activity=get_utc_now()
             )
 
         return {
@@ -2843,7 +2870,7 @@ def get_session_info(token):
         token_hash = _hash_token(token)
         session_record = app_tables.sessions.get(session_token=token_hash)
         if session_record:
-            remaining = (session_record['expires_at'] - datetime.now()).total_seconds() / 60
+            remaining = (session_record['expires_at'] - get_utc_now()).total_seconds() / 60
 
             return {
                 'valid': True,

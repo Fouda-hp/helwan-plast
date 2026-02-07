@@ -900,6 +900,7 @@ class AdminPanel(AdminPanelTemplate):
               setTimeout(addMachinePricesSection, 100);
               setTimeout(addCylinderPricesSection, 150);
               setTimeout(addMachineConfigSection, 200);
+              setTimeout(addPricingAdjustmentsSection, 250);
             };
             window.loadSettings.__patched = true;
           }
@@ -1537,6 +1538,236 @@ class AdminPanel(AdminPanelTemplate):
             };
             window.loadAuditLogs.__patched = true;
           }
+
+          // ==========================================
+          // Pricing Adjustments & Markup Section
+          // تعديلات أسعار المواد والمعدات ونسب الربح
+          // ==========================================
+          async function addPricingAdjustmentsSection() {
+            var container = document.getElementById('settingsContent');
+            if (!container) return;
+            if (document.getElementById('pricingAdjustmentsSection')) return;
+
+            // Load current values from settings
+            var matAdj = null, winAdj = null, optAdj = null;
+            var mkOverseas = null, mkInstock4 = null, mkInstockOther = null, mkNew4 = null, mkNewOther = null;
+            try {
+              if (window.getSetting) {
+                matAdj = await window.getSetting('material_adjustments');
+                winAdj = await window.getSetting('winder_adjustment');
+                optAdj = await window.getSetting('optional_adjustments');
+                mkOverseas = await window.getSetting('markup_overseas');
+                mkInstock4 = await window.getSetting('markup_local_instock_4color');
+                mkInstockOther = await window.getSetting('markup_local_instock_other');
+                mkNew4 = await window.getSetting('markup_local_neworder_4color');
+                mkNewOther = await window.getSetting('markup_local_neworder_other');
+              }
+            } catch(e) { console.error('Load pricing adjustments error:', e); }
+
+            // Defaults
+            if (!matAdj || typeof matAdj !== 'object') matAdj = {"PP":9000,"Nonwoven":4000,"Paper to 100g":1500,"Paper to 200g":4750,"Paper to 300g":11050};
+            if (!winAdj || typeof winAdj !== 'object') winAdj = {"Single":-4000};
+            if (!optAdj || typeof optAdj !== 'object') optAdj = {"Video inspection":4000,"PLC":1800,"Slitter":800,"Pneumatic Unwind":750,"Hydraulic Station Unwind":1500,"Pneumatic Rewind":750,"Surface Rewind":3250};
+            if (mkOverseas == null) mkOverseas = 1.12;
+            if (mkInstock4 == null) mkInstock4 = 1.28;
+            if (mkInstockOther == null) mkInstockOther = 1.25;
+            if (mkNew4 == null) mkNew4 = 1.22;
+            if (mkNewOther == null) mkNewOther = 1.20;
+
+            var html = '<div id="pricingAdjustmentsSection" style="background:#fce4ec;padding:20px;border-radius:12px;margin-top:20px;border:2px solid #e91e63;">';
+
+            // === Section 1: Material Adjustments ===
+            html += '<h4 style="margin:0 0 15px;color:#880e4f;">💰 Material Price Adjustments (USD)</h4>';
+            html += '<p style="margin:0 0 10px;color:#ad1457;font-size:12px;">تعديل سعر الآلة بناءً على نوع الخامة. القيمة تُضاف إلى سعر الآلة الأساسي.</p>';
+            html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:20px;">';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#fce4ec;"><th style="padding:8px;border:1px solid #ddd;">Material</th><th style="padding:8px;border:1px solid #ddd;">Adjustment (USD)</th></tr></thead><tbody>';
+            Object.keys(matAdj).forEach(function(mat) {
+              html += '<tr><td style="padding:8px;border:1px solid #ddd;font-weight:600;">' + mat + '</td>';
+              html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;"><input type="number" class="mat-adj-input" data-mat="' + mat + '" value="' + (matAdj[mat] || 0) + '" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:4px;text-align:center;"></td></tr>';
+            });
+            html += '</tbody></table>';
+            // Add new material row
+            html += '<div style="margin-top:10px;display:flex;gap:8px;align-items:end;">';
+            html += '<input type="text" id="newMatName" placeholder="New Material Name" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:4px;">';
+            html += '<input type="number" id="newMatValue" placeholder="USD" value="0" style="width:100px;padding:6px;border:1px solid #ddd;border-radius:4px;">';
+            html += '<button onclick="addNewMaterialAdj()" style="padding:6px 12px;background:#e91e63;color:#fff;border:none;border-radius:4px;cursor:pointer;">➕</button>';
+            html += '</div>';
+            html += '<div style="margin-top:10px;text-align:center;"><button onclick="saveMaterialAdjustments()" style="padding:8px 24px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;">💾 Save Material Adjustments</button></div>';
+            html += '</div>';
+
+            // === Section 2: Winder Adjustment ===
+            html += '<h4 style="margin:15px 0 10px;color:#880e4f;">🔧 Winder Adjustment (USD)</h4>';
+            html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:20px;">';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#fce4ec;"><th style="padding:8px;border:1px solid #ddd;">Winder Type</th><th style="padding:8px;border:1px solid #ddd;">Adjustment (USD)</th></tr></thead><tbody>';
+            Object.keys(winAdj).forEach(function(w) {
+              html += '<tr><td style="padding:8px;border:1px solid #ddd;font-weight:600;">' + w + '</td>';
+              html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;"><input type="number" class="win-adj-input" data-win="' + w + '" value="' + (winAdj[w] || 0) + '" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:4px;text-align:center;"></td></tr>';
+            });
+            html += '</tbody></table>';
+            html += '<div style="margin-top:10px;text-align:center;"><button onclick="saveWinderAdjustment()" style="padding:8px 24px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;">💾 Save Winder Adjustment</button></div>';
+            html += '</div>';
+
+            // === Section 3: Optional Equipment Adjustments ===
+            html += '<h4 style="margin:15px 0 10px;color:#880e4f;">⚡ Optional Equipment Adjustments (USD)</h4>';
+            html += '<p style="margin:0 0 10px;color:#ad1457;font-size:12px;">أسعار المعدات الاختيارية التي تُضاف عند اختيارها في الكالكتور.</p>';
+            html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:20px;">';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#fce4ec;"><th style="padding:8px;border:1px solid #ddd;">Equipment</th><th style="padding:8px;border:1px solid #ddd;">Price (USD)</th></tr></thead><tbody>';
+            Object.keys(optAdj).forEach(function(eq) {
+              html += '<tr><td style="padding:8px;border:1px solid #ddd;font-weight:600;">' + eq + '</td>';
+              html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;"><input type="number" class="opt-adj-input" data-eq="' + eq + '" value="' + (optAdj[eq] || 0) + '" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:4px;text-align:center;"></td></tr>';
+            });
+            html += '</tbody></table>';
+            html += '<div style="margin-top:10px;text-align:center;"><button onclick="saveOptionalAdjustments()" style="padding:8px 24px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;">💾 Save Equipment Adjustments</button></div>';
+            html += '</div>';
+
+            // === Section 4: Profit Markup Percentages ===
+            html += '<h4 style="margin:15px 0 10px;color:#880e4f;">📊 Profit Markup Percentages</h4>';
+            html += '<p style="margin:0 0 10px;color:#ad1457;font-size:12px;">نسب الربح المطبقة على الأسعار. مثال: 1.25 = ربح 25%</p>';
+            html += '<div style="background:#fff;padding:15px;border-radius:8px;">';
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">';
+
+            var markupFields = [
+              {id: 'markup_overseas', label: 'Overseas Markup', labelAr: 'نسبة التصدير', val: mkOverseas},
+              {id: 'markup_local_instock_4color', label: 'Local In-Stock (4 Colors)', labelAr: 'محلي متوفر (4 ألوان)', val: mkInstock4},
+              {id: 'markup_local_instock_other', label: 'Local In-Stock (Other)', labelAr: 'محلي متوفر (غير 4 ألوان)', val: mkInstockOther},
+              {id: 'markup_local_neworder_4color', label: 'Local New Order (4 Colors)', labelAr: 'محلي أوردر جديد (4 ألوان)', val: mkNew4},
+              {id: 'markup_local_neworder_other', label: 'Local New Order (Other)', labelAr: 'محلي أوردر جديد (غير 4 ألوان)', val: mkNewOther}
+            ];
+
+            markupFields.forEach(function(f) {
+              var pct = ((parseFloat(f.val) - 1) * 100).toFixed(1);
+              html += '<div style="background:#f8f9fa;padding:12px;border-radius:6px;">';
+              html += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">' + f.label + '</label>';
+              html += '<label style="font-size:11px;color:#999;display:block;margin-bottom:6px;">' + f.labelAr + '</label>';
+              html += '<div style="display:flex;gap:8px;align-items:center;">';
+              html += '<input type="number" id="adj_' + f.id + '" value="' + parseFloat(f.val).toFixed(4) + '" step="0.01" min="1" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;text-align:center;">';
+              html += '<span style="font-size:12px;color:#888;min-width:50px;" id="pct_' + f.id + '">(' + pct + '%)</span>';
+              html += '</div></div>';
+            });
+
+            html += '</div>';
+            html += '<div style="margin-top:15px;text-align:center;"><button onclick="saveMarkupPercentages()" style="padding:10px 30px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">💾 Save All Markup Percentages</button></div>';
+            html += '</div>';
+
+            html += '</div>';  // Close pricingAdjustmentsSection
+
+            // Insert at end of settings content
+            container.insertAdjacentHTML('beforeend', html);
+
+            // Live percentage preview
+            markupFields.forEach(function(f) {
+              var inp = document.getElementById('adj_' + f.id);
+              var pctSpan = document.getElementById('pct_' + f.id);
+              if (inp && pctSpan) {
+                inp.addEventListener('input', function() {
+                  var v = parseFloat(inp.value);
+                  if (!isNaN(v)) pctSpan.textContent = '(' + ((v - 1) * 100).toFixed(1) + '%)';
+                });
+              }
+            });
+          }
+
+          // Save handlers for pricing adjustments
+          window.addNewMaterialAdj = function() {
+            var nameEl = document.getElementById('newMatName');
+            var valEl = document.getElementById('newMatValue');
+            if (!nameEl || !nameEl.value.trim()) {
+              if (window.showNotification) window.showNotification('error', 'Error', 'Please enter material name');
+              return;
+            }
+            var tbody = document.querySelector('#pricingAdjustmentsSection table tbody');
+            if (!tbody) return;
+            var name = nameEl.value.trim();
+            var val = parseFloat(valEl.value) || 0;
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td style="padding:8px;border:1px solid #ddd;font-weight:600;">' + name + '</td>' +
+              '<td style="padding:8px;border:1px solid #ddd;text-align:center;"><input type="number" class="mat-adj-input" data-mat="' + name + '" value="' + val + '" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:4px;text-align:center;"></td>';
+            tbody.appendChild(tr);
+            nameEl.value = '';
+            valEl.value = '0';
+          };
+
+          window.saveMaterialAdjustments = async function() {
+            var obj = {};
+            document.querySelectorAll('.mat-adj-input').forEach(function(inp) {
+              var mat = inp.getAttribute('data-mat');
+              var val = parseFloat(inp.value);
+              if (mat && !isNaN(val)) obj[mat] = val;
+            });
+            try {
+              var result = await window.updateSetting('material_adjustments', obj);
+              if (result && result.success) {
+                if (window.showNotification) window.showNotification('success', 'Saved!', 'Material adjustments saved');
+              } else {
+                if (window.showNotification) window.showNotification('error', 'Error', result ? result.message : 'Error saving');
+              }
+            } catch(e) { if (window.showNotification) window.showNotification('error', 'Error', 'Error: ' + e); }
+          };
+
+          window.saveWinderAdjustment = async function() {
+            var obj = {};
+            document.querySelectorAll('.win-adj-input').forEach(function(inp) {
+              var w = inp.getAttribute('data-win');
+              var val = parseFloat(inp.value);
+              if (w && !isNaN(val)) obj[w] = val;
+            });
+            try {
+              var result = await window.updateSetting('winder_adjustment', obj);
+              if (result && result.success) {
+                if (window.showNotification) window.showNotification('success', 'Saved!', 'Winder adjustment saved');
+              } else {
+                if (window.showNotification) window.showNotification('error', 'Error', result ? result.message : 'Error saving');
+              }
+            } catch(e) { if (window.showNotification) window.showNotification('error', 'Error', 'Error: ' + e); }
+          };
+
+          window.saveOptionalAdjustments = async function() {
+            var obj = {};
+            document.querySelectorAll('.opt-adj-input').forEach(function(inp) {
+              var eq = inp.getAttribute('data-eq');
+              var val = parseFloat(inp.value);
+              if (eq && !isNaN(val)) obj[eq] = val;
+            });
+            try {
+              var result = await window.updateSetting('optional_adjustments', obj);
+              if (result && result.success) {
+                if (window.showNotification) window.showNotification('success', 'Saved!', 'Equipment adjustments saved');
+              } else {
+                if (window.showNotification) window.showNotification('error', 'Error', result ? result.message : 'Error saving');
+              }
+            } catch(e) { if (window.showNotification) window.showNotification('error', 'Error', 'Error: ' + e); }
+          };
+
+          window.saveMarkupPercentages = async function() {
+            var keys = ['markup_overseas', 'markup_local_instock_4color', 'markup_local_instock_other',
+                        'markup_local_neworder_4color', 'markup_local_neworder_other'];
+            var allOk = true;
+            for (var i = 0; i < keys.length; i++) {
+              var inp = document.getElementById('adj_' + keys[i]);
+              if (!inp) continue;
+              var val = parseFloat(inp.value);
+              if (isNaN(val) || val < 1) {
+                if (window.showNotification) window.showNotification('error', 'Error', 'Markup must be >= 1.0 for ' + keys[i]);
+                allOk = false;
+                break;
+              }
+              try {
+                var result = await window.updateSetting(keys[i], val);
+                if (!result || !result.success) {
+                  allOk = false;
+                  if (window.showNotification) window.showNotification('error', 'Error', 'Failed to save ' + keys[i]);
+                  break;
+                }
+              } catch(e) {
+                allOk = false;
+                if (window.showNotification) window.showNotification('error', 'Error', 'Error saving ' + keys[i] + ': ' + e);
+                break;
+              }
+            }
+            if (allOk) {
+              if (window.showNotification) window.showNotification('success', 'Saved!', 'All markup percentages saved successfully');
+            }
+          };
 
           function run() {
             insertDataImportNav();

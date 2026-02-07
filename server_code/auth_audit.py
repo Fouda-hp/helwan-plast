@@ -8,6 +8,11 @@ auth_audit.py - سجل التدقيق المفصل
 from anvil.tables import app_tables
 from datetime import datetime
 import json
+
+try:
+    from .auth_utils import get_utc_now
+except ImportError:
+    from auth_utils import get_utc_now
 import uuid
 import logging
 
@@ -98,7 +103,7 @@ def log_audit(action, table_name, record_id, old_data, new_data,
 
         row_data = {
             'log_id': str(uuid.uuid4()),
-            'timestamp': datetime.now(),
+            'timestamp': get_utc_now(),
             'user_email': (user_email or 'system').strip() if user_email else 'system',
             'action': action or '',
             'table_name': table_name or '',

@@ -14,6 +14,11 @@ import logging
 from datetime import datetime
 
 from anvil.tables import app_tables
+
+try:
+    from .auth_utils import get_utc_now
+except ImportError:
+    from auth_utils import get_utc_now
 from anvil.tables import order_by as anvil_order_by
 import anvil.server
 
@@ -39,7 +44,7 @@ def create_notification(user_email, notif_type, payload):
             user_email=str(user_email).strip().lower(),
             type=str(notif_type),
             payload=json.dumps(payload, ensure_ascii=False, default=str),
-            created_at=datetime.now(),
+            created_at=get_utc_now(),
             read_at=None
         )
     except Exception as e:
@@ -99,7 +104,7 @@ def mark_notification_read(notification_id, token_or_email):
     try:
         row = app_tables.notifications.get(id=notification_id, user_email=user_email)
         if row:
-            row.update(read_at=datetime.now())
+            row.update(read_at=get_utc_now())
         return {'success': True}
     except Exception as e:
         return {'success': False, 'message': str(e)}
@@ -112,7 +117,7 @@ def clear_all_notifications(token_or_email):
     if not user_email:
         return {'success': False, 'message': 'Authentication required'}
     try:
-        now = datetime.now()
+        now = get_utc_now()
         for row in app_tables.notifications.search(user_email=user_email, read_at=None):
             row.update(read_at=now)
         return {'success': True}

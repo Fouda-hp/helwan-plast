@@ -193,6 +193,22 @@ class CalculatorForm(CalculatorFormTemplate):
         logger.warning("form_show: NO machinePrices in server response!")
       if data.get("cylinderPrices") is not None:
         settings_payload["cylinderPrices"] = data["cylinderPrices"]
+      # تعديلات الأسعار والنسب (من Settings)
+      for adj_key in ["materialAdjustments", "winderAdjustment", "optionalAdjustments"]:
+        if data.get(adj_key) is not None:
+          settings_payload[adj_key] = data[adj_key]
+      # نسب الربح (Markups)
+      markups = {}
+      for mk in ["markup_overseas", "markup_local_instock_4color", "markup_local_instock_other",
+                  "markup_local_neworder_4color", "markup_local_neworder_other"]:
+        val = data.get(mk)
+        if val is not None:
+          try:
+            markups[mk.replace("markup_", "")] = float(val)
+          except (ValueError, TypeError):
+            pass
+      if markups:
+        settings_payload["markups"] = markups
       # تمرير البيانات مباشرة عبر anvil.js بدون eval
       logger.info("form_show: settings_payload keys=%s, has priceOptions=%s", list(settings_payload.keys()), bool(settings_payload.get("priceOptions")))
       try:

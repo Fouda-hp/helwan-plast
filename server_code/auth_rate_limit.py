@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from anvil.tables import app_tables
 
 from .auth_constants import RATE_LIMIT_WINDOW_MINUTES, RATE_LIMIT_MAX_REQUESTS
+from .auth_utils import get_utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ def check_rate_limit(ip_address, endpoint='general'):
     if not ip_address:
         ip_address = 'unknown'
     try:
-        now = datetime.now()
+        now = get_utc_now()
         window_start = now - timedelta(minutes=RATE_LIMIT_WINDOW_MINUTES)
         records = list(app_tables.rate_limits.search(ip_address=ip_address, endpoint=endpoint))
         record = records[0] if records else None

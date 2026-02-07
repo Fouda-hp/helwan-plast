@@ -20,6 +20,12 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
     BANK_COMMISSION: 0.0132
   };
 
+  // تعديلات الأسعار - القيم الافتراضية (تُحمّل من السيرفر عبر Settings)
+  let MATERIAL_ADJUSTMENTS = {"PP":9000,"Nonwoven":4000,"Paper to 100g":1500,"Paper to 200g":4750,"Paper to 300g":11050};
+  let WINDER_ADJUSTMENT = {"Single":-4000};
+  let OPTIONAL_ADJUSTMENTS = {"Video inspection":4000,"PLC":1800,"Slitter":800,"Pneumatic Unwind":750,"Hydraulic Station Unwind":1500,"Pneumatic Rewind":750,"Surface Rewind":3250};
+  let MARKUPS = {overseas:1.12,local_instock_4color:1.28,local_instock_other:1.25,local_neworder_4color:1.22,local_neworder_other:1.20};
+
   // الإعدادات تُحمّل حصرياً من Python (form_show → applyCalculatorSettingsFromPython)
   // لا يوجد تحميل مباشر من JS لأن anvil.server غير متاح في iframe
   window._settingsLoaded = false;
@@ -340,6 +346,17 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
       if (data.clearance_expenses != null && !isNaN(data.clearance_expenses)) CONFIG.EXPENSES_CLEARANCE = parseFloat(data.clearance_expenses);
       if (data.tax_rate != null && !isNaN(data.tax_rate)) CONFIG.TAX_RATE = parseFloat(data.tax_rate);
       if (data.bank_commission != null && !isNaN(data.bank_commission)) CONFIG.BANK_COMMISSION = parseFloat(data.bank_commission);
+      // تعديلات الأسعار والنسب من السيرفر
+      if (data.materialAdjustments && typeof data.materialAdjustments === 'object') MATERIAL_ADJUSTMENTS = data.materialAdjustments;
+      if (data.winderAdjustment && typeof data.winderAdjustment === 'object') WINDER_ADJUSTMENT = data.winderAdjustment;
+      if (data.optionalAdjustments && typeof data.optionalAdjustments === 'object') OPTIONAL_ADJUSTMENTS = data.optionalAdjustments;
+      if (data.markups && typeof data.markups === 'object') {
+        if (data.markups.overseas != null) MARKUPS.overseas = parseFloat(data.markups.overseas);
+        if (data.markups.local_instock_4color != null) MARKUPS.local_instock_4color = parseFloat(data.markups.local_instock_4color);
+        if (data.markups.local_instock_other != null) MARKUPS.local_instock_other = parseFloat(data.markups.local_instock_other);
+        if (data.markups.local_neworder_4color != null) MARKUPS.local_neworder_4color = parseFloat(data.markups.local_neworder_4color);
+        if (data.markups.local_neworder_other != null) MARKUPS.local_neworder_other = parseFloat(data.markups.local_neworder_other);
+      }
       // المصدر الوحيد: جدول Machine Prices (USD) — machinePrices + priceOptions
       if (data.cylinderPrices && window.applyCylinderPricesMap) {
         window.applyCylinderPricesMap(data.cylinderPrices);
@@ -431,28 +448,22 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
   }
 
   function getMaterialAdjustment() {
-    return {
-      PP: 9000,
-      Nonwoven: 4000,
-      "Paper to 100g": 1500,
-      "Paper to 200g": 4750,
-      "Paper to 300g": 11050
-    }[material.value] || 0;
+    return MATERIAL_ADJUSTMENTS[material.value] || 0;
   }
 
   function getWinderAdjustment() {
-    return winder.value === "Single" ? -4000 : 0;
+    return WINDER_ADJUSTMENT[winder.value] || 0;
   }
 
   function getOptionalAdjustment() {
     let t = 0;
-    if (document.getElementById("Video inspection")?.checked) t += 4000;
-    if (document.getElementById("PLC")?.checked) t += 1800;
-    if (document.getElementById("Slitter")?.checked) t += 800;
-    if (unw1.checked) t += 750;
-    if (unw2.checked) t += 1500;
-    if (rew1.checked) t += 750;
-    if (rew2.checked) t += 3250;
+    if (document.getElementById("Video inspection")?.checked) t += (OPTIONAL_ADJUSTMENTS["Video inspection"] || 0);
+    if (document.getElementById("PLC")?.checked) t += (OPTIONAL_ADJUSTMENTS["PLC"] || 0);
+    if (document.getElementById("Slitter")?.checked) t += (OPTIONAL_ADJUSTMENTS["Slitter"] || 0);
+    if (unw1.checked) t += (OPTIONAL_ADJUSTMENTS["Pneumatic Unwind"] || 0);
+    if (unw2.checked) t += (OPTIONAL_ADJUSTMENTS["Hydraulic Station Unwind"] || 0);
+    if (rew1.checked) t += (OPTIONAL_ADJUSTMENTS["Pneumatic Rewind"] || 0);
+    if (rew2.checked) t += (OPTIONAL_ADJUSTMENTS["Surface Rewind"] || 0);
     return t;
   }
 
@@ -558,7 +569,7 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
       window.STATE.baseMachineUSD + window.STATE.cylindersUSD;
 
     window.STATE.overseasUSD =
-      halfUpRound(window.STATE.machineWithCylUSD * 1.12);
+      halfUpRound(window.STATE.machineWithCylUSD * (MARKUPS.overseas || 1.12));
 
     const baseUSD =
       CONFIG.SHIPPING_SEA +
@@ -570,10 +581,10 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
     const egp = baseUSD * EXCHANGE_RATE;
 
     window.STATE.localInStockEGP =
-      Math.round(egp * (colors.value == 4 ? 1.28 : 1.25));
+      Math.round(egp * (colors.value == 4 ? (MARKUPS.local_instock_4color || 1.28) : (MARKUPS.local_instock_other || 1.25)));
 
     window.STATE.localNewOrderEGP =
-      Math.round(egp * (colors.value == 4 ? 1.22 : 1.20));
+      Math.round(egp * (colors.value == 4 ? (MARKUPS.local_neworder_4color || 1.22) : (MARKUPS.local_neworder_other || 1.20)));
 
     document.getElementById("std_price").value =
       window.STATE.baseMachineUSD.toLocaleString("en-US",{style:"currency",currency:"USD"});

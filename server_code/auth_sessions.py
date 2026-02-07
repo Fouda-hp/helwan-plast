@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from anvil.tables import app_tables
 
 from .auth_constants import SESSION_DURATION_MINUTES, MAX_SESSIONS_PER_USER
+from .auth_utils import get_utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +30,11 @@ def generate_session_token():
 def create_session(user_email, role, ip_address=None, user_agent=None):
     token = generate_session_token()
     token_hash = _hash_token(token)
-    expires = datetime.now() + timedelta(minutes=SESSION_DURATION_MINUTES)
+    expires = get_utc_now() + timedelta(minutes=SESSION_DURATION_MINUTES)
     ip = ip_address or 'unknown'
     try:
         active_sessions = list(app_tables.sessions.search(user_email=user_email, is_active=True))
-        now = datetime.now()
+        now = get_utc_now()
         valid_sessions = [s for s in active_sessions if s['expires_at'] > now]
         for s in active_sessions:
             if s['expires_at'] <= now:
@@ -45,7 +46,7 @@ def create_session(user_email, role, ip_address=None, user_agent=None):
             session_token=token_hash,
             user_email=user_email,
             user_role=role,
-            created_at=datetime.now(),
+            created_at=get_utc_now(),
             expires_at=expires,
             ip_address=ip,
             user_agent=user_agent or 'unknown',
@@ -80,7 +81,7 @@ def validate_session(token):
         expires_at = session.get('expires_at')
         if expires_at is not None:
             try:
-                if datetime.now() > expires_at:
+                if get_utc_now() > expires_at:
                     session.update(is_active=False)
                     return None
             except (TypeError, ValueError):
@@ -92,6 +93,12 @@ def validate_session(token):
         if not user['is_active'] or not user['is_approved']:
             session.update(is_active=False)
             return None
+        # Sliding expiration - تمديد الجلسة عند كل استخدام ناجح
+        try:
+            new_expires = get_utc_now() + timedelta(minutes=SESSION_DURATION_MINUTES)
+            session.update(expires_at=new_expires)
+        except Exception:
+            pass  # لا نفشل الجلسة بسبب خطأ في التمديد
         return {
             'email': session['user_email'],
             'role': user['role'],
@@ -131,7 +138,7 @@ def destroy_session(token):
 def cleanup_expired_sessions():
     """تنظيف الجلسات المنتهية - يمكن استدعاؤها يدوياً أو عبر Scheduler"""
     try:
-        now = datetime.now()
+        now = get_utc_now()
         cleaned = 0
         for s in app_tables.sessions.search(is_active=True):
             if s.get('expires_at') and s['expires_at'] < now:

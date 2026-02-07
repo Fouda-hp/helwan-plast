@@ -10,6 +10,7 @@ from datetime import datetime
 from anvil.tables import app_tables
 
 from .auth_constants import PBKDF2_ITERATIONS, PASSWORD_HISTORY_COUNT
+from .auth_utils import get_utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ def add_to_password_history(user_email, password_hash):
             history_id=str(uuid.uuid4()),
             user_email=user_email,
             password_hash=password_hash,
-            created_at=datetime.now()
+            created_at=get_utc_now()
         )
         history = list(app_tables.password_history.search(user_email=user_email))
         history.sort(key=lambda x: x['created_at'], reverse=True)

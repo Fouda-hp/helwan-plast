@@ -47,6 +47,10 @@ try:
     from . import quotation_pdf
 except ImportError:
     import quotation_pdf
+try:
+    from .auth_utils import get_utc_now
+except ImportError:
+    from auth_utils import get_utc_now
 
 # =========================================================
 # إعداد نظام التسجيل (Logging)
@@ -428,9 +432,9 @@ def save_client_data(client_code, form_data, is_new, user_email='system', ip_add
         try:
             date_value = datetime.strptime(date_value, '%Y-%m-%d').date()
         except (ValueError, TypeError):
-            date_value = datetime.now().date()
+            date_value = get_utc_now().date()
     elif not date_value:
-        date_value = datetime.now().date()
+        date_value = get_utc_now().date()
 
     data = {
         'Client Code': str(client_code),
@@ -445,12 +449,12 @@ def save_client_data(client_code, form_data, is_new, user_email='system', ip_add
         'Source': safe_strip(form_data.get('Source')),
         'is_deleted': False,
         'updated_by': user_email,
-        'updated_at': datetime.now()
+        'updated_at': get_utc_now()
     }
 
     if is_new:
         data['created_by'] = user_email
-        data['created_at'] = datetime.now()
+        data['created_at'] = get_utc_now()
         app_tables.clients.add_row(**data)
         log_audit('CREATE', 'clients', client_code, None, data, user_email, ip_address)
         return "Added Client"
@@ -478,9 +482,9 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
         try:
             date_value = datetime.strptime(date_value, '%Y-%m-%d').date()
         except (ValueError, TypeError):
-            date_value = datetime.now().date()
+            date_value = get_utc_now().date()
     elif not date_value:
-        date_value = datetime.now().date()
+        date_value = get_utc_now().date()
 
     data = {
         'Client Code': str(client_code),
@@ -524,7 +528,7 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
 
         'is_deleted': False,
         'updated_by': user_email,
-        'updated_at': datetime.now()
+        'updated_at': get_utc_now()
     }
 
     # إضافة بيانات الأسطوانات
@@ -535,7 +539,7 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
 
     if is_new:
         data['created_by'] = user_email
-        data['created_at'] = datetime.now()
+        data['created_at'] = get_utc_now()
         app_tables.quotations.add_row(**data)
         log_audit('CREATE', 'quotations', quotation_number, None, data, user_email, ip_address)
         return "Added Quotation"
@@ -583,7 +587,7 @@ def soft_delete_client(client_code, token_or_email=None):
     old_data = {"is_deleted": row.get('is_deleted', False)}
     row.update(
         is_deleted=True,
-        deleted_at=datetime.now(),
+        deleted_at=get_utc_now(),
         deleted_by=user_email
     )
     log_audit('SOFT_DELETE', 'clients', client_code, old_data, {"is_deleted": True}, user_email, ip_address)
@@ -614,7 +618,7 @@ def soft_delete_quotation(quotation_number, token_or_email=None):
     old_data = {"is_deleted": row.get('is_deleted', False)}
     row.update(
         is_deleted=True,
-        deleted_at=datetime.now(),
+        deleted_at=get_utc_now(),
         deleted_by=user_email
     )
     log_audit('SOFT_DELETE', 'quotations', quotation_number, old_data, {"is_deleted": True}, user_email, ip_address)
@@ -1025,7 +1029,7 @@ def get_dashboard_stats(token_or_email=None):
     total_agreed = sum(q['Agreed Price'] or 0 for q in active_quotations)
 
     # هذا الشهر
-    now = datetime.now()
+    now = get_utc_now()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     this_month_quotations = [
@@ -1148,12 +1152,12 @@ def import_clients_data(data_list, token_or_email):
             # بناء البيانات ديناميكياً
             data = {
                 'Client Code': str(client_code),
-                'Date': datetime.now().date(),
+                'Date': get_utc_now().date(),
                 'is_deleted': False,
                 'created_by': user_email,
-                'created_at': datetime.now(),
+                'created_at': get_utc_now(),
                 'updated_by': user_email,
-                'updated_at': datetime.now()
+                'updated_at': get_utc_now()
             }
 
             # إضافة كل الأعمدة الموجودة في الـ CSV
@@ -1307,9 +1311,9 @@ def import_quotations_data(data_list, token_or_email):
                 'Quotation#': int(quotation_number),
                 'is_deleted': False,
                 'created_by': user_email,
-                'created_at': datetime.now(),
+                'created_at': get_utc_now(),
                 'updated_by': user_email,
-                'updated_at': datetime.now()
+                'updated_at': get_utc_now()
             }
 
             # إضافة كل الأعمدة الموجودة في الـ CSV
@@ -1353,23 +1357,23 @@ def import_quotations_data(data_list, token_or_email):
                                     if col_name == 'Expected delivery time':
                                         data[col_name] = None
                                     else:
-                                        data[col_name] = datetime.now().date()
+                                        data[col_name] = get_utc_now().date()
                             else:
                                 if col_name == 'Expected delivery time':
                                     data[col_name] = None
                                 else:
-                                    data[col_name] = datetime.now().date()
+                                    data[col_name] = get_utc_now().date()
                         except (ValueError, TypeError):
                             if col_name == 'Expected delivery time':
                                 data[col_name] = None
                             else:
-                                data[col_name] = datetime.now().date()
+                                data[col_name] = get_utc_now().date()
                     else:
                         # القيمة فارغة
                         if col_name == 'Expected delivery time':
                             data[col_name] = None  # يمكن أن يكون فارغاً
                         else:
-                            data[col_name] = datetime.now().date()
+                            data[col_name] = get_utc_now().date()
                 else:
                     # النصوص العادية
                     data[col_name] = safe_strip(col_value)
@@ -1935,7 +1939,7 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
                     num_payments=contract_data.get('num_payments', 0),
                     payments_json=payments_json,
                     delivery_date=contract_data.get('delivery_date', ''),
-                    updated_at=datetime.now()
+                    updated_at=get_utc_now()
                 )
                 logger.info(f"Contract {contract_number} updated by {user_email}")
                 log_audit('UPDATE', 'contracts', contract_number, old_data, contract_data, user_email, ip_address)
@@ -1971,8 +1975,8 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
                 num_payments=contract_data.get('num_payments', 0),
                 payments_json=payments_json,
                 delivery_date=contract_data.get('delivery_date', ''),
-                created_at=datetime.now(),
-                updated_at=datetime.now()
+                created_at=get_utc_now(),
+                updated_at=get_utc_now()
             )
             logger.info(f"Contract {contract_number} created by {user_email}")
             log_audit('CREATE', 'contracts', contract_number, None, contract_data, user_email, ip_address)
@@ -2108,7 +2112,7 @@ def run_scheduled_backup():
         media = anvil.BlobMedia('application/json', json_bytes, name=filename)
         try:
             app_tables.scheduled_backups.add_row(
-                created_at=datetime.now(),
+                created_at=get_utc_now(),
                 filename=filename,
                 backup_media=media
             )

@@ -11,6 +11,11 @@ import anvil
 from anvil.google.drive import app_files
 from anvil.tables import app_tables
 
+try:
+    from .auth_utils import get_utc_now
+except ImportError:
+    from auth_utils import get_utc_now
+
 logger = logging.getLogger(__name__)
 
 # سياسة الاحتفاظ: آخر 15 يوم كاملة + آخر 30 أسبوع (نسخة واحدة أسبوعياً)
@@ -205,7 +210,7 @@ def build_backup_payload():
     بناء محتوى النسخة الاحتياطية (بدون تحقق صلاحية).
     يُرجع: (backup_dict, json_bytes, filename)
     """
-    export_time = datetime.now()
+    export_time = get_utc_now()
     export_date_str = export_time.strftime('%Y-%m-%d %H:%M:%S')
     filename_date = export_time.strftime('%Y%m%d_%H%M')
     backup = {

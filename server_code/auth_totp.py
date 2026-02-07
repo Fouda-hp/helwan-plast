@@ -10,6 +10,11 @@ import logging
 from datetime import datetime, timedelta
 from anvil.tables import app_tables
 
+try:
+    from .auth_utils import get_utc_now
+except ImportError:
+    from auth_utils import get_utc_now
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,13 +60,13 @@ def setup_totp_start_impl(user_email):
                 old.delete()
         except Exception:
             pass
-        expires_at = (datetime.now() + timedelta(minutes=10)).isoformat()
+        expires_at = (get_utc_now() + timedelta(minutes=10)).isoformat()
         app_tables.settings.add_row(
             setting_key=pending_key,
             setting_value=json.dumps({'secret': secret, 'expires_at': expires_at}),
             setting_type='json',
             description='Pending TOTP setup',
-            updated_at=datetime.now()
+            updated_at=get_utc_now()
         )
         return {'success': True, 'provisioning_uri': uri, 'qr_base64': qr_base64, 'secret': secret}
     except Exception as e:
@@ -87,7 +92,7 @@ def setup_totp_confirm_impl(user_email, code):
             data = json.loads(setting['setting_value']) if isinstance(setting['setting_value'], str) else setting['setting_value']
             secret = data.get('secret')
             expires_at = data.get('expires_at')
-            if expires_at and datetime.now() > datetime.fromisoformat(expires_at.replace('Z', '+00:00')):
+            if expires_at and get_utc_now() > datetime.fromisoformat(expires_at.replace('Z', '+00:00')):
                 setting.delete()
                 return {'success': False, 'message': 'Setup expired. Please start again.'}
         except Exception:

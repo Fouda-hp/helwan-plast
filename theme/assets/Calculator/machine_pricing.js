@@ -27,20 +27,13 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
     _settingsLoading = true;
     try {
       var auth = (typeof sessionStorage !== 'undefined' && (sessionStorage.getItem('auth_token') || sessionStorage.getItem('user_email'))) || null;
+      console.log('[DIAG] auth token used:', auth ? (auth.substring(0, 8) + '...') : 'NULL');
       const data = await window.anvil?.server?.call('get_calculator_settings', auth);
-      console.log('[DIAG] get_calculator_settings result:', JSON.stringify({
-        success: data?.success,
-        hasPriceOptions: !!(data?.priceOptions),
-        priceOptionsTypes: data?.priceOptions?.types,
-        priceOptionsTypeColors: data?.priceOptions?.typeColors,
-        priceOptionsTypeColorWidths: data?.priceOptions?.typeColorWidths,
-        hasMachinePrices: !!(data?.machinePrices),
-        machinePricesKeys: data?.machinePrices ? Object.keys(data.machinePrices) : null,
-        hasConfig: !!(data?.config),
-        configWidths: data?.config?.widths,
-        message: data?.message
-      }, null, 2));
-      if (!data || data.success === false) return;
+      console.log('[DIAG] get_calculator_settings FULL RESPONSE:', JSON.stringify(data, null, 2));
+      if (!data || data.success === false) {
+        console.warn('[DIAG] get_calculator_settings FAILED:', data?.message || 'no data');
+        return;
+      }
       if (data.exchangeRate != null && !isNaN(data.exchangeRate)) {
         EXCHANGE_RATE = parseFloat(data.exchangeRate);
         var exEl = document.getElementById("exchange_rate");

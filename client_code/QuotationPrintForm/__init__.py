@@ -61,7 +61,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       self.current_lang = saved_lang
       self.update_language_buttons()
 
-      # Load quotations list
+    # Load quotations list
     self.load_quotations_list()
 
   def update_language_buttons(self):
@@ -97,7 +97,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     if not select:
       return
 
-      # Clear and add default option
+    # Clear and add default option
     select.innerHTML = f'<option value="">-- Select Quotation ({len(quotations)}) --</option>'
 
     # Add quotations
@@ -314,7 +314,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     # 17 Specifications
     specs_en = [
         "Heavy-duty cast iron frame, stable and vibration-resistant",
-            "Automatic web tension control units suitable for different material weights, thicknesses, and flexibility, with manual adjustment option",
+        "Automatic web tension control units suitable for different material weights, thicknesses, and flexibility, with manual adjustment option",
         "Web guiding (oscillating) units to ensure accurate print centering on the substrate and smooth rewinding of printed material",
         "Rollers and cylinders laser-treated for heavy-duty operation and extended service life",
         "Automatic machine stop sensors in case of film breakage or material run-out",
@@ -729,32 +729,33 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     if template_content:
       template_content.innerHTML = html
 
-    def print_quotation(self):
-        """Print the quotation"""
-        if not self.current_data:
-            self._show_msg('Please select a quotation first')
-            return
-        anvil.js.window.print()
+  def print_quotation(self):
+    """Print the quotation"""
+    if not self.current_data:
+      self._show_msg('Please select a quotation first')
+      return
+    anvil.js.window.print()
 
-    def export_pdf(self):
-        """Export quotation as PDF - direct download"""
-        if not self.current_data:
-            self._show_msg('Please select a quotation first')
-            return
+  def export_pdf(self):
+    """Export quotation as PDF - direct download"""
+    if not self.current_data:
+      self._show_msg('Please select a quotation first')
+      return
 
-        def sanitize_filename(value):
-            value = str(value or '').strip()
-            value = value.replace('/', '-').replace('\\', '-').replace(':', '-')
-            value = value.replace('*', '-').replace('?', '').replace('"', '')
-            value = value.replace('<', '').replace('>', '').replace('|', '-')
-            return value or 'unknown'
+    def sanitize_filename(value):
+      value = str(value or '').strip()
+      value = value.replace('/', '-').replace('\\', '-').replace(':', '-')
+      value = value.replace('*', '-').replace('?', '').replace('"', '')
+      value = value.replace('<', '').replace('>', '').replace('|', '-')
+      return value or 'unknown'
 
-        q_num = sanitize_filename(self.current_data.get('quotation_number', 'quotation'))
-        client_name = sanitize_filename(self.current_data.get('client_name', 'Client'))
-        model_name = sanitize_filename(self.current_data.get('model', 'Model'))
-        filename = f"{q_num} - {client_name} - {model_name}.pdf"
+    q_num = sanitize_filename(self.current_data.get('quotation_number', 'quotation'))
+    client_name = sanitize_filename(self.current_data.get('client_name', 'Client'))
+    model_name = sanitize_filename(self.current_data.get('model', 'Model'))
+    filename = f"{q_num} - {client_name} - {model_name}.pdf"
+    filename_js = filename.replace("\\", "\\\\").replace("'", "\\'")
 
-        js_code = f"""
+    js_code = f"""
         (async function() {{
             const element = document.getElementById('templateContent');
             if (!element || !element.innerHTML.trim()) {{
@@ -815,75 +816,73 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                     pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
                 }}
 
-                pdf.save('{filename}');
+                pdf.save('{filename_js}');
 
             }} catch (error) {{
                 console.error('PDF Export Error:', error);
                 if (window.showNotification) window.showNotification('error', '', 'Error exporting PDF: ' + error.message);
             }}
         }})();
-        """
-        anvil.js.window.eval(js_code)
+    """
+    anvil.js.window.eval(js_code)
 
-    def export_excel(self):
-        """Export quotation data as Excel file"""
-        if not self.current_data:
-            self._show_msg('Please select a quotation first')
-            return
+  def export_excel(self):
+    """Export quotation data as Excel file"""
+    if not self.current_data:
+      self._show_msg('Please select a quotation first')
+      return
 
-        data = self.current_data
-        q_num = data.get('quotation_number', 'quotation')
-        client_name = data.get('client_name', '').replace(' ', '_')
+    data = self.current_data
+    q_num = data.get('quotation_number', 'quotation')
+    client_name = data.get('client_name', '').replace(' ', '_')
 
-        # Call server to generate Excel
-        try:
-            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
-            result = anvil.server.call('export_quotation_excel', q_num, auth)
-            if result.get('success'):
-                # Download the file
-                media = result.get('file')
-                if media:
-                    anvil.media.download(media)
-            else:
-                self._show_msg(result.get('message', 'Unknown error'))
-        except Exception as e:
-            self._show_msg(str(e))
+    try:
+      auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+      result = anvil.server.call('export_quotation_excel', q_num, auth)
+      if result.get('success'):
+        media = result.get('file')
+        if media:
+          anvil.media.download(media)
+      else:
+        self._show_msg(result.get('message', 'Unknown error'))
+    except Exception as e:
+      self._show_msg(str(e))
 
-    # Server call wrappers
-    def load_quotation_for_print(self, quotation_number):
-        """Load quotation data for print preview"""
-        try:
-            user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
-            auth_token = anvil.js.window.sessionStorage.getItem('auth_token') or None
-            result = anvil.server.call('get_quotation_pdf_data', int(quotation_number), user_email, auth_token)
-            return result
-        except Exception as e:
-            return {'success': False, 'message': str(e)}
+  # Server call wrappers
+  def load_quotation_for_print(self, quotation_number):
+    """Load quotation data for print preview"""
+    try:
+      user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
+      auth_token = anvil.js.window.sessionStorage.getItem('auth_token') or None
+      result = anvil.server.call('get_quotation_pdf_data', int(quotation_number), user_email, auth_token)
+      return result
+    except Exception as e:
+      return {'success': False, 'message': str(e)}
 
-    def search_quotations_for_print(self, query=''):
-        """Search quotations"""
-        try:
-            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
-            result = anvil.server.call('get_quotations_list', query, False, auth)
-            return result
-        except Exception as e:
-            return {'success': False, 'message': str(e)}
+  def search_quotations_for_print(self, query=''):
+    """Search quotations"""
+    try:
+      auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+      result = anvil.server.call('get_quotations_list', query, False, auth)
+      return result
+    except Exception as e:
+      return {'success': False, 'message': str(e)}
 
-    def get_quotation_pdf_data(self, quotation_number):
-        """Get full quotation data for PDF"""
-        try:
-            user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
-            auth_token = anvil.js.window.sessionStorage.getItem('auth_token') or None
-            result = anvil.server.call('get_quotation_pdf_data', int(quotation_number), user_email, auth_token)
-            return result
-        except Exception as e:
-            return {'success': False, 'message': str(e)}
+  def get_quotation_pdf_data(self, quotation_number):
+    """Get full quotation data for PDF"""
+    try:
+      user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
+      auth_token = anvil.js.window.sessionStorage.getItem('auth_token') or None
+      result = anvil.server.call('get_quotation_pdf_data', int(quotation_number), user_email, auth_token)
+      return result
+    except Exception as e:
+      return {'success': False, 'message': str(e)}
 
-    def get_all_settings(self):
-        """Get all template settings (يُمرّر التوكن لتحميل الإعدادات)"""
-        try:
-            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
-            result = anvil.server.call('get_all_settings', auth)
-            return result
-        except Exception as e:
-            return {'success': False, 'message': str(e)}
+  def get_all_settings(self):
+    """Get all template settings (يُمرّر التوكن لتحميل الإعدادات)"""
+    try:
+      auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+      result = anvil.server.call('get_all_settings', auth)
+      return result
+    except Exception as e:
+      return {'success': False, 'message': str(e)}

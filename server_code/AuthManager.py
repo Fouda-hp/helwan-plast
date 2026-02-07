@@ -2200,8 +2200,21 @@ def get_calculator_settings(token_or_email=None):
         if pr:
             if pr.get('options'):
                 result['priceOptions'] = pr['options']
+                logger.info("get_calculator_settings: priceOptions types=%s", pr['options'].get('types'))
+                logger.info("get_calculator_settings: priceOptions typeColorWidths=%s",
+                           {t: {c: ws for c, ws in cv.items()} for t, cv in (pr['options'].get('typeColorWidths') or {}).items()})
+            else:
+                logger.warning("get_calculator_settings: NO priceOptions returned from get_machine_prices")
             if pr.get('prices'):
                 result['machinePrices'] = pr['prices']
+                # Log the widths available for each type/color
+                for mtype, by_color in pr['prices'].items():
+                    if isinstance(by_color, dict):
+                        for color, by_width in by_color.items():
+                            if isinstance(by_width, dict):
+                                logger.info("get_calculator_settings: prices[%s][%s] widths=%s", mtype, color, list(by_width.keys()))
+            else:
+                logger.warning("get_calculator_settings: NO prices returned from get_machine_prices")
         cp = get_setting('cylinder_prices')
         if cp and isinstance(cp, dict):
             result['cylinderPrices'] = cp

@@ -56,11 +56,28 @@ class LoginForm(LoginFormTemplate):
         anvil.js.window.addEventListener("hashchange", self.on_hash_change)
 
     def check_existing_session(self):
-        """Check if user has valid session (sessionStorage only = انتهاء الجلسة عند إغلاق التاب)"""
+        """Check if user has valid session (sessionStorage + localStorage fallback)"""
         try:
             auth_token = anvil.js.window.sessionStorage.getItem('auth_token')
             user_email = anvil.js.window.sessionStorage.getItem('user_email')
             user_role = anvil.js.window.sessionStorage.getItem('user_role')
+
+            # Fallback: نسخ من localStorage لو sessionStorage فاضي
+            if not auth_token:
+                auth_token = anvil.js.window.localStorage.getItem('auth_token')
+                if auth_token:
+                    anvil.js.window.sessionStorage.setItem('auth_token', auth_token)
+            if not user_email:
+                user_email = anvil.js.window.localStorage.getItem('user_email')
+                if user_email:
+                    anvil.js.window.sessionStorage.setItem('user_email', user_email)
+            if not user_role:
+                user_role = anvil.js.window.localStorage.getItem('user_role')
+                if user_role:
+                    anvil.js.window.sessionStorage.setItem('user_role', user_role)
+            user_name = anvil.js.window.sessionStorage.getItem('user_name') or anvil.js.window.localStorage.getItem('user_name')
+            if user_name:
+                anvil.js.window.sessionStorage.setItem('user_name', user_name)
 
             # Only check if we have saved credentials
             if auth_token and user_email:
@@ -205,15 +222,23 @@ class LoginForm(LoginFormTemplate):
             return {'success': False, 'message': f'Error: {str(e)}'}
 
     def _save_auth_everywhere(self, user_email='', user_name='', user_role='', auth_token=''):
-        """حفظ التوكن ومعلومات المستخدم في sessionStorage فقط (انتهاء الجلسة عند إغلاق التاب)"""
+        """حفظ التوكن ومعلومات المستخدم في sessionStorage و localStorage"""
         try:
             ss = anvil.js.window.sessionStorage
+            ls = anvil.js.window.localStorage
             if ss:
                 ss.setItem('user_email', user_email or '')
                 ss.setItem('user_name', user_name or '')
                 ss.setItem('user_role', user_role or '')
                 if auth_token:
                     ss.setItem('auth_token', auth_token)
+            # حفظ في localStorage كمان عشان يفضل متاح بعد refresh وفي كل الـ forms
+            if ls:
+                ls.setItem('user_email', user_email or '')
+                ls.setItem('user_name', user_name or '')
+                ls.setItem('user_role', user_role or '')
+                if auth_token:
+                    ls.setItem('auth_token', auth_token)
             # حفظ أيضاً في الإطار الأعلى إن وُجد
             try:
                 if anvil.js.window.top and anvil.js.window.top != anvil.js.window:

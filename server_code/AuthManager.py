@@ -1018,62 +1018,6 @@ def validate_token(token):
 
 
 # =========================================================
-# DEBUG - مؤقت للتشخيص (يُحذف لاحقاً)
-# =========================================================
-@anvil.server.callable
-def debug_session_trace(token):
-    """تشخيص مؤقت - بدون auth check - يُحذف بعد حل المشكلة"""
-    result = {'step': 'start', 'token_exists': bool(token), 'token_len': len(token) if token else 0}
-    try:
-        from .auth_sessions import _hash_token
-        token_hash = _hash_token(token)
-        result['token_hash_prefix'] = token_hash[:20]
-
-        session = app_tables.sessions.get(session_token=token_hash, is_active=True)
-        result['session_found_by_hash'] = bool(session)
-
-        if not session:
-            session = app_tables.sessions.get(session_token=token, is_active=True)
-            result['session_found_by_raw'] = bool(session)
-
-        if not session:
-            # عدد كل الجلسات النشطة
-            all_active = list(app_tables.sessions.search(is_active=True))
-            result['total_active_sessions'] = len(all_active)
-            result['step'] = 'no_session_found'
-            return result
-
-        result['session_email'] = session['user_email']
-        result['session_role'] = session.get('user_role', 'N/A')
-
-        expires_at = session.get('expires_at')
-        result['expires_at'] = str(expires_at) if expires_at else 'None'
-        result['expires_at_type'] = type(expires_at).__name__ if expires_at else 'None'
-        result['has_tzinfo'] = bool(getattr(expires_at, 'tzinfo', None)) if expires_at else False
-
-        now = get_utc_now()
-        result['now_utc'] = str(now)
-
-        if expires_at:
-            aware_expires = make_aware(expires_at)
-            result['aware_expires'] = str(aware_expires)
-            result['is_expired'] = now > aware_expires
-
-        user = app_tables.users.get(email=session['user_email'])
-        result['user_found'] = bool(user)
-        if user:
-            result['user_role'] = user['role']
-            result['user_is_active'] = user['is_active']
-            result['user_is_approved'] = user['is_approved']
-
-        result['step'] = 'complete'
-    except Exception as e:
-        result['error'] = str(e)
-        result['step'] = 'error'
-    return result
-
-
-# =========================================================
 # وظائف الأدمن (الصلاحيات من auth_permissions)
 # =========================================================
 @anvil.server.callable

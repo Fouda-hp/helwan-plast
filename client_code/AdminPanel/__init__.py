@@ -1832,11 +1832,20 @@ class AdminPanel(AdminPanelTemplate):
     # =========================================================
     def get_email(self):
         """Get user email from sessionStorage (جلسة تنتهي عند إغلاق التاب)"""
-        return anvil.js.window.sessionStorage.getItem('user_email') or self.user_email
+        return anvil.js.window.sessionStorage.getItem('user_email') or anvil.js.window.localStorage.getItem('user_email') or self.user_email
 
     def get_token(self):
-        """Get auth token from sessionStorage"""
-        return anvil.js.window.sessionStorage.getItem('auth_token')
+        """Get auth token from sessionStorage or localStorage"""
+        token = anvil.js.window.sessionStorage.getItem('auth_token')
+        if not token:
+            token = anvil.js.window.localStorage.getItem('auth_token')
+            # نسخه لـ sessionStorage عشان يفضل متاح
+            if token:
+                try:
+                    anvil.js.window.sessionStorage.setItem('auth_token', token)
+                except Exception:
+                    pass
+        return token
 
     def get_auth(self):
         """Get auth token (preferred) or email as fallback"""
@@ -1851,7 +1860,7 @@ class AdminPanel(AdminPanelTemplate):
         """الحصول على اسم المستخدم"""
         if self.user_name:
             return self.user_name
-        return anvil.js.window.sessionStorage.getItem('user_name') or 'Admin'
+        return anvil.js.window.sessionStorage.getItem('user_name') or anvil.js.window.localStorage.getItem('user_name') or 'Admin'
 
     def get_user_email(self):
         """الحصول على بريد المستخدم"""
@@ -2046,17 +2055,7 @@ class AdminPanel(AdminPanelTemplate):
         """الحصول على جميع الإعدادات"""
         auth = self.get_auth()
         if not auth:
-            # DEBUG: تشخيص مؤقت
-            print("DEBUG get_all_settings: auth is None/empty")
-            print("DEBUG token:", anvil.js.window.sessionStorage.getItem('auth_token'))
-            print("DEBUG email:", anvil.js.window.sessionStorage.getItem('user_email'))
             return {'success': False, 'message': 'Not authenticated. Please login again.'}
-        # DEBUG: تشخيص مؤقت
-        try:
-            debug_result = anvil.server.call('debug_session_trace', auth)
-            print("DEBUG session trace:", debug_result)
-        except Exception as e:
-            print("DEBUG trace error:", e)
         return anvil.server.call('get_all_settings', auth)
 
     def update_setting(self, key, value):

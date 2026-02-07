@@ -614,7 +614,8 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       value_upper = str(value_text).strip().upper()
       if value_upper in ['NO', 'لا', 'N/A', '-', '']:
         continue
-      html += f'<tr><td class="row-num">{row_num}</td><th>{label}</th><td class="value">{value_text}</td></tr>'
+      val_style = ' style="text-align:right;"' if is_ar else ''
+      html += f'<tr><td class="row-num">{row_num}</td><th>{label}</th><td class="value"{val_style}>{value_text}</td></tr>'
       row_num += 1
     html += '</table>'
 

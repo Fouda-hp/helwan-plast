@@ -2311,6 +2311,56 @@ def get_machine_prices(token_or_email=None):
 
 
 @anvil.server.callable
+def diagnose_calculator_prices(token_or_email):
+    """تشخيص: عرض محتوى جدول الأسعار والخيارات المولّدة (للأدمن فقط)."""
+    is_authorized, error = require_admin(token_or_email)
+    if not is_authorized:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied'}
+    result = {}
+    try:
+        setting = app_tables.settings.get(setting_key='machine_prices')
+        if setting and setting['setting_value']:
+            raw = setting['setting_value']
+            result['raw_setting_length'] = len(raw)
+            try:
+                prices = json.loads(raw)
+                result['parsed_ok'] = True
+                # عرض المفاتيح (type > color > width)
+                summary = {}
+                for mtype, by_color in prices.items():
+                    if isinstance(by_color, dict):
+                        summary[str(mtype)] = {}
+                        for color, by_width in by_color.items():
+                            if isinstance(by_width, dict):
+                                summary[str(mtype)][str(color)] = {str(w): v for w, v in by_width.items()}
+                result['prices_summary'] = summary
+                normalized = _normalize_prices_keys(prices)
+                options = _options_from_machine_prices(normalized)
+                result['generated_options'] = options
+            except json.JSONDecodeError as e:
+                result['parsed_ok'] = False
+                result['parse_error'] = str(e)
+        else:
+            result['setting_exists'] = bool(setting)
+            result['setting_value_empty'] = True
+            result['using_defaults'] = True
+        # عرض الكونفيج القديم أيضاً
+        config_setting = app_tables.settings.get(setting_key='machine_config')
+        if config_setting and config_setting['setting_value']:
+            try:
+                result['machine_config'] = json.loads(config_setting['setting_value'])
+            except Exception:
+                result['machine_config'] = 'parse error'
+        else:
+            result['machine_config'] = 'not set (using defaults: 80,100,120)'
+        result['success'] = True
+    except Exception as e:
+        result['success'] = False
+        result['error'] = str(e)
+    return result
+
+
+@anvil.server.callable
 def save_machine_prices(token_or_email, prices):
     """
     حفظ أسعار المكن في السيرفر

@@ -340,7 +340,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         "مستشعرات إيقاف أوتوماتيكي للماكينة في حالة انقطاع الفيلم أو نفاد الخامة",
         "ضغط أسطوانة الطباعة يتم عبر نظام الزيت الهيدروليكي لتجنب مشاكل الضغط الهوائي وتقليل استهلاك الكهرباء الناتج عن تشغيل ضاغط الهواء المتكرر",
         get_color_registration(),
-        "رافعات سقفية مدمجة لتسهيل تحميل وتفريغ الرولات وأسطوانات الطباعة، مما يوفر الوقت والجهد والعمالة",
+        "رافعات علويه مدمجة لتسهيل تحميل وتفريغ الرولات وأسطوانات الطباعة، مما يوفر الوقت والجهد والعمالة",
         "مناسبة لأحبار المذيبات والأحبار المائية",
         "إنفرترات دلتا (تايوان)",
         "إنذار أمان قبل بدء تشغيل الماكينة لمنع الإصابات",
@@ -398,7 +398,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     is_belt_drive = not (is_metal_anilox and not is_nonwoven)
 
     # Get settings values with defaults
-    belt_max_machine_speed = int(c.get('belt_max_machine_speed', 120))
+    belt_max_machine_speed = int(c.get('belt_max_machine_speed', 150))
     belt_max_print_speed = int(c.get('belt_max_print_speed', 120))
     belt_print_length = c.get('belt_print_length', '300mm - 1300mm')
     gear_max_machine_speed = int(c.get('gear_max_machine_speed', 100))

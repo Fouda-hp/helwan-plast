@@ -406,6 +406,8 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     gear_print_length = c.get('gear_print_length', '240mm - 1000mm')
     single_winder_roll_dia = int(c.get('single_winder_roll_dia', 1200))
     double_winder_roll_dia = int(c.get('double_winder_roll_dia', 800))
+    single_winder_brake_power = c.get('single_winder_brake_power', '1 pc (10kg) + 1 pc (5kg)')
+    double_winder_brake_power = c.get('double_winder_brake_power', '2 pc (10kg) + 2 pc (5kg)')
     dryer_capacity = c.get('dryer_capacity', '2.2kw air blower × 2 units')
     main_motor_power = c.get('main_motor_power', '5 HP')
 
@@ -423,7 +425,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     # Values based on winder type (double=4/2, single=2/1)
     tension_units = 4 if is_double_winder else 2
     brake_system = 4 if is_double_winder else 2
-    brake_power = 2 if is_double_winder else 1
+    brake_power = double_winder_brake_power if is_double_winder else single_winder_brake_power
     web_guiding = 2 if is_double_winder else 1
 
     # Width calculations
@@ -542,7 +544,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       'printing_sides': '2',
       'tension_units': str(tension_units),
       'brake_system': str(brake_system),
-      'brake_power': str(brake_power),
+      'brake_power': brake_power,
       'web_guiding': str(web_guiding),
       'max_film_width': f"{max_film_width} mm",
       'max_print_width': f"{max_print_width} mm",

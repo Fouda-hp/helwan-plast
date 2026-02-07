@@ -1517,6 +1517,8 @@ def get_quotation_pdf_data(quotation_number, user_email, auth_token=None):
             'gear_print_length': get_setting_value('gear_print_length', '240mm - 1000mm'),
             'single_winder_roll_dia': get_setting_value('single_winder_roll_dia', 1200),
             'double_winder_roll_dia': get_setting_value('double_winder_roll_dia', 800),
+            'single_winder_brake_power': get_setting_value('single_winder_brake_power', '1 pc (10kg) + 1 pc (5kg)'),
+            'double_winder_brake_power': get_setting_value('double_winder_brake_power', '2 pc (10kg) + 2 pc (5kg)'),
             'dryer_capacity': get_setting_value('dryer_capacity', '2.2kw air blower × 2 units'),
             'main_motor_power': get_setting_value('main_motor_power', '5 HP'),
         }

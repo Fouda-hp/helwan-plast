@@ -551,6 +551,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         # Get machine details
         model = str(data.get('model', '')).upper()
+        machine_type_str = str(data.get('machine_type', '') or data.get('model', '')).upper()
         material = str(data.get('material', '')).upper()
         plc_value = str(data.get('plc', '')).upper()
         machine_type_base = data.get('machine_type', '') or data.get('model', '')
@@ -635,13 +636,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         # Helper function to determine Belt/Gear drive for item 13
         def get_drive_type():
-            is_metal_anilox = 'METAL' in model
+            is_metal_anilox = 'METAL' in machine_type_str
             is_nonwoven = 'NONWOVEN' in material
             # Belt drive if: Ceramic anilox OR NONWOVEN material
             # Gear drive if: Metal anilox AND NOT NONWOVEN
             if is_metal_anilox and not is_nonwoven:
                 return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق التروس' if is_ar else 'Gear drive',
-                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر نظام التروس لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر التروس لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
             else:
                 return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق السيور' if is_ar else 'Belt drive',
                         'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر السيور لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
@@ -730,7 +731,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         is_double_winder = 'DOUBLE' in winder_type
         colors_count = int(data.get('colors_count', 0) or 0)
         machine_width = float(data.get('machine_width', 0) or 0)
-        is_metal_anilox = 'METAL' in model
+        is_metal_anilox = 'METAL' in machine_type_str
         is_nonwoven = 'NONWOVEN' in material
         is_belt_drive = not (is_metal_anilox and not is_nonwoven)
 
@@ -743,6 +744,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
         gear_print_length = c.get('gear_print_length', '240mm - 1000mm')
         single_winder_roll_dia = int(c.get('single_winder_roll_dia', 1200))
         double_winder_roll_dia = int(c.get('double_winder_roll_dia', 800))
+        single_winder_brake_power = c.get('single_winder_brake_power', '1 pc (10kg) + 1 pc (5kg)')
+        double_winder_brake_power = c.get('double_winder_brake_power', '2 pc (10kg) + 2 pc (5kg)')
         dryer_capacity = c.get('dryer_capacity', '2.2kw air blower × 2 units')
         main_motor_power = c.get('main_motor_power', '5 HP')
 
@@ -758,7 +761,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         tension_units = 4 if is_double_winder else 2
         brake_system = 4 if is_double_winder else 2
-        brake_power = 2 if is_double_winder else 1
+        brake_power = double_winder_brake_power if is_double_winder else single_winder_brake_power
         web_guiding = 2 if is_double_winder else 1
         max_film_width = int(machine_width * 10 + 50)
         max_print_width = int(machine_width * 10 - 40)
@@ -888,7 +891,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             'printing_sides': '2',
             'tension_units': str(tension_units),
             'brake_system': str(brake_system),
-            'brake_power': str(brake_power),
+            'brake_power': brake_power,
             'web_guiding': str(web_guiding),
             'max_film_width': f"{max_film_width} mm",
             'max_print_width': f"{max_print_width} mm",
@@ -967,7 +970,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
             if value_upper in ['NO', 'لا', 'N/A', '-', '']:
                 continue
 
-            html += f'<tr><td class="row-num">{row_num}</td><th>{label}</th><td class="value">{value_text}</td></tr>'
+            val_style = ' style="text-align:right;"' if is_ar else ''
+            html += f'<tr><td class="row-num">{row_num}</td><th>{label}</th><td class="value"{val_style}>{value_text}</td></tr>'
             row_num += 1
         html += '</table>'
 

@@ -9,189 +9,190 @@ logger = logging.getLogger(__name__)
 
 
 def _h(value):
-    """HTML-escape a value to prevent XSS injection"""
-    if value is None:
-        return ''
-    s = str(value)
-    return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#x27;')
+  """HTML-escape a value to prevent XSS injection"""
+  if value is None:
+    return ''
+  s = str(value)
+  return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#x27;')
 
 
 class QuotationPrintForm(QuotationPrintFormTemplate):
-    def __init__(self, **properties):
-        self.init_components(**properties)
+  def __init__(self, **properties):
+    self.init_components(**properties)
 
-        # State
-        self.current_lang = 'ar'
-        self.current_data = None
-        self.all_quotations = []
-        self.custom_delivery_date = ''  # User-entered delivery date
+    # State
+    self.current_lang = 'ar'
+    self.current_data = None
+    self.all_quotations = []
+    self.custom_delivery_date = ''  # User-entered delivery date
 
-        # Expose functions to JavaScript
-        anvil.js.window.loadQuotationForPrint = self.load_quotation_for_print
-        anvil.js.window.searchQuotationsForPrint = self.search_quotations_for_print
-        anvil.js.window.getQuotationPdfData = self.get_quotation_pdf_data
-        anvil.js.window.getAllSettings = self.get_all_settings
+    # Expose functions to JavaScript
+    anvil.js.window.loadQuotationForPrint = self.load_quotation_for_print
+    anvil.js.window.searchQuotationsForPrint = self.search_quotations_for_print
+    anvil.js.window.getQuotationPdfData = self.get_quotation_pdf_data
+    anvil.js.window.getAllSettings = self.get_all_settings
 
-        # UI Functions
-        anvil.js.window.goBackToLauncher = self.go_back
-        anvil.js.window.loadSelectedQuotation = self.load_selected_quotation
-        anvil.js.window.filterQuotations = self.filter_quotations
-        anvil.js.window.switchLanguage = self.switch_language
-        anvil.js.window.printQuotation = self.print_quotation
-        anvil.js.window.exportPDF = self.export_pdf
-        anvil.js.window.exportExcel = self.export_excel
-        anvil.js.window.updateDeliveryDate = self.update_delivery_date
+    # UI Functions
+    anvil.js.window.goBackToLauncher = self.go_back
+    anvil.js.window.loadSelectedQuotation = self.load_selected_quotation
+    anvil.js.window.filterQuotations = self.filter_quotations
+    anvil.js.window.switchLanguage = self.switch_language
+    anvil.js.window.printQuotation = self.print_quotation
+    anvil.js.window.exportPDF = self.export_pdf
+    anvil.js.window.exportExcel = self.export_excel
+    anvil.js.window.updateDeliveryDate = self.update_delivery_date
 
-    def _show_msg(self, msg, typ='error'):
-        """عرض رسالة من نظام التطبيق بدل alert البراوزر"""
-        try:
-            anvil.js.window.showNotification(typ, '', str(msg))
-        except Exception:
-            pass
+  def _show_msg(self, msg, typ='error'):
+    """عرض رسالة من نظام التطبيق بدل alert البراوزر"""
+    try:
+      anvil.js.window.showNotification(typ, '', str(msg))
+    except Exception:
+      pass
 
-    def form_show(self, **event_args):
-        """Called when the form is shown - initialize after HTML is rendered"""
-        self.init_page()
+  def form_show(self, **event_args):
+    """Called when the form is shown - initialize after HTML is rendered"""
+    self.init_page()
 
-    def init_page(self):
-        """Initialize the page"""
-        # Auto-detect language from localStorage
-        saved_lang = anvil.js.window.localStorage.getItem('hp_language')
-        if saved_lang in ['ar', 'en']:
-            self.current_lang = saved_lang
-            self.update_language_buttons()
+  def init_page(self):
+    """Initialize the page"""
+    # Auto-detect language from localStorage
+    saved_lang = anvil.js.window.localStorage.getItem('hp_language')
+    if saved_lang in ['ar', 'en']:
+      self.current_lang = saved_lang
+      self.update_language_buttons()
 
-        # Load quotations list
-        self.load_quotations_list()
+      # Load quotations list
+    self.load_quotations_list()
 
-    def update_language_buttons(self):
-        """Update language button states"""
-        btn_ar = anvil.js.window.document.getElementById('btnArabic')
-        btn_en = anvil.js.window.document.getElementById('btnEnglish')
-        if btn_ar and btn_en:
-            if self.current_lang == 'ar':
-                btn_ar.classList.add('active')
-                btn_en.classList.remove('active')
-            else:
-                btn_ar.classList.remove('active')
-                btn_en.classList.add('active')
+  def update_language_buttons(self):
+    """Update language button states"""
+    btn_ar = anvil.js.window.document.getElementById('btnArabic')
+    btn_en = anvil.js.window.document.getElementById('btnEnglish')
+    if btn_ar and btn_en:
+      if self.current_lang == 'ar':
+        btn_ar.classList.add('active')
+        btn_en.classList.remove('active')
+      else:
+        btn_ar.classList.remove('active')
+        btn_en.classList.add('active')
 
-    def go_back(self):
-        """Go back to launcher"""
-        anvil.js.window.location.hash = '#launcher'
+  def go_back(self):
+    """Go back to launcher"""
+    anvil.js.window.location.hash = '#launcher'
 
-    def load_quotations_list(self):
-        """Load all quotations for dropdown"""
-        try:
-            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
-            result = anvil.server.call('get_quotations_list', '', False, auth)
-            if result and result.get('success'):
-                self.all_quotations = result.get('data', [])
-                self.populate_dropdown(self.all_quotations)
-        except Exception as e:
-            logger.debug("Error loading quotations: %s", e)
+  def load_quotations_list(self):
+    """Load all quotations for dropdown"""
+    try:
+      auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+      result = anvil.server.call('get_quotations_list', '', False, auth)
+      if result and result.get('success'):
+        self.all_quotations = result.get('data', [])
+        self.populate_dropdown(self.all_quotations)
+    except Exception as e:
+      logger.debug("Error loading quotations: %s", e)
 
-    def populate_dropdown(self, quotations):
-        """Populate the quotation dropdown"""
-        select = anvil.js.window.document.getElementById('quotationSelect')
-        if not select:
-            return
+  def populate_dropdown(self, quotations):
+    """Populate the quotation dropdown"""
+    select = anvil.js.window.document.getElementById('quotationSelect')
+    if not select:
+      return
 
-        # Clear and add default option
-        select.innerHTML = f'<option value="">-- Select Quotation ({len(quotations)}) --</option>'
+      # Clear and add default option
+    select.innerHTML = f'<option value="">-- Select Quotation ({len(quotations)}) --</option>'
 
-        # Add quotations
-        for q in quotations:
-            opt = anvil.js.window.document.createElement('option')
-            opt.value = str(q.get('Quotation#', ''))
-            opt.textContent = f"#{q.get('Quotation#', '')} - {q.get('Client Name', 'N/A')} - {q.get('Model', '')}"
-            select.appendChild(opt)
+    # Add quotations
+    for q in quotations:
+      opt = anvil.js.window.document.createElement('option')
+      opt.value = str(q.get('Quotation#', ''))
+      opt.textContent = f"#{q.get('Quotation#', '')} - {q.get('Client Name', 'N/A')} - {q.get('Model', '')}"
+      select.appendChild(opt)
 
-    def filter_quotations(self):
-        """Filter quotations based on search input"""
-        search_input = anvil.js.window.document.getElementById('searchInput')
-        if not search_input:
-            return
+  def filter_quotations(self):
+    """Filter quotations based on search input"""
+    search_input = anvil.js.window.document.getElementById('searchInput')
+    if not search_input:
+      return
 
-        query = str(search_input.value).lower()
+    query = str(search_input.value).lower()
 
-        if not query:
-            self.populate_dropdown(self.all_quotations)
-            return
+    if not query:
+      self.populate_dropdown(self.all_quotations)
+      return
 
-        filtered = []
-        for q in self.all_quotations:
-            num = str(q.get('Quotation#', '')).lower()
-            name = str(q.get('Client Name', '')).lower()
-            model = str(q.get('Model', '')).lower()
-            if query in num or query in name or query in model:
-                filtered.append(q)
+    filtered = []
+    for q in self.all_quotations:
+      num = str(q.get('Quotation#', '')).lower()
+      name = str(q.get('Client Name', '')).lower()
+      model = str(q.get('Model', '')).lower()
+      if query in num or query in name or query in model:
+        filtered.append(q)
 
-        self.populate_dropdown(filtered)
+    self.populate_dropdown(filtered)
 
-    def load_selected_quotation(self):
-        """Load the selected quotation"""
-        select = anvil.js.window.document.getElementById('quotationSelect')
-        if not select or not select.value:
-            # Show empty state
-            empty_state = anvil.js.window.document.getElementById('emptyState')
-            template_content = anvil.js.window.document.getElementById('templateContent')
-            if empty_state:
-                empty_state.style.display = 'block'
-            if template_content:
-                template_content.style.display = 'none'
-            return
+  def load_selected_quotation(self):
+    """Load the selected quotation"""
+    select = anvil.js.window.document.getElementById('quotationSelect')
+    if not select or not select.value:
+      # Show empty state
+      empty_state = anvil.js.window.document.getElementById('emptyState')
+      template_content = anvil.js.window.document.getElementById('templateContent')
+      if empty_state:
+        empty_state.style.display = 'block'
+      if template_content:
+        template_content.style.display = 'none'
+      return
 
-        quotation_number = int(select.value)
+    quotation_number = int(select.value)
 
-        # Hide empty state, show loading
-        empty_state = anvil.js.window.document.getElementById('emptyState')
-        template_content = anvil.js.window.document.getElementById('templateContent')
-        if empty_state:
-            empty_state.style.display = 'none'
-        if template_content:
-            template_content.style.display = 'block'
-            template_content.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading...</p></div>'
+    # Hide empty state, show loading
+    empty_state = anvil.js.window.document.getElementById('emptyState')
+    template_content = anvil.js.window.document.getElementById('templateContent')
+    if empty_state:
+      empty_state.style.display = 'none'
+    if template_content:
+      template_content.style.display = 'block'
+      template_content.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading...</p></div>'
 
-        try:
-            user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
-            auth_token = anvil.js.window.sessionStorage.getItem('auth_token') or None
-            result = anvil.server.call('get_quotation_pdf_data', quotation_number, user_email, auth_token)
+    try:
+      user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''
+      auth_token = anvil.js.window.sessionStorage.getItem('auth_token') or None
+      result = anvil.server.call('get_quotation_pdf_data', quotation_number, user_email, auth_token)
 
-            if result and result.get('success'):
-                self.current_data = result.get('data')
-                self.render_template()
-            else:
-                err_msg = _h(result.get("message", "Failed to load") if result else "Server returned empty response")
-                template_content.innerHTML = f'<div class="empty-state"><h3>Error</h3><p>{err_msg}</p></div>'
-        except Exception as e:
-            template_content.innerHTML = f'<div class="empty-state"><h3>Error</h3><p>{_h(str(e))}</p></div>'
+      if result and result.get('success'):
+        self.current_data = result.get('data')
+        self.render_template()
+      else:
+        err_msg = _h(result.get("message", "Failed to load") if result else "Server returned empty response")
+        template_content.innerHTML = f'<div class="empty-state"><h3>Error</h3><p>{err_msg}</p></div>'
+    except Exception as e:
+      template_content.innerHTML = f'<div class="empty-state"><h3>Error</h3><p>{_h(str(e))}</p></div>'
 
-    def switch_language(self, lang):
-        """Switch display language"""
-        self.current_lang = lang
-        self.update_language_buttons()
+  def switch_language(self, lang):
+    """Switch display language"""
+    self.current_lang = lang
+    self.update_language_buttons()
 
-        if self.current_data:
-            self.render_template()
+    if self.current_data:
+      self.render_template()
 
-    def update_delivery_date(self):
-        """Update delivery date from input field and re-render"""
-        delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
-        if delivery_input:
-            self.custom_delivery_date = str(delivery_input.value).strip()
-            if self.current_data:
-                self.render_template()
+  def update_delivery_date(self):
+    """Update delivery date from input field and re-render"""
+    delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
+    if delivery_input:
+      self.custom_delivery_date = str(delivery_input.value).strip()
+      if self.current_data:
+        self.render_template()
 
-    def render_template(self):
-        """Render the quotation template - 3 pages without page breaks"""
-        if not self.current_data:
-            return
+  def render_template(self):
+    """Render the quotation template - 3 pages without page breaks"""
+    if not self.current_data:
+      return
 
-        data = self.current_data
-        c = data.get('company', {})
-        is_ar = (self.current_lang == 'ar')
+    data = self.current_data
+    c = data.get('company', {})
+    is_ar = (self.current_lang == 'ar')
 
+<<<<<<< HEAD
         # Get machine model, machine type, and material for conditional logic
         model = str(data.get('model', '')).upper()
         machine_type_str = str(data.get('machine_type', '') or data.get('model', '')).upper()
@@ -200,97 +201,104 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         # Gear only when machine_type is Metal Anilox and material is NOT Nonwoven; else Belt
         is_metal_anilox = 'METAL' in machine_type_str
         is_nonwoven = 'NONWOVEN' in material
+=======
+    # Get machine model, machine type, and material for conditional logic
+    model = str(data.get('model', '')).upper()
+    machine_type_str = str(data.get('machine_type', '') or data.get('model', '')).upper()
+    material = str(data.get('material', '')).upper()
+    plc_value = str(data.get('plc', '')).upper()
+    # Gear only when machine_type is Metal Anilox and material is NOT Nonwoven; else Belt
+    is_metal_anilox = 'METAL' in machine_type_str
+    is_nonwoven = 'NONWOVEN' in material
+>>>>>>> d7f1a7603b08c33123583b8eb8f12a67a25b5726
 
-        # Determine machine type prefix - use machine_type field not model
-        machine_type_base = data.get('machine_type', '') or data.get('model', '')
-        machine_type_display = f"Flexo Stack With {machine_type_base}" if not is_ar else f"فليكسو ستاك مع {machine_type_base}"
+    # Determine machine type prefix - use machine_type field not model
+    machine_type_base = data.get('machine_type', '') or data.get('model', '')
+    machine_type_display = f"Flexo Stack With {machine_type_base}" if not is_ar else f"فليكسو ستاك مع {machine_type_base}"
 
-        # Determine Winder Type based on Unwind/Rewind checkboxes
-        def get_winder_type():
-            unwind_options = []
-            rewind_options = []
+    # Determine Winder Type based on Unwind/Rewind checkboxes
+    def get_winder_type():
+      unwind_options = []
+      rewind_options = []
 
-            # Check Unwind options
-            if str(data.get('pneumatic_unwind', '')).upper() in ['YES', 'TRUE', '1']:
-                unwind_options.append('Pneumatic Unwind' if not is_ar else 'فك هوائي')
-            if str(data.get('hydraulic_station_unwind', '')).upper() in ['YES', 'TRUE', '1']:
-                unwind_options.append('Hydraulic Station Unwind' if not is_ar else 'فك هيدروليك')
+      # Check Unwind options
+      if str(data.get('pneumatic_unwind', '')).upper() in ['YES', 'TRUE', '1']:
+        unwind_options.append('Pneumatic Unwind' if not is_ar else 'فك هوائي')
+      if str(data.get('hydraulic_station_unwind', '')).upper() in ['YES', 'TRUE', '1']:
+        unwind_options.append('Hydraulic Station Unwind' if not is_ar else 'فك هيدروليك')
 
-            # Check Rewind options
-            if str(data.get('pneumatic_rewind', '')).upper() in ['YES', 'TRUE', '1']:
-                rewind_options.append('Pneumatic Rewind' if not is_ar else 'لف هوائي')
-            if str(data.get('surface_rewind', '')).upper() in ['YES', 'TRUE', '1']:
-                rewind_options.append('Surface Rewind' if not is_ar else 'لف سطحي')
+        # Check Rewind options
+      if str(data.get('pneumatic_rewind', '')).upper() in ['YES', 'TRUE', '1']:
+        rewind_options.append('Pneumatic Rewind' if not is_ar else 'لف هوائي')
+      if str(data.get('surface_rewind', '')).upper() in ['YES', 'TRUE', '1']:
+        rewind_options.append('Surface Rewind' if not is_ar else 'لف سطحي')
 
-            # Build winder type string
-            if not unwind_options and not rewind_options:
-                return 'Central' if not is_ar else 'مركزي'
+        # Build winder type string
+      if not unwind_options and not rewind_options:
+        return 'Central' if not is_ar else 'مركزي'
 
-            parts = []
-            if unwind_options:
-                parts.append(', '.join(unwind_options))
-            if rewind_options:
-                parts.append(', '.join(rewind_options))
+      parts = []
+      if unwind_options:
+        parts.append(', '.join(unwind_options))
+      if rewind_options:
+        parts.append(', '.join(rewind_options))
 
-            return ' / '.join(parts)
+      return ' / '.join(parts)
 
-        winder_type_display = get_winder_type()
+    winder_type_display = get_winder_type()
 
-        # ==================== PAGE 1 ====================
-        html = f'<div class="template-page {"" if is_ar else "ltr"}">'
+    # ==================== PAGE 1 ====================
+    html = f'<div class="template-page {"" if is_ar else "ltr"}">'
 
-        # Header
-        html += '<div class="header">'
-        html += '<div class="header-right">'
-        html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
-        html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
-        html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
-        html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
-        html += '</div>'
-        html += '<div class="header-left">'
-        html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-        html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
-        html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
-        html += '</div>'
-        html += '</div>'
+    # Header
+    html += '<div class="header">'
+    html += '<div class="header-right">'
+    html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
+    html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
+    html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
+    html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
+    html += '</div>'
+    html += '<div class="header-left">'
+    html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
+    html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
+    html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
+    html += '</div>'
+    html += '</div>'
 
-        # Quotation Info
-        html += '<div class="quotation-info">'
-        html += f'<div class="quotation-number">{"عرض سعر رقم" if is_ar else "Quotation No.:"} <span>{data.get("quotation_number", "")}</span></div>'
-        html += f'<div class="client-info">{"السادة - شركة /" if is_ar else "To: / Company:"} <span>{_h(data.get("client_name", ""))}</span></div>'
-        html += f'<div class="greeting">{"تحية طيبة وبعد،" if is_ar else "Dear Sir/Madam,"}</div>'
-        intro = 'نحن نتشرف بتقديم عرض السعر التالي لماكينة الطباعة طبقاً للمواصفات الموضحة أدناه:' if is_ar else 'We are pleased to submit our quotation for the following printing machine in accordance with the specifications detailed below:'
-        html += f'<div class="intro-text">{intro}</div>'
-        html += '</div>'
+    # Quotation Info
+    html += '<div class="quotation-info">'
+    html += f'<div class="quotation-number">{"عرض سعر رقم" if is_ar else "Quotation No.:"} <span>{data.get("quotation_number", "")}</span></div>'
+    html += f'<div class="client-info">{"السادة - شركة /" if is_ar else "To: / Company:"} <span>{_h(data.get("client_name", ""))}</span></div>'
+    html += f'<div class="greeting">{"تحية طيبة وبعد،" if is_ar else "Dear Sir/Madam,"}</div>'
+    intro = 'نحن نتشرف بتقديم عرض السعر التالي لماكينة الطباعة طبقاً للمواصفات الموضحة أدناه:' if is_ar else 'We are pleased to submit our quotation for the following printing machine in accordance with the specifications detailed below:'
+    html += f'<div class="intro-text">{intro}</div>'
+    html += '</div>'
 
-        # Machine Details
-        html += f'<div class="section-title">{"تفاصيل الماكينة :" if is_ar else "Machine Details"}</div>'
-        html += '<table class="details-table">'
-        
-        # Both Arabic and English: label (th) on left, value (td) on right
-        if is_ar:
-            html += f'<tr><th>نوع الماكينة :</th><td>{machine_type_display}</td></tr>'
-            html += f'<tr><th>الموديل :</th><td>{data.get("model", "")}</td></tr>'
-            html += f'<tr><th>بلد المنشأ :</th><td>{c.get("country_origin_ar", "")}</td></tr>'
-            html += f'<tr><th>عدد الألوان :</th><td>{data.get("colors_count", "")}</td></tr>'
-            html += f'<tr><th>الوندر :</th><td>{data.get("winder", "")}</td></tr>'
-            html += f'<tr><th>نوع الوندر :</th><td>{winder_type_display}</td></tr>'
-            html += f'<tr><th>عرض الماكينة :</th><td>{data.get("machine_width", "")} سم</td></tr>'
-        else:
-            # English: label on far left, value next to it
-            html += f'<tr><th>Machine Type:</th><td>{machine_type_display}</td></tr>'
-            html += f'<tr><th>Model:</th><td>{data.get("model", "")}</td></tr>'
-            html += f'<tr><th>Country of Origin:</th><td>{c.get("country_origin_en", "")}</td></tr>'
-            html += f'<tr><th>Number of Colors:</th><td>{data.get("colors_count", "")}</td></tr>'
-            html += f'<tr><th>Winder:</th><td>{data.get("winder", "")}</td></tr>'
-            html += f'<tr><th>Winder Type:</th><td>{winder_type_display}</td></tr>'
-            html += f'<tr><th>Machine Width:</th><td>{data.get("machine_width", "")} CM</td></tr>'
-        html += '</table>'
+    # Machine Details
+    html += f'<div class="section-title">{"تفاصيل الماكينة :" if is_ar else "Machine Details"}</div>'
+    html += '<table class="details-table">'
 
-        # ==================== 17 SPECIFICATIONS ====================
-        html += f'<div class="section-title">{"المواصفات الفنية:" if is_ar else "Technical Specifications:"}</div>'
-        html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
+    # Both Arabic and English: label (th) on left, value (td) on right
+    if is_ar:
+      html += f'<tr><th>نوع الماكينة :</th><td>{machine_type_display}</td></tr>'
+      html += f'<tr><th>الموديل :</th><td>{data.get("model", "")}</td></tr>'
+      html += f'<tr><th>بلد المنشأ :</th><td>{c.get("country_origin_ar", "")}</td></tr>'
+      html += f'<tr><th>عدد الألوان :</th><td>{data.get("colors_count", "")}</td></tr>'
+      html += f'<tr><th>الوندر :</th><td>{data.get("winder", "")}</td></tr>'
+      html += f'<tr><th>نوع الوندر :</th><td>{winder_type_display}</td></tr>'
+      html += f'<tr><th>عرض الماكينة :</th><td>{data.get("machine_width", "")} سم</td></tr>'
+    else:
+      # English: label on far left, value next to it
+      html += f'<tr><th>Machine Type:</th><td>{machine_type_display}</td></tr>'
+      html += f'<tr><th>Model:</th><td>{data.get("model", "")}</td></tr>'
+      html += f'<tr><th>Country of Origin:</th><td>{c.get("country_origin_en", "")}</td></tr>'
+      html += f'<tr><th>Number of Colors:</th><td>{data.get("colors_count", "")}</td></tr>'
+      html += f'<tr><th>Winder:</th><td>{data.get("winder", "")}</td></tr>'
+      html += f'<tr><th>Winder Type:</th><td>{winder_type_display}</td></tr>'
+      html += f'<tr><th>Machine Width:</th><td>{data.get("machine_width", "")} CM</td></tr>'
+    html += '</table>'
 
+<<<<<<< HEAD
         # Helper: Belt/Gear drive for item 13 (uses is_metal_anilox, is_nonwoven from above)
         def get_drive_type():
             if is_metal_anilox and not is_nonwoven:
@@ -299,12 +307,26 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
             else:
                 return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق السيور' if is_ar else 'Belt drive',
                         'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر السيور لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+=======
+    # ==================== 17 SPECIFICATIONS ====================
+    html += f'<div class="section-title">{"المواصفات الفنية:" if is_ar else "Technical Specifications:"}</div>'
+    html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
+
+    # Helper: Belt/Gear drive for item 13 (uses is_metal_anilox, is_nonwoven from above)
+    def get_drive_type():
+      if is_metal_anilox and not is_nonwoven:
+        return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق التروس' if is_ar else 'Gear drive',
+                'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر التروس لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+      else:
+        return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق السيور' if is_ar else 'Belt drive',
+                'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر السيور لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+>>>>>>> d7f1a7603b08c33123583b8eb8f12a67a25b5726
 
         # Helper function for item 7 (color registration)
-        def get_color_registration():
-            is_plc_yes = plc_value in ['YES', 'TRUE', '1', 'نعم']
-            if is_plc_yes:
-                return ('ضبط تسجيل الألوان الأفقي والرأسي أوتوماتيكياً أثناء التشغيل' if is_ar else 'Automatically horizontal and vertical color registration adjustment during operation')
+    def get_color_registration():
+      is_plc_yes = plc_value in ['YES', 'TRUE', '1', 'نعم']
+      if is_plc_yes:
+        return ('ضبط تسجيل الألوان الأفقي والرأسي أوتوماتيكياً أثناء التشغيل' if is_ar else 'Automatically horizontal and vertical color registration adjustment during operation')
             else:
                 return ('ضبط تسجيل الألوان الأفقي والرأسي يدوياً أثناء التشغيل' if is_ar else 'Manual horizontal and vertical color registration adjustment during operation')
 

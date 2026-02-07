@@ -640,8 +640,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
             # Belt drive if: Ceramic anilox OR NONWOVEN material
             # Gear drive if: Metal anilox AND NOT NONWOVEN
             if is_metal_anilox and not is_nonwoven:
-                return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق الجيربوكس' if is_ar else 'Gear drive',
-                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر نظام الجير لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+                return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق التروس' if is_ar else 'Gear drive',
+                        'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر نظام التروس لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
             else:
                 return ('نقل القدرة من الموتور الرئيسي لأجزاء الماكينة عن طريق السيور' if is_ar else 'Belt drive',
                         'نقل القدرة من الموتور الرئيسي إلى مكونات الماكينة عبر السيور لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
@@ -686,9 +686,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
             "مستشعرات إيقاف أوتوماتيكي للماكينة في حالة انقطاع الفيلم أو نفاد الخامة",
             "ضغط أسطوانة الطباعة يتم عبر نظام الزيت الهيدروليكي لتجنب مشاكل الضغط الهوائي وتقليل استهلاك الكهرباء الناتج عن تشغيل ضاغط الهواء المتكرر",
             get_color_registration(),
-            "رافعات سقفية مدمجة لتسهيل تحميل وتفريغ الرولات وأسطوانات الطباعة، مما يوفر الوقت والجهد والعمالة",
+            "رافعات علويه مدمجة لتسهيل تحميل وتفريغ الرولات وأسطوانات الطباعة، مما يوفر الوقت والجهد والعمالة",
             "مناسبة لأحبار المذيبات والأحبار المائية",
-            "إنفرترات دلتا (تايوان)",
+            "إنفرترات دلتا (تايواني)",
             "إنذار أمان قبل بدء تشغيل الماكينة لمنع الإصابات",
             "وحدات تجفيف بالهواء الساخن مع مسار خامة ممتد لضمان جفاف الحبر الكامل، بالإضافة إلى وحدات تجفيف بين الألوان",
             get_drive_type()[1],
@@ -767,7 +767,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anilox_display = ("Metal Anilox" if not is_ar else "انيلوكس معدني") if is_metal_anilox else ("Ceramic Anilox" if not is_ar else "انيلوكس سيراميك")
         max_machine_speed = belt_max_machine_speed if is_belt_drive else gear_max_machine_speed
         max_print_speed = belt_max_print_speed if is_belt_drive else gear_max_print_speed
-        drive_display = ("Belt Drive" if not is_ar else "سيور") if is_belt_drive else ("Gear Drive" if not is_ar else "جيربوكس")
+        drive_display = ("Belt Drive" if not is_ar else "سيور") if is_belt_drive else ("Gear Drive" if not is_ar else "تروس")
 
         def yes_no(field):
             val = str(data.get(field, '')).upper()

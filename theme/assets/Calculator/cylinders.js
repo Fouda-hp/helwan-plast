@@ -30,17 +30,8 @@ if (typeof window.__cylindersLoaded !== 'undefined') {
   }
   window.applyCylinderPricesMap = applyCylinderPricesMap;
 
-  // تحميل أسعار الأسطوانات من السيرفر — استدعاء واحد
-  async function loadCylinderPricesFromServer() {
-    try {
-      const data = await window.anvil?.server?.call('get_setting', 'cylinder_prices');
-      applyCylinderPricesMap(data);
-    } catch (e) {
-      window.debugWarn('Could not load cylinder prices from server, using defaults:', e);
-    }
-  }
-
-  loadCylinderPricesFromServer();
+  // أسعار الأسطوانات تُحمّل حصرياً من Python (form_show → applyCalculatorSettingsFromPython → applyCylinderPricesMap)
+  // لا يوجد تحميل مباشر من JS لأن anvil.server غير متاح في iframe
 
   // دالة للحصول على أسعار الأسطوانات الحالية (للأدمن)
   window.getCylinderPrices = function() {

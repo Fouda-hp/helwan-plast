@@ -154,8 +154,15 @@ class CalculatorForm(CalculatorFormTemplate):
       pass
     try:
       auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email')
+      logger.info("CalculatorForm form_show: auth=%s", auth[:12] + '...' if auth and len(auth) > 12 else auth)
       data = anvil.server.call("get_calculator_settings", auth)
+      logger.info("CalculatorForm form_show: success=%s, has_priceOptions=%s, has_machinePrices=%s, message=%s",
+                  data.get('success') if data else None,
+                  bool(data.get('priceOptions')) if data else False,
+                  bool(data.get('machinePrices')) if data else False,
+                  data.get('message', '') if data else 'no data')
       if not data or data.get("success") is False:
+        logger.warning("CalculatorForm: get_calculator_settings failed: %s", data.get('message') if data else 'no data')
         data = {} if not data else {k: v for k, v in data.items() if k not in ("success", "message")}
       settings_payload = {}
       if data.get("exchangeRate") is not None:
@@ -170,8 +177,7 @@ class CalculatorForm(CalculatorFormTemplate):
             settings_payload[key] = float(val) if isinstance(val, (int, float)) else float(str(val).replace(",", "."))
           except (ValueError, TypeError):
             pass
-      if data.get("config"):
-        settings_payload["config"] = data["config"]
+      # المصدر الوحيد: جدول Machine Prices (USD) — لا نستخدم config الثابت
       if data.get("priceOptions"):
         settings_payload["priceOptions"] = data["priceOptions"]
       if data.get("machinePrices") is not None:

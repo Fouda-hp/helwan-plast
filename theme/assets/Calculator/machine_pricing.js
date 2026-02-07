@@ -20,64 +20,9 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
     BANK_COMMISSION: 0.0132
   };
 
-  // تحميل الإعدادات من السيرفر — استدعاء واحد بدل 6 (أخف على الشبكة)
-  var _settingsLoading = false; // Race condition guard
-  async function loadSettingsFromServer() {
-    if (_settingsLoading) return; // منع التحميل المتكرر
-    _settingsLoading = true;
-    try {
-      var auth = (typeof sessionStorage !== 'undefined' && (sessionStorage.getItem('auth_token') || sessionStorage.getItem('user_email'))) || null;
-      console.log('[DIAG] auth token used:', auth ? (auth.substring(0, 8) + '...') : 'NULL');
-      const data = await window.anvil?.server?.call('get_calculator_settings', auth);
-      console.log('[DIAG] get_calculator_settings FULL RESPONSE:', JSON.stringify(data, null, 2));
-      if (!data || data.success === false) {
-        console.warn('[DIAG] get_calculator_settings FAILED:', data?.message || 'no data');
-        return;
-      }
-      if (data.exchangeRate != null && !isNaN(data.exchangeRate)) {
-        EXCHANGE_RATE = parseFloat(data.exchangeRate);
-        var exEl = document.getElementById("exchange_rate");
-        if (exEl) exEl.value = EXCHANGE_RATE.toFixed(2);
-      }
-      if (data.shipping_sea != null && !isNaN(data.shipping_sea)) CONFIG.SHIPPING_SEA = parseFloat(data.shipping_sea);
-      if (data.ths_cost != null && !isNaN(data.ths_cost)) CONFIG.THS = parseFloat(data.ths_cost);
-      if (data.clearance_expenses != null && !isNaN(data.clearance_expenses)) CONFIG.EXPENSES_CLEARANCE = parseFloat(data.clearance_expenses);
-      if (data.tax_rate != null && !isNaN(data.tax_rate)) CONFIG.TAX_RATE = parseFloat(data.tax_rate);
-      if (data.bank_commission != null && !isNaN(data.bank_commission)) CONFIG.BANK_COMMISSION = parseFloat(data.bank_commission);
-      // تحميل أسعار المكن إن وُجدت (المصدر الأساسي للأسعار والخيارات)
-      if (data.machinePrices && typeof data.machinePrices === 'object') {
-        MACHINE_PRICES = normalizePricesKeys(data.machinePrices);
-      }
-      // الأولوية لـ priceOptions (مولّدة من جدول الأسعار - فقط المقاسات ذات سعر > 0)
-      // config (الثابت) يُستخدم فقط إذا لم يتوفر priceOptions
-      var opts = data.priceOptions;
-      if (opts && opts.types && opts.types.length) {
-        PRICE_OPTIONS = opts;
-        updateMachineTypeDropdown(opts.types);
-        refreshColorsAndWidthsFromOptions();
-      } else if (data.config && data.config.types && data.config.types.length) {
-        updateMachineTypeDropdown(data.config.types);
-        if (data.config.colors && data.config.colors.length) updateColorsDropdown(data.config.colors);
-        if (data.config.widths && data.config.widths.length) updateWidthsDropdown(data.config.widths);
-      }
-      if (data.cylinderPrices && window.applyCylinderPricesMap) {
-        window.applyCylinderPricesMap(data.cylinderPrices);
-      }
-      if (typeof window.calculateAll === 'function') window.calculateAll();
-      window._settingsLoaded = true;
-    } catch (e) {
-      window.debugWarn('Could not load settings from server, using defaults:', e);
-    } finally {
-      _settingsLoading = false;
-    }
-  }
-
-  // تعريض الدالة لتحديث الإعدادات (سعر الصرف وغيره) عند فتح الكالكتور
-  window.loadSettingsFromServer = loadSettingsFromServer;
-
-  // تحميل الإعدادات عند بدء التشغيل - من السيرفر مباشرة
+  // الإعدادات تُحمّل حصرياً من Python (form_show → applyCalculatorSettingsFromPython)
+  // لا يوجد تحميل مباشر من JS لأن anvil.server غير متاح في iframe
   window._settingsLoaded = false;
-  loadSettingsFromServer();
 
   // ----------------------------------------
   // عناصر الواجهة
@@ -238,56 +183,6 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
     return out;
   }
 
-  // Load machine prices from server — المصدر الوحيد لـ Standard Machine FOB cost وخيارات الدروب داون
-  var _pricesLoading = false; // Race condition guard
-  async function loadMachinePricesFromServer() {
-    if (_pricesLoading) return; // منع التحميل المتكرر
-    _pricesLoading = true;
-    try {
-      var call = (window.anvil && window.anvil.server && window.anvil.server.call) || (window.top && window.top.anvil && window.top.anvil.server && window.top.anvil.server.call);
-      if (!call) return;
-      var auth = (typeof sessionStorage !== 'undefined' && (sessionStorage.getItem('auth_token') || sessionStorage.getItem('user_email'))) || null;
-      var result = await call('get_machine_prices', auth);
-      console.log('[DIAG] get_machine_prices result:', JSON.stringify({
-        success: result?.success,
-        hasOptions: !!(result?.options),
-        optionTypes: result?.options?.types,
-        optionTypeColorWidths: result?.options?.typeColorWidths,
-        pricesKeys: result?.prices ? Object.keys(result.prices) : null
-      }, null, 2));
-      if (result && result.success && result.prices) {
-        MACHINE_PRICES = normalizePricesKeys(result.prices);
-        if (result.options && result.options.types && result.options.types.length > 0) {
-          PRICE_OPTIONS = result.options;
-          updateMachineTypeDropdown(PRICE_OPTIONS.types);
-          refreshColorsAndWidthsFromOptions();
-        }
-        // recalc مرة واحدة فقط بدلاً من 3 مرات (إصلاح Race Condition)
-        if (typeof window.calculateAll === 'function') window.calculateAll();
-      }
-    } catch(e) {
-      window.debugWarn('Could not load machine prices from server, using defaults:', e);
-    } finally {
-      _pricesLoading = false;
-    }
-  }
-
-  // احتياطي: إذا لم نجد options من الأسعار نحمّل الكونفيج القديم
-  async function loadMachineConfigFromServer() {
-    if (PRICE_OPTIONS.types && PRICE_OPTIONS.types.length > 0) return;
-    try {
-      const result = await window.anvil?.server?.call('get_machine_config');
-      if (result && result.success && result.config) {
-        var config = result.config;
-        if (config.types && config.types.length > 0) updateMachineTypeDropdown(config.types);
-        if (config.colors && config.colors.length > 0) updateColorsDropdown(config.colors);
-        if (config.widths && config.widths.length > 0) updateWidthsDropdown(config.widths);
-      }
-    } catch(e) {
-      window.debugWarn('Could not load machine config from server:', e);
-    }
-  }
-
   function updateMachineTypeDropdown(types) {
     const typeList = (types || []).map(function(t) { return String(t); });
     const select = document.getElementById('machine_type');
@@ -425,12 +320,9 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
   if (machineType) machineType.addEventListener('change', refreshColorsAndWidthsFromOptions);
   if (colors) colors.addEventListener('change', refreshColorsAndWidthsFromOptions);
 
-  // تعريض تحميل إعدادات المكن من السيرفر (أنواع الماكينة، الألوان، المقاسات) لاستدعائها عند فتح الكالكتور
-  window.loadMachineConfigFromServer = loadMachineConfigFromServer;
-
   /**
-   * تطبيق إعدادات جُلبت من بايثون (السيرفر) - الكالكتور يعتمد على هذا عندما لا تعمل استدعاءات السيرفر من JS
-   * data: { exchangeRate, config: { types, colors, widths }, shipping_sea, ths_cost, clearance_expenses, tax_rate, bank_commission }
+   * تطبيق إعدادات جُلبت من بايثون (form_show) - المصدر الوحيد لإعدادات الكالكتور
+   * data: { exchangeRate, machinePrices, priceOptions, shipping_sea, ths_cost, clearance_expenses, tax_rate, bank_commission, cylinderPrices }
    */
   window.applyCalculatorSettingsFromPython = function(data) {
     if (!data) return;
@@ -448,22 +340,18 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
       if (data.clearance_expenses != null && !isNaN(data.clearance_expenses)) CONFIG.EXPENSES_CLEARANCE = parseFloat(data.clearance_expenses);
       if (data.tax_rate != null && !isNaN(data.tax_rate)) CONFIG.TAX_RATE = parseFloat(data.tax_rate);
       if (data.bank_commission != null && !isNaN(data.bank_commission)) CONFIG.BANK_COMMISSION = parseFloat(data.bank_commission);
-      var c = data.config;
-      var opts = data.priceOptions;
+      // المصدر الوحيد: جدول Machine Prices (USD) — machinePrices + priceOptions
       if (data.cylinderPrices && window.applyCylinderPricesMap) {
         window.applyCylinderPricesMap(data.cylinderPrices);
       }
       if (data.machinePrices && typeof data.machinePrices === 'object') {
         MACHINE_PRICES = normalizePricesKeys(data.machinePrices);
       }
+      var opts = data.priceOptions;
       if (opts && opts.types && opts.types.length) {
         PRICE_OPTIONS = opts;
         updateMachineTypeDropdown(opts.types);
         refreshColorsAndWidthsFromOptions();
-      } else if (c && c.types && c.types.length) {
-        updateMachineTypeDropdown(c.types);
-        if (c.colors && c.colors.length) updateColorsDropdown(c.colors);
-        if (c.widths && c.widths.length) updateWidthsDropdown(c.widths);
       }
       if (typeof window.calculateAll === 'function') window.calculateAll();
       window._settingsLoaded = true;
@@ -493,10 +381,7 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
   (window.safeSetTimeout || setTimeout)(tryApplyOnce, 1200);
   (window.safeSetTimeout || setTimeout)(tryApplyOnce, 2500);
 
-  // تحميل الأسعار والكونفيج بعد الإعدادات — تأخير كافٍ حتى يكون الـ DOM جاهزاً
-  (window.safeSetTimeout || setTimeout)(loadMachinePricesFromServer, 600);
-  (window.safeSetTimeout || setTimeout)(loadMachineConfigFromServer, 900);
-  // بعد تحميل الأسعار: إعادة تطبيق إعدادات بايثون ثم إعادة حساب
+  // إعادة تطبيق الإعدادات بعد تأخير (في حال تأخر Python form_show)
   (window.safeSetTimeout || setTimeout)(function() {
     var d = window.__calculatorSettingsFromPython || (window.top && window.top !== window && window.top.__calculatorSettingsFromPython);
     if (window.applyCalculatorSettingsFromPython && d) try { window.applyCalculatorSettingsFromPython(d); } catch(e) {}
@@ -597,14 +482,6 @@ if (typeof window.debugLog !== 'function') window.debugLog = function () {};
       window.updateExchangeRate(event.newValue);
     }
   });
-
-  // تحديث الإعدادات كل 5 دقائق فقط (تقليل الحمل — الإعدادات لا تتغير كثيراً)
-  // حد أقصى 48 مرة (4 ساعات) لمنع Memory Leak
-  (window.safeSetInterval || setInterval)(function() {
-    if (window.anvil?.server?.call) {
-      loadSettingsFromServer();
-    }
-  }, 300000, 48);
 
   // ----------------------------------------
   // الحسابات الأساسية

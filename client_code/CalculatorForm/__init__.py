@@ -180,8 +180,17 @@ class CalculatorForm(CalculatorFormTemplate):
       # المصدر الوحيد: جدول Machine Prices (USD) — لا نستخدم config الثابت
       if data.get("priceOptions"):
         settings_payload["priceOptions"] = data["priceOptions"]
+        logger.info("form_show: priceOptions types=%s, typeColorWidths keys=%s",
+                    data["priceOptions"].get("types"),
+                    {t: {c: ws for c, ws in cv.items()}
+                     for t, cv in (data["priceOptions"].get("typeColorWidths") or {}).items()})
+      else:
+        logger.warning("form_show: NO priceOptions in server response!")
       if data.get("machinePrices") is not None:
         settings_payload["machinePrices"] = data["machinePrices"]
+        logger.info("form_show: machinePrices types=%s", list(data["machinePrices"].keys()) if isinstance(data["machinePrices"], dict) else 'not dict')
+      else:
+        logger.warning("form_show: NO machinePrices in server response!")
       if data.get("cylinderPrices") is not None:
         settings_payload["cylinderPrices"] = data["cylinderPrices"]
       # تمرير البيانات مباشرة عبر anvil.js بدون eval
@@ -199,8 +208,10 @@ class CalculatorForm(CalculatorFormTemplate):
       # تطبيق الإعدادات مع تقليل عدد الاستدعاءات (2 بدل 5) وإزالة التكرار
       apply_js = (
         "var _d = (window.__calculatorSettingsFromPython || (window.top && window.top.__calculatorSettingsFromPython));"
+        "if(_d){console.log('[CALC] Settings from Python:',JSON.stringify({hasPriceOptions:!!_d.priceOptions,hasMachinePrices:!!_d.machinePrices,priceOptionTypes:_d.priceOptions?_d.priceOptions.types:null,typeColorWidths:_d.priceOptions?_d.priceOptions.typeColorWidths:null}));}"
+        "else{console.warn('[CALC] NO settings from Python!');}"
         "var _applied = false;"
-        "var _apply = function() { if (_applied) return; if (window.applyCalculatorSettingsFromPython && _d) { try { _applied = true; window.applyCalculatorSettingsFromPython(_d); if (window.calculateAll) setTimeout(window.calculateAll, 50); } catch(e) { _applied = false; } } };"
+        "var _apply = function() { if (_applied) return; if (window.applyCalculatorSettingsFromPython && _d) { try { _applied = true; window.applyCalculatorSettingsFromPython(_d); if (window.calculateAll) setTimeout(window.calculateAll, 50); } catch(e) { _applied = false; console.error('[CALC] apply error:', e); } } };"
         "var _rDone = false;"
         "var _r = function() { if (_rDone) return; if (window.reinitCalculatorDropdowns) { _rDone = true; window.reinitCalculatorDropdowns(); } };"
         "setTimeout(_apply, 300); setTimeout(_apply, 2000);"

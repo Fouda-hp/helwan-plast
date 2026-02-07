@@ -2309,9 +2309,13 @@ def get_machine_prices(token_or_email=None):
         if setting and setting['setting_value']:
             try:
                 prices = json.loads(setting['setting_value'])
+                logger.info("get_machine_prices: loaded from DB (setting_key='machine_prices'), types=%s", list(prices.keys()) if isinstance(prices, dict) else 'not dict')
             except json.JSONDecodeError:
+                logger.warning("get_machine_prices: DB JSON parse error, using defaults")
                 prices = default_prices
         else:
+            logger.info("get_machine_prices: no DB setting found (setting=%s), using defaults with 80/100/120/140/160",
+                       'exists but empty' if setting else 'does not exist')
             prices = default_prices
         prices = _normalize_prices_keys(prices)
         options = _options_from_machine_prices(prices)

@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from anvil.tables import app_tables
 
 from .auth_constants import SESSION_DURATION_MINUTES, MAX_SESSIONS_PER_USER
-from .auth_utils import get_utc_now
+from .auth_utils import get_utc_now, make_aware
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +35,9 @@ def create_session(user_email, role, ip_address=None, user_agent=None):
     try:
         active_sessions = list(app_tables.sessions.search(user_email=user_email, is_active=True))
         now = get_utc_now()
-        valid_sessions = [s for s in active_sessions if s['expires_at'] > now]
+        valid_sessions = [s for s in active_sessions if make_aware(s['expires_at']) > now]
         for s in active_sessions:
-            if s['expires_at'] <= now:
+            if make_aware(s['expires_at']) <= now:
                 s.update(is_active=False)
         if len(valid_sessions) >= MAX_SESSIONS_PER_USER:
             valid_sessions.sort(key=lambda s: s['created_at'])
@@ -81,7 +81,7 @@ def validate_session(token):
         expires_at = session.get('expires_at')
         if expires_at is not None:
             try:
-                if get_utc_now() > expires_at:
+                if get_utc_now() > make_aware(expires_at):
                     session.update(is_active=False)
                     return None
             except (TypeError, ValueError):
@@ -141,7 +141,7 @@ def cleanup_expired_sessions():
         now = get_utc_now()
         cleaned = 0
         for s in app_tables.sessions.search(is_active=True):
-            if s.get('expires_at') and s['expires_at'] < now:
+            if s.get('expires_at') and make_aware(s['expires_at']) < now:
                 s.update(is_active=False)
                 cleaned += 1
         if cleaned > 0:

@@ -775,8 +775,8 @@ def login_user(email, password):
         return {'success': False, 'message': 'Please verify your email first'}
 
     # التحقق من القفل
-    if user['locked_until'] and user['locked_until'] > get_utc_now():
-        remaining = (user['locked_until'] - get_utc_now()).seconds // 60
+    if user['locked_until'] and make_aware(user['locked_until']) > get_utc_now():
+        remaining = (make_aware(user['locked_until']) - get_utc_now()).seconds // 60
         return {
             'success': False,
             'message': f'Account locked. Try again in {remaining} minutes.'
@@ -1492,7 +1492,7 @@ def complete_password_change(email):
         return {'success': False, 'message': 'No pending password change found'}
 
     # التحقق من انتهاء الصلاحية
-    if get_utc_now() > pending['expires_at']:
+    if get_utc_now() > make_aware(pending['expires_at']):
         pending.delete()
         return {'success': False, 'message': 'Password change request has expired'}
 
@@ -2632,16 +2632,14 @@ def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
             all_logs = [l for l in all_logs if l['table_name'] == filters['table_name']]
         if filters.get('date_from'):
             try:
-                date_from = datetime.strptime(filters['date_from'], '%Y-%m-%d')
-                all_logs = [l for l in all_logs if l['timestamp'] and l['timestamp'] >= date_from]
+                date_from = make_aware(datetime.strptime(filters['date_from'], '%Y-%m-%d'))
+                all_logs = [l for l in all_logs if l['timestamp'] and make_aware(l['timestamp']) >= date_from]
             except ValueError:
                 pass
         if filters.get('date_to'):
             try:
-                date_to = datetime.strptime(filters['date_to'], '%Y-%m-%d')
-                # Add one day to include the entire end date
-                date_to = date_to.replace(hour=23, minute=59, second=59)
-                all_logs = [l for l in all_logs if l['timestamp'] and l['timestamp'] <= date_to]
+                date_to = make_aware(datetime.strptime(filters['date_to'], '%Y-%m-%d').replace(hour=23, minute=59, second=59))
+                all_logs = [l for l in all_logs if l['timestamp'] and make_aware(l['timestamp']) <= date_to]
             except ValueError:
                 pass
 
@@ -2870,7 +2868,7 @@ def get_session_info(token):
         token_hash = _hash_token(token)
         session_record = app_tables.sessions.get(session_token=token_hash)
         if session_record:
-            remaining = (session_record['expires_at'] - get_utc_now()).total_seconds() / 60
+            remaining = (make_aware(session_record['expires_at']) - get_utc_now()).total_seconds() / 60
 
             return {
                 'valid': True,

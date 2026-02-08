@@ -53,6 +53,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.savePayments = self.save_payments
         anvil.js.window.calculateTotalPercentage = self.calculate_total_percentage
         anvil.js.window.saveContract = self.save_contract
+        anvil.js.window.deleteContract = self.delete_contract
         anvil.js.window.validateNumPayments = self.validate_num_payments
 
     def _show_msg(self, msg, typ='error'):
@@ -519,20 +520,35 @@ class ContractPrintForm(ContractPrintFormTemplate):
         delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
         delivery_date = str(delivery_input.value) if delivery_input else ''
         
+        # بيانات العرض من get_quotation_pdf_data تستخدم client_company, client_phone, client_address
+        # وـ company في current_data قد تكون قاموس إعدادات وليست اسم الشركة
+        company_val = self.current_data.get('client_company') or ''
+        if not company_val and isinstance(self.current_data.get('company'), str):
+            company_val = self.current_data.get('company', '')
+        phone_val = self.current_data.get('client_phone') or self.current_data.get('phone') or ''
+        address_val = self.current_data.get('client_address') or self.current_data.get('address') or ''
+        country_val = self.current_data.get('country') or ''
+        q_num = self.current_data.get('quotation_number')
+        if q_num is not None and q_num != '':
+            try:
+                q_num = int(q_num)
+            except (TypeError, ValueError):
+                pass
+
         contract_data = {
-            'quotation_number': self.current_data.get('quotation_number'),
-            'client_name': self.current_data.get('client_name'),
-            'company': self.current_data.get('company'),
-            'phone': self.current_data.get('phone'),
-            'country': self.current_data.get('country'),
-            'address': self.current_data.get('address'),
-            'model': self.current_data.get('model'),
-            'colors_count': self.current_data.get('colors_count'),
-            'machine_width': self.current_data.get('machine_width'),
-            'material': self.current_data.get('material'),
-            'winder_type': self.current_data.get('winder'),
-            'price_mode': self.current_data.get('pricing_mode'),
-            'total_price': self.current_data.get('total_price'),
+            'quotation_number': q_num,
+            'client_name': self.current_data.get('client_name', ''),
+            'company': str(company_val),
+            'phone': str(phone_val),
+            'country': str(country_val),
+            'address': str(address_val),
+            'model': str(self.current_data.get('model', '')),
+            'colors_count': str(self.current_data.get('colors_count', '')),
+            'machine_width': str(self.current_data.get('machine_width', '')),
+            'material': str(self.current_data.get('material', '')),
+            'winder_type': str(self.current_data.get('winder', '')),
+            'price_mode': str(self.current_data.get('pricing_mode', '')),
+            'total_price': self.current_data.get('total_price') or self.current_data.get('total_price_raw', 0),
             'payment_method': self.payment_method,
             'num_payments': len(self.payment_data),
             'payments': self.payment_data,
@@ -541,13 +557,17 @@ class ContractPrintForm(ContractPrintFormTemplate):
         }
         
         try:
-            # Get user email for audit log
             user_email = anvil.js.window.sessionStorage.getItem('user_email') or 'system'
             auth = anvil.js.window.sessionStorage.getItem('auth_token') or user_email
             result = anvil.server.call('save_contract', contract_data, user_email, auth)
             if result and result.get('success'):
                 is_ar = self.current_lang == 'ar'
                 Notification('تم حفظ العقد بنجاح' if is_ar else 'Contract saved', style='success').show()
+            elif result and result.get('already_exists'):
+                # ربط الرسالة بلغة النموذج (زر اللغة في العقد)
+                is_ar = self.current_lang == 'ar'
+                msg = result.get('message') if is_ar else result.get('message_en', result.get('message', ''))
+                self._show_msg(msg or ('العقد لهذا العرض تم إنشاؤه مسبقاً.' if is_ar else 'This contract for this quotation was already created before.'))
             else:
                 err_msg = result.get('message', 'Unknown error') if result else 'Server returned empty response'
                 self._show_msg(err_msg)
@@ -559,6 +579,44 @@ class ContractPrintForm(ContractPrintFormTemplate):
             else:
                 msg = f'Save failed. Details: {detail}'
             self._show_msg(msg)
+
+    def delete_contract(self):
+        """حذف العقد وبيناته بالكامل من الجدول (يتطلب صلاحية delete)"""
+        if not self.current_data:
+            is_ar = self.current_lang == 'ar'
+            self._show_msg('اختر عرضاً أولاً' if is_ar else 'Please select a quotation first')
+            return
+        q_num = self.current_data.get('quotation_number')
+        try:
+            q_num = int(q_num) if q_num not in (None, '') else None
+        except (TypeError, ValueError):
+            q_num = None
+        if q_num is None:
+            is_ar = self.current_lang == 'ar'
+            self._show_msg('رقم العرض غير صالح' if is_ar else 'Invalid quotation number')
+            return
+        try:
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+            result = anvil.server.call('delete_contract', q_num, auth)
+            is_ar = self.current_lang == 'ar'
+            if result and result.get('success'):
+                self.current_data = None
+                self.payment_data = []
+                empty_state = anvil.js.window.document.getElementById('emptyState')
+                template_content = anvil.js.window.document.getElementById('templateContent')
+                if empty_state:
+                    empty_state.style.display = 'block'
+                if template_content:
+                    template_content.style.display = 'none'
+                self.load_quotations_list()
+                msg = result.get('message') if is_ar else result.get('message_en', result.get('message', ''))
+                self._show_msg(msg or ('تم حذف العقد وبيناته بالكامل' if is_ar else 'Contract and all its data have been deleted'), typ='success')
+            else:
+                err = result.get('message') if is_ar else result.get('message_en', result.get('message', '')) if result else 'Unknown error'
+                self._show_msg(err)
+        except Exception as e:
+            is_ar = self.current_lang == 'ar'
+            self._show_msg(f'فشل الحذف: {str(e)}' if is_ar else f'Delete failed: {str(e)}')
 
     # ==================== RENDER TEMPLATE (Same as Quotation) ====================
     def render_template(self):

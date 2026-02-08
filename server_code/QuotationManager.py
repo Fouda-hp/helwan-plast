@@ -35,10 +35,10 @@ except ImportError:
     import notifications as notifications_module
 try:
     from . import quotation_numbers
-    from .quotation_numbers import get_next_number_atomic
+    from .quotation_numbers import get_next_number_atomic, get_next_contract_serial
 except ImportError:
     import quotation_numbers
-    from quotation_numbers import get_next_number_atomic
+    from quotation_numbers import get_next_number_atomic, get_next_contract_serial
 try:
     from . import quotation_backup
 except ImportError:
@@ -1939,61 +1939,54 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
         if not quotation_number:
             return {'success': False, 'message': 'المشكلة: رقم العرض مطلوب (Quotation number is required)'}
         
-        contract_number = f"C-{quotation_number}"
+        try:
+            quotation_number = int(quotation_number)
+        except (TypeError, ValueError):
+            return {'success': False, 'message': 'المشكلة: رقم العرض يجب أن يكون رقماً (Quotation number must be numeric)'}
+        from datetime import datetime as dt
+        current_year = dt.now().year
         payments_list = contract_data.get('payments', [])
         payments_json = json.dumps(payments_list, ensure_ascii=False, default=str)
         payment_cols = _contract_payment_columns(payments_list)
         ip_address = get_client_ip()
-        
-        # Try to find existing contract
+
+        def _str(val, default=''):
+            if val is None:
+                return default
+            if isinstance(val, str):
+                return val
+            if isinstance(val, (dict, list)):
+                return default
+            return str(val)
+
+        # البحث عن عقد موجود بنفس رقم العرض (تحديث) أو إنشاء جديد برقم عقد: C - رقم الكوتيشن / متسلسل - السنة
+        existing = None
         try:
-            existing = app_tables.contracts.get(contract_number=contract_number)
-            if existing:
-                # Update existing
-                old_data = {'contract_number': contract_number}
-                existing.update(
-                    client_name=contract_data.get('client_name', ''),
-                    company=contract_data.get('company', ''),
-                    phone=contract_data.get('phone', ''),
-                    country=contract_data.get('country', ''),
-                    address=contract_data.get('address', ''),
-                    model=contract_data.get('model', ''),
-                    colors_count=str(contract_data.get('colors_count', '')),
-                    machine_width=str(contract_data.get('machine_width', '')),
-                    material=contract_data.get('material', ''),
-                    winder_type=contract_data.get('winder_type', ''),
-                    price_mode=contract_data.get('price_mode', ''),
-                    total_price=str(contract_data.get('total_price', '')),
-                    payment_method=contract_data.get('payment_method', 'percentage'),
-                    num_payments=contract_data.get('num_payments', 0),
-                    payments_json=payments_json,
-                    delivery_date=contract_data.get('delivery_date', ''),
-                    updated_at=get_utc_now(),
-                    **payment_cols
-                )
-                logger.info(f"Contract {contract_number} updated by {user_email}")
-                log_audit('UPDATE', 'contracts', contract_number, old_data, contract_data, user_email, ip_address)
-                try:
-                    notifications_module.create_notification(
-                        user_email, 'contract_saved',
-                        {'contract_number': contract_number, 'quotation_number': quotation_number}
-                    )
-                except Exception:
-                    pass
-                return {'success': True, 'message': 'Contract updated', 'contract_number': contract_number}
+            existing = app_tables.contracts.get(quotation_number=quotation_number)
         except Exception as e:
-            logger.warning(f"Contract lookup failed: {e}")
+            logger.warning(f"Contract lookup by quotation_number failed: {e}")
+        if existing:
+            # لا يسمح بحفظ أكثر من عقد واحد لنفس الكوتيشن — العقد تم إنشاؤه مسبقاً
+            return {
+                'success': False,
+                'already_exists': True,
+                'message': 'العقد لهذا العرض تم إنشاؤه مسبقاً.',
+                'message_en': 'This contract for this quotation was already created before.',
+                'contract_number': existing['contract_number']
+            }
         
-        # Create new contract
+        # عقد جديد: رقم العقد = C - رقم الكوتيشن / متسلسل (يبدأ من 2) - السنة الحالية
+        serial = get_next_contract_serial()
+        contract_number = f"C - {quotation_number} / {serial} - {current_year}"
         try:
             app_tables.contracts.add_row(
                 contract_number=contract_number,
-                quotation_number=int(quotation_number),
-                client_name=contract_data.get('client_name', ''),
-                company=contract_data.get('company', ''),
-                phone=contract_data.get('phone', ''),
-                country=contract_data.get('country', ''),
-                address=contract_data.get('address', ''),
+                quotation_number=quotation_number,
+                client_name=_str(contract_data.get('client_name')),
+                company=_str(contract_data.get('company')),
+                phone=_str(contract_data.get('phone')),
+                country=_str(contract_data.get('country')),
+                address=_str(contract_data.get('address')),
                 model=contract_data.get('model', ''),
                 colors_count=str(contract_data.get('colors_count', '')),
                 machine_width=str(contract_data.get('machine_width', '')),
@@ -2046,9 +2039,11 @@ def get_contract(quotation_number, token_or_email=None):
     if not is_valid:
         return {'success': False, 'message': 'Permission denied'}
     try:
-        contract_number = f"C-{quotation_number}"
-        row = app_tables.contracts.get(contract_number=contract_number)
-        
+        try:
+            q_num = int(quotation_number)
+        except (TypeError, ValueError):
+            return {'success': False, 'message': 'Invalid quotation number'}
+        row = app_tables.contracts.get(quotation_number=q_num)
         if row:
             payments = []
             try:
@@ -2078,6 +2073,38 @@ def get_contract(quotation_number, token_or_email=None):
     except Exception as e:
         logger.error(f"Error getting contract: {e}")
         return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def delete_contract(quotation_number, token_or_email=None):
+    """
+    حذف العقد وبيناته بالكامل من الجدول — يتطلب صلاحية delete
+    """
+    has_permission, error, _ = check_delete_permission(token_or_email)
+    if not has_permission:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied: delete required'}
+    try:
+        try:
+            q_num = int(quotation_number)
+        except (TypeError, ValueError):
+            return {'success': False, 'message': 'رقم العرض غير صالح'}
+        row = app_tables.contracts.get(quotation_number=q_num)
+        if not row:
+            return {'success': False, 'message': 'العقد غير موجود', 'message_en': 'Contract not found'}
+        contract_number = row['contract_number']
+        old_data = {'contract_number': contract_number, 'quotation_number': q_num}
+        row.delete()
+        user_email = None
+        try:
+            is_valid, user_email, _ = _require_permission(token_or_email, 'view')
+        except Exception:
+            pass
+        log_audit('DELETE', 'contracts', contract_number, old_data, None, user_email or 'unknown', get_client_ip())
+        logger.info(f"Contract {contract_number} (quotation {q_num}) deleted")
+        return {'success': True, 'message': 'تم حذف العقد وبيناته بالكامل', 'message_en': 'Contract and all its data have been deleted'}
+    except Exception as e:
+        logger.error(f"Error deleting contract: {e}")
+        return {'success': False, 'message': f'فشل الحذف: {str(e)}', 'message_en': f'Delete failed: {str(e)}'}
 
 
 @anvil.server.callable

@@ -7,6 +7,7 @@ quotation_numbers.py - الترقيم التلقائي للعملاء والعر
 """
 
 import logging
+from datetime import datetime
 from anvil.tables import app_tables
 from anvil import tables as anvil_tables
 import anvil.server
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 # مفاتيح العدّادات في جدول counters (نص فريد لكل نوع ترقيم)
 COUNTER_CLIENTS = "clients_next"
 COUNTER_QUOTATIONS = "quotations_next"
+COUNTER_CONTRACTS_SERIAL_PREFIX = "contracts_serial_"
 
 
 def _get_max_from_table(counter_key, include_deleted=False):
@@ -61,7 +63,10 @@ def _seed_initial_value(counter_key):
     """
     عند إنشاء عداد جديد: نزرعه من القيمة العظمى في الجدول الفعلي.
     يُخزَّن العداد = max حتى يكون الرقم التالي المُعطى = max+1 (أو 1 إذا الجدول فاضي).
+    متسلسل العقود: يبدأ من 1 في العدّاد حتى يكون أول رقم مُرجَع = 2.
     """
+    if counter_key.startswith(COUNTER_CONTRACTS_SERIAL_PREFIX):
+        return 2  # أول عقد في السنة: نزرع 2 فيُرجَع 2 ثم التالي 3، 4، ...
     max_val = _get_max_from_table(counter_key, include_deleted=True)
     return max_val
 
@@ -100,6 +105,16 @@ def get_next_number_atomic(counter_key):
     row["value"] = next_val
     logger.info("Next number generated: key=%s, previous=%s, next=%s", counter_key, current, next_val)
     return next_val
+
+
+def get_next_contract_serial():
+    """
+    المتسلسل السنوي للعقود: يبدأ من 2 ويزيد 1 بعد كل حفظ عقد جديد.
+    المفتاح: contracts_serial_YYYY (عدّاد مستقل لكل سنة).
+    """
+    year = datetime.now().year
+    counter_key = f"{COUNTER_CONTRACTS_SERIAL_PREFIX}{year}"
+    return get_next_number_atomic(counter_key)
 
 
 # ========== دوال الترقيم المعرّضة للعميل (كلها تستدعي العداد الذرّي فقط) ==========

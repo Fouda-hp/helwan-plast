@@ -912,9 +912,12 @@ def complete_login(user, ip_address):
     if not token:
         return {'success': False, 'message': 'Session creation failed. Please try again.'}
 
-    # تسجيل في Audit Log
+    # تسجيل في Audit Log — وصف الإشعار يعرض اسم المستخدم وليس الـ user_id
+    user_display = (user.get('full_name') or '').strip() or (user.get('email') or '').strip() or 'مستخدم'
     log_audit('LOGIN', 'users', user['user_id'], None,
-              {'email': email}, email, ip_address)
+              {'email': email}, email, ip_address,
+              user_name=user_display,
+              action_description='تسجيل دخول - ' + user_display)
 
     logger.info(f"User logged in: {email}")
 

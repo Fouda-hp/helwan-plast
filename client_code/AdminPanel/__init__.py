@@ -32,20 +32,37 @@ class AdminPanel(AdminPanelTemplate):
         # التحقق من الجلسة وتحميل بيانات المستخدم
         self._load_user_info()
 
-        # منع غير الأدمن من الوصول — التحقق من السيرفر
+        # منع غير الأدمن من الوصول — مع إعادة محاولة بعد تأخير قصير (لأن التوكن قد يتأخر من session/localStorage)
         if not self._is_admin():
+            try:
+                anvil.js.window._adminPanelDelayedCheck = self._delayed_admin_check
+                anvil.js.window.eval("setTimeout(function(){ try { if (window._adminPanelDelayedCheck) window._adminPanelDelayedCheck(); } catch(e){} }, 280);")
+            except Exception:
+                try:
+                    anvil.js.window.location.hash = '#launcher'
+                except Exception:
+                    pass
+                open_form('LauncherForm')
+            return
+
+        self._finish_admin_init()
+
+    def _delayed_admin_check(self):
+        """إعادة التحقق من صلاحية الأدمن بعد تأخير (لحالة تأخر توكن الجلسة)."""
+        self._load_user_info()
+        if self._is_admin():
+            self._finish_admin_init()
+        else:
             try:
                 anvil.js.window.location.hash = '#launcher'
             except Exception:
                 pass
             open_form('LauncherForm')
-            return
 
-        # Check route
+    def _finish_admin_init(self):
+        """إكمال تهيئة الأدمن بعد التأكد من الصلاحية."""
         self.check_route()
         anvil.js.window.addEventListener("hashchange", self.on_hash_change)
-
-        # Setup JS bridges
         self._setup_js_bridges()
         self._inject_admin_panel_enhancements()
 

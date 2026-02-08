@@ -38,12 +38,24 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
         except Exception:
             pass
 
+    def _get_auth_token(self):
+        """نفس منطق التوكن في الأدمن: sessionStorage ثم localStorage مع نسخ للجلسة."""
+        token = anvil.js.window.sessionStorage.getItem('auth_token')
+        if not token:
+            token = anvil.js.window.localStorage.getItem('auth_token')
+            if token:
+                try:
+                    anvil.js.window.sessionStorage.setItem('auth_token', token)
+                except Exception:
+                    pass
+        return token
+
     def load_quotations_list(self):
         self.load_contracts_list()
 
     def load_contracts_list(self):
         try:
-            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+            auth = self._get_auth_token()
             result = anvil.server.call('get_contracts_list', '', auth, 1, 500)
             if result and result.get('success'):
                 self.all_contracts = result.get('data', [])
@@ -58,6 +70,11 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
     def _populate_contracts_dropdown(self):
         select = anvil.js.window.document.getElementById('quotationSelect')
         if not select:
+            try:
+                anvil.js.window._contractEditRetryPopulate = self._populate_contracts_dropdown
+                anvil.js.window.eval("setTimeout(function(){ try { if (window._contractEditRetryPopulate) window._contractEditRetryPopulate(); } catch(e){} }, 150);")
+            except Exception:
+                pass
             return
         is_ar = self.current_lang == 'ar'
         select.innerHTML = '<option value="">-- ' + ('اختر عقداً' if is_ar else 'Select Contract') + ' --</option>'
@@ -82,7 +99,7 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
         except (ValueError, TypeError):
             self._show_msg('Invalid selection')
             return
-        auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+        auth = self._get_auth_token()
         contract_res = anvil.server.call('get_contract', q_num, auth)
         if not contract_res or not contract_res.get('success'):
             self._show_msg(contract_res.get('message', 'Contract not found') if contract_res else 'Error')

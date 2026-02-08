@@ -113,6 +113,8 @@ class LoginForm(LoginFormTemplate):
     def check_route(self):
         hash_val = (anvil.js.window.location.hash or '').strip() or '#launcher'
 
+        if hash_val == "#login":
+            return  # نبقى على صفحة تسجيل الدخول (تجنب حلقة LauncherForm ↔ LoginForm)
         if hash_val == "#launcher":
             open_form('LauncherForm')
         elif hash_val == "#calculator":

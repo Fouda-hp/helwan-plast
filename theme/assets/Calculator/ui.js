@@ -370,6 +370,36 @@
         location.hash = "#launcher";
       };
     }
+
+    // تصحيح الترقيم (ربط العداد بأكبر رقم فعلي في الجداول)
+    var saveDiv = byId("btn_save") && byId("btn_save").parentNode;
+    if (saveDiv && typeof window.resyncNumberingCounters === "function") {
+      var fixLink = document.createElement("a");
+      fixLink.href = "#";
+      fixLink.id = "fix_numbering_link";
+      fixLink.style.cssText = "font-size:11px;color:#2563eb;margin-left:12px;text-decoration:none;";
+      fixLink.textContent = "Wrong numbering? Fix";
+      fixLink.onclick = async function (e) {
+        e.preventDefault();
+        try {
+          var r = await window.resyncNumberingCounters();
+          if (r && r.success) {
+            showAlert("success", (r.message || "Counters resynced.") + " Click New or refresh the page.");
+            if (typeof window.getNextClientCode === "function" && typeof window.getNextQuotationNumber === "function") {
+              var cc = document.getElementById("client_code");
+              var qn = document.getElementById("Quotation#");
+              if (cc) cc.value = await window.getNextClientCode();
+              if (qn) qn.value = await window.getNextQuotationNumber();
+            }
+          } else {
+            showAlert("error", (r && r.message) || "Resync failed.");
+          }
+        } catch (err) {
+          showAlert("error", String(err && err.message || err));
+        }
+      };
+      saveDiv.appendChild(fixLink);
+    }
   } // ✅ قفل الـ function هنا
 
   // ----------------------------------------

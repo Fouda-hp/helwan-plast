@@ -18,16 +18,19 @@ COUNTER_CLIENTS = "clients_next"
 COUNTER_QUOTATIONS = "quotations_next"
 
 
-def _seed_initial_value(counter_key):
+def _get_max_from_table(counter_key, include_deleted=False):
     """
-    عند إنشاء عداد جديد: نزرعه من القيمة العظمى في الجدول الفعلي (إن وُجدت بيانات)
-    حتى لا يتداخل الرقم مع أرقام موجودة مسبقاً.
-    يُرجع: int (القيمة الابتدائية للعداد، 1 على الأقل).
+    القيمة العظمى الفعلية في جدول العملاء أو العروض.
+    تُستخدم للبذر الأولي ولإعادة المزامنة.
+    include_deleted: إذا True نعدّ كل الصفوف؛ إذا False نستثني is_deleted=True حيث وُجد.
     """
     max_val = 0
     try:
         if counter_key == COUNTER_CLIENTS:
-            for row in app_tables.clients.search():
+            it = app_tables.clients.search()
+            for row in it:
+                if not include_deleted and row.get("is_deleted") is True:
+                    continue
                 v = row.get("Client Code")
                 if v is not None:
                     try:
@@ -37,7 +40,10 @@ def _seed_initial_value(counter_key):
                     except (ValueError, TypeError):
                         pass
         elif counter_key == COUNTER_QUOTATIONS:
-            for row in app_tables.quotations.search():
+            it = app_tables.quotations.search()
+            for row in it:
+                if not include_deleted and row.get("is_deleted") is True:
+                    continue
                 v = row.get("Quotation#")
                 if v is not None:
                     try:
@@ -47,8 +53,17 @@ def _seed_initial_value(counter_key):
                     except (ValueError, TypeError):
                         pass
     except Exception as e:
-        logger.warning("_seed_initial_value(%s): %s; using 1", counter_key, e)
-    return max(1, max_val + 1)
+        logger.warning("_get_max_from_table(%s): %s", counter_key, e)
+    return max_val
+
+
+def _seed_initial_value(counter_key):
+    """
+    عند إنشاء عداد جديد: نزرعه من القيمة العظمى في الجدول الفعلي.
+    يُخزَّن العداد = max حتى يكون الرقم التالي المُعطى = max+1 (أو 1 إذا الجدول فاضي).
+    """
+    max_val = _get_max_from_table(counter_key, include_deleted=True)
+    return max_val
 
 
 @anvil.server.callable
@@ -123,3 +138,34 @@ def get_quotation_number_if_needed(current_number, model):
     if not model:
         return None
     return get_next_number_atomic(COUNTER_QUOTATIONS)
+
+
+@anvil.server.callable
+def resync_numbering_counters(token_or_email=None):
+    """
+    إعادة مزامنة عدّادي العملاء والعروض مع الجداول الفعلية (غير المحذوفة).
+    بعد التشغيل: الرقم التالي للعميل = أكبر كود عميل + 1، والرقم التالي للعرض = أكبر رقم عرض + 1.
+    يُنصح بتشغيلها مرة واحدة عند ظهور ترقيم خاطئ (مثلاً 14، 18 بدل 6، 8).
+    """
+    try:
+        max_clients = _get_max_from_table(COUNTER_CLIENTS, include_deleted=False)
+        max_quotations = _get_max_from_table(COUNTER_QUOTATIONS, include_deleted=False)
+        for key, max_val in [(COUNTER_CLIENTS, max_clients), (COUNTER_QUOTATIONS, max_quotations)]:
+            row = app_tables.counters.get(key=key)
+            if row is None:
+                app_tables.counters.add_row(key=key, value=max_val)
+                logger.info("Counter created on resync: key=%s, value=%s", key, max_val)
+            else:
+                row["value"] = max_val
+                logger.info("Counter resynced: key=%s, new_value=%s", key, max_val)
+        return {
+            "success": True,
+            "message": "Counters resynced. Next client code will be {}, next quotation # will be {}.".format(
+                max_clients + 1, max_quotations + 1
+            ),
+            "next_client_code": max_clients + 1,
+            "next_quotation_number": max_quotations + 1,
+        }
+    except Exception as e:
+        logger.exception("resync_numbering_counters failed")
+        return {"success": False, "message": str(e)}

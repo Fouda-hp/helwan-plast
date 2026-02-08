@@ -22,6 +22,7 @@ class CalculatorForm(CalculatorFormTemplate):
     # ---------- JS bridges (auto numbering)
     anvil.js.window.getNextClientCode = self.get_next_client_code_js
     anvil.js.window.getNextQuotationNumber = self.get_next_quotation_number_js
+    anvil.js.window.resyncNumberingCounters = self.resync_numbering_counters_js
 
     # ---------- Overlays & save
     anvil.js.window.getQuotationsForOverlay = self.get_quotations_for_overlay
@@ -51,6 +52,10 @@ class CalculatorForm(CalculatorFormTemplate):
 
   def get_next_quotation_number_js(self):
     return anvil.server.call("get_next_quotation_number")
+
+  def resync_numbering_counters_js(self):
+    """إعادة مزامنة الترقيم مع الجداول (عميل 6، عرض 8 إذا عندك 5 عملاء و 7 عروض)."""
+    return anvil.server.call("resync_numbering_counters")
 
   # =================================================
   # HELPERS

@@ -2402,14 +2402,44 @@ def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
 
         data = []
         for r in page_rows:
+            tp = r.get('total_price')
+            try:
+                if tp is not None and tp != '':
+                    total_price_val = float(str(tp).replace(',', '').replace('،', '').strip())
+                else:
+                    total_price_val = None
+            except (TypeError, ValueError):
+                total_price_val = None
+            payments_list = []
+            try:
+                raw = r.get('payments_json') or '[]'
+                if isinstance(raw, str):
+                    payments_list = json.loads(raw)
+                elif isinstance(raw, list):
+                    payments_list = raw
+            except Exception:
+                pass
+            payments_display = []
+            for p in (payments_list or [])[:12]:
+                date_str = str(p.get('date') or p.get('payment_date') or '').strip()
+                amt = p.get('amount')
+                if amt is None:
+                    amt = p.get('value')
+                try:
+                    amount_val = float(str(amt).replace(',', '').replace('،', '').strip()) if amt not in (None, '') else None
+                except (TypeError, ValueError):
+                    amount_val = None
+                if date_str or amount_val is not None:
+                    payments_display.append({'date': date_str, 'amount': amount_val})
             data.append({
                 'contract_number': r.get('contract_number'),
                 'quotation_number': r.get('quotation_number'),
                 'client_name': r.get('client_name'),
-                'total_price': r.get('total_price'),
+                'total_price': total_price_val,
                 'num_payments': r.get('num_payments'),
                 'delivery_date': r.get('delivery_date'),
-                'created_at': r.get('created_at').isoformat() if r.get('created_at') and hasattr(r.get('created_at'), 'isoformat') else ''
+                'created_at': r.get('created_at').isoformat() if r.get('created_at') and hasattr(r.get('created_at'), 'isoformat') else '',
+                'payments': payments_display
             })
 
         return {'success': True, 'data': data, 'count': len(data), 'total': total, 'page': page, 'page_size': page_size}
@@ -2430,12 +2460,27 @@ def export_contracts_data(token_or_email=None):
         all_rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
         data = []
         for r in all_rows:
+            tp = r.get('total_price')
+            try:
+                total_price_val = float(str(tp).replace(',', '').replace('،', '').strip()) if tp not in (None, '') else None
+            except (TypeError, ValueError):
+                total_price_val = None
+            payments_list = []
+            try:
+                raw = r.get('payments_json') or '[]'
+                payments_list = json.loads(raw) if isinstance(raw, str) else (raw if isinstance(raw, list) else [])
+            except Exception:
+                pass
+            payments_str = ' | '.join(
+                (str(p.get('date') or '').split('T')[0] + ': ' + str(p.get('amount') or p.get('value') or '')
+                 for p in (payments_list or [])[:12])
             data.append({
                 'contract_number': r.get('contract_number') or '',
                 'quotation_number': r.get('quotation_number'),
                 'client_name': r.get('client_name') or '',
-                'total_price': r.get('total_price'),
+                'total_price': total_price_val,
                 'num_payments': r.get('num_payments'),
+                'payment_schedule': payments_str,
                 'delivery_date': str(r.get('delivery_date') or ''),
                 'created_at': r.get('created_at').isoformat() if r.get('created_at') and hasattr(r.get('created_at'), 'isoformat') else ''
             })

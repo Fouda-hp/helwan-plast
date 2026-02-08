@@ -32,6 +32,15 @@ class AdminPanel(AdminPanelTemplate):
         # التحقق من الجلسة وتحميل بيانات المستخدم
         self._load_user_info()
 
+        # منع غير الأدمن من الوصول — التحقق من السيرفر
+        if not self._is_admin():
+            try:
+                anvil.js.window.location.hash = '#launcher'
+            except Exception:
+                pass
+            open_form('LauncherForm')
+            return
+
         # Check route
         self.check_route()
         anvil.js.window.addEventListener("hashchange", self.on_hash_change)
@@ -52,6 +61,12 @@ class AdminPanel(AdminPanelTemplate):
                     self.user_name = self.current_user.get('full_name', '')
         except Exception as e:
             logger.debug("Error loading user info: %s", e)
+
+    def _is_admin(self):
+        """التحقق من أن المستخدم الحالي أدمن (حسب السيرفر)."""
+        if not self.current_user:
+            return False
+        return (self.current_user.get('role') or '').strip().lower() == 'admin'
 
     def _setup_js_bridges(self):
         """إعداد الجسور مع JavaScript"""

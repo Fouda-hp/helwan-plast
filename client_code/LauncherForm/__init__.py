@@ -38,7 +38,20 @@ class LauncherForm(LauncherFormTemplate):
 
     def get_token(self):
         """Get auth token from sessionStorage (جلسة تنتهي عند إغلاق التاب)"""
-        return anvil.js.window.sessionStorage.getItem('auth_token')
+        return anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.localStorage.getItem('auth_token')
+
+    def _user_is_admin(self):
+        """التحقق من السيرفر أن المستخدم الحالي أدمن."""
+        try:
+            token = self.get_token()
+            if not token:
+                return False
+            result = anvil.server.call('validate_token', token)
+            if not result.get('valid') or not result.get('user'):
+                return False
+            return (result.get('user', {}).get('role') or '').strip().lower() == 'admin'
+        except Exception:
+            return False
 
     def setup_totp_start(self, token=None):
         """بدء تفعيل تطبيق المصادقة (Authenticator). يُفضّل تمرير token من JS من نفس الصفحة."""
@@ -106,6 +119,13 @@ class LauncherForm(LauncherFormTemplate):
         elif hash_val == "#database":
             open_form('DatabaseForm')
         elif hash_val == "#admin":
+            if not self._user_is_admin():
+                try:
+                    anvil.js.window.location.hash = "#launcher"
+                except Exception:
+                    pass
+                open_form('LauncherForm')
+                return
             open_form('AdminPanel')
         elif hash_val == "#import":
             open_form('DataImportForm')
@@ -331,7 +351,10 @@ class LauncherForm(LauncherFormTemplate):
                 except Exception: pass
 
         elif h == "#admin":
-            # فتح لوحة التحكم (للأدمن فقط)
+            # فتح لوحة التحكم (للأدمن فقط — تحقق من السيرفر)
+            if not self._user_is_admin():
+                anvil.js.window.location.hash = "#launcher"
+                return
             try:
                 open_form("AdminPanel")
             except Exception as e:
@@ -390,7 +413,14 @@ class LauncherForm(LauncherFormTemplate):
             pass
 
     def btn_admin_click(self, **event_args):
-        """فتح لوحة التحكم"""
+        """فتح لوحة التحكم (للأدمن فقط)"""
+        if not self._user_is_admin():
+            try:
+                if anvil.js.window.showNotification:
+                    anvil.js.window.showNotification('error', '', 'Access denied. Admin only.')
+            except Exception:
+                pass
+            return
         anvil.js.window.location.hash = "#admin"
         try:
             open_form("AdminPanel")

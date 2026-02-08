@@ -84,11 +84,13 @@ class LoginForm(LoginFormTemplate):
                 # Validate the token with the server
                 result = anvil.server.call('validate_token', auth_token)
                 if result.get('valid'):
-                    # Token is valid, redirect to appropriate page
-                    if user_role == 'admin':
-                        anvil.js.window.location.hash = '#admin'
-                    else:
-                        anvil.js.window.location.hash = '#launcher'
+                    # لا نغيّر الـ hash إذا المستخدم كان على صفحة معيّنة (مثلاً بعد الـ refresh)
+                    current_hash = (anvil.js.window.location.hash or '').strip()
+                    if not current_hash or current_hash == '#' or current_hash == '#login':
+                        if user_role == 'admin':
+                            anvil.js.window.location.hash = '#admin'
+                        else:
+                            anvil.js.window.location.hash = '#launcher'
                 else:
                     # Token expired or invalid, clear storage
                     self.clear_auth_storage()
@@ -109,18 +111,39 @@ class LoginForm(LoginFormTemplate):
         self.check_route()
 
     def check_route(self):
-        hash_val = anvil.js.window.location.hash
+        hash_val = (anvil.js.window.location.hash or '').strip() or '#launcher'
 
         if hash_val == "#launcher":
             open_form('LauncherForm')
         elif hash_val == "#calculator":
             open_form('CalculatorForm')
         elif hash_val == "#admin":
+            if not self._user_is_admin():
+                anvil.js.window.location.hash = '#launcher'
+                open_form('LauncherForm')
+                return
             open_form('AdminPanel')
         elif hash_val == "#import":
             open_form('DataImportForm')
         elif hash_val == "#quotation-print":
             open_form('QuotationPrintForm')
+        elif hash_val == "#contract-print":
+            open_form('ContractPrintForm')
+        else:
+            open_form('LauncherForm')
+
+    def _user_is_admin(self):
+        """التحقق من السيرفر أن المستخدم الحالي أدمن (لا نعتمد على sessionStorage فقط)."""
+        try:
+            token = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.localStorage.getItem('auth_token')
+            if not token:
+                return False
+            result = anvil.server.call('validate_token', token)
+            if not result.get('valid') or not result.get('user'):
+                return False
+            return (result.get('user', {}).get('role') or '').strip().lower() == 'admin'
+        except Exception:
+            return False
 
     # =========================================
     # Bridge functions for JavaScript

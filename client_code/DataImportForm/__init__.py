@@ -40,10 +40,27 @@ class DataImportForm(DataImportFormTemplate):
         """Handle hash changes for navigation"""
         self.check_route()
 
+    def _user_is_admin(self):
+        """التحقق من السيرفر أن المستخدم الحالي أدمن."""
+        try:
+            token = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.localStorage.getItem('auth_token')
+            if not token:
+                return False
+            result = anvil.server.call('validate_token', token)
+            if not result.get('valid') or not result.get('user'):
+                return False
+            return (result.get('user', {}).get('role') or '').strip().lower() == 'admin'
+        except Exception:
+            return False
+
     def check_route(self):
         """Handle routing"""
-        hash_val = anvil.js.window.location.hash
+        hash_val = (anvil.js.window.location.hash or '').strip()
         if hash_val == "#admin":
+            if not self._user_is_admin():
+                anvil.js.window.location.hash = '#launcher'
+                open_form('LauncherForm')
+                return
             open_form('AdminPanel')
         elif hash_val == "#launcher":
             open_form('LauncherForm')

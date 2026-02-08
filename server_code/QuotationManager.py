@@ -2472,8 +2472,8 @@ def export_contracts_data(token_or_email=None):
             except Exception:
                 pass
             payments_str = ' | '.join(
-                (str(p.get('date') or '').split('T')[0] + ': ' + str(p.get('amount') or p.get('value') or '')
-                 for p in (payments_list or [])[:12])
+                (str(p.get('date') or '').split('T')[0] + ': ' + str(p.get('amount') or p.get('value') or ''))
+                for p in (payments_list or [])[:12])
             data.append({
                 'contract_number': r.get('contract_number') or '',
                 'quotation_number': r.get('quotation_number'),

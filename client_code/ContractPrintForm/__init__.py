@@ -54,6 +54,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.updatePaymentRows = self.update_payment_rows
         anvil.js.window.updatePaymentMethod = self.update_payment_method
         anvil.js.window.savePayments = self.save_payments
+        anvil.js.window.handleSavePayments = self._handle_save_payments_click
         anvil.js.window.calculateTotalPercentage = self.calculate_total_percentage
         anvil.js.window.saveContract = self.save_contract
         anvil.js.window.deleteContract = self.delete_contract
@@ -248,6 +249,27 @@ class ContractPrintForm(ContractPrintFormTemplate):
         overlay = anvil.js.window.document.getElementById('paymentModalOverlay')
         if overlay:
             overlay.classList.remove('active')
+        err_el = anvil.js.window.document.getElementById('paymentModalError')
+        if err_el:
+            err_el.style.display = 'none'
+            err_el.innerHTML = ''
+
+    def _handle_save_payments_click(self):
+        """يستدعي من زر الحفظ في نافذة الدفعات — يعرض الرسالة داخل النافذة وفي alert إن فشل الحفظ."""
+        result = self.save_payments()
+        err_el = anvil.js.window.document.getElementById('paymentModalError')
+        if err_el:
+            if result and result.get('success'):
+                err_el.style.display = 'none'
+                err_el.innerHTML = ''
+            else:
+                msg = (result or {}).get('message') or ('حدث خطأ' if self.current_lang == 'ar' else 'An error occurred')
+                err_el.textContent = msg
+                err_el.style.display = 'block'
+                try:
+                    anvil.js.window.alert(msg)
+                except Exception:
+                    pass
 
     def update_payment_method(self):
         radios = anvil.js.window.document.querySelectorAll('input[name="paymentMethod"]')
@@ -494,37 +516,32 @@ class ContractPrintForm(ContractPrintFormTemplate):
         
         if errors:
             full_msg = '\n'.join(errors) if is_ar else '\n'.join(errors)
-            self._show_msg(full_msg)
-            return False
-        return True
+            return False, full_msg
+        return True, ''
 
     def save_payments(self):
+        """يحفظ بيانات الدفعات ويرجع {success: True} أو {success: False, message: '...'}."""
         is_ar = self.current_lang == 'ar'
         try:
             if not self.current_data:
-                self._show_msg(
-                    'الناقص: من فضلك اختر عرضاً أو عقداً أولاً ثم افتح إدارة الدفعات مرة أخرى.'
-                    if is_ar else 'Missing: Please select a quotation or contract first, then open Manage Payments again.'
-                )
-                return
+                msg = ('الناقص: من فضلك اختر عرضاً أو عقداً أولاً ثم افتح إدارة الدفعات مرة أخرى.'
+                       if is_ar else 'Missing: Please select a quotation or contract first, then open Manage Payments again.')
+                return {'success': False, 'message': msg}
             ok, msg_ar, msg_en = self._validate_delivery_date()
             if not ok:
-                self._show_msg(msg_ar if is_ar else msg_en)
-                return
-            if not self.validate_payments():
-                return
+                return {'success': False, 'message': msg_ar if is_ar else msg_en}
+            valid, validation_msg = self.validate_payments()
+            if not valid:
+                return {'success': False, 'message': validation_msg or ('التحقق من البيانات فشل' if is_ar else 'Validation failed')}
 
             value_inputs = anvil.js.window.document.querySelectorAll('.payment-value')
             date_inputs = anvil.js.window.document.querySelectorAll('.payment-date')
             if not value_inputs or not date_inputs:
-                self._show_msg(
-                    'الناقص: لم يتم العثور على حقول الدفعات. أعد فتح نافذة إدارة الدفعات.'
-                    if is_ar else 'Missing: Payment fields not found. Please reopen Manage Payments.'
-                )
-                return
+                msg = ('الناقص: لم يتم العثور على حقول الدفعات. أعد فتح نافذة إدارة الدفعات.'
+                       if is_ar else 'Missing: Payment fields not found. Please reopen Manage Payments.')
+                return {'success': False, 'message': msg}
 
             self.payment_data = []
-            # Remove commas from formatted price
             price_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
             try:
                 total_price = float(price_str) if price_str else 0
@@ -566,12 +583,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
             if self.current_data:
                 self.render_template()
+            return {'success': True}
         except Exception as e:
-            err_msg = str(e) if e else ( 'خطأ غير متوقع' if is_ar else 'Unexpected error' )
-            self._show_msg(
-                ('خطأ عند الحفظ: ' + err_msg) if is_ar else ('Error while saving: ' + err_msg),
-                'error'
-            )
+            err_msg = str(e) if e else ('خطأ غير متوقع' if is_ar else 'Unexpected error')
+            return {'success': False, 'message': ('خطأ عند الحفظ: ' + err_msg) if is_ar else ('Error while saving: ' + err_msg)}
 
     def save_contract(self):
         if not self.current_data:

@@ -1022,7 +1022,11 @@ def get_dashboard_stats(token_or_email=None):
     if not is_valid:
         return {"total_clients": 0, "total_quotations": 0, "total_value": 0,
                 "this_month_quotations": 0, "this_month_value": 0,
-                "deleted_clients": 0, "deleted_quotations": 0}
+                "deleted_clients": 0, "deleted_quotations": 0,
+                "total_contracts": 0, "contracts_value_egp": 0, "this_month_contracts": 0,
+                "total_due_payments_egp": 0,
+                "finance_chart": {"months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+                                 "paid": [0] * 12, "due": [0] * 12, "overdue": [0] * 12}}
 
     active_clients = list(app_tables.clients.search(is_deleted=False))
     active_quotations = list(app_tables.quotations.search(is_deleted=False))
@@ -1042,6 +1046,85 @@ def get_dashboard_stats(token_or_email=None):
 
     this_month_value = sum(q['Agreed Price'] or 0 for q in this_month_quotations)
 
+    # ----- Contract stats (from contracts table only) -----
+    all_contracts = list(app_tables.contracts.search())
+    total_contracts = len(all_contracts)
+    contracts_value_egp = 0
+    this_month_contracts = 0
+    total_due_payments_egp = 0
+    month_totals_due = [0.0] * 12  # Jan..Dec current year
+    month_totals_paid = [0.0] * 12
+    month_totals_overdue = [0.0] * 12
+
+    try:
+        year = now.year
+        for row in all_contracts:
+            try:
+                total_price_val = row.get('total_price')
+                if total_price_val is not None:
+                    if isinstance(total_price_val, (int, float)):
+                        contracts_value_egp += float(total_price_val)
+                    else:
+                        s = str(total_price_val).replace(',', '').replace('،', '').strip()
+                        if s:
+                            contracts_value_egp += float(s)
+            except (TypeError, ValueError):
+                pass
+            created = row.get('created_at')
+            if created and hasattr(created, 'date'):
+                d = created.date() if hasattr(created, 'date') else created
+                if d >= month_start.date():
+                    this_month_contracts += 1
+            elif created:
+                try:
+                    d = created if isinstance(created, date) else datetime.fromisoformat(str(created).replace('Z', '+00:00')).date()
+                    if d >= month_start.date():
+                        this_month_contracts += 1
+                except Exception:
+                    pass
+
+            payments = []
+            try:
+                payments = json.loads(row.get('payments_json') or '[]')
+            except Exception:
+                pass
+            for p in payments:
+                amt = 0
+                try:
+                    amt = float(p.get('amount') or 0)
+                except (TypeError, ValueError):
+                    v = p.get('value')
+                    if v is not None:
+                        try:
+                            amt = float(v)
+                        except (TypeError, ValueError):
+                            pass
+                if amt <= 0:
+                    continue
+                total_due_payments_egp += amt
+                date_str = (p.get('date') or '').strip()
+                if not date_str:
+                    continue
+                try:
+                    # Support YYYY-MM-DD
+                    parts = date_str.split('-')
+                    if len(parts) >= 2:
+                        y = int(parts[0]) if len(parts) >= 1 else year
+                        m = int(parts[1]) if len(parts) >= 2 else 1
+                        if y == year and 1 <= m <= 12:
+                            month_totals_due[m - 1] += amt
+                except (ValueError, IndexError):
+                    pass
+    except Exception as e:
+        logger.warning("Dashboard contract/finance stats: %s", e)
+
+    finance_chart = {
+        "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+        "paid": [round(x, 2) for x in month_totals_paid],
+        "due": [round(x, 2) for x in month_totals_due],
+        "overdue": [round(x, 2) for x in month_totals_overdue],
+    }
+
     return {
         "total_clients": len(active_clients),
         "total_quotations": len(active_quotations),
@@ -1049,7 +1132,12 @@ def get_dashboard_stats(token_or_email=None):
         "this_month_quotations": len(this_month_quotations),
         "this_month_value": this_month_value,
         "deleted_clients": deleted_clients_count,
-        "deleted_quotations": deleted_quotations_count
+        "deleted_quotations": deleted_quotations_count,
+        "total_contracts": total_contracts,
+        "contracts_value_egp": round(contracts_value_egp, 2),
+        "this_month_contracts": this_month_contracts,
+        "total_due_payments_egp": round(total_due_payments_egp, 2),
+        "finance_chart": finance_chart,
     }
 
 

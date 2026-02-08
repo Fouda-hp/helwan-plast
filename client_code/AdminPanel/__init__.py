@@ -1924,6 +1924,111 @@ class AdminPanel(AdminPanelTemplate):
             if (techSpecs) container.appendChild(techSpecs);
           }
 
+          function setStatText(id, value) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = value;
+          }
+
+          function injectDashboardSectionsOnce() {
+            var panel = document.getElementById('dashboard-panel');
+            if (!panel || document.getElementById('dashboardSectionContract')) return;
+            var firstGrid = panel.querySelector('.stats-grid');
+            if (!firstGrid) return;
+            var style = document.createElement('style');
+            style.textContent = '.dashboard-section-title{font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:16px;margin-top:28px}.dashboard-section-title:first-of-type{margin-top:0}.finance-chart-container{background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,0.06);margin-top:24px;max-width:100%;height:320px}';
+            document.head.appendChild(style);
+            var h2Quotation = document.createElement('h2');
+            h2Quotation.className = 'dashboard-section-title';
+            h2Quotation.id = 'dashboardSectionQuotation';
+            h2Quotation.textContent = 'Quotation';
+            panel.insertBefore(h2Quotation, firstGrid);
+            var contractBlock = document.createElement('div');
+            contractBlock.id = 'dashboardSectionContract';
+            contractBlock.innerHTML = '<h2 class="dashboard-section-title">Contract</h2><div class="stats-grid"><div class="stat-card"><div class="icon blue"><svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></div><div class="value" id="statTotalContracts">-</div><div class="label">Total Contracts</div></div><div class="stat-card"><div class="icon green"><svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg></div><div class="value" id="statContractsValue">-</div><div class="label">Contracts Value (EGP)</div></div><div class="stat-card"><div class="icon orange"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></div><div class="value" id="statThisMonthContracts">-</div><div class="label">This Month Contracts</div></div></div><h2 class="dashboard-section-title">Finance</h2><div class="stats-grid"><div class="stat-card"><div class="icon red"><svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg></div><div class="value" id="statTotalDuePayments">-</div><div class="label">Total Due Payments (EGP)</div></div></div><div class="finance-chart-container"><canvas id="financeChartCanvas"></canvas></div>';
+            firstGrid.parentNode.insertBefore(contractBlock, firstGrid.nextSibling);
+          }
+
+          var financeChartInstance = null;
+          function renderFinanceChart(stats) {
+            var chart = stats && stats.finance_chart;
+            if (!chart || !chart.months || !chart.due) return;
+            var canvas = document.getElementById('financeChartCanvas');
+            if (!canvas) return;
+            function loadChartJs() {
+              return new Promise(function(resolve) {
+                if (typeof window.Chart !== 'undefined') { resolve(); return; }
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+                s.onload = resolve;
+                s.onerror = resolve;
+                document.head.appendChild(s);
+              });
+            }
+            loadChartJs().then(function() {
+              if (typeof window.Chart === 'undefined') return;
+              if (financeChartInstance) { financeChartInstance.destroy(); financeChartInstance = null; }
+              var ctx = canvas.getContext('2d');
+              var paid = chart.paid || [];
+              var due = chart.due || [];
+              var overdue = chart.overdue || [];
+              financeChartInstance = new window.Chart(ctx, {
+                type: 'bar',
+                data: {
+                  labels: chart.months,
+                  datasets: [
+                    { label: 'Paid (EGP)', data: paid, backgroundColor: 'rgba(76, 175, 80, 0.8)' },
+                    { label: 'Due (EGP)', data: due, backgroundColor: 'rgba(255, 152, 0, 0.8)' },
+                    { label: 'Overdue (EGP)', data: overdue, backgroundColor: 'rgba(244, 67, 54, 0.8)' }
+                  ]
+                },
+                options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: function(v) { return v.toLocaleString(); } } } },
+                  plugins: { legend: { position: 'top' } }
+                }
+              });
+            });
+          }
+
+          function patchLoadDashboard() {
+            var orig = window.loadDashboard;
+            if (!orig || window._dashboardPatched) return;
+            window._dashboardPatched = true;
+            window.loadDashboard = async function() {
+              try {
+                if (!window.getDashboardStats) { setTimeout(loadDashboard, 500); return; }
+                injectDashboardSectionsOnce();
+                var stats = await window.getDashboardStats();
+                if (stats) {
+                  setStatText('statClients', (stats.total_clients || 0).toLocaleString());
+                  setStatText('statQuotations', (stats.total_quotations || 0).toLocaleString());
+                  setStatText('statValue', (stats.total_value || 0).toLocaleString());
+                  setStatText('statMonthly', (stats.this_month_quotations || 0).toLocaleString());
+                  setStatText('statTotalContracts', (stats.total_contracts || 0).toLocaleString());
+                  setStatText('statContractsValue', (stats.contracts_value_egp || 0).toLocaleString());
+                  setStatText('statThisMonthContracts', (stats.this_month_contracts || 0).toLocaleString());
+                  setStatText('statTotalDuePayments', (stats.total_due_payments_egp || 0).toLocaleString());
+                  renderFinanceChart(stats);
+                }
+                if (window.getPendingUsers) {
+                  var pending = await window.getPendingUsers();
+                  if (pending && pending.success && pending.users) setStatText('pendingBadge', pending.users.length);
+                }
+              } catch (e) {
+                console.error('Dashboard error:', e);
+                setStatText('statClients', '0');
+                setStatText('statQuotations', '0');
+                setStatText('statValue', '0');
+                setStatText('statMonthly', '0');
+                var el = document.getElementById('statTotalContracts'); if (el) el.textContent = '0';
+                el = document.getElementById('statContractsValue'); if (el) el.textContent = '0';
+                el = document.getElementById('statThisMonthContracts'); if (el) el.textContent = '0';
+                el = document.getElementById('statTotalDuePayments'); if (el) el.textContent = '0';
+              }
+            };
+          }
+
           function run() {
             insertDataImportNav();
             insertBackupNav();
@@ -1931,6 +2036,7 @@ class AdminPanel(AdminPanelTemplate):
             patchSaveSetting();
             patchLoadSettings();
             patchLoadAuditLogs();
+            patchLoadDashboard();
           }
 
           if (document.readyState === 'loading') {

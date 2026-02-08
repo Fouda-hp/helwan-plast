@@ -2419,6 +2419,32 @@ def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
         return {'success': False, 'message': str(e), 'data': [], 'total': 0}
 
 
+@anvil.server.callable
+def export_contracts_data(token_or_email=None):
+    """تصدير قائمة العقود لـ CSV - يتطلب صلاحية export"""
+    is_valid, _, error = _require_permission(token_or_email, 'export')
+    if not is_valid:
+        return []
+    try:
+        all_rows = list(app_tables.contracts.search())
+        all_rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
+        data = []
+        for r in all_rows:
+            data.append({
+                'contract_number': r.get('contract_number') or '',
+                'quotation_number': r.get('quotation_number'),
+                'client_name': r.get('client_name') or '',
+                'total_price': r.get('total_price'),
+                'num_payments': r.get('num_payments'),
+                'delivery_date': str(r.get('delivery_date') or ''),
+                'created_at': r.get('created_at').isoformat() if r.get('created_at') and hasattr(r.get('created_at'), 'isoformat') else ''
+            })
+        return data
+    except Exception as e:
+        logger.error(f"Error exporting contracts: {e}")
+        return []
+
+
 # =========================================================
 # النسخ الاحتياطي (يدوي + مجدول + Google Drive + استعادة) — المنطق في quotation_backup
 # =========================================================

@@ -118,9 +118,10 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.deleteAllMyNotifications = self.delete_all_my_notifications
         anvil.js.window.deleteOneNotification = self.delete_one_notification
 
-        # Clients & Quotations
+        # Clients & Quotations & Contracts
         anvil.js.window.getAllClients = self.get_all_clients
         anvil.js.window.getAllQuotations = self.get_all_quotations
+        anvil.js.window.getAllContracts = self.get_all_contracts
         anvil.js.window.softDeleteClient = self.soft_delete_client
         anvil.js.window.softDeleteQuotation = self.soft_delete_quotation
         anvil.js.window.restoreClient = self.restore_client
@@ -129,6 +130,7 @@ class AdminPanel(AdminPanelTemplate):
         # Export & Backup
         anvil.js.window.exportClientsData = self.export_clients_data
         anvil.js.window.exportQuotationsData = self.export_quotations_data
+        anvil.js.window.exportContractsData = self.export_contracts_data
         anvil.js.window.createBackup = self.create_backup
         anvil.js.window.listScheduledBackups = self.list_scheduled_backups
         anvil.js.window.getScheduledBackupFile = self.get_scheduled_backup_file
@@ -2267,6 +2269,26 @@ class AdminPanel(AdminPanelTemplate):
 
     def get_all_quotations(self, page, per_page, search, include_deleted):
         return anvil.server.call('get_all_quotations', page, per_page, search, include_deleted, self.get_auth())
+
+    def get_all_contracts(self, page, per_page, search):
+        """قائمة العقود بصيغة متوافقة مع لوحة الأدمن (data, page, per_page, total, total_pages)."""
+        auth = self.get_auth()
+        result = anvil.server.call('get_contracts_list', search or '', auth, page, per_page or 15)
+        if not result or not result.get('success'):
+            return {'data': [], 'page': 1, 'per_page': per_page or 15, 'total': 0, 'total_pages': 0}
+        total = result.get('total', 0)
+        per = result.get('page_size', per_page or 15)
+        total_pages = (total + per - 1) // per if total else 0
+        return {
+            'data': result.get('data', []),
+            'page': result.get('page', page),
+            'per_page': per,
+            'total': total,
+            'total_pages': total_pages
+        }
+
+    def export_contracts_data(self):
+        return anvil.server.call('export_contracts_data', self.get_auth())
 
     def soft_delete_client(self, client_code):
         return anvil.server.call('soft_delete_client', client_code, self.get_auth())

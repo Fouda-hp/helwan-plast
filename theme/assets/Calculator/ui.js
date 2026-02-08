@@ -263,7 +263,42 @@
       return NaN;
     }
 
-    function runSaveAfterLowPriceCheck(mode) {
+    function showConfirmModal(message) {
+      return new Promise(function (resolve) {
+        var existing = document.getElementById("confirmLowPriceOverlay");
+        if (existing) existing.remove();
+
+        var backdrop = document.createElement("div");
+        backdrop.id = "confirmLowPriceOverlay";
+        backdrop.className = "alert-backdrop";
+        backdrop.style.cssText = "position:fixed;inset:0;background:rgba(0,0,.45);display:flex;align-items:center;justify-content:center;z-index:21000;";
+        var box = document.createElement("div");
+        box.className = "alert-modal alert-info";
+        box.style.cssText = "width:420px;max-width:90vw;background:#fff;border-radius:12px;box-shadow:0 25px 60px rgba(0,0,0,.35);overflow:visible;";
+        box.innerHTML =
+          "<div class=\"alert-header\" style=\"height:38px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700;color:#fff;background:#2563eb;border-radius:12px 12px 0 0;\">" +
+          "<span>Confirm</span><span class=\"alert-close\" style=\"cursor:pointer;font-size:14px;\">✖</span></div>" +
+          "<div class=\"alert-body\" style=\"padding:24px 20px;font-size:14px;color:#111827;line-height:1.6;white-space:pre-wrap;\">" + (message || "") + "</div>" +
+          "<div class=\"alert-footer\" style=\"padding:12px 16px 18px;display:flex;justify-content:center;gap:12px;\">" +
+          "<button type=\"button\" id=\"confirmLowPriceYes\" style=\"min-width:90px;height:36px;border-radius:8px;border:none;background:#16a34a;color:#fff;font-weight:600;cursor:pointer;\">Yes</button>" +
+          "<button type=\"button\" id=\"confirmLowPriceNo\" style=\"min-width:90px;height:36px;border-radius:8px;border:none;background:#6b7280;color:#fff;font-weight:600;cursor:pointer;\">No</button>" +
+          "</div>";
+        backdrop.appendChild(box);
+        document.body.appendChild(backdrop);
+
+        function close(result) {
+          if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+          resolve(result);
+        }
+        backdrop.querySelector(".alert-close").onclick = function () { close(false); };
+        backdrop.querySelector("#confirmLowPriceYes").onclick = function () { close(true); };
+        backdrop.querySelector("#confirmLowPriceNo").onclick = function () { close(false); };
+        backdrop.onclick = function (e) { if (e.target === backdrop) close(false); };
+      });
+    }
+    window.showConfirmModal = showConfirmModal;
+
+    async function runSaveAfterLowPriceCheck(mode) {
       var pricingInput = document.getElementById("Pricing_Mode");
       if (pricingInput) pricingInput.value = mode;
 
@@ -280,8 +315,9 @@
           mode + " price: " + fmt(expected) + "\n" +
           "Agreed price: " + fmt(agreed) + "\n" +
           "Difference: " + fmt(diff) + " (your price is " + fmt(diff) + " less).\n\n" +
-          "Click OK to continue, Cancel to stay on the page.";
-        if (!confirm(msg)) return;
+          "Yes = continue saving. No = stay on the page.";
+        var ok = await showConfirmModal(msg);
+        if (!ok) return undefined;
       }
 
       return window.callPythonSave?.();

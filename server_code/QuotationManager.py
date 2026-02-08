@@ -353,20 +353,12 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
                     "message": "Please select pricing mode"
                 }
 
+            # Allow agreed < mode price when user confirmed in UI (low-price confirmation modal).
+            # Only enforce: In Stock/New Order prices present; New Order agreed must not exceed In Stock.
             if pricing_mode == "In Stock":
-                if agreed < in_stock_price:
-                    return {
-                        "success": False,
-                        "message": f"Agreed Price ({agreed:,.0f}) must not be less than In Stock price ({in_stock_price:,.0f})"
-                    }
+                pass  # agreed may be lower than in_stock_price (user confirmed)
 
             elif pricing_mode == "New Order":
-                if agreed < new_order_price:
-                    return {
-                        "success": False,
-                        "message": f"Agreed Price ({agreed:,.0f}) must not be less than New Order price ({new_order_price:,.0f})"
-                    }
-
                 if agreed > in_stock_price:
                     return {
                         "success": False,

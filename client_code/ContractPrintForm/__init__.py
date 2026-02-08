@@ -61,21 +61,20 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.validateNumPayments = self.validate_num_payments
 
     def _show_msg(self, msg, typ='error'):
-        """عرض رسالة خطأ أو تنبيه — إن لم يتوفر showNotification نستخدم alert حتى يظهر شيء للمستخدم."""
+        """عرض رسالة من النظام فقط (بدون alert البراوزر)."""
         s = str(msg).strip() or ('خطأ' if self.current_lang == 'ar' else 'Error')
         try:
             if anvil.js.window.showNotification:
                 anvil.js.window.showNotification(typ, '', s)
-                return
         except Exception:
             pass
         try:
-            anvil.js.window.alert(s)
+            Notification(s).show()
         except Exception:
             pass
 
     def _validate_delivery_date(self):
-        """التحقق من إدخال تاريخ التسليم (إجباري قبل Save / Update / Confirm Manage Payment)."""
+        """التحقق من إدخال تاريخ التسليم — إجباري فقط عند Save Contract / Update وليس عند حفظ الدفعات من نافذة إدارة الدفعات."""
         delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
         delivery_val = (delivery_input.value or '').strip() if delivery_input else ''
         if not delivery_val:
@@ -255,7 +254,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             err_el.innerHTML = ''
 
     def _handle_save_payments_click(self):
-        """يستدعي من زر الحفظ في نافذة الدفعات — يعرض الرسالة داخل النافذة وفي alert إن فشل الحفظ."""
+        """يستدعى من زر الحفظ في نافذة الدفعات — يعرض الرسالة داخل النافذة ومن خلال إشعار النظام إن فشل الحفظ."""
         result = self.save_payments()
         err_el = anvil.js.window.document.getElementById('paymentModalError')
         if err_el:
@@ -267,7 +266,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 err_el.textContent = msg
                 err_el.style.display = 'block'
                 try:
-                    anvil.js.window.alert(msg)
+                    Notification(msg).show()
                 except Exception:
                     pass
 
@@ -527,9 +526,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 msg = ('الناقص: من فضلك اختر عرضاً أو عقداً أولاً ثم افتح إدارة الدفعات مرة أخرى.'
                        if is_ar else 'Missing: Please select a quotation or contract first, then open Manage Payments again.')
                 return {'success': False, 'message': msg}
-            ok, msg_ar, msg_en = self._validate_delivery_date()
-            if not ok:
-                return {'success': False, 'message': msg_ar if is_ar else msg_en}
+            # تاريخ التسليم غير مطلوب عند حفظ الدفعات من النافذة — مطلوب فقط عند Save Contract
             valid, validation_msg = self.validate_payments()
             if not valid:
                 return {'success': False, 'message': validation_msg or ('التحقق من البيانات فشل' if is_ar else 'Validation failed')}

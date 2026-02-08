@@ -611,7 +611,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # Contract Info (Changed from Quotation)
         html += '<div class="quotation-info">'
         html += f'<div class="quotation-number">{"عقد رقم" if is_ar else "Contract No.:"} <span>C-{q_num}</span></div>'
-        html += f'<div class="client-info">{"السادة - شركة /" if is_ar else "To: / Company:"} <span>{_h(data.get("client_name", ""))}</span></div>'
+        client_name = data.get("client_name", "") or ""
+        company = data.get("client_company", "") or ""
+        client_display = f"{client_name} - {company}".strip(" - ") if company else client_name
+        html += f'<div class="client-info">{"السادة - شركة /" if is_ar else "To: / Company:"} <span>{_h(client_display)}</span></div>'
         html += f'<div class="greeting">{"تحية طيبة وبعد،" if is_ar else "Dear Sir/Madam,"}</div>'
         intro = 'تم الاتفاق بين الطرفين على توريد ماكينة الطباعة التالية طبقاً للمواصفات الموضحة أدناه:' if is_ar else 'Both parties have agreed to supply the following printing machine according to the specifications detailed below:'
         html += f'<div class="intro-text">{intro}</div>'
@@ -1136,7 +1139,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         </div>
         <div style="text-align:center;min-width:200px;">
             <div style="font-weight:bold;margin-bottom:10px;">{"الطرف الثاني" if is_ar else "Second Party"}</div>
-            <div>{_h(data.get('client_name', ''))}</div>
+            <div>{_h(client_display)}</div>
             <div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">{"التوقيع" if is_ar else "Signature"}</div>
         </div>
         '''

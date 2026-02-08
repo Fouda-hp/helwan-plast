@@ -261,7 +261,10 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     # Quotation Info
     html += '<div class="quotation-info">'
     html += f'<div class="quotation-number">{"عرض سعر رقم" if is_ar else "Quotation No.:"} <span>{data.get("quotation_number", "")}</span></div>'
-    html += f'<div class="client-info">{"السادة - شركة /" if is_ar else "To: / Company:"} <span>{_h(data.get("client_name", ""))}</span></div>'
+    client_name = data.get("client_name", "") or ""
+    company = data.get("client_company", "") or ""
+    client_display = f"{client_name} - {company}".strip(" - ") if company else client_name
+    html += f'<div class="client-info">{"السادة - شركة /" if is_ar else "To: / Company:"} <span>{_h(client_display)}</span></div>'
     html += f'<div class="greeting">{"تحية طيبة وبعد،" if is_ar else "Dear Sir/Madam,"}</div>'
     intro = 'نحن نتشرف بتقديم عرض السعر التالي لماكينة الطباعة طبقاً للمواصفات الموضحة أدناه:' if is_ar else 'We are pleased to submit our quotation for the following printing machine in accordance with the specifications detailed below:'
     html += f'<div class="intro-text">{intro}</div>'

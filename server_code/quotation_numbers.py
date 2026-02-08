@@ -86,9 +86,17 @@ def get_next_number_atomic(counter_key):
     if current is None:
         current = 0
     try:
-        next_val = int(current) + 1
+        current = int(current)
     except (ValueError, TypeError):
-        next_val = 1
+        current = 0
+    # تصحيح تلقائي: لو العداد أكبر من الواقع (مثلاً 14 و عندك 5 عملاء) نضبطه على max الجدول
+    max_val = _get_max_from_table(counter_key, include_deleted=False)
+    if current > max_val + 1:
+        row["value"] = max_val
+        next_val = max_val + 1
+        logger.info("Counter auto-resynced: key=%s, was=%s, now=%s, next=%s", counter_key, current, max_val, next_val)
+        return next_val
+    next_val = current + 1
     row["value"] = next_val
     logger.info("Next number generated: key=%s, previous=%s, next=%s", counter_key, current, next_val)
     return next_val

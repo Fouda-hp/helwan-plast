@@ -5,6 +5,7 @@ import anvil.server
 import anvil.js
 import json
 import logging
+import re
 from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         self.payment_data = []
         self.payment_method = 'percentage'
         self.delivery_date = ''
+        self.display_contract_number = None  # رقم العقد بالتنسيق: C - رقم الكوتيشن / متسلسل - السنة
 
         # Expose functions to JavaScript
         anvil.js.window.loadQuotationForPrint = self.load_quotation_for_print
@@ -138,6 +140,14 @@ class ContractPrintForm(ContractPrintFormTemplate):
         result = self.load_quotation_for_print(q_num)
         if result and result.get('success'):
             self.current_data = result.get('data', {})
+            self.display_contract_number = None
+            try:
+                auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+                contract_res = anvil.server.call('get_contract', q_num, auth)
+                if contract_res and contract_res.get('success') and contract_res.get('data'):
+                    self.display_contract_number = contract_res['data'].get('contract_number')
+            except Exception:
+                pass
             self.render_template()
             # Update total in payment modal - remove commas from formatted price
             total_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
@@ -562,6 +572,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
             result = anvil.server.call('save_contract', contract_data, user_email, auth)
             if result and result.get('success'):
                 is_ar = self.current_lang == 'ar'
+                self.display_contract_number = result.get('contract_number')
+                if self.current_data:
+                    self.render_template()
                 Notification('تم حفظ العقد بنجاح' if is_ar else 'Contract saved', style='success').show()
             elif result and result.get('already_exists'):
                 # ربط الرسالة بلغة النموذج (زر اللغة في العقد)
@@ -602,6 +615,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             if result and result.get('success'):
                 self.current_data = None
                 self.payment_data = []
+                self.display_contract_number = None
                 empty_state = anvil.js.window.document.getElementById('emptyState')
                 template_content = anvil.js.window.document.getElementById('templateContent')
                 if empty_state:
@@ -668,6 +682,16 @@ class ContractPrintForm(ContractPrintFormTemplate):
         winder_type_display = get_winder_type()
         q_num = data.get('quotation_number', '')
 
+        # رقم العقد بالتنسيق المتفق عليه: C - رقم الكوتيشن / متسلسل - السنة
+        contract_display = getattr(self, 'display_contract_number', None) or data.get('contract_number')
+        if not contract_display and q_num:
+            contract_display = f"C - {q_num} / — - {date.today().year}"
+        contract_display = contract_display or f"C - {q_num} / — - {date.today().year}"
+        # تحويل التنسيق القديم C-8 إلى التنسيق الجديد للعرض
+        if contract_display and re.match(r'^C-\d+$', str(contract_display).strip()):
+            old_num = str(contract_display).strip().replace('C-', '')
+            contract_display = f"C - {old_num} / — - {date.today().year}"
+
         # ==================== PAGE 1 ====================
         html = f'<div class="template-page {"" if is_ar else "ltr"}">'
 
@@ -686,9 +710,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
         html += '</div>'
         html += '</div>'
 
-        # Contract Info (Changed from Quotation)
+        # Contract Info (رقم العقد بالتنسيق: C - رقم الكوتيشن / متسلسل - السنة)
         html += '<div class="quotation-info">'
-        html += f'<div class="quotation-number">{"عقد رقم" if is_ar else "Contract No.:"} <span>C-{q_num}</span></div>'
+        html += f'<div class="quotation-number">{"عقد رقم" if is_ar else "Contract No.:"} <span>{_h(contract_display)}</span></div>'
         client_name = data.get("client_name", "") or ""
         company = data.get("client_company", "") or ""
         client_display = f"{client_name} - {company}".strip(" - ") if company else client_name

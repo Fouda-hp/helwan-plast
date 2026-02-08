@@ -529,7 +529,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 err_msg = result.get('message', 'Unknown error') if result else 'Server returned empty response'
                 self._show_msg(err_msg)
         except Exception as e:
-            self._show_msg(str(e))
+            detail = str(e)
+            is_ar = self.current_lang == 'ar'
+            if is_ar:
+                msg = f'المشكلة: فشل حفظ العقد. تفاصيل: {detail}'
+            else:
+                msg = f'Save failed. Details: {detail}'
+            self._show_msg(msg)
 
     # ==================== RENDER TEMPLATE (Same as Quotation) ====================
     def render_template(self):

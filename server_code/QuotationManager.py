@@ -1905,7 +1905,24 @@ def get_quotations_list(search='', include_deleted=False, token_or_email=None, p
 # =========================================================
 # Contract Management Functions
 # =========================================================
-# Contracts are stored in the 'contracts' table
+# Contracts are stored in the 'contracts' table.
+# See CONTRACTS_SAVE_REFERENCE.md for what is saved where.
+
+
+def _contract_payment_columns(payments):
+    """Build payment_1_date, payment_1_value, ... payment_12_date, payment_12_value from payments list (1-12 items)."""
+    out = {}
+    for i in range(1, 13):
+        out[f'payment_{i}_date'] = ''
+        out[f'payment_{i}_value'] = ''
+    for idx, p in enumerate(payments or []):
+        if idx >= 12:
+            break
+        i = idx + 1
+        out[f'payment_{i}_date'] = str(p.get('date', '') or '')
+        out[f'payment_{i}_value'] = str(p.get('value', '') or '')
+    return out
+
 
 @anvil.server.callable
 def save_contract(contract_data, user_email='system', token_or_email=None):
@@ -1914,18 +1931,20 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
     """
     auth_key = token_or_email or user_email
     if auth_key == 'system':
-        return {'success': False, 'message': 'Authentication required'}
+        return {'success': False, 'message': 'المشكلة: يجب تسجيل الدخول أولاً (Authentication required)'}
     is_valid, verified_email, error = _require_permission(auth_key, 'create')
     if not is_valid:
-        return error
+        return {'success': False, 'message': 'المشكلة: لا تملك صلاحية حفظ العقود (Create permission required)'}
     user_email = verified_email or user_email
     try:
         quotation_number = contract_data.get('quotation_number')
         if not quotation_number:
-            return {'success': False, 'message': 'Quotation number is required'}
+            return {'success': False, 'message': 'المشكلة: رقم العرض مطلوب (Quotation number is required)'}
         
         contract_number = f"C-{quotation_number}"
-        payments_json = json.dumps(contract_data.get('payments', []), ensure_ascii=False, default=str)
+        payments_list = contract_data.get('payments', [])
+        payments_json = json.dumps(payments_list, ensure_ascii=False, default=str)
+        payment_cols = _contract_payment_columns(payments_list)
         ip_address = get_client_ip()
         
         # Try to find existing contract
@@ -1951,7 +1970,8 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
                     num_payments=contract_data.get('num_payments', 0),
                     payments_json=payments_json,
                     delivery_date=contract_data.get('delivery_date', ''),
-                    updated_at=get_utc_now()
+                    updated_at=get_utc_now(),
+                    **payment_cols
                 )
                 logger.info(f"Contract {contract_number} updated by {user_email}")
                 log_audit('UPDATE', 'contracts', contract_number, old_data, contract_data, user_email, ip_address)
@@ -1988,7 +2008,8 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
                 payments_json=payments_json,
                 delivery_date=contract_data.get('delivery_date', ''),
                 created_at=get_utc_now(),
-                updated_at=get_utc_now()
+                updated_at=get_utc_now(),
+                **payment_cols
             )
             logger.info(f"Contract {contract_number} created by {user_email}")
             log_audit('CREATE', 'contracts', contract_number, None, contract_data, user_email, ip_address)
@@ -2005,17 +2026,17 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
             error_msg = str(e)
             logger.error(f"Error creating contract: {error_msg}")
             
-            # Check if table doesn't exist
-            if 'contracts' in error_msg.lower() or 'table' in error_msg.lower():
+            # Check if table/column doesn't exist
+            if 'contracts' in error_msg.lower() or 'table' in error_msg.lower() or 'column' in error_msg.lower():
                 return {
-                    'success': False, 
-                    'message': 'يجب إنشاء جدول contracts في Anvil Data Tables أولاً\n\nPlease create "contracts" table in Anvil with columns:\ncontract_number, quotation_number, client_name, company, phone, country, address, model, colors_count, machine_width, material, winder_type, price_mode, total_price, payment_method, num_payments, payments_json, delivery_date, created_at, updated_at'
+                    'success': False,
+                    'message': 'المشكلة: جدول العقود (contracts) غير موجود أو ناقص أعمدة. أنشئ الجدول في Anvil Data Tables وفق المخطط في anvil.yaml (يشمل أعمدة الدفعات payment_1_date حتى payment_12_value).'
                 }
-            return {'success': False, 'message': error_msg}
+            return {'success': False, 'message': f'المشكلة في الحفظ: {error_msg}'}
     
     except Exception as e:
         logger.error(f"Error saving contract: {e}")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': f'المشكلة: حدث خطأ أثناء الحفظ. التفاصيل: {str(e)}'}
 
 
 @anvil.server.callable

@@ -149,6 +149,78 @@ db_schema:
     - admin_ui: {width: 200}
       name: payments_json
       type: string
+    - admin_ui: {width: 120}
+      name: payment_1_date
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_1_value
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_2_date
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_2_value
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_3_date
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_3_value
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_4_date
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_4_value
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_5_date
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_5_value
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_6_date
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_6_value
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_7_date
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_7_value
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_8_date
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_8_value
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_9_date
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_9_value
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_10_date
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_10_value
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_11_date
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_11_value
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_12_date
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_12_value
+      type: string
     - admin_ui: {width: 200}
       name: delivery_date
       type: string

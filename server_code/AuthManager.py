@@ -2614,6 +2614,8 @@ def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
     """
     is_authorized, error = require_admin(token_or_email)
     if not is_authorized:
+        if isinstance(error, dict) and not error.get('message'):
+            error['message'] = 'صلاحية غير كافية'
         return error
 
     all_logs = list(app_tables.audit_log.search())
@@ -2627,7 +2629,7 @@ def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
             all_logs = [l for l in all_logs if l['action'] == filters['action']]
         if filters.get('user_email'):
             user_filter = filters['user_email'].lower()
-            all_logs = [l for l in all_logs if l['user_email'] and user_filter in l['user_email'].lower()]
+            all_logs = [l for l in all_logs if (l.get('user_name') and user_filter in (l.get('user_name') or '').lower()) or (l.get('user_email') and user_filter in (l.get('user_email') or '').lower())]
         if filters.get('table_name'):
             all_logs = [l for l in all_logs if l['table_name'] == filters['table_name']]
         if filters.get('date_from'):
@@ -2648,11 +2650,16 @@ def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
 
     logs = []
     for log in page_logs:
+        # العرض يعتمد على الاسم (من نفّذ الإجراء) وليس الإيميل؛ لا نعرض "system"
+        raw_name = log.get('user_name') or ''
+        if str(raw_name).strip().lower() == 'system':
+            raw_name = "—"
+        display_name = (raw_name or "—").strip()
         logs.append({
             'log_id': log['log_id'],
             'timestamp': log['timestamp'].isoformat() if log['timestamp'] else '',
             'user_email': log.get('user_email', ''),
-            'user_name': log.get('user_name', ''),
+            'user_name': display_name,
             'action_description': log.get('action_description', ''),
             'action': log.get('action', ''),
             'table_name': log.get('table_name', ''),

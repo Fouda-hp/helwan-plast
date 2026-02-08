@@ -1304,16 +1304,18 @@ class AdminPanel(AdminPanelTemplate):
               
               var result = await window.getAuditLogs(100, 0, filters);
               if (!result.success) {
-                container.innerHTML = '<div class="empty-state"><h4>' + result.message + '</h4></div>';
+                var msg = (result && result.message) ? result.message : 'فشل تحميل سجل التدقيق';
+                container.innerHTML = '<div class="empty-state"><h4>' + (msg || '—') + '</h4></div>';
                 return;
               }
               
               var logs = result.logs || [];
               
-              // Client-side filtering for user (partial match)
+              // فلترة حسب الاسم (من نفّذ الإجراء)
               if (userFilter) {
                 logs = logs.filter(function(l) {
-                  return l.user_email && l.user_email.toLowerCase().includes(userFilter);
+                  return (l.user_name && l.user_name.toLowerCase().includes(userFilter)) ||
+                         (l.user_email && l.user_email.toLowerCase().includes(userFilter));
                 });
               }
               
@@ -1322,17 +1324,17 @@ class AdminPanel(AdminPanelTemplate):
                 return;
               }
               
-              var html = '<table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Table</th><th>Record ID</th></tr></thead><tbody>';
+              var html = '<table class="data-table"><thead><tr><th>Time</th><th>User (name)</th><th>Action</th><th>Table</th><th>Record ID</th></tr></thead><tbody>';
               logs.forEach(function(l) {
                 var actionClass = '';
                 if (l.action === 'CREATE') actionClass = 'style="color:#2e7d32;"';
                 else if (l.action === 'UPDATE') actionClass = 'style="color:#1565c0;"';
                 else if (l.action === 'SOFT_DELETE') actionClass = 'style="color:#c62828;"';
                 else if (l.action === 'RESTORE') actionClass = 'style="color:#f57f17;"';
-                
+                var displayUser = (l.user_name && l.user_name !== '—') ? l.user_name : (l.user_email || '—');
                 html += '<tr>';
                 html += '<td>' + l.timestamp.replace('T', ' ').substring(0, 19) + '</td>';
-                html += '<td>' + l.user_email + '</td>';
+                html += '<td>' + (displayUser || '—') + '</td>';
                 html += '<td ' + actionClass + '><strong>' + l.action + '</strong></td>';
                 html += '<td>' + l.table_name + '</td>';
                 html += '<td>' + (l.record_id || '-') + '</td>';
@@ -1341,7 +1343,8 @@ class AdminPanel(AdminPanelTemplate):
               html += '</tbody></table>';
               container.innerHTML = html;
             } catch (e) {
-              container.innerHTML = '<div class="empty-state"><h4>Error loading logs</h4></div>';
+              var errMsg = (e && (e.message || e.toString && e.toString())) ? (e.message || e.toString()) : 'خطأ غير معروف';
+              container.innerHTML = '<div class="empty-state"><h4>خطأ في تحميل سجل التدقيق</h4><p>' + errMsg + '</p></div>';
             }
           };
           
@@ -2057,6 +2060,8 @@ class AdminPanel(AdminPanelTemplate):
                 desc = 'تم إنشاء نسخة احتياطية: ' + str(payload.get('filename', ''))
             elif n.get('type') == 'backup_restored':
                 desc = 'تمت استعادة نسخة احتياطية'
+            elif n.get('type') == 'audit_action':
+                desc = payload.get('action_description') or (str(payload.get('action', '')) + ' - ' + str(payload.get('table_name', '')))
             notifications.append({
                 'id': n.get('id'),
                 'timestamp': n.get('created_at') or '',

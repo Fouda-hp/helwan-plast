@@ -96,15 +96,16 @@ def log_audit(action, table_name, record_id, old_data, new_data,
             user_name = get_user_name_for_audit(user_email)
         if not user_name and user_email:
             user_name = str(user_email).strip()
-        if not user_name:
-            user_name = 'system'
+        # لا نعرض كلمة "system" — من نفّذ الإجراء اسمه يظهر؛ إن لم يُعرف نعرض "—"
+        if not user_name or (user_name and str(user_name).strip().lower() == 'system'):
+            user_name = "—"
 
         desc = build_action_description(action, table_name, record_id, action_description)
 
         row_data = {
             'log_id': str(uuid.uuid4()),
             'timestamp': get_utc_now(),
-            'user_email': (user_email or 'system').strip() if user_email else 'system',
+            'user_email': (user_email or '').strip() or '',
             'action': action or '',
             'table_name': table_name or '',
             'record_id': str(record_id)[:100] if record_id else None,
@@ -113,7 +114,7 @@ def log_audit(action, table_name, record_id, old_data, new_data,
             'ip_address': (ip_address or 'unknown').strip()[:100],
         }
         try:
-            row_data['user_name'] = (user_name or 'system').strip()[:200]
+            row_data['user_name'] = (user_name or "—").strip()[:200]
             row_data['action_description'] = (desc or '').strip()[:500]
         except Exception as e:
             logger.warning("Could not set user_name/action_description in audit: %s", e)
@@ -126,5 +127,17 @@ def log_audit(action, table_name, record_id, old_data, new_data,
                 app_tables.audit_log.add_row(**row_data)
             else:
                 raise
+        # إشعار لكل الأدمن عند أي إجراء (ولو طفيف)
+        try:
+            from . import notifications as notif_mod
+            notif_mod.create_notification_for_all_admins('audit_action', {
+                'action_description': desc,
+                'action': action,
+                'table_name': table_name or '',
+                'record_id': str(record_id)[:100] if record_id else None,
+                'user_name': row_data.get('user_name', '—')
+            })
+        except Exception as notif_e:
+            logger.debug("Notify admins after audit: %s", notif_e)
     except Exception as e:
         logger.error("Audit log error: %s", e)

@@ -31,6 +31,16 @@ except ImportError:
     import AuthManager
 
 
+def _get_admin_emails():
+    """قائمة بريد كل الأدمن النشطين (لإرسال إشعار لكل أدمن عند أي إجراء)."""
+    try:
+        admins = list(app_tables.users.search(role='admin', is_active=True))
+        return [str(a.get('email', '')).strip().lower() for a in admins if a.get('email')]
+    except Exception as e:
+        logger.warning("Failed to get admin emails: %s", e)
+        return []
+
+
 def create_notification(user_email, notif_type, payload):
     """
     إنشاء إشعار لمستخدم.
@@ -49,6 +59,26 @@ def create_notification(user_email, notif_type, payload):
         )
     except Exception as e:
         logger.warning("Failed to create notification for %s: %s", user_email, e)
+
+
+def create_notification_for_all_admins(notif_type, payload):
+    """
+    إنشاء إشعار لكل الأدمن — حتى يظهر كل إجراء (ولو طفيف) عند كل أدمن.
+    يُستدعى تلقائياً من سجل التدقيق أو من دوال الحفظ/التعديل.
+    """
+    admin_emails = _get_admin_emails()
+    for email in admin_emails:
+        try:
+            app_tables.notifications.add_row(
+                id=str(uuid.uuid4()),
+                user_email=email,
+                type=str(notif_type),
+                payload=json.dumps(payload, ensure_ascii=False, default=str),
+                created_at=get_utc_now(),
+                read_at=None
+            )
+        except Exception as e:
+            logger.warning("Failed to create admin notification for %s: %s", email, e)
 
 
 def _user_email_from_token(token_or_email):

@@ -2073,15 +2073,18 @@ class AdminPanel(AdminPanelTemplate):
 
     def check_route(self):
         try:
-            # عند التحميل أو الريفرش: إذا الـ hash فاضي استعد آخر صفحة من localStorage (مش الأدمن)
+            # استعادة آخر صفحة من localStorage عند الـ refresh فقط (نفس التاب). لو التاب اتقفل واتفتح من جديد فلا نستعيد
             restored = anvil.js.window.eval("""
                 (function(){
                     var h = (window.location && window.location.hash) || '';
                     if (!h || h === '#') {
-                        var saved = (window.localStorage && window.localStorage.getItem('hp_last_page')) || '';
-                        if (saved && saved.indexOf('#') === 0 && saved !== '#admin' && window.location) {
-                            window.location.hash = saved;
-                            return saved;
+                        var hasSession = (window.sessionStorage && window.sessionStorage.getItem('auth_token'));
+                        if (hasSession) {
+                            var saved = (window.localStorage && window.localStorage.getItem('hp_last_page')) || '';
+                            if (saved && saved.indexOf('#') === 0 && saved !== '#admin' && window.location) {
+                                window.location.hash = saved;
+                                return saved;
+                            }
                         }
                     }
                     return h || '';

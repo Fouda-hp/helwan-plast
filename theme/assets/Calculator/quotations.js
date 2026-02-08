@@ -223,7 +223,12 @@ if (typeof window.debugError !== 'function') window.debugError = function () {};
     setValue("Country", record["Country"]);
     setValue("Address", record["Address"]);
     setValue("Email", record["Email"]);
-    // Use special function for sales_rep dropdown\n    if (window.setSalesRepValue) {\n      window.setSalesRepValue(record["Sales Rep"]);\n    } else {\n      setValue("sales_rep", record["Sales Rep"]);\n    }
+    var salesRep = record["Sales Rep"] || record["Sales rep"] || "";
+    if (salesRep && window.setSalesRepValue) {
+      window.setSalesRepValue(salesRep);
+    } else if (salesRep) {
+      setValue("sales_rep", salesRep);
+    }
     setValue("Source", record["Source"]);
     setValue("Given Price", record["Given Price"]);
     setValue("Agreed Price", record["Agreed Price"]);

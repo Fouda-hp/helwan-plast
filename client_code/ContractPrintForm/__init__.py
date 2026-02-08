@@ -103,9 +103,11 @@ class ContractPrintForm(ContractPrintFormTemplate):
         select.innerHTML = f'<option value="">-- Select Quotation ({_h(len(quotations))}) --</option>'
         for q in quotations:
             q_num = _h(q.get('Quotation#', ''))
-            client = _h(q.get('Client Name', ''))
+            client_name = _h(q.get('Client Name', ''))
+            company = _h(q.get('Company', ''))
+            client_display = f"{client_name} - {company}".strip(' - ') if company else client_name
             model = _h(q.get('Model', ''))
-            option_text = f"#{q_num} - {client} - {model}"
+            option_text = f"#{q_num} - {client_display} - {model}"
             select.innerHTML += f'<option value="{q_num}">{option_text}</option>'
 
     def filter_quotations(self):
@@ -119,6 +121,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         filtered = [q for q in self.all_quotations 
                     if query in str(q.get('Quotation#', '')).lower() 
                     or query in str(q.get('Client Name', '')).lower()
+                    or query in str(q.get('Company', '')).lower()
                     or query in str(q.get('Model', '')).lower()]
         self.populate_dropdown(filtered)
 

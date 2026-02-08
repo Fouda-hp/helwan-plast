@@ -100,11 +100,14 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     # Clear and add default option
     select.innerHTML = f'<option value="">-- Select Quotation ({len(quotations)}) --</option>'
 
-    # Add quotations
+    # Add quotations: عرض "اسم العميل - اسم الشركة" من الجدول
     for q in quotations:
       opt = anvil.js.window.document.createElement('option')
       opt.value = str(q.get('Quotation#', ''))
-      opt.textContent = f"#{q.get('Quotation#', '')} - {q.get('Client Name', 'N/A')} - {q.get('Model', '')}"
+      client_name = q.get('Client Name', '') or 'N/A'
+      company = q.get('Company', '') or ''
+      client_display = f"{client_name} - {company}".strip(' - ') if company else client_name
+      opt.textContent = f"#{q.get('Quotation#', '')} - {client_display} - {q.get('Model', '')}"
       select.appendChild(opt)
 
   def filter_quotations(self):
@@ -123,8 +126,9 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     for q in self.all_quotations:
       num = str(q.get('Quotation#', '')).lower()
       name = str(q.get('Client Name', '')).lower()
+      company = str(q.get('Company', '')).lower()
       model = str(q.get('Model', '')).lower()
-      if query in num or query in name or query in model:
+      if query in num or query in name or query in company or query in model:
         filtered.append(q)
 
     self.populate_dropdown(filtered)

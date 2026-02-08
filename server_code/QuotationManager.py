@@ -1876,9 +1876,18 @@ def get_quotations_list(search='', include_deleted=False, token_or_email=None, p
                 skip -= 1
                 continue
             if len(data) < page_size:
+                company = r.get('Company', '') or ''
+                if not company:
+                    try:
+                        client = app_tables.clients.get(Phone=r.get('Phone'), is_deleted=False) if r.get('Phone') else None
+                        if client:
+                            company = client.get('Company', '') or ''
+                    except Exception:
+                        pass
                 data.append({
                     'Quotation#': r.get('Quotation#'),
                     'Client Name': r.get('Client Name', ''),
+                    'Company': company,
                     'Model': r.get('Model', ''),
                     'Date': r.get('Date').isoformat() if r.get('Date') else '',
                     'Agreed Price': r.get('Agreed Price', 0)

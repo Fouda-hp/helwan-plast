@@ -1470,18 +1470,15 @@ def get_machine_specs(model):
 def get_quotation_pdf_data(quotation_number, user_email, auth_token=None):
     """
     جلب كل البيانات اللازمة لتصدير عرض السعر كـ PDF.
-    يتطلب auth_token صالح ومطابق للبريد.
+    يتطلب صلاحية view (نفس تحميل قائمة العروض).
     """
-    # التحقق من التوكن إلزامي
-    if not auth_token:
+    token_or_email = auth_token or user_email
+    if not token_or_email:
         return {'success': False, 'message': 'Authentication required'}
-    try:
-        result = AuthManager.validate_token(auth_token)
-        if not result.get('valid') or (result.get('user', {}).get('email') or '').strip().lower() != (user_email or '').strip().lower():
-            return {'success': False, 'message': 'Unauthorized'}
-    except Exception as e:
-        logger.warning(f"get_quotation_pdf_data auth check: {e}")
-        return {'success': False, 'message': 'Unauthorized'}
+    is_valid, verified_email, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied'}
+    user_email = verified_email or user_email
     try:
         # جلب بيانات عرض السعر
         quotation = app_tables.quotations.get(**{'Quotation#': quotation_number})

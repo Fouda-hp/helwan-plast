@@ -3,3 +3,5 @@
 __pycache__
 .anvil-data
 .cursorrules/
+finish_merge.bat
+finish_merge.ps1

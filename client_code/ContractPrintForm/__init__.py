@@ -60,9 +60,16 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.validateNumPayments = self.validate_num_payments
 
     def _show_msg(self, msg, typ='error'):
-        """عرض رسالة من نظام التطبيق بدل alert البراوزر"""
+        """عرض رسالة خطأ أو تنبيه — إن لم يتوفر showNotification نستخدم alert حتى يظهر شيء للمستخدم."""
+        s = str(msg).strip() or ('خطأ' if self.current_lang == 'ar' else 'Error')
         try:
-            anvil.js.window.showNotification(typ, '', str(msg))
+            if anvil.js.window.showNotification:
+                anvil.js.window.showNotification(typ, '', s)
+                return
+        except Exception:
+            pass
+        try:
+            anvil.js.window.alert(s)
         except Exception:
             pass
 
@@ -492,60 +499,79 @@ class ContractPrintForm(ContractPrintFormTemplate):
         return True
 
     def save_payments(self):
-        ok, msg_ar, msg_en = self._validate_delivery_date()
-        if not ok:
-            self._show_msg(msg_ar if self.current_lang == 'ar' else msg_en)
-            return
-        if not self.validate_payments():
-            return
-
-        value_inputs = anvil.js.window.document.querySelectorAll('.payment-value')
-        date_inputs = anvil.js.window.document.querySelectorAll('.payment-date')
-        
-        self.payment_data = []
-        # Remove commas from formatted price
-        price_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
-        try:
-            total_price = float(price_str) if price_str else 0
-        except Exception:
-            total_price = 0
-        
-        labels_ar = ['مقدم تعاقد', 'الدفعة الثانية', 'الدفعة الثالثة', 'الدفعة الرابعة', 
-                     'الدفعة الخامسة', 'الدفعة السادسة', 'الدفعة السابعة', 'الدفعة الثامنة',
-                     'الدفعة التاسعة', 'الدفعة العاشرة', 'الدفعة الحادية عشر', 'الدفعة الثانية عشر']
-        labels_en = ['Down Payment', 'Installment 2', 'Installment 3', 'Installment 4',
-                     'Installment 5', 'Installment 6', 'Installment 7', 'Installment 8',
-                     'Installment 9', 'Installment 10', 'Installment 11', 'Installment 12']
-        
-        for i, (val_inp, date_inp) in enumerate(zip(value_inputs, date_inputs)):
-            val = float(val_inp.value or 0)
-            date_val = str(date_inp.value or '')
-            
-            if val > 0:
-                if self.payment_method == 'percentage':
-                    amount = total_price * val / 100
-                    percentage = val
-                else:
-                    amount = val
-                    percentage = (val / total_price * 100) if total_price > 0 else 0
-                
-                self.payment_data.append({
-                    'index': i + 1,
-                    'label_ar': labels_ar[i] if i < len(labels_ar) else f'الدفعة {i+1}',
-                    'label_en': labels_en[i] if i < len(labels_en) else f'Installment {i+1}',
-                    'value': val,
-                    'percentage': percentage,
-                    'amount': amount,
-                    'date': date_val,
-                    'method': self.payment_method
-                })
-        
-        self.close_payment_modal()
         is_ar = self.current_lang == 'ar'
-        Notification('تم حفظ الدفعات' if is_ar else 'Payments saved', style='success').show()
-        
-        if self.current_data:
-            self.render_template()
+        try:
+            if not self.current_data:
+                self._show_msg(
+                    'الناقص: من فضلك اختر عرضاً أو عقداً أولاً ثم افتح إدارة الدفعات مرة أخرى.'
+                    if is_ar else 'Missing: Please select a quotation or contract first, then open Manage Payments again.'
+                )
+                return
+            ok, msg_ar, msg_en = self._validate_delivery_date()
+            if not ok:
+                self._show_msg(msg_ar if is_ar else msg_en)
+                return
+            if not self.validate_payments():
+                return
+
+            value_inputs = anvil.js.window.document.querySelectorAll('.payment-value')
+            date_inputs = anvil.js.window.document.querySelectorAll('.payment-date')
+            if not value_inputs or not date_inputs:
+                self._show_msg(
+                    'الناقص: لم يتم العثور على حقول الدفعات. أعد فتح نافذة إدارة الدفعات.'
+                    if is_ar else 'Missing: Payment fields not found. Please reopen Manage Payments.'
+                )
+                return
+
+            self.payment_data = []
+            # Remove commas from formatted price
+            price_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
+            try:
+                total_price = float(price_str) if price_str else 0
+            except Exception:
+                total_price = 0
+
+            labels_ar = ['مقدم تعاقد', 'الدفعة الثانية', 'الدفعة الثالثة', 'الدفعة الرابعة',
+                         'الدفعة الخامسة', 'الدفعة السادسة', 'الدفعة السابعة', 'الدفعة الثامنة',
+                         'الدفعة التاسعة', 'الدفعة العاشرة', 'الدفعة الحادية عشر', 'الدفعة الثانية عشر']
+            labels_en = ['Down Payment', 'Installment 2', 'Installment 3', 'Installment 4',
+                         'Installment 5', 'Installment 6', 'Installment 7', 'Installment 8',
+                         'Installment 9', 'Installment 10', 'Installment 11', 'Installment 12']
+
+            for i, (val_inp, date_inp) in enumerate(zip(value_inputs, date_inputs)):
+                val = float(val_inp.value or 0)
+                date_val = str(date_inp.value or '')
+
+                if val > 0:
+                    if self.payment_method == 'percentage':
+                        amount = total_price * val / 100
+                        percentage = val
+                    else:
+                        amount = val
+                        percentage = (val / total_price * 100) if total_price > 0 else 0
+
+                    self.payment_data.append({
+                        'index': i + 1,
+                        'label_ar': labels_ar[i] if i < len(labels_ar) else f'الدفعة {i+1}',
+                        'label_en': labels_en[i] if i < len(labels_en) else f'Installment {i+1}',
+                        'value': val,
+                        'percentage': percentage,
+                        'amount': amount,
+                        'date': date_val,
+                        'method': self.payment_method
+                    })
+
+            self.close_payment_modal()
+            Notification('تم حفظ الدفعات' if is_ar else 'Payments saved', style='success').show()
+
+            if self.current_data:
+                self.render_template()
+        except Exception as e:
+            err_msg = str(e) if e else ( 'خطأ غير متوقع' if is_ar else 'Unexpected error' )
+            self._show_msg(
+                ('خطأ عند الحفظ: ' + err_msg) if is_ar else ('Error while saving: ' + err_msg),
+                'error'
+            )
 
     def save_contract(self):
         if not self.current_data:

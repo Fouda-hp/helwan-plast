@@ -1901,6 +1901,66 @@ def get_quotations_list(search='', include_deleted=False, token_or_email=None, p
         return {'success': False, 'message': str(e), 'data': [], 'total_count': 0}
 
 
+@anvil.server.callable
+def get_quotations_list_without_contract(search='', token_or_email=None, page=1, page_size=500):
+    """
+    قائمة العروض التي لم يُنشأ لها عقد بعد (لصفحة عقد جديد فقط).
+    يستثني أي Quotation# موجود في جدول contracts.
+    """
+    is_valid, _, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        return {'success': False, 'data': [], 'message': 'Permission denied', 'total_count': 0}
+    try:
+        quoted_ids = set()
+        for row in app_tables.contracts.search():
+            qn = row.get('quotation_number')
+            if qn is not None:
+                quoted_ids.add(int(qn) if not isinstance(qn, int) else qn)
+        page = max(1, int(page) if page is not None else 1)
+        page_size = max(1, min(1000, int(page_size) if page_size is not None else 500))
+        search_lower = (search or '').strip().lower()
+        try:
+            q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by('Quotation#', False)])
+        except Exception:
+            q_iter = app_tables.quotations.search(is_deleted=False)
+        total_count = 0
+        data = []
+        skip = (page - 1) * page_size
+        for r in q_iter:
+            q_num = r.get('Quotation#')
+            if q_num is not None and (int(q_num) if not isinstance(q_num, int) else q_num) in quoted_ids:
+                continue
+            if not _quotation_list_matches_search(r, search_lower):
+                continue
+            total_count += 1
+            if total_count > MAX_PAGINATION_SCAN:
+                break
+            if skip > 0:
+                skip -= 1
+                continue
+            if len(data) < page_size:
+                company = r.get('Company', '') or ''
+                if not company and r.get('Phone'):
+                    try:
+                        client = app_tables.clients.get(Phone=r.get('Phone'), is_deleted=False)
+                        if client:
+                            company = client.get('Company', '') or ''
+                    except Exception:
+                        pass
+                data.append({
+                    'Quotation#': r.get('Quotation#'),
+                    'Client Name': r.get('Client Name', ''),
+                    'Company': company,
+                    'Model': r.get('Model', ''),
+                    'Date': r.get('Date').isoformat() if r.get('Date') else '',
+                    'Agreed Price': r.get('Agreed Price', 0)
+                })
+        return {'success': True, 'data': data, 'total_count': total_count, 'page': page, 'page_size': page_size}
+    except Exception as e:
+        logger.exception("get_quotations_list_without_contract error")
+        return {'success': False, 'message': str(e), 'data': [], 'total_count': 0}
+
+
 # =========================================================
 # Contract Management Functions
 # =========================================================
@@ -2029,6 +2089,84 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
     except Exception as e:
         logger.error(f"Error saving contract: {e}")
         return {'success': False, 'message': f'المشكلة: حدث خطأ أثناء الحفظ. التفاصيل: {str(e)}'}
+
+
+@anvil.server.callable
+def update_contract(contract_data, user_email='system', token_or_email=None):
+    """
+    تحديث عقد موجود (نفس السطر ونفس السيريال) — يتطلب صلاحية edit
+    """
+    auth_key = token_or_email or user_email
+    if auth_key == 'system':
+        return {'success': False, 'message': 'المشكلة: يجب تسجيل الدخول أولاً (Authentication required)'}
+    is_valid, verified_email, error = _require_permission(auth_key, 'edit')
+    if not is_valid:
+        return {'success': False, 'message': 'المشكلة: لا تملك صلاحية تعديل العقود (Edit permission required)'}
+    user_email = verified_email or user_email
+    try:
+        quotation_number = contract_data.get('quotation_number')
+        if not quotation_number:
+            return {'success': False, 'message': 'المشكلة: رقم العرض مطلوب (Quotation number is required)'}
+        try:
+            quotation_number = int(quotation_number)
+        except (TypeError, ValueError):
+            return {'success': False, 'message': 'المشكلة: رقم العرض يجب أن يكون رقماً (Quotation number must be numeric)'}
+        existing = None
+        try:
+            existing = app_tables.contracts.get(quotation_number=quotation_number)
+        except Exception as e:
+            logger.warning(f"Contract lookup failed: {e}")
+        if not existing:
+            return {'success': False, 'message': 'العقد غير موجود.', 'message_en': 'Contract not found.'}
+        contract_number = existing['contract_number']
+        payments_list = contract_data.get('payments', [])
+        payments_json = json.dumps(payments_list, ensure_ascii=False, default=str)
+        payment_cols = _contract_payment_columns(payments_list)
+        ip_address = get_client_ip()
+
+        def _str(val, default=''):
+            if val is None:
+                return default
+            if isinstance(val, str):
+                return val
+            if isinstance(val, (dict, list)):
+                return default
+            return str(val)
+
+        old_data = {'contract_number': contract_number, 'quotation_number': quotation_number}
+        existing.update(
+            client_name=_str(contract_data.get('client_name')),
+            company=_str(contract_data.get('company')),
+            phone=_str(contract_data.get('phone')),
+            country=_str(contract_data.get('country')),
+            address=_str(contract_data.get('address')),
+            model=contract_data.get('model', ''),
+            colors_count=str(contract_data.get('colors_count', '')),
+            machine_width=str(contract_data.get('machine_width', '')),
+            material=contract_data.get('material', ''),
+            winder_type=contract_data.get('winder_type', ''),
+            price_mode=contract_data.get('price_mode', ''),
+            total_price=str(contract_data.get('total_price', '')),
+            payment_method=contract_data.get('payment_method', 'percentage'),
+            num_payments=contract_data.get('num_payments', 0),
+            payments_json=payments_json,
+            delivery_date=contract_data.get('delivery_date', ''),
+            updated_at=get_utc_now(),
+            **payment_cols
+        )
+        logger.info(f"Contract {contract_number} updated by {user_email}")
+        log_audit('UPDATE', 'contracts', contract_number, old_data, contract_data, user_email, ip_address)
+        try:
+            notifications_module.create_notification(
+                user_email, 'contract_saved',
+                {'contract_number': contract_number, 'quotation_number': quotation_number}
+            )
+        except Exception:
+            pass
+        return {'success': True, 'message': 'Contract updated', 'contract_number': contract_number}
+    except Exception as e:
+        logger.error(f"Error updating contract: {e}")
+        return {'success': False, 'message': f'المشكلة: حدث خطأ أثناء التحديث. التفاصيل: {str(e)}'}
 
 
 @anvil.server.callable

@@ -66,6 +66,17 @@ class ContractPrintForm(ContractPrintFormTemplate):
         except Exception:
             pass
 
+    def _validate_delivery_date(self):
+        """التحقق من إدخال تاريخ التسليم (إجباري قبل Save / Update / Confirm Manage Payment)."""
+        delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
+        delivery_val = (delivery_input.value or '').strip() if delivery_input else ''
+        if not delivery_val:
+            is_ar = self.current_lang == 'ar'
+            msg_ar = 'تاريخ التسليم (Expected Delivery Date) مطلوب. من فضلك أدخل تاريخ التسليم قبل الحفظ أو تأكيد الدفعات.'
+            msg_en = 'Expected Delivery Date is required. Please enter the delivery date before saving or confirming payments.'
+            return False, msg_ar, msg_en
+        return True, None, None
+
     def form_show(self, **event_args):
         self.init_page()
 
@@ -91,9 +102,17 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.location.hash = '#launcher'
 
     def load_quotations_list(self):
+        """عقد جديد: فقط العروض التي لم يُنشأ لها عقد. غير ذلك: كل العروض (للتوافق مع الروابط القديمة)."""
         try:
             auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
-            result = anvil.server.call('get_quotations_list', '', False, auth)
+            try:
+                hash_val = (anvil.js.window.location.hash or '').strip()
+            except Exception:
+                hash_val = ''
+            if hash_val == '#contract-new':
+                result = anvil.server.call('get_quotations_list_without_contract', '', auth)
+            else:
+                result = anvil.server.call('get_quotations_list', '', False, auth)
             if result and result.get('success'):
                 self.all_quotations = result.get('data', [])
                 self.populate_dropdown(self.all_quotations)
@@ -473,9 +492,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
         return True
 
     def save_payments(self):
+        ok, msg_ar, msg_en = self._validate_delivery_date()
+        if not ok:
+            self._show_msg(msg_ar if self.current_lang == 'ar' else msg_en)
+            return
         if not self.validate_payments():
             return
-        
+
         value_inputs = anvil.js.window.document.querySelectorAll('.payment-value')
         date_inputs = anvil.js.window.document.querySelectorAll('.payment-date')
         
@@ -533,7 +556,11 @@ class ContractPrintForm(ContractPrintFormTemplate):
             is_ar = self.current_lang == 'ar'
             self._show_msg('من فضلك أدخل بيانات الدفعات أولاً' if is_ar else 'Please enter payment data first')
             return
-        
+        ok, msg_ar, msg_en = self._validate_delivery_date()
+        if not ok:
+            self._show_msg(msg_ar if self.current_lang == 'ar' else msg_en)
+            return
+
         delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
         delivery_date = str(delivery_input.value) if delivery_input else ''
         

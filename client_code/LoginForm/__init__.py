@@ -129,6 +129,10 @@ class LoginForm(LoginFormTemplate):
             open_form('QuotationPrintForm')
         elif hash_val == "#contract-print":
             open_form('ContractPrintForm')
+        elif hash_val == "#contract-new":
+            open_form('ContractPrintForm')
+        elif hash_val == "#contract-edit":
+            open_form('ContractEditForm')
         else:
             open_form('LauncherForm')
 

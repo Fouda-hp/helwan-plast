@@ -133,6 +133,10 @@ class LauncherForm(LauncherFormTemplate):
             open_form('QuotationPrintForm')
         elif hash_val == "#contract-print":
             open_form('ContractPrintForm')
+        elif hash_val == "#contract-new":
+            open_form('ContractPrintForm')
+        elif hash_val == "#contract-edit":
+            open_form('ContractEditForm')
         elif hash_val == "#login":
             open_form('LoginForm')
 
@@ -379,9 +383,20 @@ class LauncherForm(LauncherFormTemplate):
                 except Exception: pass
 
         elif h == "#contract-print":
-            # فتح صفحة طباعة العقود
             try:
                 open_form("ContractPrintForm")
+            except Exception as e:
+                try: anvil.js.window.showNotification('error', '', str(e))
+                except Exception: pass
+        elif h == "#contract-new":
+            try:
+                open_form("ContractPrintForm")
+            except Exception as e:
+                try: anvil.js.window.showNotification('error', '', str(e))
+                except Exception: pass
+        elif h == "#contract-edit":
+            try:
+                open_form("ContractEditForm")
             except Exception as e:
                 try: anvil.js.window.showNotification('error', '', str(e))
                 except Exception: pass

@@ -83,6 +83,8 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.getAuditLogs = self.get_audit_logs
         anvil.js.window.getMyNotifications = self.get_my_notifications
         anvil.js.window.clearAllMyNotifications = self.clear_all_my_notifications
+        anvil.js.window.deleteAllMyNotifications = self.delete_all_my_notifications
+        anvil.js.window.deleteOneNotification = self.delete_one_notification
 
         # Clients & Quotations
         anvil.js.window.getAllClients = self.get_all_clients
@@ -408,7 +410,7 @@ class AdminPanel(AdminPanelTemplate):
                 var list = (res && res.success && res.notifications) ? res.notifications : [];
                 var header = '<div style="padding:12px;border-bottom:1px solid #eee;font-weight:700;color:#1a1a2e;display:flex;justify-content:space-between;align-items:center;">';
                 header += '<span>الإشعارات</span>';
-                header += '<button type="button" id="adminNotificationsClearAll" style="background:#f0f0f0;border:1px solid #ddd;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;">تفريغ القائمة</button></div>';
+                header += '<button type="button" id="adminNotificationsClearAll" style="background:#c62828;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;">مسح الكل من الجدول</button></div>';
                 if (list.length === 0) {
                   dropdown.innerHTML = header + '<div style="padding:16px;text-align:center;color:#666;font-size:14px;">لا توجد إشعارات</div>';
                   var clearBtn = dropdown.querySelector('#adminNotificationsClearAll');
@@ -420,23 +422,51 @@ class AdminPanel(AdminPanelTemplate):
                   var ts = (n.timestamp || '').replace('T', ' ').substring(0, 19);
                   var desc = (n.action_description || n.action || '-');
                   var bg = n.read_at ? '#fff' : 'rgba(0,120,215,0.06)';
-                  html += '<div style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333;background:' + bg + ';">';
+                  var nid = (n.id || '').replace(/"/g, '&quot;');
+                  html += '<div class="admin-notif-row" data-notif-id="' + nid + '" style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333;background:' + bg + ';display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">';
+                  html += '<div style="flex:1;min-width:0;">';
                   html += '<div style="color:#999;font-size:11px;margin-bottom:4px;">' + ts + '</div>';
                   html += '<div>' + (desc.length > 80 ? desc.substring(0, 77) + '...' : desc) + '</div></div>';
+                  html += '<button type="button" class="admin-notif-delete" title="حذف الإشعار" style="flex-shrink:0;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;padding:2px 8px;border-radius:6px;cursor:pointer;font-size:11px;">✕</button>';
+                  html += '</div>';
                 });
                 dropdown.innerHTML = html;
                 var clearBtn = dropdown.querySelector('#adminNotificationsClearAll');
-                if (clearBtn && window.clearAllMyNotifications) {
+                if (clearBtn && window.deleteAllMyNotifications) {
                   clearBtn.onclick = function(ev) {
                     ev.stopPropagation();
-                    var prom = window.clearAllMyNotifications();
+                    var prom = window.deleteAllMyNotifications();
                     if (prom && typeof prom.then === 'function') {
-                      prom.then(function() { renderList({ success: true, notifications: [] }); });
+                      prom.then(function(r) {
+                        if (r && r.success && window.showNotification) window.showNotification('success', '', 'تم مسح ' + (r.deleted_count || 0) + ' إشعار');
+                        renderList({ success: true, notifications: [] });
+                      }).catch(function() {
+                        if (window.showNotification) window.showNotification('error', '', 'فشل مسح الإشعارات');
+                      });
                     } else {
                       renderList({ success: true, notifications: [] });
                     }
                   };
                 }
+                dropdown.querySelectorAll('.admin-notif-delete').forEach(function(btn) {
+                  var row = btn.closest('.admin-notif-row');
+                  var id = row && row.getAttribute('data-notif-id');
+                  if (!id || !window.deleteOneNotification) return;
+                  btn.onclick = function(ev) {
+                    ev.stopPropagation();
+                    var p = window.deleteOneNotification(id);
+                    if (p && typeof p.then === 'function') {
+                      p.then(function(r) {
+                        if (r && r.success) {
+                          if (row.parentNode) row.remove();
+                          if (dropdown.querySelectorAll('.admin-notif-row').length === 0) {
+                            renderList({ success: true, notifications: [] });
+                          }
+                        } else if (window.showNotification) window.showNotification('error', '', r && r.message ? r.message : 'فشل حذف الإشعار');
+                      });
+                    }
+                  };
+                });
               }
               if (!window.getMyNotifications) {
                 dropdown.innerHTML = '<div style="padding:16px;text-align:center;color:#666;">لا توجد إشعارات</div>';
@@ -1285,6 +1315,11 @@ class AdminPanel(AdminPanelTemplate):
           }
           
           window.applyAuditFilters = async function() {
+            function escapeHtml(s) {
+              if (s == null || s === '') return '';
+              var t = String(s);
+              return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
             var dateFrom = document.getElementById('auditDateFrom').value;
             var dateTo = document.getElementById('auditDateTo').value;
             var userFilter = document.getElementById('auditUserFilter').value.toLowerCase();
@@ -1305,7 +1340,7 @@ class AdminPanel(AdminPanelTemplate):
               var result = await window.getAuditLogs(100, 0, filters);
               if (!result.success) {
                 var msg = (result && result.message) ? result.message : 'فشل تحميل سجل التدقيق';
-                container.innerHTML = '<div class="empty-state"><h4>' + (msg || '—') + '</h4></div>';
+                container.innerHTML = '<div class="empty-state"><h4>' + escapeHtml(msg || '—') + '</h4></div>';
                 return;
               }
               
@@ -1333,18 +1368,18 @@ class AdminPanel(AdminPanelTemplate):
                 else if (l.action === 'RESTORE') actionClass = 'style="color:#f57f17;"';
                 var displayUser = (l.user_name && l.user_name !== '—') ? l.user_name : (l.user_email || '—');
                 html += '<tr>';
-                html += '<td>' + l.timestamp.replace('T', ' ').substring(0, 19) + '</td>';
-                html += '<td>' + (displayUser || '—') + '</td>';
-                html += '<td ' + actionClass + '><strong>' + l.action + '</strong></td>';
-                html += '<td>' + l.table_name + '</td>';
-                html += '<td>' + (l.record_id || '-') + '</td>';
+                html += '<td>' + escapeHtml((l.timestamp || '').replace('T', ' ').substring(0, 19)) + '</td>';
+                html += '<td>' + escapeHtml(displayUser || '—') + '</td>';
+                html += '<td ' + actionClass + '><strong>' + escapeHtml(l.action || '') + '</strong></td>';
+                html += '<td>' + escapeHtml(l.table_name || '') + '</td>';
+                html += '<td>' + escapeHtml(l.record_id || '-') + '</td>';
                 html += '</tr>';
               });
               html += '</tbody></table>';
               container.innerHTML = html;
             } catch (e) {
               var errMsg = (e && (e.message || e.toString && e.toString())) ? (e.message || e.toString()) : 'خطأ غير معروف';
-              container.innerHTML = '<div class="empty-state"><h4>خطأ في تحميل سجل التدقيق</h4><p>' + errMsg + '</p></div>';
+              container.innerHTML = '<div class="empty-state"><h4>خطأ في تحميل سجل التدقيق</h4><p>' + escapeHtml(errMsg) + '</p></div>';
             }
           };
           
@@ -2074,6 +2109,14 @@ class AdminPanel(AdminPanelTemplate):
     def clear_all_my_notifications(self):
         """تفريغ قائمة الإشعارات (تعليم الكل كمقروء)."""
         return anvil.server.call('clear_all_notifications', self.get_auth())
+
+    def delete_all_my_notifications(self):
+        """حذف كل الإشعارات من الجدول للمستخدم الحالي."""
+        return anvil.server.call('delete_all_my_notifications', self.get_auth())
+
+    def delete_one_notification(self, notification_id):
+        """حذف إشعار واحد من الجدول."""
+        return anvil.server.call('delete_notification', notification_id, self.get_auth())
 
     # =========================================================
     # Clients & Quotations

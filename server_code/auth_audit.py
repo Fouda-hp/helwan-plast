@@ -45,6 +45,7 @@ ACTION_LABELS = {
     'DELETE_USER_PERMANENTLY': 'حذف مستخدم نهائياً',
     'BACKUP_EXPORT': 'تحميل نسخة احتياطية',
     'BACKUP_SCHEDULED': 'نسخة احتياطية مجدولة',
+    'BACKUP_RESTORE': 'استعادة نسخة احتياطية',
 }
 
 TABLE_LABELS = {
@@ -53,6 +54,7 @@ TABLE_LABELS = {
     'quotations': 'العروض السعرية',
     'contracts': 'العقود',
     'settings': 'الإعدادات',
+    'backup': 'النسخ الاحتياطي',
 }
 
 

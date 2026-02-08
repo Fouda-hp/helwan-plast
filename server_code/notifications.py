@@ -153,3 +153,40 @@ def clear_all_notifications(token_or_email):
         return {'success': True}
     except Exception as e:
         return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def delete_all_my_notifications(token_or_email):
+    """حذف كل إشعارات المستخدم الحالي من الجدول (مسح كامل للقائمة)."""
+    user_email = _user_email_from_token(token_or_email)
+    if not user_email:
+        return {'success': False, 'message': 'Authentication required', 'deleted_count': 0}
+    try:
+        rows = list(app_tables.notifications.search(user_email=user_email))
+        count = 0
+        for row in rows:
+            row.delete()
+            count += 1
+        logger.info("Deleted %s notifications for user %s", count, user_email)
+        return {'success': True, 'deleted_count': count}
+    except Exception as e:
+        logger.warning("delete_all_my_notifications: %s", e)
+        return {'success': False, 'message': str(e), 'deleted_count': 0}
+
+
+@anvil.server.callable
+def delete_notification(notification_id, token_or_email):
+    """حذف إشعار واحد من الجدول (للمستخدم الحالي فقط)."""
+    user_email = _user_email_from_token(token_or_email)
+    if not user_email:
+        return {'success': False, 'message': 'Authentication required'}
+    if not notification_id or not str(notification_id).strip():
+        return {'success': False, 'message': 'Notification ID required'}
+    try:
+        row = app_tables.notifications.get(id=str(notification_id).strip(), user_email=user_email)
+        if row:
+            row.delete()
+            return {'success': True}
+        return {'success': False, 'message': 'Notification not found or access denied'}
+    except Exception as e:
+        return {'success': False, 'message': str(e)}

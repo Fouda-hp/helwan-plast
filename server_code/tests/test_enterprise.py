@@ -61,35 +61,46 @@ class TestValidateEmail(unittest.TestCase):
 
 
 class TestQuotationNumbers(unittest.TestCase):
-    """اختبار دوال الترقيم (_get_next_number) مع mock لـ app_tables."""
+    """اختبار دوال الترقيم (get_next_number_atomic) مع mock لـ app_tables.counters."""
 
     @classmethod
     def setUpClass(cls):
         sys.modules['anvil'].tables.app_tables = MagicMock()
+        sys.modules['anvil'].tables.in_transaction = lambda f: f  # bypass transaction in tests
         import server_code.quotation_numbers as qn
         cls._qn = qn
 
-    def test_get_next_number_empty_tables(self):
+    def test_get_next_number_atomic_new_counter(self):
+        """عند عدم وجود صف للعداد: يُنشأ بقيمة ابتدائية 1 (أو max+1 من الجدول)."""
         app_tables = MagicMock()
+        app_tables.counters = MagicMock()
+        app_tables.counters.get.return_value = None
         app_tables.clients = MagicMock()
-        app_tables.quotations = MagicMock()
         app_tables.clients.search.return_value = []
+        app_tables.quotations = MagicMock()
         app_tables.quotations.search.return_value = []
         qn = self._qn
         with patch.object(qn, 'app_tables', app_tables):
-            n = qn._get_next_number('clients', 'Client Code')
+            n = qn.get_next_number_atomic('clients_next')
         self.assertEqual(n, 1)
+        app_tables.counters.add_row.assert_called_once()
+        call_kw = app_tables.counters.add_row.call_args[1]
+        self.assertEqual(call_kw.get('key'), 'clients_next')
+        self.assertEqual(call_kw.get('value'), 1)
 
-    def test_get_next_number_with_max(self):
+    def test_get_next_number_atomic_existing_counter(self):
+        """عند وجود صف للعداد: تُرجع value+1 ويُحدّث الصف."""
         app_tables = MagicMock()
         row = MagicMock()
-        row.__getitem__ = lambda k: 100 if k == 'Client Code' else None
-        app_tables.clients = MagicMock()
-        app_tables.clients.search.return_value = [row]
+        row.__getitem__ = lambda k: 100 if k == 'value' else None
+        row.__setitem__ = MagicMock()
+        app_tables.counters = MagicMock()
+        app_tables.counters.get.return_value = row
         qn = self._qn
         with patch.object(qn, 'app_tables', app_tables):
-            n = qn._get_next_number('clients', 'Client Code')
+            n = qn.get_next_number_atomic('quotations_next')
         self.assertEqual(n, 101)
+        row.__setitem__.assert_called_with('value', 101)
 
 
 class TestDateFormatting(unittest.TestCase):

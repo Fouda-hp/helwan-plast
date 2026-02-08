@@ -35,10 +35,10 @@ except ImportError:
     import notifications as notifications_module
 try:
     from . import quotation_numbers
-    from .quotation_numbers import _get_next_number
+    from .quotation_numbers import get_next_number_atomic
 except ImportError:
     import quotation_numbers
-    from quotation_numbers import _get_next_number
+    from quotation_numbers import get_next_number_atomic
 try:
     from . import quotation_backup
 except ImportError:
@@ -131,7 +131,7 @@ def check_delete_permission(token_or_email):
     return False, {'success': False, 'message': 'Permission denied: delete or delete_own required'}, None
 
 
-# دوال الترقيم: مُعرّفة في quotation_numbers ويُستدعى _get_next_number داخلياً من هنا
+# دوال الترقيم: من quotation_numbers.get_next_number_atomic (ذرّي، بدون دوبليكيت)
 # =========================================================
 # دوال التحقق المساعدة
 # =========================================================
@@ -373,52 +373,62 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
                         "message": f"For New Order mode, Agreed Price ({agreed:,.0f}) cannot exceed In Stock price ({in_stock_price:,.0f})"
                     }
 
-    # الترقيم التلقائي من السيرفر
+    # الترقيم التلقائي من السيرفر فقط (ذرّي، يمنع الدوبليكيت)
     if is_new_client:
-        client_code = str(_get_next_number('clients', 'Client Code'))
+        client_code = str(get_next_number_atomic('clients_next'))
 
     if is_new_quotation and is_quotation:
-        quotation_number = _get_next_number('quotations', 'Quotation#')
+        quotation_number = get_next_number_atomic('quotations_next')
 
     logger.info(f"Saving: client_code={client_code}, quotation_number={quotation_number}")
 
-    # الحفظ مع التدقيق
-    client_action = save_client_data(client_code, form_data, is_new_client, user_email, ip_address)
-
-    quotation_action = None
-    if is_quotation:
-        # الحصول على اسم العميل لحفظه مع العرض
-        if not client_name and existing_client_row:
-            client_name = existing_client_row.get('Client Name', '')
-
-        quotation_action = save_quotation_data(
-            client_code,
-            quotation_number,
-            form_data,
-            is_new_quotation,
-            user_email,
-            ip_address,
-            client_name  # تمرير اسم العميل
-        )
-
-    actions = [a for a in (client_action, quotation_action) if a]
-
-    if is_quotation and user_email:
+    # الحفظ مع التدقيق. حماية إضافية: عند تعارض نادر (مثلاً TransactionConflict) نعيد المحاولة مرة واحدة بأرقام جديدة.
+    for attempt in range(2):
         try:
-            notifications_module.create_notification(
-                user_email,
-                'quotation_saved',
-                {'quotation_number': quotation_number, 'client_code': client_code, 'action': quotation_action}
-            )
-        except Exception:
-            pass
+            client_action = save_client_data(client_code, form_data, is_new_client, user_email, ip_address)
 
-    return {
-        "success": True,
-        "message": " & ".join(actions),
-        "client_code": client_code,
-        "quotation_number": quotation_number if is_quotation else None
-    }
+            quotation_action = None
+            if is_quotation:
+                if not client_name and existing_client_row:
+                    client_name = existing_client_row.get('Client Name', '')
+
+                quotation_action = save_quotation_data(
+                    client_code,
+                    quotation_number,
+                    form_data,
+                    is_new_quotation,
+                    user_email,
+                    ip_address,
+                    client_name
+                )
+
+            actions = [a for a in (client_action, quotation_action) if a]
+
+            if is_quotation and user_email:
+                try:
+                    notifications_module.create_notification(
+                        user_email,
+                        'quotation_saved',
+                        {'quotation_number': quotation_number, 'client_code': client_code, 'action': quotation_action}
+                    )
+                except Exception:
+                    pass
+
+            return {
+                "success": True,
+                "message": " & ".join(actions),
+                "client_code": client_code,
+                "quotation_number": quotation_number if is_quotation else None
+            }
+        except Exception as e:
+            if attempt == 0 and (is_new_client or (is_new_quotation and is_quotation)):
+                logger.warning("Save conflict (retry once with new numbers): %s", e)
+                if is_new_client:
+                    client_code = str(get_next_number_atomic('clients_next'))
+                if is_new_quotation and is_quotation:
+                    quotation_number = get_next_number_atomic('quotations_next')
+                continue
+            raise
 
 
 # =========================================================
@@ -1133,7 +1143,7 @@ def import_clients_data(data_list, token_or_email):
 
             client_code = row.get('Client Code')
             if not client_code:
-                client_code = str(_get_next_number('clients', 'Client Code'))
+                client_code = str(get_next_number_atomic('clients_next'))
 
             # التحقق من عدم وجود العميل
             existing = app_tables.clients.get(**{"Client Code": str(client_code)})
@@ -1298,7 +1308,7 @@ def import_quotations_data(data_list, token_or_email):
 
             quotation_number = safe_int(row.get('Quotation#'))
             if not quotation_number:
-                quotation_number = _get_next_number('quotations', 'Quotation#')
+                quotation_number = get_next_number_atomic('quotations_next')
 
             # التحقق من عدم وجود العرض
             existing = app_tables.quotations.get(**{"Quotation#": int(quotation_number)})

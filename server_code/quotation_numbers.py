@@ -1,59 +1,102 @@
 """
-quotation_numbers.py - الترقيم التلقائي للعملاء والعروض
-يُستورد من QuotationManager؛ يُستخدم داخلياً (_get_next_number) ومعرّض كـ callable.
+quotation_numbers.py - الترقيم التلقائي للعملاء والعروض (ذرّي بدون دوبليكيت)
+================================================================================
+السيرفر هو المصدر الوحيد للأرقام (Single Source of Truth).
+يستخدم جدول counters + Transaction لمنع أي تكرار حتى مع طلبات متزامنة (Race Conditions).
+لا يوجد table.search() على الجدول الكامل؛ الأداء ثابت O(1) لكل طلب.
 """
 
-import threading
 import logging
 from anvil.tables import app_tables
+from anvil import tables as anvil_tables
 import anvil.server
 
 logger = logging.getLogger(__name__)
 
-_number_locks = {
-    'clients': threading.Lock(),
-    'quotations': threading.Lock(),
-}
+# مفاتيح العدّادات في جدول counters (نص فريد لكل نوع ترقيم)
+COUNTER_CLIENTS = "clients_next"
+COUNTER_QUOTATIONS = "quotations_next"
 
 
-def _get_next_number(table_name, column_name):
+def _seed_initial_value(counter_key):
     """
-    توليد الرقم التالي بشكل آمن مع Locking لمنع Race Conditions.
-    يُرجع: int (القيمة التالية).
+    عند إنشاء عداد جديد: نزرعه من القيمة العظمى في الجدول الفعلي (إن وُجدت بيانات)
+    حتى لا يتداخل الرقم مع أرقام موجودة مسبقاً.
+    يُرجع: int (القيمة الابتدائية للعداد، 1 على الأقل).
     """
-    lock = _number_locks.get(table_name, threading.Lock())
-    with lock:
-        table = getattr(app_tables, table_name)
-        max_val = 0
-        for row in table.search():
-            val = row[column_name]
-            if val is not None:
-                try:
-                    num = int(val) if isinstance(val, str) else val
-                    if num > max_val:
-                        max_val = num
-                except (ValueError, TypeError):
-                    pass
-        next_val = max_val + 1
-        logger.info("%s.%s: max=%s, next=%s", table_name, column_name, max_val, next_val)
-        return next_val
+    max_val = 0
+    try:
+        if counter_key == COUNTER_CLIENTS:
+            for row in app_tables.clients.search():
+                v = row.get("Client Code")
+                if v is not None:
+                    try:
+                        n = int(v) if isinstance(v, str) else v
+                        if n > max_val:
+                            max_val = n
+                    except (ValueError, TypeError):
+                        pass
+        elif counter_key == COUNTER_QUOTATIONS:
+            for row in app_tables.quotations.search():
+                v = row.get("Quotation#")
+                if v is not None:
+                    try:
+                        n = int(v) if isinstance(v, str) else v
+                        if n > max_val:
+                            max_val = n
+                    except (ValueError, TypeError):
+                        pass
+    except Exception as e:
+        logger.warning("_seed_initial_value(%s): %s; using 1", counter_key, e)
+    return max(1, max_val + 1)
+
+
+@anvil.server.callable
+@anvil_tables.in_transaction
+def get_next_number_atomic(counter_key):
+    """
+    ترجع الرقم التالي وتحدّث العداد بشكل ذري لمنع أي دوبليكيت.
+    تستخدم Transaction بحيث: قراءة العداد → زيادة → كتابة، كلها في نفس المعاملة،
+    وإذا تعارضت مع طلب آخر تُعاد المحاولة تلقائياً (حتى 5 مرات) من قبل Anvil.
+    النتيجة: لا يوجد دوبليكيت حتى مع آلاف الطلبات المتزامنة.
+    """
+    row = app_tables.counters.get(key=counter_key)
+    if row is None:
+        # إنشاء العداد لأول مرة مع قيمة ابتدائية من الجدول الفعلي (أو 1)
+        initial = _seed_initial_value(counter_key)
+        app_tables.counters.add_row(key=counter_key, value=initial)
+        logger.info("Counter created: key=%s, initial_value=%s", counter_key, initial)
+        return initial
+    current = row["value"]
+    if current is None:
+        current = 0
+    try:
+        next_val = int(current) + 1
+    except (ValueError, TypeError):
+        next_val = 1
+    row["value"] = next_val
+    logger.info("Next number generated: key=%s, previous=%s, next=%s", counter_key, current, next_val)
+    return next_val
+
+
+# ========== دوال الترقيم المعرّضة للعميل (كلها تستدعي العداد الذرّي فقط) ==========
 
 
 @anvil.server.callable
 def get_next_client_code():
-    """الحصول على رمز العميل التالي (قراءة فقط)."""
-    return _get_next_number('clients', 'Client Code')
+    """الحصول على رمز العميل التالي. الرقم من السيرفر فقط."""
+    return get_next_number_atomic(COUNTER_CLIENTS)
 
 
 @anvil.server.callable
 def get_next_quotation_number():
-    """الحصول على رقم العرض التالي (قراءة فقط)."""
-    return _get_next_number('quotations', 'Quotation#')
+    """الحصول على رقم العرض التالي. الرقم من السيرفر فقط."""
+    return get_next_number_atomic(COUNTER_QUOTATIONS)
 
 
 @anvil.server.callable
 def get_or_create_client_code(client_name, phone):
-    """البحث عن عميل بالهاتف أو إنشاء رمز جديد."""
+    """البحث عن عميل بالهاتف أو إنشاء رمز جديد من السيرفر."""
     if not phone:
         return None
     phone = str(phone).strip()
@@ -64,17 +107,19 @@ def get_or_create_client_code(client_name, phone):
         code = str(row["Client Code"])
         logger.info("Existing phone found, client_code=%s", code)
         return code
-    new_code = _get_next_number('clients', 'Client Code')
+    new_code = get_next_number_atomic(COUNTER_CLIENTS)
     logger.info("New phone, generated client_code=%s", new_code)
     return str(new_code)
 
 
 @anvil.server.callable
 def get_quotation_number_if_needed(current_number, model):
-    """الحصول على رقم العرض إذا لزم الأمر (من JS عند بناء النموذج)."""
+    """الحصول على رقم العرض إذا لزم الأمر (من العميل عند بناء النموذج). الرقم من السيرفر فقط."""
     if current_number:
-        return int(current_number)
+        try:
+            return int(current_number)
+        except (ValueError, TypeError):
+            pass
     if not model:
         return None
-    new_q = _get_next_number('quotations', 'Quotation#')
-    return int(new_q)
+    return get_next_number_atomic(COUNTER_QUOTATIONS)

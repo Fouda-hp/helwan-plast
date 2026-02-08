@@ -160,6 +160,17 @@ db_schema:
       type: datetime
     server: full
     title: CONTRACTS
+  counters:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: key
+      type: string
+    - admin_ui: {width: 200}
+      name: value
+      type: number
+    server: full
+    title: COUNTERS
   files:
     client: none
     columns:

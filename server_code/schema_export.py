@@ -11,6 +11,7 @@ TABLE_NAMES = [
   "quotations",
   "clients",
   "contracts",
+  "counters",
   "audit_log",
   "users",
   "machine_specs",

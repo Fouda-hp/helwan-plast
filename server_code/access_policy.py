@@ -25,8 +25,8 @@ ADMIN_ONLY = "ADMIN_ONLY"
 # ========== توثيق الدوال العامة (للمراجعة فقط) ==========
 # الدوال التالية مُعرّفة كـ PUBLIC_READ_ONLY عن قصد:
 #
-# - get_next_client_code: قراءة فقط لتوليد رمز عميل تالي؛ لا تُرجع بيانات مستخدمين.
-# - get_next_quotation_number: قراءة فقط لتوليد رقم عرض تالي؛ لا تُرجع بيانات حساسة.
+# - get_next_client_code / get_next_quotation_number: تستدعي get_next_number_atomic (عداد ذرّي)؛ قراءة وتحديث عدّاد فقط.
+# - get_next_number_atomic: قراءة وتحديث جدول counters بشكل ذرّي؛ لا تُرجع بيانات مستخدمين.
 # - get_setting(key): قراءة إعداد واحد؛ قد تُستخدم من واجهات عامة (مثل سعر الصرف للعرض).
 # - get_machine_prices(): قراءة أسعار المكن؛ للعرض في الحاسبة.
 # - get_calculator_settings: في الواقع تتطلب مصادقة (admin/manager) في التنفيذ الحالي.

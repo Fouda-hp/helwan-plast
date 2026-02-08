@@ -248,6 +248,45 @@
       };
     }
 
+    // Parse price from input (strip commas, spaces; return number or NaN)
+    function parsePrice(val) {
+      if (val == null || val === "") return NaN;
+      var s = String(val).replace(/,/g, "").replace(/\s/g, "").trim();
+      return s === "" ? NaN : parseFloat(s);
+    }
+
+    function getExpectedPriceForMode(mode) {
+      var state = window.STATE;
+      if (!state) return NaN;
+      if (mode === "In Stock") return state.localInStockEGP;
+      if (mode === "New Order") return state.localNewOrderEGP;
+      return NaN;
+    }
+
+    function runSaveAfterLowPriceCheck(mode) {
+      var pricingInput = document.getElementById("Pricing_Mode");
+      if (pricingInput) pricingInput.value = mode;
+
+      var agreedEl = document.getElementById("Agreed Price");
+      var agreedRaw = agreedEl ? agreedEl.value : "";
+      var agreed = parsePrice(agreedRaw);
+      var expected = getExpectedPriceForMode(mode);
+
+      if (expected != null && !isNaN(expected) && !isNaN(agreed) && agreed < expected) {
+        var diff = expected - agreed;
+        var fmt = function (n) { return Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 }); };
+        var msg =
+          "Are you sure you want to create a quotation at a price lower than the " + mode + " price?\n\n" +
+          mode + " price: " + fmt(expected) + "\n" +
+          "Agreed price: " + fmt(agreed) + "\n" +
+          "Difference: " + fmt(diff) + " (your price is " + fmt(diff) + " less).\n\n" +
+          "Click OK to continue, Cancel to stay on the page.";
+        if (!confirm(msg)) return;
+      }
+
+      return window.callPythonSave?.();
+    }
+
     if (btnSave) {
       btnSave.onclick = async () => {
 
@@ -256,16 +295,14 @@
         // 🧠 لو مفيش اختيار حالي → افتح المودال دايمًا
         if (!pricingInput.value) {
           window.showPricingModeModal(async mode => {
-            pricingInput.value = mode;
-
-            const result = await window.callPythonSave?.();
+            const result = await runSaveAfterLowPriceCheck(mode);
 
             if (result?.success) {
               showAlert("success", "Saved successfully");
               window.resetFormToNew?.();
             } else if (result?.message) {
               showAlert("error", result.message);
-            } else {
+            } else if (result !== undefined) {
               showAlert("error", "Save failed – no response from server.");
             }
           });
@@ -276,16 +313,14 @@
         pricingInput.value = "";
 
         window.showPricingModeModal(async mode => {
-          pricingInput.value = mode;
-
-          const result = await window.callPythonSave?.();
+          const result = await runSaveAfterLowPriceCheck(mode);
 
           if (result?.success) {
             showAlert("success", "Saved successfully");
             window.resetFormToNew?.();
           } else if (result?.message) {
             showAlert("error", result.message);
-          } else {
+          } else if (result !== undefined) {
             showAlert("error", "Save failed – no response from server.");
           }
         });

@@ -30,7 +30,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
         self.payment_data = []
         self.payment_method = 'percentage'
         self.delivery_date = ''
-        self.display_contract_number = None  # رقم العقد بالتنسيق: C - رقم الكوتيشن / متسلسل - السنة
+        self.display_contract_number = None  # رقم العقد المحفوظ
+        self.preview_contract_serial = None  # المتسلسل التالي من جدول العقود (للمعاينة)
 
         # Expose functions to JavaScript
         anvil.js.window.loadQuotationForPrint = self.load_quotation_for_print
@@ -141,11 +142,17 @@ class ContractPrintForm(ContractPrintFormTemplate):
         if result and result.get('success'):
             self.current_data = result.get('data', {})
             self.display_contract_number = None
+            self.preview_contract_serial = None
             try:
                 auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
                 contract_res = anvil.server.call('get_contract', q_num, auth)
                 if contract_res and contract_res.get('success') and contract_res.get('data'):
                     self.display_contract_number = contract_res['data'].get('contract_number')
+                else:
+                    # جلب المتسلسل التالي من جدول العقود للمعاينة (مكان الشرطة)
+                    preview_res = anvil.server.call('get_next_contract_serial_preview', auth)
+                    if preview_res and preview_res.get('success'):
+                        self.preview_contract_serial = preview_res.get('next_serial', 2)
             except Exception:
                 pass
             self.render_template()
@@ -682,15 +689,18 @@ class ContractPrintForm(ContractPrintFormTemplate):
         winder_type_display = get_winder_type()
         q_num = data.get('quotation_number', '')
 
-        # رقم العقد بالتنسيق المتفق عليه: C - رقم الكوتيشن / متسلسل - السنة
+        # رقم العقد: C - رقم الكوتيشن / متسلسل (من جدول CONTRACTS) - السنة
         contract_display = getattr(self, 'display_contract_number', None) or data.get('contract_number')
+        year = date.today().year
         if not contract_display and q_num:
-            contract_display = f"C - {q_num} / — - {date.today().year}"
-        contract_display = contract_display or f"C - {q_num} / — - {date.today().year}"
-        # تحويل التنسيق القديم C-8 إلى التنسيق الجديد للعرض
+            serial = getattr(self, 'preview_contract_serial', None) or 2
+            contract_display = f"C - {q_num} / {serial} - {year}"
+        contract_display = contract_display or (f"C - {q_num} / {getattr(self, 'preview_contract_serial', None) or 2} - {year}" if q_num else "")
+        # تحويل التنسيق القديم C-8 إلى التنسيق الجديد (المتسلسل من الجدول أو 2)
         if contract_display and re.match(r'^C-\d+$', str(contract_display).strip()):
             old_num = str(contract_display).strip().replace('C-', '')
-            contract_display = f"C - {old_num} / — - {date.today().year}"
+            serial = getattr(self, 'preview_contract_serial', None) or 2
+            contract_display = f"C - {old_num} / {serial} - {year}"
 
         # ==================== PAGE 1 ====================
         html = f'<div class="template-page {"" if is_ar else "ltr"}">'

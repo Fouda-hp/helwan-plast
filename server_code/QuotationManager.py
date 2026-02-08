@@ -25,6 +25,7 @@ import uuid
 import logging
 import csv
 import io
+import re
 
 # استيراد الدوال المشتركة من AuthManager ونظام الإشعارات ووحدات الترقيم والنسخ الاحتياطي
 from . import AuthManager
@@ -1975,8 +1976,8 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
                 'contract_number': existing['contract_number']
             }
         
-        # عقد جديد: رقم العقد = C - رقم الكوتيشن / متسلسل (يبدأ من 2) - السنة الحالية
-        serial = get_next_contract_serial()
+        # عقد جديد: المتسلسل من جدول CONTRACTS (أكبر متسلسل للسنة الحالية + 1)
+        serial = _get_next_contract_serial_from_table()
         contract_number = f"C - {quotation_number} / {serial} - {current_year}"
         try:
             app_tables.contracts.add_row(
@@ -2073,6 +2074,44 @@ def get_contract(quotation_number, token_or_email=None):
     except Exception as e:
         logger.error(f"Error getting contract: {e}")
         return {'success': False, 'message': str(e)}
+
+
+def _get_next_contract_serial_from_table():
+    """
+    يشوف جدول CONTRACTS، عمود contract_number، يستخرج المتسلسل من التنسيق
+    C - X / Y - Z (سنة)، يجيب أكبر متسلسل للسنة الحالية ويرجع اللي بعده (أو 2 إذا مفيش).
+    """
+    year = datetime.now().year
+    max_serial = 0
+    try:
+        for row in app_tables.contracts.search():
+            cn = (row.get('contract_number') or '').strip()
+            # تنسيق: C - رقم الكوتيشن / متسلسل - السنة
+            m = re.match(r'C\s*-\s*\d+\s*/\s*(\d+)\s*-\s*(\d+)', cn)
+            if m:
+                serial, y = int(m.group(1)), int(m.group(2))
+                if y == year and serial > max_serial:
+                    max_serial = serial
+    except Exception as e:
+        logger.warning("_get_next_contract_serial_from_table: %s", e)
+    return max_serial + 1 if max_serial > 0 else 2
+
+
+@anvil.server.callable
+def get_next_contract_serial_preview(token_or_email=None):
+    """
+    للمعاينة فقط: يرجع المتسلسل التالي (من جدول العقود) بدون استهلاكه.
+    يتطلب صلاحية view.
+    """
+    is_valid, _, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        return {'success': False, 'next_serial': 2}
+    try:
+        next_serial = _get_next_contract_serial_from_table()
+        return {'success': True, 'next_serial': next_serial}
+    except Exception as e:
+        logger.error("get_next_contract_serial_preview: %s", e)
+        return {'success': False, 'next_serial': 2}
 
 
 @anvil.server.callable

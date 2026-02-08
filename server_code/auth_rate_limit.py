@@ -7,7 +7,12 @@ import logging
 from datetime import datetime, timedelta
 from anvil.tables import app_tables
 
-from .auth_constants import RATE_LIMIT_WINDOW_MINUTES, RATE_LIMIT_MAX_REQUESTS
+from .auth_constants import (
+    RATE_LIMIT_WINDOW_MINUTES,
+    RATE_LIMIT_MAX_REQUESTS,
+    RATE_LIMIT_MAX_REQUESTS_AUTH,
+    AUTH_RATE_LIMIT_ENDPOINTS,
+)
 from .auth_utils import get_utc_now, make_aware
 
 logger = logging.getLogger(__name__)
@@ -25,10 +30,11 @@ def check_rate_limit(ip_address, endpoint='general'):
             blocked_until = record.get('blocked_until')
             if blocked_until and now < make_aware(blocked_until):
                 return False
+            limit = RATE_LIMIT_MAX_REQUESTS_AUTH if endpoint in AUTH_RATE_LIMIT_ENDPOINTS else RATE_LIMIT_MAX_REQUESTS
             rec_window = record.get('window_start')
             if rec_window is not None and make_aware(rec_window) > window_start:
                 new_count = (record.get('request_count') or 0) + 1
-                if new_count > RATE_LIMIT_MAX_REQUESTS:
+                if new_count > limit:
                     record.update(request_count=new_count, blocked_until=now + timedelta(hours=1))
                     logger.warning("Rate limit exceeded for IP: %s", ip_address)
                     return False

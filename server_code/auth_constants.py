@@ -13,6 +13,9 @@ SESSION_DURATION_MINUTES = 60
 MAX_SESSIONS_PER_USER = 5
 RATE_LIMIT_WINDOW_MINUTES = 15
 RATE_LIMIT_MAX_REQUESTS = 500
+# حد منخفض لنقاط المصادقة (تسجيل، دخول، OTP، إعادة تعيين كلمة المرور، طوارئ)
+RATE_LIMIT_MAX_REQUESTS_AUTH = 15
+AUTH_RATE_LIMIT_ENDPOINTS = frozenset({'register', 'resend_otp', 'login', 'password_reset', 'emergency_admin'})
 PBKDF2_ITERATIONS = 100000
 PASSWORD_HISTORY_COUNT = 5
 OTP_EXPIRY_MINUTES = 10

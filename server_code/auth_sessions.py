@@ -67,16 +67,6 @@ def validate_session(token):
         token_hash = _hash_token(token)
         session = app_tables.sessions.get(session_token=token_hash, is_active=True)
 
-        # Fallback: دعم التوكنات القديمة (بدون hash) خلال فترة الانتقال
-        if not session:
-            try:
-                session = app_tables.sessions.get(session_token=token, is_active=True)
-                if session:
-                    session.update(session_token=token_hash)
-                    logger.info("Migrated legacy token to hashed format for %s", session['user_email'])
-            except Exception as e:
-                logger.warning("Legacy token lookup failed: %s", e)
-
         if not session:
             return None
         expires_at = session.get('expires_at')

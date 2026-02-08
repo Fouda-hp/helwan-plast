@@ -368,10 +368,10 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
 
     # الترقيم التلقائي من السيرفر فقط (ذرّي، يمنع الدوبليكيت)
     if is_new_client:
-        client_code = str(get_next_number_atomic('clients_next'))
+        client_code = str(get_next_number_atomic('clients_next', token_or_email))
 
     if is_new_quotation and is_quotation:
-        quotation_number = get_next_number_atomic('quotations_next')
+        quotation_number = get_next_number_atomic('quotations_next', token_or_email)
 
     logger.info(f"Saving: client_code={client_code}, quotation_number={quotation_number}")
 
@@ -417,9 +417,9 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
             if attempt == 0 and (is_new_client or (is_new_quotation and is_quotation)):
                 logger.warning("Save conflict (retry once with new numbers): %s", e)
                 if is_new_client:
-                    client_code = str(get_next_number_atomic('clients_next'))
+                    client_code = str(get_next_number_atomic('clients_next', token_or_email))
                 if is_new_quotation and is_quotation:
-                    quotation_number = get_next_number_atomic('quotations_next')
+                    quotation_number = get_next_number_atomic('quotations_next', token_or_email)
                 continue
             raise
 
@@ -1224,7 +1224,7 @@ def import_clients_data(data_list, token_or_email):
 
             client_code = row.get('Client Code')
             if not client_code:
-                client_code = str(get_next_number_atomic('clients_next'))
+                client_code = str(get_next_number_atomic('clients_next', token_or_email))
 
             # التحقق من عدم وجود العميل
             existing = app_tables.clients.get(**{"Client Code": str(client_code)})
@@ -1389,7 +1389,7 @@ def import_quotations_data(data_list, token_or_email):
 
             quotation_number = safe_int(row.get('Quotation#'))
             if not quotation_number:
-                quotation_number = get_next_number_atomic('quotations_next')
+                quotation_number = get_next_number_atomic('quotations_next', token_or_email)
 
             # التحقق من عدم وجود العرض
             existing = app_tables.quotations.get(**{"Quotation#": int(quotation_number)})

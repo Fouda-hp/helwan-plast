@@ -39,23 +39,41 @@ def get_backup_drive_folder():
     return None
 
 
-def encrypt_backup(json_bytes):
-    """
-    تشفير النسخة الاحتياطية باستخدام مفتاح من Anvil Secrets.
-    إذا لم يُعَد المفتاح، يُرجع البايتات كما هي.
-    يُرجع: (encrypted_bytes, is_encrypted)
-    """
+def _get_fernet():
+    """بناء Fernet من مفتاح Anvil Secrets (مفتاح Fernet base64url أو كلمة مرور)."""
+    import base64
+    import hashlib
     try:
         import anvil.secrets as _sec
         key = _sec.get_secret('BACKUP_ENCRYPTION_KEY')
-        if not key:
+    except Exception:
+        return None
+    if not key:
+        return None
+    try:
+        from cryptography.fernet import Fernet
+        raw = key.encode('utf-8') if isinstance(key, str) else key
+        if len(raw) == 44:
+            return Fernet(key if isinstance(key, str) else key.decode('utf-8'))
+        digest = hashlib.sha256(raw).digest()
+        b64 = base64.urlsafe_b64encode(digest)
+        return Fernet(b64.decode('ascii'))
+    except Exception:
+        return None
+
+
+def encrypt_backup(json_bytes):
+    """
+    تشفير النسخة الاحتياطية باستخدام Fernet (AES-128-CBC + HMAC).
+    المفتاح من Anvil Secrets BACKUP_ENCRYPTION_KEY (إما مفتاح Fernet base64 أو كلمة مرور).
+    يُرجع: (encrypted_bytes, is_encrypted)
+    """
+    try:
+        fernet = _get_fernet()
+        if not fernet:
             return json_bytes, False
-        import hashlib
-        key_bytes = hashlib.sha256(key.encode('utf-8')).digest()
-        encrypted = bytearray(len(json_bytes))
-        for i in range(len(json_bytes)):
-            encrypted[i] = json_bytes[i] ^ key_bytes[i % len(key_bytes)]
-        return b'HP_ENC_V1:' + bytes(encrypted), True
+        encrypted = fernet.encrypt(json_bytes)
+        return b'HP_ENC_V2:' + encrypted, True
     except Exception as e:
         logger.warning("Backup encryption unavailable: %s - uploading unencrypted", e)
         return json_bytes, False
@@ -63,17 +81,26 @@ def encrypt_backup(json_bytes):
 
 def decrypt_backup(data_bytes):
     """
-    فك تشفير النسخة الاحتياطية.
+    فك تشفير النسخة الاحتياطية (يدعم V1 قديم و V2 Fernet).
     يُرجع: decrypted_bytes
     """
+    if data_bytes.startswith(b'HP_ENC_V2:'):
+        try:
+            fernet = _get_fernet()
+            if not fernet:
+                raise ValueError("BACKUP_ENCRYPTION_KEY not set in Anvil Secrets")
+            return fernet.decrypt(data_bytes[len(b'HP_ENC_V2:'):])
+        except Exception as e:
+            logger.error("Backup decryption failed: %s", e)
+            raise
     if not data_bytes.startswith(b'HP_ENC_V1:'):
         return data_bytes
     try:
         import anvil.secrets as _sec
+        import hashlib
         key = _sec.get_secret('BACKUP_ENCRYPTION_KEY')
         if not key:
             raise ValueError("BACKUP_ENCRYPTION_KEY not set in Anvil Secrets")
-        import hashlib
         key_bytes = hashlib.sha256(key.encode('utf-8')).digest()
         encrypted = data_bytes[len(b'HP_ENC_V1:'):]
         decrypted = bytearray(len(encrypted))
@@ -81,7 +108,7 @@ def decrypt_backup(data_bytes):
             decrypted[i] = encrypted[i] ^ key_bytes[i % len(key_bytes)]
         return bytes(decrypted)
     except Exception as e:
-        logger.error("Backup decryption failed: %s", e)
+        logger.error("Backup decryption (V1) failed: %s", e)
         raise
 
 

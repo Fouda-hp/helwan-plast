@@ -1339,9 +1339,11 @@ class ContractPrintForm(ContractPrintFormTemplate):
             self._show_msg('Please select a quotation first')
             return
         q_num = self.current_data.get('quotation_number', '')
-        client = self.current_data.get('client_name', '').replace(' ', '_')
-        filename = f"Contract_C-{q_num}_{client}.pdf"
-        
+        client = (self.current_data.get('client_name') or '').replace(' ', '_')
+        # تنظيف اسم الملف: إزالة أي أحرف غير آمنة قبل إدخاله في eval (منع حقن JS)
+        safe_client = ''.join(c for c in client if c.isalnum() or c in ('_', '-'))[:80]
+        safe_q = str(q_num).strip()[:20]
+        filename = f"Contract_C-{safe_q}_{safe_client or 'contract'}.pdf"
         js_code = f"""
         (async function() {{
             const element = document.getElementById('templateContent');

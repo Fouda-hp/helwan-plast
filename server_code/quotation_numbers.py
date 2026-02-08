@@ -3,7 +3,12 @@ quotation_numbers.py - الترقيم التلقائي للعملاء والعر
 ================================================================================
 السيرفر هو المصدر الوحيد للأرقام (Single Source of Truth).
 يستخدم جدول counters + Transaction لمنع أي تكرار حتى مع طلبات متزامنة (Race Conditions).
-لا يوجد table.search() على الجدول الكامل؛ الأداء ثابت O(1) لكل طلب.
+
+مبدأ Reserve-on-Save:
+  - peek_next_*  → للعرض فقط (بدون حجز) — يُستدعى من الحاسبة
+  - get_next_number_atomic → للحجز الفعلي — يُستدعى فقط عند الحفظ من save_quotation
+
+جميع الدوال Callable تتطلب مصادقة (token_or_email) ما لم يُذكر خلاف ذلك.
 """
 
 import logging
@@ -13,6 +18,33 @@ from anvil import tables as anvil_tables
 import anvil.server
 
 logger = logging.getLogger(__name__)
+
+
+def _require_auth(token_or_email):
+    """التحقق من الجلسة؛ يُرجع (user_email, None) أو (None, error_dict)."""
+    if not token_or_email:
+        return None, {"success": False, "message": "Authentication required"}
+    try:
+        from . import AuthManager
+        result = AuthManager.validate_token(token_or_email)
+        if result and result.get("valid"):
+            return (result.get("user") or {}).get("email"), None
+    except Exception as e:
+        logger.warning("quotation_numbers auth check: %s", e)
+    return None, {"success": False, "message": "Invalid or expired session"}
+
+
+def _require_admin(token_or_email):
+    """التحقق من صلاحية الأدمن؛ يُرجع (True, None) أو (False, error_dict)."""
+    try:
+        from . import AuthManager
+        ok, err = AuthManager.require_admin(token_or_email)
+        if ok:
+            return True, None
+        return False, (err or {"success": False, "message": "Admin required"})
+    except Exception as e:
+        logger.warning("quotation_numbers admin check: %s", e)
+        return False, {"success": False, "message": "Admin required"}
 
 # مفاتيح العدّادات في جدول counters (نص فريد لكل نوع ترقيم)
 COUNTER_CLIENTS = "clients_next"
@@ -62,31 +94,29 @@ def _get_max_from_table(counter_key, include_deleted=False):
 def _seed_initial_value(counter_key):
     """
     عند إنشاء عداد جديد: نزرعه من القيمة العظمى في الجدول الفعلي.
-    يُخزَّن العداد = max حتى يكون الرقم التالي المُعطى = max+1 (أو 1 إذا الجدول فاضي).
+    يُخزَّن العداد = max حتى يكون الرقم التالي المُعطى = max+1 (أو 1 إذا الجدول فاضي).
     متسلسل العقود: يبدأ من 1 في العدّاد حتى يكون أول رقم مُرجَع = 2.
     """
     if counter_key.startswith(COUNTER_CONTRACTS_SERIAL_PREFIX):
-        return 2  # أول عقد في السنة: نزرع 2 فيُرجَع 2 ثم التالي 3، 4، ...
+        return 1  # أول عقد في السنة: العداد=1، أول رقم مُرجَع = 1+1 = 2
     max_val = _get_max_from_table(counter_key, include_deleted=True)
-    return max_val
+    return max_val  # العداد = max، أول رقم مُرجَع = max+1
 
 
-@anvil.server.callable
-@anvil_tables.in_transaction
-def get_next_number_atomic(counter_key):
+# ==========================================================================
+# دوال Peek — للعرض فقط بدون حجز (تُستدعى من الحاسبة)
+# ==========================================================================
+
+def peek_next_number(counter_key):
     """
-    ترجع الرقم التالي وتحدّث العداد بشكل ذري لمنع أي دوبليكيت.
-    تستخدم Transaction بحيث: قراءة العداد → زيادة → كتابة، كلها في نفس المعاملة،
-    وإذا تعارضت مع طلب آخر تُعاد المحاولة تلقائياً (حتى 5 مرات) من قبل Anvil.
-    النتيجة: لا يوجد دوبليكيت حتى مع آلاف الطلبات المتزامنة.
+    قراءة الرقم التالي المتوقع بدون زيادة العداد.
+    تُستخدم لعرض الرقم في الحاسبة فقط — الرقم الفعلي يُحجز عند الحفظ.
     """
     row = app_tables.counters.get(key=counter_key)
     if row is None:
-        # إنشاء العداد لأول مرة مع قيمة ابتدائية من الجدول الفعلي (أو 1)
-        initial = _seed_initial_value(counter_key)
-        app_tables.counters.add_row(key=counter_key, value=initial)
-        logger.info("Counter created: key=%s, initial_value=%s", counter_key, initial)
-        return initial
+        # العداد لم يُنشأ بعد — نحسب من الجدول الفعلي
+        max_val = _get_max_from_table(counter_key, include_deleted=True)
+        return max_val + 1
     current = row["value"]
     if current is None:
         current = 0
@@ -94,8 +124,59 @@ def get_next_number_atomic(counter_key):
         current = int(current)
     except (ValueError, TypeError):
         current = 0
-    # تصحيح تلقائي: لو العداد أكبر من الواقع (مثلاً 14 و عندك 5 عملاء) نضبطه على max الجدول
-    max_val = _get_max_from_table(counter_key, include_deleted=False)
+    return current + 1
+
+
+@anvil.server.callable
+def peek_next_client_code(token_or_email=None):
+    """عرض رمز العميل التالي المتوقع بدون حجز (للعرض في الحاسبة فقط). يتطلب مصادقة."""
+    _, err = _require_auth(token_or_email)
+    if err:
+        return None
+    return peek_next_number(COUNTER_CLIENTS)
+
+
+@anvil.server.callable
+def peek_next_quotation_number(token_or_email=None):
+    """عرض رقم العرض التالي المتوقع بدون حجز (للعرض في الحاسبة فقط). يتطلب مصادقة."""
+    _, err = _require_auth(token_or_email)
+    if err:
+        return None
+    return peek_next_number(COUNTER_QUOTATIONS)
+
+
+# ==========================================================================
+# دالة الحجز الذرّي — تُستدعى فقط من save_quotation / import
+# ==========================================================================
+
+@anvil.server.callable
+@anvil_tables.in_transaction
+def get_next_number_atomic(counter_key, token_or_email=None):
+    """
+    ترجع الرقم التالي وتحدّث العداد بشكل ذري لمنع أي دوبليكيت.
+    تتطلب مصادقة (يُمرَّر من save_quotation أو استيراد).
+    """
+    _, err = _require_auth(token_or_email)
+    if err:
+        raise anvil.server.AnvilWrappedError(Exception(err.get("message", "Authentication required")))
+    row = app_tables.counters.get(key=counter_key)
+    if row is None:
+        # إنشاء العداد لأول مرة مع قيمة ابتدائية من الجدول الفعلي
+        initial = _seed_initial_value(counter_key)
+        next_val = initial + 1
+        app_tables.counters.add_row(key=counter_key, value=next_val)
+        logger.info("Counter created: key=%s, seed=%s, first_number=%s", counter_key, initial, next_val)
+        return next_val
+    current = row["value"]
+    if current is None:
+        current = 0
+    try:
+        current = int(current)
+    except (ValueError, TypeError):
+        current = 0
+    # تصحيح تلقائي: لو العداد أكبر من الواقع نضبطه على max الجدول
+    # نستخدم include_deleted=True لمنع تعارض مع الأرقام المحذوفة (Soft Delete)
+    max_val = _get_max_from_table(counter_key, include_deleted=True)
     if current > max_val + 1:
         row["value"] = max_val
         next_val = max_val + 1
@@ -117,42 +198,41 @@ def get_next_contract_serial():
     return get_next_number_atomic(counter_key)
 
 
-# ========== دوال الترقيم المعرّضة للعميل (كلها تستدعي العداد الذرّي فقط) ==========
-
-
-@anvil.server.callable
-def get_next_client_code():
-    """الحصول على رمز العميل التالي. الرقم من السيرفر فقط."""
-    return get_next_number_atomic(COUNTER_CLIENTS)
-
+# ==========================================================================
+# دوال البحث — بدون حجز أرقام
+# ==========================================================================
 
 @anvil.server.callable
-def get_next_quotation_number():
-    """الحصول على رقم العرض التالي. الرقم من السيرفر فقط."""
-    return get_next_number_atomic(COUNTER_QUOTATIONS)
-
-
-@anvil.server.callable
-def get_or_create_client_code(client_name, phone):
-    """البحث عن عميل بالهاتف أو إنشاء رمز جديد من السيرفر."""
+def find_client_by_phone(client_name, phone, token_or_email=None):
+    """
+    البحث عن عميل بالهاتف — إذا موجود يرجع كوده، إذا لا يرجع None.
+    يتطلب مصادقة.
+    """
+    _, err = _require_auth(token_or_email)
+    if err:
+        return None
     if not phone:
         return None
     phone = str(phone).strip()
-    client_name = str(client_name).strip() if client_name else ""
-    logger.info("Checking phone='%s'", phone)
+    logger.info("find_client_by_phone: phone='%s'", phone)
     row = app_tables.clients.get(Phone=phone, is_deleted=False)
     if row:
         code = str(row["Client Code"])
         logger.info("Existing phone found, client_code=%s", code)
         return code
-    new_code = get_next_number_atomic(COUNTER_CLIENTS)
-    logger.info("New phone, generated client_code=%s", new_code)
-    return str(new_code)
+    logger.info("Phone not found, returning None (number will be assigned on save)")
+    return None
 
 
 @anvil.server.callable
-def get_quotation_number_if_needed(current_number, model):
-    """الحصول على رقم العرض إذا لزم الأمر (من العميل عند بناء النموذج). الرقم من السيرفر فقط."""
+def get_quotation_number_if_needed(current_number, model, token_or_email=None):
+    """
+    إذا كان الرقم موجود بالفعل، يرجعه. إذا لا، يرجع الرقم المتوقع (peek) بدون حجز.
+    يتطلب مصادقة.
+    """
+    _, err = _require_auth(token_or_email)
+    if err:
+        return None
     if current_number:
         try:
             return int(current_number)
@@ -160,19 +240,25 @@ def get_quotation_number_if_needed(current_number, model):
             pass
     if not model:
         return None
-    return get_next_number_atomic(COUNTER_QUOTATIONS)
+    # عرض الرقم المتوقع بدون حجز
+    return peek_next_number(COUNTER_QUOTATIONS)
 
+
+# ==========================================================================
+# إعادة المزامنة — تستخدم include_deleted=True لمنع تعارض مع المحذوفات
+# ==========================================================================
 
 @anvil.server.callable
 def resync_numbering_counters(token_or_email=None):
     """
-    إعادة مزامنة عدّادي العملاء والعروض مع الجداول الفعلية (غير المحذوفة).
-    بعد التشغيل: الرقم التالي للعميل = أكبر كود عميل + 1، والرقم التالي للعرض = أكبر رقم عرض + 1.
-    يُنصح بتشغيلها مرة واحدة عند ظهور ترقيم خاطئ (مثلاً 14، 18 بدل 6، 8).
+    إعادة مزامنة عدّادي العملاء والعروض مع الجداول الفعلية. تتطلب صلاحية أدمن.
     """
+    ok, err = _require_admin(token_or_email)
+    if not ok and err:
+        return err
     try:
-        max_clients = _get_max_from_table(COUNTER_CLIENTS, include_deleted=False)
-        max_quotations = _get_max_from_table(COUNTER_QUOTATIONS, include_deleted=False)
+        max_clients = _get_max_from_table(COUNTER_CLIENTS, include_deleted=True)
+        max_quotations = _get_max_from_table(COUNTER_QUOTATIONS, include_deleted=True)
         for key, max_val in [(COUNTER_CLIENTS, max_clients), (COUNTER_QUOTATIONS, max_quotations)]:
             row = app_tables.counters.get(key=key)
             if row is None:
@@ -192,3 +278,11 @@ def resync_numbering_counters(token_or_email=None):
     except Exception as e:
         logger.exception("resync_numbering_counters failed")
         return {"success": False, "message": str(e)}
+
+
+# ==========================================================================
+# توافق عكسي — الدوال القديمة (deprecated, لا تُستدعى من العميل بعد الآن)
+# ==========================================================================
+# ملاحظة: get_or_create_client_code اُستبدلت بـ find_client_by_phone
+# get_next_client_code و get_next_quotation_number لم تعد callable —
+# الحجز يتم فقط من save_quotation عبر get_next_number_atomic مباشرة.

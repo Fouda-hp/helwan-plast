@@ -278,7 +278,7 @@ def verify_otp(user_email, otp, purpose='verification'):
     التحقق من صحة OTP
     """
   try:
-    # البحث عن OTP باستخدام hash (SHA-256) للمقارنة
+    # البحث عن OTP باستخدام hash (SHA-256) للمقارنة فقط — لا fallback لـ plaintext
     otp_hash = hashlib.sha256(str(otp).encode('utf-8')).hexdigest()
     otp_records = list(app_tables.otp_codes.search(
       user_email=user_email,
@@ -286,14 +286,6 @@ def verify_otp(user_email, otp, purpose='verification'):
       purpose=purpose,
       is_used=False
     ))
-    # Fallback: دعم OTP القديم (plaintext) خلال فترة الانتقال
-    if not otp_records:
-        otp_records = list(app_tables.otp_codes.search(
-          user_email=user_email,
-          otp_code=str(otp),
-          purpose=purpose,
-          is_used=False
-        ))
 
     if not otp_records:
       return False, "Invalid or expired code"
@@ -650,8 +642,12 @@ def register_user(email, password, full_name, phone=None):
                 'message': 'Please check your email for verification code'
             }
         else:
-            # في حالة فشل إرسال الإيميل، نُكمل التسجيل مباشرة
-            return complete_registration_without_verification(email)
+            # لا تجاوز للتحقق من البريد عند فشل الإرسال — يبقى المستخدم بحاجة للتحقق
+            return {
+                'success': True,
+                'requires_verification': True,
+                'message': 'Verification code could not be sent. Please check your email address or try again later.'
+            }
 
     except Exception as e:
         logger.error(f"Registration error: {e}")
@@ -692,21 +688,6 @@ def verify_registration_otp(email, otp):
     return {
         'success': True,
         'message': 'Email verified! Your registration is pending admin approval.'
-    }
-
-
-def complete_registration_without_verification(email):
-    """
-    إتمام التسجيل بدون التحقق من الإيميل (في حالة فشل إرسال الإيميل)
-    """
-    user = app_tables.users.get(email=email)
-    if user:
-        user.update(email_verified=True)
-        send_admin_notification_email(email, user['full_name'], user.get('phone'))
-
-    return {
-        'success': True,
-        'message': 'Registration successful! Please wait for admin approval.'
     }
 
 
@@ -1001,9 +982,6 @@ def validate_token(token):
         from .auth_sessions import _hash_token
         token_hash = _hash_token(token)
         session_row = app_tables.sessions.get(session_token=token_hash, is_active=True)
-        # Fallback: دعم التوكنات القديمة (بدون hash)
-        if not session_row:
-            session_row = app_tables.sessions.get(session_token=token, is_active=True)
         if session_row:
             session_row.update(expires_at=get_utc_now() + timedelta(minutes=SESSION_DURATION_MINUTES))
     except Exception as e:

@@ -19,10 +19,11 @@ class CalculatorForm(CalculatorFormTemplate):
     # ---------- Bind form_show event to load settings
     self.add_event_handler('show', self.form_show)
 
-    # ---------- JS bridges (auto numbering)
-    anvil.js.window.getNextClientCode = self.get_next_client_code_js
-    anvil.js.window.getNextQuotationNumber = self.get_next_quotation_number_js
+    # ---------- JS bridges (auto numbering — peek فقط بدون حجز)
+    anvil.js.window.getNextClientCode = self.peek_next_client_code_js
+    anvil.js.window.getNextQuotationNumber = self.peek_next_quotation_number_js
     anvil.js.window.resyncNumberingCounters = self.resync_numbering_counters_js
+    anvil.js.window.getClientCodeFromServer = self.find_client_by_phone_js
 
     # ---------- Overlays & save
     anvil.js.window.getQuotationsForOverlay = self.get_quotations_for_overlay
@@ -47,15 +48,24 @@ class CalculatorForm(CalculatorFormTemplate):
   # =================================================
   # JS → PYTHON BRIDGES
   # =================================================
-  def get_next_client_code_js(self):
-    return anvil.server.call("get_next_client_code")
+  def _get_auth(self):
+    return anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email')
 
-  def get_next_quotation_number_js(self):
-    return anvil.server.call("get_next_quotation_number")
+  def peek_next_client_code_js(self):
+    """عرض رمز العميل التالي المتوقع بدون حجز (للعرض فقط)."""
+    return anvil.server.call("peek_next_client_code", self._get_auth())
+
+  def peek_next_quotation_number_js(self):
+    """عرض رقم العرض التالي المتوقع بدون حجز (للعرض فقط)."""
+    return anvil.server.call("peek_next_quotation_number", self._get_auth())
 
   def resync_numbering_counters_js(self):
     """إعادة مزامنة الترقيم مع الجداول (عميل 6، عرض 8 إذا عندك 5 عملاء و 7 عروض)."""
-    return anvil.server.call("resync_numbering_counters")
+    return anvil.server.call("resync_numbering_counters", self._get_auth())
+
+  def find_client_by_phone_js(self, name, phone):
+    """البحث عن عميل بالتليفون — يرجع كوده لو موجود، أو None."""
+    return anvil.server.call("find_client_by_phone", name, phone, self._get_auth())
 
   # =================================================
   # HELPERS
@@ -85,9 +95,14 @@ class CalculatorForm(CalculatorFormTemplate):
 
     if name and phone:
       try:
-        new_code = anvil.server.call("get_or_create_client_code", name, phone)
-        if new_code:
-          code.text = str(new_code)
+        auth = self._get_auth()
+        existing_code = anvil.server.call("find_client_by_phone", name, phone, auth)
+        if existing_code:
+          code.text = str(existing_code)
+        else:
+          peek_code = anvil.server.call("peek_next_client_code", auth)
+          if peek_code:
+            code.text = str(peek_code)
       except Exception as e:
         logger.debug("Auto client code error: %s", e)
 
@@ -105,7 +120,8 @@ class CalculatorForm(CalculatorFormTemplate):
       next_no = anvil.server.call(
         "get_quotation_number_if_needed",
         qn.text,
-        model.text
+        model.text,
+        self._get_auth()
       )
       if next_no is not None:
         qn.text = str(next_no)

@@ -387,51 +387,71 @@ class ContractPrintForm(ContractPrintFormTemplate):
             total_price = float(price_str) if price_str else 0
         except Exception:
             total_price = 0
-        dates_used = []
-        total_value = 0
         today = date.today()
+        errors = []
+        dates_used = []
+        last_date = None
+        total_value = 0
         
         for i, (val_inp, date_inp) in enumerate(zip(value_inputs, date_inputs)):
             val = float(val_inp.value or 0)
-            date_str = str(date_inp.value or '')
+            date_str = (str(date_inp.value or '')).strip()
+            payment_date = None
             
-            if not date_str:
-                msg = f'من فضلك أدخل تاريخ للدفعة رقم {i+1}' if is_ar else f'Please enter date for installment {i+1}'
-                self._show_msg(msg)
-                return False
+            # تاريخ ناقص: لو فيه قيمة ومفيش تاريخ
+            if val > 0 and not date_str:
+                errors.append(
+                    f'تاريخ الدفعة رقم {i+1} ناقص' if is_ar else f'Date for installment {i+1} is missing'
+                )
+            # دفعة ناقصة: لو فيه تاريخ ومفيش قيمة
+            if date_str and val <= 0:
+                errors.append(
+                    f'قيمة الدفعة رقم {i+1} ناقصة' if is_ar else f'Value for installment {i+1} is missing'
+                )
             
-            try:
-                payment_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-            except Exception:
-                msg = f'تاريخ غير صحيح للدفعة رقم {i+1}' if is_ar else f'Invalid date for installment {i+1}'
-                self._show_msg(msg)
-                return False
-            
-            if payment_date < today:
-                msg = f'تاريخ الدفعة رقم {i+1} لا يمكن أن يكون قبل اليوم' if is_ar else f'Date for installment {i+1} cannot be before today'
-                self._show_msg(msg)
-                return False
-            
-            if date_str in dates_used:
-                msg = 'تاريخ مكرر! من فضلك أدخل تاريخ مختلف لكل دفعة' if is_ar else 'Duplicate date! Please use unique dates'
-                self._show_msg(msg)
-                return False
-            dates_used.append(date_str)
+            if date_str:
+                try:
+                    payment_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                except Exception:
+                    errors.append(
+                        f'تاريخ غير صحيح للدفعة رقم {i+1}' if is_ar else f'Invalid date for installment {i+1}'
+                    )
+                else:
+                    if payment_date < today:
+                        errors.append(
+                            f'تاريخ الدفعة رقم {i+1} لا يمكن أن يكون قبل اليوم' if is_ar else f'Date for installment {i+1} cannot be before today'
+                        )
+                    if date_str in dates_used:
+                        errors.append(
+                            'تاريخ مكرر — لا يمكن تكرار نفس التاريخ لأكثر من دفعة' if is_ar else 'Duplicate date — each installment must have a different date'
+                        )
+                    dates_used.append(date_str)
+                    # دفعة لاحقة لا تكون أقدم من أي دفعة سابقة
+                    if last_date is not None and payment_date < last_date:
+                        errors.append(
+                            f'تاريخ الدفعة رقم {i+1} لا يمكن أن يكون قبل تاريخ الدفعة السابقة' if is_ar else f'Date for installment {i+1} cannot be before previous installment'
+                        )
+                    if payment_date is not None:
+                        last_date = payment_date
             
             total_value += val
         
         if self.payment_method == 'percentage':
             if round(total_value, 2) != 100:
-                msg = f'إجمالي النسب = {total_value}%\nيجب أن يكون 100%' if is_ar else f'Total = {total_value}%\nMust be 100%'
-                self._show_msg(msg)
-                return False
+                errors.append(
+                    f'إجمالي النسب = {total_value}% — يجب أن يكون 100%' if is_ar else f'Total = {total_value}% — must be 100%'
+                )
         else:
             if round(total_value, 0) != round(total_price, 0):
                 diff = abs(total_price - total_value)
-                msg = f'إجمالي المبالغ = {total_value:,.0f}\nقيمة العقد = {total_price:,.0f}\nالفرق = {diff:,.0f}' if is_ar else f'Total = {total_value:,.0f}\nContract = {total_price:,.0f}\nDiff = {diff:,.0f}'
-                self._show_msg(msg)
-                return False
+                errors.append(
+                    f'إجمالي المبالغ ({total_value:,.0f}) لا يساوي قيمة العقد ({total_price:,.0f}) — الفرق {diff:,.0f}' if is_ar else f'Total ({total_value:,.0f}) does not match contract ({total_price:,.0f}) — diff {diff:,.0f}'
+                )
         
+        if errors:
+            full_msg = '\n'.join(errors) if is_ar else '\n'.join(errors)
+            self._show_msg(full_msg)
+            return False
         return True
 
     def save_payments(self):

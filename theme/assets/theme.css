@@ -145,15 +145,21 @@
   display: none;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 
 .hand-loader-wrapper.fullscreen.show {
   display: flex;
 }
 
-/* اليد في نص الشاشة عند fullscreen */
+/* اليد في نص الشاشة (بدون transform عشان الأنيميشن يشتغل) */
 .hand-loader-wrapper.fullscreen .hand-loader {
   margin-left: 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin-left: -40px;
+  margin-top: -30px;
 }
 
 .hand-loader-wrapper.inline {

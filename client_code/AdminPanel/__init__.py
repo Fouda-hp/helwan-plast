@@ -2049,14 +2049,25 @@ class AdminPanel(AdminPanelTemplate):
             };
           }
 
+          function runPatches() {
+            var needRetry = false;
+            if (window.loadDashboard && !window._dashboardPatched) {
+              patchLoadDashboard();
+            } else if (!window.loadDashboard) needRetry = true;
+            if (window.loadSettings && !window.loadSettings.__patched) {
+              patchLoadSettings();
+            } else if (!window.loadSettings) needRetry = true;
+            patchLoadAuditLogs();
+            if (needRetry) setTimeout(runPatches, 300);
+          }
+
           function run() {
             insertDataImportNav();
             insertBackupNav();
             insertNotificationBell();
             patchSaveSetting();
-            patchLoadSettings();
-            patchLoadAuditLogs();
-            patchLoadDashboard();
+            // تأخير الـ patches حتى يُحمّل قالب الصفحة (الدوال من form_template) ثم نستبدلها
+            setTimeout(runPatches, 250);
           }
 
           if (document.readyState === 'loading') {

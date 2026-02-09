@@ -138,15 +138,22 @@
 .hand-loader-wrapper.fullscreen {
   position: fixed;
   inset: 0;
-  background: rgba(26,26,46,0.9);
-  backdrop-filter: blur(8px);
+  background: transparent;
+  backdrop-filter: none;
   z-index: 2147483646;
   padding: 0;
   display: none;
+  align-items: center;
+  justify-content: center;
 }
 
 .hand-loader-wrapper.fullscreen.show {
   display: flex;
+}
+
+/* اليد في نص الشاشة عند fullscreen */
+.hand-loader-wrapper.fullscreen .hand-loader {
+  margin-left: 0;
 }
 
 .hand-loader-wrapper.inline {

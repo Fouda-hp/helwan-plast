@@ -140,7 +140,7 @@
   inset: 0;
   background: rgba(26,26,46,0.9);
   backdrop-filter: blur(8px);
-  z-index: 9999;
+  z-index: 2147483646;
   padding: 0;
   display: none;
 }
@@ -299,20 +299,7 @@
 }
 
 /* ================= OVERRIDE ANVIL DEFAULT LOADING (blue dots) ================= */
-/* Hide Anvil's default spinner everywhere - we use hand loader only */
-.anvil-spinner,
-[class*="anvil-spinner"],
-[class*="spinner"] .anvil-spinner {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  width: 0 !important;
-  height: 0 !important;
-  overflow: hidden !important;
-  position: absolute !important;
-  pointer-events: none !important;
-}
-
-/* When Anvil shows loading overlay, show our hand instead via JS (global-loading.js) */
+/* لا نخفي السبينر من CSS - الـ JS يحقن اليد ويخفي السبينر. لو الـ JS ما لاقاش العنصر، السبينر يفضل ظاهر. */
 
 /* ================= UNIFIED LOADING: no other spinners ================= */
 /* Any .loading-spinner or .spinner (circle) is replaced by hand loader via JS.

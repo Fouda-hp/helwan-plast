@@ -33,29 +33,13 @@ if (typeof window.debugError !== 'function') window.debugError = function () {};
   }
 
   // ----------------------------------------
-  // Loading indicator (Skeleton Loading)
+  // Loading indicator (Hand Loader)
   // ----------------------------------------
   function showLoading(container) {
-    var skeletonRows = '';
-    for (var i = 0; i < 5; i++) {
-      skeletonRows += `
-        <tr class="skeleton-row">
-          <td style="padding:12px 15px;border-bottom:1px solid #eee;">
-            <div class="skeleton-box" style="width:60px;height:18px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:skeleton-shimmer 1.5s infinite;border-radius:4px;"></div>
-          </td>
-          <td style="padding:12px 15px;border-bottom:1px solid #eee;">
-            <div class="skeleton-box" style="width:150px;height:18px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:skeleton-shimmer 1.5s infinite;border-radius:4px;"></div>
-          </td>
-        </tr>`;
-    }
-    container.innerHTML = skeletonRows;
-
-    // Add skeleton animation keyframes if not exists
-    if (!document.getElementById('skeleton-styles')) {
-      var style = document.createElement('style');
-      style.id = 'skeleton-styles';
-      style.textContent = '@keyframes skeleton-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}';
-      document.head.appendChild(style);
+    if (window.showLoading && window.showLoading !== showLoading) {
+      window.showLoading(container);
+    } else if (container) {
+      container.innerHTML = '<tr><td colspan="2">' + (window.getHandLoaderHTML ? window.getHandLoaderHTML('inline') : '<div style="text-align:center;padding:30px;">Loading...</div>') + '</td></tr>';
     }
   }
 
@@ -175,11 +159,18 @@ if (typeof window.debugError !== 'function') window.debugError = function () {};
       if (codeInput.value) return;
 
       try {
+        // بحث بالتليفون فقط — بدون حجز رقم
         var code = await window.getClientCodeFromServer?.(
           nameInput.value,
           phoneInput.value
         );
-        if (code) codeInput.value = code;
+        if (code) {
+          codeInput.value = code;  // عميل موجود
+        }
+        // لو مش موجود → نعرض الرقم المتوقع (peek بدون حجز)
+        else if (typeof window.getNextClientCode === "function") {
+          codeInput.value = await window.getNextClientCode();
+        }
       } catch (e) {
         window.debugError("Client code error:", e);
       }

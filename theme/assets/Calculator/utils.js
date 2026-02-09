@@ -65,16 +65,32 @@
   };
 
   // ----------------------------------------
-  // showLoading - unified skeleton UI
+  // Hand Loader HTML generator (unified across project)
+  // ----------------------------------------
+  var HAND_LOADER_HTML =
+    '<div class="hand-loader">' +
+      '<div class="hand-finger"></div>' +
+      '<div class="hand-finger"></div>' +
+      '<div class="hand-finger"></div>' +
+      '<div class="hand-finger"></div>' +
+      '<div class="hand-palm"></div>' +
+      '<div class="hand-thumb"></div>' +
+    '</div>';
+
+  window.HAND_LOADER_HTML = HAND_LOADER_HTML;
+
+  window.getHandLoaderHTML = function (variant) {
+    var cls = 'hand-loader-wrapper';
+    if (variant) cls += ' ' + variant;
+    return '<div class="' + cls + '">' + HAND_LOADER_HTML + '</div>';
+  };
+
+  // ----------------------------------------
+  // showLoading - unified hand loader UI
   // ----------------------------------------
   window.showLoading = function (container) {
     if (!container) return;
-    var html = '<div class="skeleton-container">';
-    for (var i = 0; i < 5; i++) {
-      html += '<div class="skeleton-row"><div class="skeleton-cell"></div><div class="skeleton-cell"></div><div class="skeleton-cell short"></div></div>';
-    }
-    html += '</div>';
-    container.innerHTML = html;
+    container.innerHTML = window.getHandLoaderHTML('inline');
   };
 
   // ----------------------------------------

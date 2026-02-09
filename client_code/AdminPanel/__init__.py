@@ -131,6 +131,7 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.exportClientsData = self.export_clients_data
         anvil.js.window.exportQuotationsData = self.export_quotations_data
         anvil.js.window.exportContractsData = self.export_contracts_data
+        anvil.js.window.deleteContractAdmin = self.delete_contract_admin
         anvil.js.window.createBackup = self.create_backup
         anvil.js.window.listScheduledBackups = self.list_scheduled_backups
         anvil.js.window.getScheduledBackupFile = self.get_scheduled_backup_file
@@ -433,7 +434,7 @@ class AdminPanel(AdminPanelTemplate):
               var dropdown = document.createElement('div');
               dropdown.id = 'adminNotificationsDropdown';
               dropdown.style.cssText = 'position:absolute;top:100%;right:0;margin-top:8px;background:#fff;border:1px solid #ddd;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.2);min-width:320px;max-width:400px;max-height:400px;overflow:auto;z-index:10001;';
-              dropdown.innerHTML = '<div style="padding:12px;text-align:center;color:#999;">جاري التحميل...</div>';
+              dropdown.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:20px;">' + (window.HAND_LOADER_HTML || 'جاري التحميل...') + '</div>';
               wrap.appendChild(dropdown);
               function closeDropdown() {
                 if (dropdown.parentNode) dropdown.style.display = 'none';
@@ -1361,7 +1362,7 @@ class AdminPanel(AdminPanelTemplate):
             var tableFilter = document.getElementById('auditTableFilter').value;
             
             var container = document.getElementById('auditContent');
-            container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+            container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:40px;">' + (window.HAND_LOADER_HTML || 'Loading...') + '</div>';
             
             try {
               var filters = {};
@@ -2239,7 +2240,11 @@ class AdminPanel(AdminPanelTemplate):
             elif n.get('type') == 'backup_restored':
                 desc = 'تمت استعادة نسخة احتياطية'
             elif n.get('type') == 'audit_action':
-                desc = payload.get('action_description') or (str(payload.get('action', '')) + ' - ' + str(payload.get('table_name', '')))
+                # إشعار تسجيل الدخول: نعرض اسم المستخدم وليس الـ user_id
+                if payload.get('action') == 'LOGIN' and payload.get('user_name'):
+                    desc = 'تسجيل دخول - ' + str(payload.get('user_name', '')).strip()
+                else:
+                    desc = payload.get('action_description') or (str(payload.get('action', '')) + ' - ' + str(payload.get('table_name', '')))
             notifications.append({
                 'id': n.get('id'),
                 'timestamp': n.get('created_at') or '',
@@ -2289,6 +2294,10 @@ class AdminPanel(AdminPanelTemplate):
 
     def export_contracts_data(self):
         return anvil.server.call('export_contracts_data', self.get_auth())
+
+    def delete_contract_admin(self, quotation_number):
+        """حذف العقد بالكامل من جدول العقود (يتطلب صلاحية delete)."""
+        return anvil.server.call('delete_contract', quotation_number, self.get_auth())
 
     def soft_delete_client(self, client_code):
         return anvil.server.call('soft_delete_client', client_code, self.get_auth())

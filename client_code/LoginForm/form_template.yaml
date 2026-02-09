@@ -523,6 +523,8 @@ container:
         }
       </style>
 
+      <!-- Unified loading: hand loader only (replaces Anvil blue dots) -->
+      <script src="_/theme/global-loading.js"></script>
       <!-- Load i18n Script with fallback -->
       <script>
         // Inline i18n to avoid 404 issues

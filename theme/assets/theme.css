@@ -297,3 +297,39 @@
   0%, 50%, 100% { transform: rotate(10deg) scale(1); }
   40% { transform: rotate(50deg) scale(1); }
 }
+
+/* ================= OVERRIDE ANVIL DEFAULT LOADING (blue dots) ================= */
+/* Hide Anvil's default spinner everywhere - we use hand loader only */
+.anvil-spinner,
+[class*="anvil-spinner"],
+[class*="spinner"] .anvil-spinner {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  pointer-events: none !important;
+}
+
+/* When Anvil shows loading overlay, show our hand instead via JS (global-loading.js) */
+
+/* ================= UNIFIED LOADING: no other spinners ================= */
+/* Any .loading-spinner or .spinner (circle) is replaced by hand loader via JS.
+   Hide default circle spinners everywhere so only hand appears. */
+.loading-spinner .spinner,
+.spinner {
+  display: none !important;
+}
+.loading-spinner {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 40px !important;
+}
+/* Inject hand loader into .loading-spinner when JS runs (getHandLoaderHTML).
+   If content is still only .spinner, show hand via pseudo so something appears: */
+.loading-spinner:empty,
+.loading-spinner:has(.spinner:only-child) {
+  background: transparent;
+}

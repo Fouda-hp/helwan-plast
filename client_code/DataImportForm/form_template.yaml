@@ -270,7 +270,7 @@ container:
           margin-top: 20px;
         }
       </style>
-
+      <script src="_/theme/global-loading.js"></script>
       <div class="import-wrapper">
         <div class="import-header">
           <h1>📤 Data Import (Admin Only)</h1>

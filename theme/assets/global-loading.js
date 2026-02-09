@@ -1,107 +1,77 @@
 /**
- * شاشة التحميل الموحدة - لودر اليد. آمن ولا يعطل الصفحة.
+ * لودر اليد - خفيف جداً، بدون MutationObserver حتى لا يثقل الصفحة.
  */
 (function () {
   'use strict';
 
-  var HAND_LOADER_HTML =
-    '<div class="hand-loader">' +
-      '<div class="hand-finger"></div><div class="hand-finger"></div>' +
-      '<div class="hand-finger"></div><div class="hand-finger"></div>' +
-      '<div class="hand-palm"></div><div class="hand-thumb"></div>' +
-    '</div>';
-
   var OVERLAY_ID = 'hp-global-loading-overlay';
+  var HAND_HTML =
+    '<div class="hand-loader">' +
+    '<div class="hand-finger"></div><div class="hand-finger"></div>' +
+    '<div class="hand-finger"></div><div class="hand-finger"></div>' +
+    '<div class="hand-palm"></div><div class="hand-thumb"></div></div>';
 
-  function getOrCreateOverlay() {
-    try {
-      var el = document.getElementById(OVERLAY_ID);
-      if (el) return el;
-      if (!document.body) return null;
-      el = document.createElement('div');
-      el.id = OVERLAY_ID;
-      el.className = 'hand-loader-wrapper fullscreen';
-      el.innerHTML = HAND_LOADER_HTML;
-      document.body.appendChild(el);
-      return el;
-    } catch (e) {
-      return null;
-    }
+  function getOverlay() {
+    if (!document.body) return null;
+    var el = document.getElementById(OVERLAY_ID);
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = OVERLAY_ID;
+    el.className = 'hand-loader-wrapper fullscreen';
+    el.innerHTML = HAND_HTML;
+    document.body.appendChild(el);
+    return el;
   }
 
-  function showOurOverlay() {
+  function show() {
     try {
-      var overlay = getOrCreateOverlay();
-      if (overlay) overlay.classList.add('show');
-    } catch (e) {}
+      var o = getOverlay();
+      if (o) o.classList.add('show');
+    } catch (err) {}
   }
 
-  function hideOurOverlay() {
+  function hide() {
     try {
-      var overlay = document.getElementById(OVERLAY_ID);
-      if (overlay) overlay.classList.remove('show');
-    } catch (e) {}
+      var o = document.getElementById(OVERLAY_ID);
+      if (o) o.classList.remove('show');
+    } catch (err) {}
   }
 
-  function findAnvilSpinner() {
+  function hasSpinner() {
     try {
-      var doc = document;
-      if (!doc || !doc.querySelector) return null;
-      return doc.querySelector('.anvil-spinner') || doc.querySelector('[class*="anvil-spinner"]') || null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function isLoadingActive() {
-    try {
-      if (findAnvilSpinner()) return true;
-      return false;
-    } catch (e) {
+      return !!(document.querySelector && document.querySelector('.anvil-spinner'));
+    } catch (err) {
       return false;
     }
   }
 
-  function checkAndSync() {
+  function tick() {
     try {
       if (!document.body) return;
-      if (isLoadingActive()) {
-        showOurOverlay();
-      } else {
-        hideOurOverlay();
-      }
-    } catch (e) {}
+      if (hasSpinner()) show();
+      else hide();
+    } catch (err) {}
   }
 
-  function init() {
+  function start() {
     try {
       if (!document.body) {
-        setTimeout(init, 50);
+        setTimeout(start, 100);
         return;
       }
-      getOrCreateOverlay();
-      var obs = document.body;
-      if (obs && window.MutationObserver) {
-        var observer = new MutationObserver(function () {
-          checkAndSync();
-        });
-        observer.observe(obs, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
-      }
-      setInterval(checkAndSync, 250);
-      checkAndSync();
-    } catch (e) {}
+      setInterval(tick, 500);
+      tick();
+    } catch (err) {}
   }
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
-      setTimeout(init, 0);
+      setTimeout(start, 200);
     });
   } else {
-    setTimeout(init, 0);
+    setTimeout(start, 200);
   }
 
-  try {
-    window.showLoadingOverlay = showOurOverlay;
-    window.hideLoadingOverlay = hideOurOverlay;
-  } catch (e) {}
+  window.showLoadingOverlay = show;
+  window.hideLoadingOverlay = hide;
 })();

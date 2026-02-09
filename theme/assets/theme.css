@@ -299,7 +299,17 @@
 }
 
 /* ================= OVERRIDE ANVIL DEFAULT LOADING (blue dots) ================= */
-/* لا نخفي السبينر من CSS - الـ JS يحقن اليد ويخفي السبينر. لو الـ JS ما لاقاش العنصر، السبينر يفضل ظاهر. */
+/* إخفاء الدائرة/النقاط الزرقاء تماماً - اليد فقط تظهر عبر JS */
+.anvil-spinner,
+[class*="anvil-spinner"] {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  pointer-events: none !important;
+}
 
 /* ================= UNIFIED LOADING: no other spinners ================= */
 /* Any .loading-spinner or .spinner (circle) is replaced by hand loader via JS.

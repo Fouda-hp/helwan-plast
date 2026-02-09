@@ -36,7 +36,7 @@
     if (overlay) overlay.classList.remove('show');
   }
 
-  /** احتياطي: أي overlay ثابت يغطي معظم الشاشة نعتبره شاشة تحميل */
+  /** أي overlay ثابت ظاهر يغطي معظم الشاشة = شاشة تحميل. لو مخفي (انتهى التحميل) لا نعتبره */
   function scanForFullscreenOverlay() {
     var all = document.querySelectorAll('body *');
     for (var i = 0; i < all.length; i++) {
@@ -44,6 +44,7 @@
       if (el.id === OVERLAY_ID) continue;
       var style = window.getComputedStyle(el);
       if (style.position !== 'fixed') continue;
+      if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) continue;
       var z = parseInt(style.zIndex, 10);
       if (isNaN(z) || z < 1000) continue;
       var r = el.getBoundingClientRect();

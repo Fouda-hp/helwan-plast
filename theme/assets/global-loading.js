@@ -37,9 +37,19 @@
     } catch (err) {}
   }
 
+  /** التحميل شغال = السبينر موجود وظاهر (أو حاويتو ظاهرة). لو مخفي = نختفي. */
   function hasSpinner() {
     try {
-      return !!(document.querySelector && document.querySelector('.anvil-spinner'));
+      var el = document.querySelector && document.querySelector('.anvil-spinner');
+      if (!el) return false;
+      var p = el.parentElement;
+      while (p && p !== document.body) {
+        var s = window.getComputedStyle(p);
+        if (s.display === 'none' || s.visibility === 'hidden' || parseFloat(s.opacity) < 0.05)
+          return false;
+        p = p.parentElement;
+      }
+      return true;
     } catch (err) {
       return false;
     }
@@ -59,7 +69,7 @@
         setTimeout(start, 100);
         return;
       }
-      setInterval(tick, 500);
+      setInterval(tick, 300);
       tick();
     } catch (err) {}
   }

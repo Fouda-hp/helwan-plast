@@ -244,22 +244,40 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
     client_code = str(client_code_raw) if client_code_raw else None
     quotation_number = safe_int(quotation_number_raw)
 
-    # اكتشاف العميل الحالي vs الجديد
+    # ===== اكتشاف العميل: بالتليفون أولاً (مصدر الحقيقة) ثم بالكود =====
+    # الكود الجاي من الفورم قد يكون peek (رقم متوقع مش محفوظ)
+    # لذلك نبحث بالتليفون كمصدر أساسي لتحديد العميل الموجود
     existing_client_row = None
-    if client_code:
-        existing_client_row = app_tables.clients.get(**{"Client Code": str(client_code)})
-        if existing_client_row and existing_client_row.get('is_deleted', False):
-            existing_client_row = None
+    phone = safe_strip(form_data.get('Phone'))
+
+    # أولاً: بحث بالتليفون (أدق طريقة لتحديد العميل)
+    if phone:
+        phone_match = app_tables.clients.get(Phone=phone, is_deleted=False)
+        if phone_match:
+            existing_client_row = phone_match
+            # استخدم الكود الحقيقي من الداتابيز بدل الكود من الفورم
+            client_code = str(phone_match["Client Code"])
+            logger.info("Client identified by phone=%s, real_code=%s (form_code=%s)", phone, client_code, client_code_raw)
+
+    # ثانياً: لو مفيش تليفون أو مطابقش، بحث بالكود
+    if existing_client_row is None and client_code:
+        code_match = app_tables.clients.get(**{"Client Code": str(client_code)})
+        if code_match and not code_match.get('is_deleted', False):
+            existing_client_row = code_match
 
     is_existing_client = existing_client_row is not None
     is_new_client = not is_existing_client
 
-    is_quotation = bool(
-        safe_strip(form_data.get('Model')) and
-        safe_strip(form_data.get('Quotation#'))
-    )
+    # لو عميل جديد: نتجاهل الكود من الفورم (peek) — السيرفر هيولد كود جديد
+    if is_new_client:
+        client_code = None
+
+    is_quotation = bool(model and safe_strip(form_data.get('Quotation#')))
 
     is_new_quotation = is_quotation and (not quotation_number or not quotation_exists(quotation_number))
+    # لو كوتيشن جديد: نتجاهل الرقم من الفورم (peek) — السيرفر هيولد رقم جديد
+    if is_new_quotation:
+        quotation_number = None
 
     # التحقق من بيانات العميل (فقط إذا كان عميل جديد)
     missing = []
@@ -292,18 +310,15 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
                 "message": "Quotation missing data:\n" + "\n".join(q_missing)
             }
 
-    # التحقق من الهاتف
-    phone = safe_strip(form_data.get('Phone'))
-
-    if phone:
+    # التحقق من الهاتف (تكرار مع عميل آخر فقط)
+    if phone and is_new_client:
         phone_row = app_tables.clients.get(Phone=phone, is_deleted=False)
-
         if phone_row:
-            if is_existing_client:
-                if phone_row != existing_client_row:
-                    return {"success": False, "message": "Phone already exists for another client"}
-            else:
-                return {"success": False, "message": "Phone already exists"}
+            return {"success": False, "message": "Phone already exists for client code: " + str(phone_row["Client Code"])}
+    elif phone and is_existing_client:
+        phone_row = app_tables.clients.get(Phone=phone, is_deleted=False)
+        if phone_row and phone_row != existing_client_row:
+            return {"success": False, "message": "Phone already exists for another client"}
 
     # التحقق من الأسعار
     if is_quotation:
@@ -366,62 +381,55 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
                         "message": f"For New Order mode, Agreed Price ({agreed:,.0f}) cannot exceed In Stock price ({in_stock_price:,.0f})"
                     }
 
-    # الترقيم التلقائي من السيرفر فقط (ذرّي، يمنع الدوبليكيت)
+    # الترقيم التلقائي من السيرفر فقط (ذرّي، يمنع الدوبليكيت والفجوات)
+    # get_next_number_atomic يحسب max(counter, max_table) + 1 فلا يمكن أن يكرر أو يفقد رقم
     if is_new_client:
         client_code = str(get_next_number_atomic('clients_next', token_or_email))
 
     if is_new_quotation and is_quotation:
         quotation_number = get_next_number_atomic('quotations_next', token_or_email)
 
-    logger.info(f"Saving: client_code={client_code}, quotation_number={quotation_number}")
+    logger.info(f"Saving: client_code={client_code}, quotation_number={quotation_number}, is_new_client={is_new_client}, is_new_quotation={is_new_quotation}")
 
-    # الحفظ مع التدقيق. حماية إضافية: عند تعارض نادر (مثلاً TransactionConflict) نعيد المحاولة مرة واحدة بأرقام جديدة.
-    for attempt in range(2):
-        try:
-            client_action = save_client_data(client_code, form_data, is_new_client, user_email, ip_address)
+    try:
+        client_action = save_client_data(client_code, form_data, is_new_client, user_email, ip_address)
 
-            quotation_action = None
-            if is_quotation:
-                if not client_name and existing_client_row:
-                    client_name = existing_client_row.get('Client Name', '')
+        quotation_action = None
+        if is_quotation:
+            if not client_name and existing_client_row:
+                client_name = existing_client_row.get('Client Name', '')
 
-                quotation_action = save_quotation_data(
-                    client_code,
-                    quotation_number,
-                    form_data,
-                    is_new_quotation,
+            quotation_action = save_quotation_data(
+                client_code,
+                quotation_number,
+                form_data,
+                is_new_quotation,
+                user_email,
+                ip_address,
+                client_name
+            )
+
+        actions = [a for a in (client_action, quotation_action) if a]
+
+        if is_quotation and user_email:
+            try:
+                notifications_module.create_notification(
                     user_email,
-                    ip_address,
-                    client_name
+                    'quotation_saved',
+                    {'quotation_number': quotation_number, 'client_code': client_code, 'action': quotation_action}
                 )
+            except Exception:
+                pass
 
-            actions = [a for a in (client_action, quotation_action) if a]
-
-            if is_quotation and user_email:
-                try:
-                    notifications_module.create_notification(
-                        user_email,
-                        'quotation_saved',
-                        {'quotation_number': quotation_number, 'client_code': client_code, 'action': quotation_action}
-                    )
-                except Exception:
-                    pass
-
-            return {
-                "success": True,
-                "message": " & ".join(actions),
-                "client_code": client_code,
-                "quotation_number": quotation_number if is_quotation else None
-            }
-        except Exception as e:
-            if attempt == 0 and (is_new_client or (is_new_quotation and is_quotation)):
-                logger.warning("Save conflict (retry once with new numbers): %s", e)
-                if is_new_client:
-                    client_code = str(get_next_number_atomic('clients_next', token_or_email))
-                if is_new_quotation and is_quotation:
-                    quotation_number = get_next_number_atomic('quotations_next', token_or_email)
-                continue
-            raise
+        return {
+            "success": True,
+            "message": " & ".join(actions),
+            "client_code": client_code,
+            "quotation_number": quotation_number if is_quotation else None
+        }
+    except Exception as e:
+        logger.exception("Save failed: client_code=%s, quotation_number=%s", client_code, quotation_number)
+        raise
 
 
 # =========================================================

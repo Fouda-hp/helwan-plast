@@ -91,18 +91,6 @@ def _get_max_from_table(counter_key, include_deleted=False):
     return max_val
 
 
-def _seed_initial_value(counter_key):
-    """
-    عند إنشاء عداد جديد: نزرعه من القيمة العظمى في الجدول الفعلي.
-    يُخزَّن العداد = max حتى يكون الرقم التالي المُعطى = max+1 (أو 1 إذا الجدول فاضي).
-    متسلسل العقود: يبدأ من 1 في العدّاد حتى يكون أول رقم مُرجَع = 2.
-    """
-    if counter_key.startswith(COUNTER_CONTRACTS_SERIAL_PREFIX):
-        return 1  # أول عقد في السنة: العداد=1، أول رقم مُرجَع = 1+1 = 2
-    max_val = _get_max_from_table(counter_key, include_deleted=True)
-    return max_val  # العداد = max، أول رقم مُرجَع = max+1
-
-
 # ==========================================================================
 # دوال Peek — للعرض فقط بدون حجز (تُستدعى من الحاسبة)
 # ==========================================================================
@@ -111,12 +99,14 @@ def peek_next_number(counter_key):
     """
     قراءة الرقم التالي المتوقع بدون زيادة العداد.
     تُستخدم لعرض الرقم في الحاسبة فقط — الرقم الفعلي يُحجز عند الحفظ.
+    المنطق متطابق مع get_next_number_atomic: max(counter, max_table) + 1
     """
+    max_val = _get_max_from_table(counter_key, include_deleted=True)
+
     row = app_tables.counters.get(key=counter_key)
     if row is None:
-        # العداد لم يُنشأ بعد — نحسب من الجدول الفعلي
-        max_val = _get_max_from_table(counter_key, include_deleted=True)
         return max_val + 1
+
     current = row["value"]
     if current is None:
         current = 0
@@ -124,7 +114,9 @@ def peek_next_number(counter_key):
         current = int(current)
     except (ValueError, TypeError):
         current = 0
-    return current + 1
+
+    # نفس منطق get_next_number_atomic: max(counter, max_table) + 1
+    return max(current, max_val) + 1
 
 
 @anvil.server.callable
@@ -153,20 +145,26 @@ def peek_next_quotation_number(token_or_email=None):
 @anvil_tables.in_transaction
 def get_next_number_atomic(counter_key, token_or_email=None):
     """
-    ترجع الرقم التالي وتحدّث العداد بشكل ذري لمنع أي دوبليكيت.
+    ترجع الرقم التالي وتحدّث العداد بشكل ذري لمنع أي دوبليكيت أو أرقام مفقودة.
+    العداد يخزن آخر رقم تم إصداره فعلياً (last_issued).
+    الرقم التالي = max(counter, max_table) + 1 لضمان عدم وجود فجوات أو تكرار.
     تتطلب مصادقة (يُمرَّر من save_quotation أو استيراد).
     """
     _, err = _require_auth(token_or_email)
     if err:
         raise anvil.server.AnvilWrappedError(Exception(err.get("message", "Authentication required")))
+
+    # القيمة العظمى الفعلية في الجدول (تشمل المحذوفات لمنع إعادة استخدام أرقامها)
+    max_val = _get_max_from_table(counter_key, include_deleted=True)
+
     row = app_tables.counters.get(key=counter_key)
     if row is None:
-        # إنشاء العداد لأول مرة مع قيمة ابتدائية من الجدول الفعلي
-        initial = _seed_initial_value(counter_key)
-        next_val = initial + 1
+        # إنشاء العداد لأول مرة
+        next_val = max_val + 1
         app_tables.counters.add_row(key=counter_key, value=next_val)
-        logger.info("Counter created: key=%s, seed=%s, first_number=%s", counter_key, initial, next_val)
+        logger.info("Counter created: key=%s, max_table=%s, issued=%s", counter_key, max_val, next_val)
         return next_val
+
     current = row["value"]
     if current is None:
         current = 0
@@ -174,17 +172,17 @@ def get_next_number_atomic(counter_key, token_or_email=None):
         current = int(current)
     except (ValueError, TypeError):
         current = 0
-    # تصحيح تلقائي: لو العداد أكبر من الواقع نضبطه على max الجدول
-    # نستخدم include_deleted=True لمنع تعارض مع الأرقام المحذوفة (Soft Delete)
-    max_val = _get_max_from_table(counter_key, include_deleted=True)
-    if current > max_val + 1:
-        row["value"] = max_val
-        next_val = max_val + 1
-        logger.info("Counter auto-resynced: key=%s, was=%s, now=%s, next=%s", counter_key, current, max_val, next_val)
-        return next_val
-    next_val = current + 1
+
+    # الرقم التالي = أكبر من (العداد، أكبر رقم في الجدول) + 1
+    # هذا يمنع: التكرار (لو العداد متأخر) والفجوات (لو العداد متقدم)
+    base = max(current, max_val)
+    next_val = base + 1
+
     row["value"] = next_val
-    logger.info("Next number generated: key=%s, previous=%s, next=%s", counter_key, current, next_val)
+    if current != base:
+        logger.info("Counter corrected: key=%s, counter_was=%s, max_table=%s, issued=%s", counter_key, current, max_val, next_val)
+    else:
+        logger.info("Next number generated: key=%s, previous=%s, issued=%s", counter_key, current, next_val)
     return next_val
 
 
@@ -192,9 +190,16 @@ def get_next_contract_serial():
     """
     المتسلسل السنوي للعقود: يبدأ من 2 ويزيد 1 بعد كل حفظ عقد جديد.
     المفتاح: contracts_serial_YYYY (عدّاد مستقل لكل سنة).
+    لو أول عقد في السنة (العداد مش موجود أو = 0): نبذره بـ 1 حتى أول رقم = 2.
     """
     year = datetime.now().year
     counter_key = f"{COUNTER_CONTRACTS_SERIAL_PREFIX}{year}"
+    # تأكد إن العداد يبدأ من 1 على الأقل حتى أول رقم مُرجَع = 2
+    row = app_tables.counters.get(key=counter_key)
+    if row is None:
+        app_tables.counters.add_row(key=counter_key, value=1)
+    elif row["value"] is None or int(row["value"]) < 1:
+        row["value"] = 1
     return get_next_number_atomic(counter_key)
 
 

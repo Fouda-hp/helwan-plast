@@ -46,21 +46,7 @@
     return null;
   }
 
-  /** هل الـ overlay (حاوية السبينر) ظاهر فعلاً؟ لو مخفي = انتهى التحميل */
-  function isAnvilOverlayVisible() {
-    var spinner = findAnvilSpinner();
-    if (!spinner || !spinner.parentElement) return false;
-    var el = spinner.parentElement;
-    var style = window.getComputedStyle(el);
-    if (style.display === 'none') return false;
-    if (style.visibility === 'hidden') return false;
-    if (parseFloat(style.opacity) < 0.05) return false;
-    var r = el.getBoundingClientRect();
-    if (r.width < 50 || r.height < 50) return false;
-    return true;
-  }
-
-  /** هل في overlay ثابت آخر (غير بتاعنا) يغطي الشاشة وظاهر؟ */
+  /** هل في overlay ثابت (غير بتاعنا) يغطي الشاشة؟ نتحقق إنه ظاهر عشان نعرف نختفي لما يختفي */
   function hasVisibleFullscreenOverlay() {
     var all = document.querySelectorAll('body *');
     for (var i = 0; i < all.length; i++) {
@@ -71,17 +57,18 @@
       if (style.display === 'none' || style.visibility === 'hidden') continue;
       if (parseFloat(style.opacity) < 0.05) continue;
       var z = parseInt(style.zIndex, 10);
-      if (isNaN(z) || z < 1000) continue;
+      if (isNaN(z)) z = 0;
+      if (z < 0) continue;
       var r = el.getBoundingClientRect();
-      if (r.width >= window.innerWidth * 0.7 && r.height >= window.innerHeight * 0.7)
+      if (r.width >= window.innerWidth * 0.5 && r.height >= window.innerHeight * 0.5)
         return true;
     }
     return false;
   }
 
-  /** التحميل شغال = سبينر موجود وحاويتو ظاهرة، أو في overlay تاني ظاهر */
+  /** التحميل شغال = سبينر Anvil موجود في الصفحة (حتى لو مخفي بالـ CSS)، أو في overlay تاني ظاهر. أنفيل بيضيف السبينر لما يبدأ التحميل وبيشيله لما يخلص. */
   function isLoadingActive() {
-    if (findAnvilSpinner() && isAnvilOverlayVisible()) return true;
+    if (findAnvilSpinner()) return true;
     if (hasVisibleFullscreenOverlay()) return true;
     return false;
   }

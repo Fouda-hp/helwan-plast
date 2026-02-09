@@ -1,6 +1,6 @@
 /**
- * Global loading - يعرض لودر اليد بدل النقاط/الدائرة الزرقاء في كل النظام.
- * الطريقة: نحقن اليد داخل نفس الـ overlay اللي Anvil بيستخدمه، أو نعرض overlay خاص بنا.
+ * شاشة التحميل الموحدة - اليد فقط. تظهر أثناء التحميل وتختفي عند الانتهاء.
+ * نعتمد على overlay واحد نتحكم فيه، ونكشف انتهاء التحميل بدقة.
  */
 (function () {
   'use strict';
@@ -13,7 +13,6 @@
     '</div>';
 
   var OVERLAY_ID = 'hp-global-loading-overlay';
-  var INJECTED_MARKER = 'hp-hand-injected';
 
   function getOrCreateOverlay() {
     var el = document.getElementById(OVERLAY_ID);
@@ -36,40 +35,6 @@
     if (overlay) overlay.classList.remove('show');
   }
 
-  /** أي overlay ثابت ظاهر يغطي معظم الشاشة = شاشة تحميل. لو مخفي (انتهى التحميل) لا نعتبره */
-  function scanForFullscreenOverlay() {
-    var all = document.querySelectorAll('body *');
-    for (var i = 0; i < all.length; i++) {
-      var el = all[i];
-      if (el.id === OVERLAY_ID) continue;
-      var style = window.getComputedStyle(el);
-      if (style.position !== 'fixed') continue;
-      if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) continue;
-      var z = parseInt(style.zIndex, 10);
-      if (isNaN(z) || z < 1000) continue;
-      var r = el.getBoundingClientRect();
-      if (r.width >= window.innerWidth * 0.8 && r.height >= window.innerHeight * 0.8)
-        return true;
-    }
-    return false;
-  }
-
-  /** إما نجد سبينر Anvil (.anvil-spinner أو عنصر بداخله) أو أي overlay ثابت يغطي الشاشة */
-  function findAnvilLoadingContainer() {
-    var doc = document;
-    var sel = doc.querySelector('.anvil-spinner');
-    if (sel && sel.parentElement) return sel.parentElement;
-    sel = doc.querySelector('[class*="anvil-spinner"]');
-    if (sel && sel.parentElement) return sel.parentElement;
-    sel = doc.querySelector('[class*="loading"]');
-    if (sel) {
-      var style = window.getComputedStyle(sel);
-      if (style.position === 'fixed' && (style.zIndex !== 'auto' && parseInt(style.zIndex, 10) > 1000))
-        return sel;
-    }
-    return null;
-  }
-
   function findAnvilSpinner() {
     var doc = document;
     var el = doc.querySelector('.anvil-spinner') || doc.querySelector('[class*="anvil-spinner"]');
@@ -81,40 +46,48 @@
     return null;
   }
 
-  /** حقن لودر اليد داخل الـ overlay الأصلي لـ Anvil */
-  function injectHandIntoAnvilOverlay() {
-    var container = findAnvilLoadingContainer();
-    if (!container) return false;
-    if (container.getAttribute(INJECTED_MARKER)) return true;
+  /** هل الـ overlay (حاوية السبينر) ظاهر فعلاً؟ لو مخفي = انتهى التحميل */
+  function isAnvilOverlayVisible() {
     var spinner = findAnvilSpinner();
-    if (spinner) {
-      spinner.style.setProperty('display', 'none', 'important');
-      spinner.style.setProperty('visibility', 'hidden', 'important');
-    }
-    var wrap = document.createElement('div');
-    wrap.className = 'hand-loader-wrapper';
-    wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;position:absolute;inset:0;';
-    wrap.innerHTML = HAND_LOADER_HTML;
-    container.appendChild(wrap);
-    container.setAttribute(INJECTED_MARKER, '1');
-    container.style.display = 'flex';
-    container.style.alignItems = 'center';
-    container.style.justifyContent = 'center';
+    if (!spinner || !spinner.parentElement) return false;
+    var el = spinner.parentElement;
+    var style = window.getComputedStyle(el);
+    if (style.display === 'none') return false;
+    if (style.visibility === 'hidden') return false;
+    if (parseFloat(style.opacity) < 0.05) return false;
+    var r = el.getBoundingClientRect();
+    if (r.width < 50 || r.height < 50) return false;
     return true;
   }
 
+  /** هل في overlay ثابت آخر (غير بتاعنا) يغطي الشاشة وظاهر؟ */
+  function hasVisibleFullscreenOverlay() {
+    var all = document.querySelectorAll('body *');
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i];
+      if (el.id === OVERLAY_ID) continue;
+      var style = window.getComputedStyle(el);
+      if (style.position !== 'fixed') continue;
+      if (style.display === 'none' || style.visibility === 'hidden') continue;
+      if (parseFloat(style.opacity) < 0.05) continue;
+      var z = parseInt(style.zIndex, 10);
+      if (isNaN(z) || z < 1000) continue;
+      var r = el.getBoundingClientRect();
+      if (r.width >= window.innerWidth * 0.7 && r.height >= window.innerHeight * 0.7)
+        return true;
+    }
+    return false;
+  }
+
+  /** التحميل شغال = سبينر موجود وحاويتو ظاهرة، أو في overlay تاني ظاهر */
+  function isLoadingActive() {
+    if (findAnvilSpinner() && isAnvilOverlayVisible()) return true;
+    if (hasVisibleFullscreenOverlay()) return true;
+    return false;
+  }
+
   function checkAndSync() {
-    var spinner = findAnvilSpinner();
-    var container = spinner ? findAnvilLoadingContainer() : null;
-    var anyOverlay = scanForFullscreenOverlay();
-    if (spinner || container) {
-      if (injectHandIntoAnvilOverlay()) return;
-      showOurOverlay();
-      if (spinner) {
-        spinner.style.setProperty('display', 'none', 'important');
-        spinner.style.setProperty('visibility', 'hidden', 'important');
-      }
-    } else if (anyOverlay) {
+    if (isLoadingActive()) {
       showOurOverlay();
     } else {
       hideOurOverlay();
@@ -128,7 +101,7 @@
   function init() {
     getOrCreateOverlay();
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
-    setInterval(checkAndSync, 150);
+    setInterval(checkAndSync, 100);
     checkAndSync();
   }
 

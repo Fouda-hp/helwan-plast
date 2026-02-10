@@ -20,7 +20,7 @@
   var DROPDOWN_ID = 'hp-notif-dropdown';
   var BADGE_ID = 'hp-notif-badge';
   var REFRESH_MS = 60000;
-  var CHECK_MS = 2000; // Check bell existence every 2s
+  var CHECK_MS = 2000;
   var _dropdownOpen = false;
   var _cachedData = null;
 
@@ -62,23 +62,8 @@
   function createBell() {
     if (!isLoggedIn()) return;
 
-    // If AdminPanel already injected the bell, just attach click handler and skip
+    // Remove any existing bell first (clean slate)
     var existing = document.getElementById(BELL_ID);
-    if (existing && document.body.contains(existing)) {
-      // Ensure the button has our click handler
-      var existingBtn = existing.querySelector('button');
-      if (existingBtn && !existingBtn.__hpBellBound) {
-        existingBtn.__hpBellBound = true;
-        existingBtn.onclick = function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleDropdown();
-        };
-      }
-      return;
-    }
-
-    // Remove orphaned bell
     if (existing) existing.remove();
 
     var wrap = document.createElement('div');
@@ -88,11 +73,12 @@
     btn.type = 'button';
     btn.setAttribute('aria-label', 'Notifications');
     btn.innerHTML = '&#128276;';
-    btn.onclick = function (e) {
+    btn.__hpBellBound = true;
+    btn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
       toggleDropdown();
-    };
+    });
 
     var badge = document.createElement('span');
     badge.id = BADGE_ID;
@@ -106,7 +92,6 @@
     var headerUserSection = document.querySelector('.header-user-section');
     if (headerUserSection) {
       wrap.classList.add('hp-notif-inline');
-      // Insert as first child (before user name)
       headerUserSection.insertBefore(wrap, headerUserSection.firstChild);
     } else {
       // Fixed position top-right for all other pages
@@ -118,7 +103,6 @@
   // ===== Ensure Bell Exists =====
   function ensureBell() {
     if (!isLoggedIn()) {
-      // Remove bell if logged out
       var bell = document.getElementById(BELL_ID);
       if (bell) bell.remove();
       var dd = document.getElementById(DROPDOWN_ID);
@@ -130,23 +114,21 @@
     var headerUserSection = document.querySelector('.header-user-section');
 
     if (bell && document.body.contains(bell)) {
-      // Bell exists in DOM — just ensure click handler is bound
+      // Bell exists — ensure click handler is properly bound
       var btn = bell.querySelector('button');
       if (btn && !btn.__hpBellBound) {
         btn.__hpBellBound = true;
-        btn.onclick = function(e) {
+        btn.addEventListener('click', function(e) {
           e.preventDefault();
           e.stopPropagation();
           toggleDropdown();
-        };
+        });
       }
       // Check if bell should move between inline/fixed
       if (headerUserSection && bell.classList.contains('hp-notif-fixed')) {
-        bell.remove();
-        createBell();
-      } else if (!headerUserSection && bell.classList.contains('hp-notif-inline') && !headerUserSection) {
-        bell.remove();
-        createBell();
+        createBell(); // Recreates in correct position
+      } else if (!headerUserSection && bell.classList.contains('hp-notif-inline')) {
+        createBell(); // Recreates in correct position
       }
     } else {
       // Bell missing — create it
@@ -160,12 +142,17 @@
     if (existing) {
       existing.remove();
       _dropdownOpen = false;
+      document.removeEventListener('click', closeOnOutside);
       return;
     }
     showDropdown();
   }
 
   function showDropdown() {
+    // Remove any stale dropdown first
+    var old = document.getElementById(DROPDOWN_ID);
+    if (old) old.remove();
+
     var dd = document.createElement('div');
     dd.id = DROPDOWN_ID;
 
@@ -208,10 +195,10 @@
     }
     _dropdownOpen = true;
 
-    // Close on outside click
+    // Close on outside click (with small delay to prevent immediate close)
     setTimeout(function () {
       document.addEventListener('click', closeOnOutside);
-    }, 0);
+    }, 50);
 
     // Fetch
     fetchAndRender(dd);
@@ -233,17 +220,22 @@
       if (body) body.innerHTML = '<div class="hp-notif-empty">' + t('empty') + '</div>';
       return;
     }
-    var p = window.__hpNotifGetAll();
-    if (p && typeof p.then === 'function') {
-      p.then(function (res) {
-        var list = (res && res.success && res.notifications) ? res.notifications : [];
-        _cachedData = list;
-        renderList(dd, list);
-        updateBadge(countUnread(list));
-      }).catch(function () {
-        var body = dd.querySelector('.hp-notif-body');
-        if (body) body.innerHTML = '<div class="hp-notif-empty">' + t('error') + '</div>';
-      });
+    try {
+      var p = window.__hpNotifGetAll();
+      if (p && typeof p.then === 'function') {
+        p.then(function (res) {
+          var list = (res && res.success && res.notifications) ? res.notifications : [];
+          _cachedData = list;
+          renderList(dd, list);
+          updateBadge(countUnread(list));
+        }).catch(function () {
+          var body = dd.querySelector('.hp-notif-body');
+          if (body) body.innerHTML = '<div class="hp-notif-empty">' + t('error') + '</div>';
+        });
+      }
+    } catch (e) {
+      var body = dd.querySelector('.hp-notif-body');
+      if (body) body.innerHTML = '<div class="hp-notif-empty">' + t('error') + '</div>';
     }
   }
 
@@ -366,7 +358,7 @@
     setTimeout(function () {
       ensureBell();
       refreshBadge();
-    }, 300);
+    }, 500);
   });
 
   // Public API

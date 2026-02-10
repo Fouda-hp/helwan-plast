@@ -16,6 +16,11 @@ import anvil.tables.query as q
 from anvil.tables import app_tables
 import anvil.js
 
+try:
+    from ..notif_bridge import register_notif_bridges
+except ImportError:
+    from notif_bridge import register_notif_bridges
+
 
 class LauncherForm(LauncherFormTemplate):
     def __init__(self, **properties):
@@ -29,6 +34,9 @@ class LauncherForm(LauncherFormTemplate):
         anvil.js.window.setupTotpStart = self.setup_totp_start
         anvil.js.window.setupTotpConfirm = self.setup_totp_confirm
         anvil.js.window.userHasTotpEnabled = self.user_has_totp_enabled
+
+        # Notification bell bridges
+        register_notif_bridges()
 
         # نفحص الـ hash مرة واحدة عند التحميل
         self.check_route()

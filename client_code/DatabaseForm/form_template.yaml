@@ -219,12 +219,11 @@ container:
       </style>
       <div class="db-wrapper">
         <div class="db-header">
-          <h1>🗄️ Database Viewer (Read Only)</h1>
+          <h1>📊 Quotations Database (Read Only)</h1>
         </div>
 
         <div class="db-toolbar">
-          <button class="tab-btn active" id="btnClients" onclick="switchTable('clients')">👥 Clients</button>
-          <button class="tab-btn" id="btnQuotations" onclick="switchTable('quotations')">📊 Quotations</button>
+          <button class="tab-btn active" id="btnQuotations">📊 Quotations</button>
         </div>
 
         <div class="search-row">
@@ -262,7 +261,7 @@ container:
 
       <script>
         (function() {
-          var currentTable = 'clients';
+          var currentTable = 'quotations';
           var currentPage = 1;
           var totalPages = 1;
           var perPage = 20;
@@ -271,18 +270,6 @@ container:
           function init() {
             loadData();
           }
-
-          window.switchTable = function(table) {
-            currentTable = table;
-            currentPage = 1;
-            searchQuery = '';
-            document.getElementById('searchInput').value = '';
-
-            document.getElementById('btnClients').classList.toggle('active', table === 'clients');
-            document.getElementById('btnQuotations').classList.toggle('active', table === 'quotations');
-
-            loadData();
-          };
 
           window.doSearch = function() {
             searchQuery = document.getElementById('searchInput').value;
@@ -313,13 +300,8 @@ container:
               var data;
               var filename;
 
-              if (currentTable === 'clients') {
-                data = await window.pyExportClients(false);
-                filename = 'clients_export.csv';
-              } else {
-                data = await window.pyExportQuotations(false);
-                filename = 'quotations_export.csv';
-              }
+              data = await window.pyExportQuotations(false);
+              filename = 'quotations_export.csv';
 
               if (!data || data.length === 0) {
                 if (window.showNotification) window.showNotification('error', '', 'No data to export');
@@ -355,11 +337,7 @@ container:
 
             try {
               var result;
-              if (currentTable === 'clients') {
-                result = await window.pyGetClients(currentPage, perPage, searchQuery, false);
-              } else {
-                result = await window.pyGetQuotations(currentPage, perPage, searchQuery, false);
-              }
+              result = await window.pyGetQuotations(currentPage, perPage, searchQuery, false);
 
               totalPages = result.total_pages || 1;
               renderTable(result.data || []);
@@ -377,42 +355,25 @@ container:
               return;
             }
 
-            var html = '<table class="data-table' + (currentTable === 'quotations' ? ' quotations' : '') + '">';
+            var html = '<table class="data-table quotations">';
 
-            if (currentTable === 'clients') {
-              html += '<thead><tr><th>Code</th><th>Client Name</th><th>Company</th><th>Phone</th><th>Country</th><th>Email</th><th>Sales Rep</th><th>Source</th></tr></thead>';
-              html += '<tbody>';
-              data.forEach(function(row) {
-                html += '<tr>';
-                html += '<td><strong>' + (row['Client Code'] || '') + '</strong></td>';
-                html += '<td>' + (row['Client Name'] || '') + '</td>';
-                html += '<td>' + (row['Company'] || '') + '</td>';
-                html += '<td>' + (row['Phone'] || '') + '</td>';
-                html += '<td>' + (row['Country'] || '') + '</td>';
-                html += '<td>' + (row['Email'] || '') + '</td>';
-                html += '<td>' + (row['Sales Rep'] || '') + '</td>';
-                html += '<td>' + (row['Source'] || '') + '</td>';
-                html += '</tr>';
-              });
-            } else {
-              html += '<thead><tr><th>Q#</th><th>Date</th><th>Client</th><th>Model</th><th>Colors</th><th>Width</th><th>Given Price</th><th>Agreed Price</th><th>Follow-up</th></tr></thead>';
-              html += '<tbody>';
-              data.forEach(function(row) {
-                var given = row['Given Price'] || 0;
-                var agreed = row['Agreed Price'] || 0;
-                html += '<tr>';
-                html += '<td><strong>' + (row['Quotation#'] || '') + '</strong></td>';
-                html += '<td>' + (row['Date'] || '') + '</td>';
-                html += '<td>' + (row['Client Name'] || '') + '</td>';
-                html += '<td>' + (row['Model'] || '') + '</td>';
-                html += '<td>' + (row['Number of colors'] || '') + '</td>';
-                html += '<td>' + (row['Machine width'] || '') + '</td>';
-                html += '<td class="price">' + Number(given).toLocaleString() + '</td>';
-                html += '<td class="price">' + Number(agreed).toLocaleString() + '</td>';
-                html += renderFollowupCell(row);
-                html += '</tr>';
-              });
-            }
+            html += '<thead><tr><th>Q#</th><th>Date</th><th>Client</th><th>Model</th><th>Colors</th><th>Width</th><th>Given Price</th><th>Agreed Price</th><th>Follow-up</th></tr></thead>';
+            html += '<tbody>';
+            data.forEach(function(row) {
+              var given = row['Given Price'] || 0;
+              var agreed = row['Agreed Price'] || 0;
+              html += '<tr>';
+              html += '<td><strong>' + (row['Quotation#'] || '') + '</strong></td>';
+              html += '<td>' + (row['Date'] || '') + '</td>';
+              html += '<td>' + (row['Client Name'] || '') + '</td>';
+              html += '<td>' + (row['Model'] || '') + '</td>';
+              html += '<td>' + (row['Number of colors'] || '') + '</td>';
+              html += '<td>' + (row['Machine width'] || '') + '</td>';
+              html += '<td class="price">' + Number(given).toLocaleString() + '</td>';
+              html += '<td class="price">' + Number(agreed).toLocaleString() + '</td>';
+              html += renderFollowupCell(row);
+              html += '</tr>';
+            });
 
             html += '</tbody></table>';
             container.innerHTML = html;
@@ -472,7 +433,7 @@ container:
 
           // Wait for Python bridge
           function waitForBridge() {
-            if (window.pyGetClients && window.pyGetQuotations) {
+            if (window.pyGetQuotations) {
               init();
             } else {
               setTimeout(waitForBridge, 200);

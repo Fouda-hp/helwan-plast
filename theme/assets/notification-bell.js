@@ -13,7 +13,8 @@
 (function () {
   'use strict';
 
-  if (window.__hpNotifBellInit) return;
+  // Allow re-init on full page reload (Anvil may reload the page)
+  if (window.__hpNotifBellInit && window.__hpNotifBellTimers) return;
   window.__hpNotifBellInit = true;
 
   var BELL_ID = 'hp-global-notif-bell';
@@ -24,12 +25,18 @@
   var _dropdownOpen = false;
   var _cachedData = null;
 
+  function log(msg) {
+    try { console.log('[HP-Bell] ' + msg); } catch(e) {}
+  }
+
   function getLang() {
     try { return localStorage.getItem('hp_language') || 'en'; } catch (e) { return 'en'; }
   }
 
   function isLoggedIn() {
-    try { return !!sessionStorage.getItem('auth_token'); } catch (e) { return false; }
+    try {
+      return !!(sessionStorage.getItem('auth_token') || localStorage.getItem('auth_token'));
+    } catch (e) { return false; }
   }
 
   function isAdmin() {
@@ -60,7 +67,10 @@
 
   // ===== Create Bell =====
   function createBell() {
-    if (!isLoggedIn()) return;
+    if (!isLoggedIn()) {
+      log('createBell: not logged in, skipping');
+      return;
+    }
 
     // Remove any existing bell first (clean slate)
     var existing = document.getElementById(BELL_ID);
@@ -73,16 +83,18 @@
     btn.type = 'button';
     btn.setAttribute('aria-label', 'Notifications');
     btn.innerHTML = '&#128276;';
+    btn.style.cssText = 'cursor:pointer;';
     btn.__hpBellBound = true;
     btn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
+      log('bell clicked!');
       toggleDropdown();
     });
 
     var badge = document.createElement('span');
     badge.id = BADGE_ID;
-    badge.style.display = 'none';
+    badge.style.cssText = 'display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 4px;box-sizing:border-box;';
     badge.textContent = '0';
 
     wrap.appendChild(btn);
@@ -92,11 +104,17 @@
     var headerUserSection = document.querySelector('.header-user-section');
     if (headerUserSection) {
       wrap.classList.add('hp-notif-inline');
+      wrap.style.cssText = 'position:relative;display:inline-flex;align-items:center;margin-right:6px;z-index:9998;';
+      btn.style.cssText = 'width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#FFD700;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;text-shadow:0 0 8px rgba(255,215,0,0.6);';
       headerUserSection.insertBefore(wrap, headerUserSection.firstChild);
+      log('createBell: placed INLINE in header-user-section');
     } else {
       // Fixed position top-right for all other pages
       wrap.classList.add('hp-notif-fixed');
+      wrap.style.cssText = 'position:fixed;top:16px;right:16px;z-index:999999;';
+      btn.style.cssText = 'width:44px;height:44px;border-radius:50%;border:none;background:linear-gradient(135deg,#B8860B 0%,#DAA520 50%,#FFD700 100%);color:#fff;font-size:20px;cursor:pointer;box-shadow:0 4px 15px rgba(218,165,32,0.45);display:flex;align-items:center;justify-content:center;';
       document.body.appendChild(wrap);
+      log('createBell: placed FIXED on body (top-right)');
     }
   }
 
@@ -332,6 +350,7 @@
   function init() {
     if (!document.body) { setTimeout(init, 200); return; }
 
+    log('init: starting, logged=' + isLoggedIn());
     ensureBell();
 
     // Try initial fetch
@@ -340,6 +359,7 @@
     }
 
     // Fast check: ensure bell exists every 2s (handles form navigation)
+    window.__hpNotifBellTimers = true;
     setInterval(function () {
       ensureBell();
     }, CHECK_MS);
@@ -354,6 +374,7 @@
 
   // Listen for bridge ready event (fired by Python form init)
   window.addEventListener('hp-notif-bridge-ready', function () {
+    log('hp-notif-bridge-ready event received');
     // Small delay to let Anvil finish rendering form HTML
     setTimeout(function () {
       ensureBell();
@@ -365,6 +386,7 @@
   window.refreshNotificationBell = refreshBadge;
   window.toggleNotifDropdown = toggleDropdown;
 
+  log('script loaded, readyState=' + document.readyState);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { setTimeout(init, 500); });
   } else {

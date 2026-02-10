@@ -1998,10 +1998,40 @@ class AdminPanel(AdminPanelTemplate):
             if (needRetry) setTimeout(runPatches, 300);
           }
 
+          function insertNotifBell() {
+            var section = document.querySelector('.header-user-section');
+            if (!section || document.getElementById('hp-global-notif-bell')) return;
+            var wrap = document.createElement('div');
+            wrap.id = 'hp-global-notif-bell';
+            wrap.classList.add('hp-notif-inline');
+            wrap.style.cssText = 'position:relative;display:inline-flex;align-items:center;margin-right:6px;z-index:9998;';
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.setAttribute('aria-label', 'Notifications');
+            btn.innerHTML = '&#128276;';
+            btn.style.cssText = 'width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#FFD700;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;text-shadow:0 0 8px rgba(255,215,0,0.6);';
+            btn.__hpBellBound = true;
+            btn.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              if (window.toggleNotifDropdown) {
+                window.toggleNotifDropdown();
+              }
+            });
+            var badge = document.createElement('span');
+            badge.id = 'hp-notif-badge';
+            badge.style.cssText = 'display:none;position:absolute;top:-4px;right:-4px;background:#f44336;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 4px;box-sizing:border-box;';
+            badge.textContent = '0';
+            wrap.appendChild(btn);
+            wrap.appendChild(badge);
+            section.insertBefore(wrap, section.firstChild);
+          }
+
           function run() {
             insertAccountantNav();
             insertDataImportNav();
             insertBackupNav();
+            insertNotifBell();
             patchSaveSetting();
             // تأخير الـ patches حتى يُحمّل قالب الصفحة (الدوال من form_template) ثم نستبدلها
             setTimeout(runPatches, 250);

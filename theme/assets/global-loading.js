@@ -1,15 +1,16 @@
 /**
  * نظام التحميل الموحد - Helwan Plast
  * ====================================
- * يدعم 2 لودر: "hand" (اليد) و "spinner" (دوائر)
+ * يدعم 3 لودر: "hand" (اليد) و "spinner" (دوائر) و "code" (كود)
  *
  * التحكم:
  *   localStorage.setItem('hp_loader_type', 'hand')     ← لودر اليد (الافتراضي)
  *   localStorage.setItem('hp_loader_type', 'spinner')   ← لودر الدوائر
+ *   localStorage.setItem('hp_loader_type', 'code')      ← لودر الكود
  *
  *   window.showLoadingOverlay()  ← إظهار يدوي
  *   window.hideLoadingOverlay()  ← إخفاء يدوي
- *   window.setLoaderType('hand' | 'spinner') ← تغيير النوع وقت التشغيل
+ *   window.setLoaderType('hand' | 'spinner' | 'code') ← تغيير النوع وقت التشغيل
  */
 (function () {
   'use strict';
@@ -44,6 +45,15 @@
           '<div class="hp-dot"></div>' +
           '<div class="hp-dot"></div>' +
           '<div class="hp-dot"></div>' +
+        '</div>' +
+      '</div>',
+
+    code:
+      '<div class="hp-loader hp-loader-code">' +
+        '<div class="hp-code-loader">' +
+          '<span>&lt;</span>' +
+          '<span>LOADING...</span>' +
+          '<span>/&gt;</span>' +
         '</div>' +
       '</div>'
   };
@@ -149,7 +159,7 @@
   window.showLoadingOverlay = show;
   window.hideLoadingOverlay = hide;
   window.setLoaderType = function (type) {
-    if (type !== 'hand' && type !== 'spinner') return;
+    if (type !== 'hand' && type !== 'spinner' && type !== 'code') return;
     try { localStorage.setItem('hp_loader_type', type); } catch (e) {}
     // Force rebuild overlay with new type
     var el = document.getElementById(OVERLAY_ID);

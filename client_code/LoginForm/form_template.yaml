@@ -311,30 +311,6 @@ container:
           text-decoration: underline;
         }
 
-        /* ================= LOADING OVERLAY (Hand Loader) ================= */
-        .loading-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(26,26,46,0.9);
-          backdrop-filter: blur(8px);
-          display: none;
-          align-items: center;
-          justify-content: center;
-          flex-direction: column;
-          gap: 20px;
-          z-index: 9999;
-        }
-
-        .loading-overlay.show {
-          display: flex;
-        }
-
-        .loader-text {
-          font-size: 15px;
-          font-weight: 500;
-          color: #fff;
-        }
-
         /* ================= HAND LOADER ================= */
         .hand-loader {
           --skin-color: #E4C560;
@@ -523,8 +499,8 @@ container:
         }
       </style>
 
-      <!-- Unified loading: hand loader only (replaces Anvil blue dots) -->
-      <script src="_/theme/global-loading.js"></script>
+      <!-- Disable global hand loader on login page (login has its own button loaders) -->
+      <script>window.__hpLoadingInit = true;</script>
       <!-- Load i18n Script with fallback -->
       <script>
         // Inline i18n to avoid 404 issues
@@ -843,19 +819,6 @@ container:
           </div>
 
         </div>
-      </div>
-
-      <!-- Loading Overlay -->
-      <div class="loading-overlay" id="loadingOverlay">
-        <div class="hand-loader">
-          <div class="hand-finger"></div>
-          <div class="hand-finger"></div>
-          <div class="hand-finger"></div>
-          <div class="hand-finger"></div>
-          <div class="hand-palm"></div>
-          <div class="hand-thumb"></div>
-        </div>
-        <div class="loader-text">Please wait...</div>
       </div>
 
       <script>
@@ -1256,6 +1219,15 @@ container:
             if (e.key === 'Enter') verifyOtpLoginBtn.click();
           };
 
+          // Auto-verify when 6 digits are entered
+          otpLoginCode.oninput = function() {
+            var val = otpLoginCode.value.replace(/\D/g, '');
+            otpLoginCode.value = val;
+            if (val.length === 6) {
+              verifyOtpLoginBtn.click();
+            }
+          };
+
           // Resend OTP for login
           document.getElementById('resendOtpLogin').onclick = async function() {
             if (window._loginUseAuthenticator) return;
@@ -1410,6 +1382,15 @@ container:
           // Enter key for OTP registration
           otpRegCode.onkeypress = function(e) {
             if (e.key === 'Enter') verifyOtpRegBtn.click();
+          };
+
+          // Auto-verify when 6 digits are entered
+          otpRegCode.oninput = function() {
+            var val = otpRegCode.value.replace(/\D/g, '');
+            otpRegCode.value = val;
+            if (val.length === 6) {
+              verifyOtpRegBtn.click();
+            }
           };
 
           // Resend OTP for registration
@@ -1595,6 +1576,15 @@ container:
           // Enter key for forgot OTP
           forgotOtpCode.onkeypress = function(e) {
             if (e.key === 'Enter') verifyForgotOtpBtn.click();
+          };
+
+          // Auto-verify when 6 digits are entered
+          forgotOtpCode.oninput = function() {
+            var val = forgotOtpCode.value.replace(/\D/g, '');
+            forgotOtpCode.value = val;
+            if (val.length === 6) {
+              verifyForgotOtpBtn.click();
+            }
           };
 
           // Resend forgot password OTP

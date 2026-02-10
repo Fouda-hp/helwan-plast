@@ -1097,20 +1097,13 @@ def get_dashboard_stats(token_or_email=None):
             except Exception:
                 pass
             for p in payments:
-                amt = 0
-                try:
-                    amt = float(p.get('amount') or 0)
-                except (TypeError, ValueError):
-                    v = p.get('value')
-                    if v is not None:
-                        try:
-                            amt = float(v)
-                        except (TypeError, ValueError):
-                            pass
+                amt = _parse_payment_amount(p)
                 if amt <= 0:
                     continue
                 total_due_payments_egp += amt
+                status = p.get('status') or _compute_payment_status(p.get('date', ''))
                 date_str = (p.get('date') or '').strip()
+                paid_date_str = (p.get('paid_date') or '').strip()
                 if not date_str:
                     continue
                 try:
@@ -1123,6 +1116,27 @@ def get_dashboard_stats(token_or_email=None):
                             month_totals_due[m - 1] += amt
                 except (ValueError, IndexError):
                     pass
+                # Paid amounts by month
+                if status == 'paid':
+                    try:
+                        pd_str = paid_date_str or date_str
+                        pd_parts = pd_str.split('T')[0].split('-')
+                        if len(pd_parts) >= 2 and int(pd_parts[0]) == year:
+                            pm = int(pd_parts[1])
+                            if 1 <= pm <= 12:
+                                month_totals_paid[pm - 1] += amt
+                    except (ValueError, IndexError):
+                        pass
+                # Overdue amounts by month
+                elif status == 'overdue':
+                    try:
+                        od_parts = date_str.split('T')[0].split('-')
+                        if len(od_parts) >= 2 and int(od_parts[0]) == year:
+                            om = int(od_parts[1])
+                            if 1 <= om <= 12:
+                                month_totals_overdue[om - 1] += amt
+                    except (ValueError, IndexError):
+                        pass
     except Exception as e:
         logger.warning("Dashboard contract/finance stats: %s", e)
 
@@ -2428,7 +2442,7 @@ def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
             except Exception:
                 pass
             payments_display = []
-            for p in (payments_list or [])[:12]:
+            for pidx, p in enumerate((payments_list or [])[:12]):
                 date_str = str(p.get('date') or p.get('payment_date') or '').strip()
                 amt = p.get('amount')
                 if amt is None:
@@ -2438,7 +2452,16 @@ def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
                 except (TypeError, ValueError):
                     amount_val = None
                 if date_str or amount_val is not None:
-                    payments_display.append({'date': date_str, 'amount': amount_val})
+                    status = p.get('status') or _compute_payment_status(date_str)
+                    payments_display.append({
+                        'date': date_str,
+                        'amount': amount_val,
+                        'status': status,
+                        'paid_date': p.get('paid_date', ''),
+                        'index': pidx,
+                        'label_ar': p.get('label_ar', f'الدفعة {pidx + 1}'),
+                        'label_en': p.get('label_en', f'Installment {pidx + 1}'),
+                    })
             data.append({
                 'contract_number': r.get('contract_number'),
                 'quotation_number': r.get('quotation_number'),
@@ -2496,6 +2519,302 @@ def export_contracts_data(token_or_email=None):
     except Exception as e:
         logger.error(f"Error exporting contracts: {e}")
         return []
+
+
+# =========================================================
+# Payment Tracking Dashboard
+# =========================================================
+
+
+def _compute_payment_status(date_str):
+    """Compute payment status from date string. Returns 'overdue' if past, 'due' if future/today, '' if invalid."""
+    if not date_str or not str(date_str).strip():
+        return ''
+    try:
+        parts = str(date_str).strip().split('T')[0].split('-')
+        if len(parts) >= 3:
+            payment_date = date(int(parts[0]), int(parts[1]), int(parts[2]))
+            return 'overdue' if payment_date < date.today() else 'due'
+    except (ValueError, IndexError):
+        pass
+    return ''
+
+
+def _parse_payment_amount(p):
+    """Extract numeric amount from a payment dict, handling both 'amount' and 'value' keys."""
+    amt = 0
+    try:
+        amt = float(p.get('amount') or 0)
+    except (TypeError, ValueError):
+        v = p.get('value')
+        if v is not None:
+            try:
+                amt = float(str(v).replace(',', '').replace('،', '').strip())
+            except (TypeError, ValueError):
+                pass
+    return amt
+
+
+@anvil.server.callable
+def get_payment_dashboard_data(token_or_email=None):
+    """
+    Aggregated payment tracking data for the dashboard.
+    Requires 'view' permission.
+    """
+    is_valid, _, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        return {'success': False, 'message': 'Permission denied'}
+    try:
+        all_contracts = list(app_tables.contracts.search())
+        now = get_utc_now()
+        year = now.year
+        today = now.date() if hasattr(now, 'date') else now
+
+        total_value = 0.0
+        total_paid = 0.0
+        total_remaining = 0.0
+        total_overdue = 0.0
+        overdue_count = 0
+        overdue_payments = []
+        month_totals_due = [0.0] * 12
+        month_totals_paid = [0.0] * 12
+        month_totals_overdue = [0.0] * 12
+
+        for row in all_contracts:
+            # Parse total price
+            tp = row.get('total_price')
+            contract_total = 0.0
+            try:
+                if tp is not None and tp != '':
+                    contract_total = float(str(tp).replace(',', '').replace('،', '').strip())
+            except (TypeError, ValueError):
+                pass
+            total_value += contract_total
+
+            # Parse payments
+            payments = []
+            try:
+                payments = json.loads(row.get('payments_json') or '[]')
+            except Exception:
+                pass
+
+            for idx, p in enumerate(payments):
+                amt = _parse_payment_amount(p)
+                if amt <= 0:
+                    continue
+
+                status = p.get('status') or _compute_payment_status(p.get('date', ''))
+                paid_date_str = p.get('paid_date', '')
+                date_str = (p.get('date') or '').strip()
+
+                if status == 'paid':
+                    total_paid += amt
+                    # Chart: paid by month
+                    try:
+                        pd_str = paid_date_str or date_str
+                        pd_parts = str(pd_str).split('T')[0].split('-')
+                        if len(pd_parts) >= 2 and int(pd_parts[0]) == year:
+                            m = int(pd_parts[1])
+                            if 1 <= m <= 12:
+                                month_totals_paid[m - 1] += amt
+                    except (ValueError, IndexError):
+                        pass
+                elif status == 'overdue':
+                    total_overdue += amt
+                    overdue_count += 1
+                    # Calculate days overdue
+                    days_overdue = 0
+                    try:
+                        d_parts = date_str.split('T')[0].split('-')
+                        if len(d_parts) >= 3:
+                            payment_date = date(int(d_parts[0]), int(d_parts[1]), int(d_parts[2]))
+                            days_overdue = (today - payment_date).days
+                    except Exception:
+                        pass
+                    overdue_payments.append({
+                        'contract_number': row.get('contract_number', ''),
+                        'client_name': row.get('client_name', ''),
+                        'quotation_number': row.get('quotation_number'),
+                        'payment_index': idx,
+                        'amount': amt,
+                        'due_date': date_str,
+                        'days_overdue': days_overdue,
+                        'label_ar': p.get('label_ar', f'الدفعة {idx + 1}'),
+                        'label_en': p.get('label_en', f'Installment {idx + 1}'),
+                    })
+                    # Chart: overdue by month
+                    try:
+                        d_parts = date_str.split('T')[0].split('-')
+                        if len(d_parts) >= 2 and int(d_parts[0]) == year:
+                            m = int(d_parts[1])
+                            if 1 <= m <= 12:
+                                month_totals_overdue[m - 1] += amt
+                    except (ValueError, IndexError):
+                        pass
+
+                # Chart: due by month (all payments regardless of status)
+                try:
+                    d_parts = date_str.split('T')[0].split('-')
+                    if len(d_parts) >= 2 and int(d_parts[0]) == year:
+                        m = int(d_parts[1])
+                        if 1 <= m <= 12:
+                            month_totals_due[m - 1] += amt
+                except (ValueError, IndexError):
+                    pass
+
+        total_remaining = total_value - total_paid
+        # Sort overdue by days descending
+        overdue_payments.sort(key=lambda x: x.get('days_overdue', 0), reverse=True)
+
+        finance_chart = {
+            "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+            "paid": [round(x, 2) for x in month_totals_paid],
+            "due": [round(x, 2) for x in month_totals_due],
+            "overdue": [round(x, 2) for x in month_totals_overdue],
+        }
+
+        return {
+            'success': True,
+            'stats': {
+                'total_contracts': len(all_contracts),
+                'total_value': round(total_value, 2),
+                'total_paid': round(total_paid, 2),
+                'total_remaining': round(total_remaining, 2),
+                'total_overdue': round(total_overdue, 2),
+                'overdue_count': overdue_count,
+            },
+            'finance_chart': finance_chart,
+            'overdue_payments': overdue_payments,
+        }
+    except Exception as e:
+        logger.error(f"Error in get_payment_dashboard_data: {e}")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def update_payment_status(quotation_number, payment_index, new_status, paid_date=None, token_or_email=None):
+    """
+    Update the status of a single payment within a contract.
+    Requires 'edit' permission.
+    """
+    auth_key = token_or_email
+    if not auth_key:
+        return {'success': False, 'message': 'Authentication required'}
+    is_valid, verified_email, error = _require_permission(auth_key, 'edit')
+    if not is_valid:
+        return {'success': False, 'message': 'Edit permission required'}
+    user_email = verified_email or 'system'
+
+    if new_status not in ('paid', 'due', 'overdue'):
+        return {'success': False, 'message': 'Invalid status. Must be paid, due, or overdue.'}
+
+    try:
+        q_num = int(quotation_number)
+    except (TypeError, ValueError):
+        return {'success': False, 'message': 'Invalid quotation number'}
+
+    try:
+        row = app_tables.contracts.get(quotation_number=q_num)
+        if not row:
+            return {'success': False, 'message': 'Contract not found'}
+
+        payments = []
+        try:
+            payments = json.loads(row.get('payments_json') or '[]')
+        except Exception:
+            pass
+
+        idx = int(payment_index)
+        if idx < 0 or idx >= len(payments):
+            return {'success': False, 'message': 'Invalid payment index'}
+
+        old_status = payments[idx].get('status', '')
+        old_paid_date = payments[idx].get('paid_date', '')
+
+        payments[idx]['status'] = new_status
+        if new_status == 'paid':
+            payments[idx]['paid_date'] = paid_date or date.today().isoformat()
+        else:
+            payments[idx]['paid_date'] = ''
+
+        new_json = json.dumps(payments, ensure_ascii=False, default=str)
+        row.update(payments_json=new_json, updated_at=get_utc_now())
+
+        # Audit
+        contract_number = row.get('contract_number', '')
+        ip_address = get_client_ip()
+        log_audit('UPDATE_PAYMENT_STATUS', 'contracts', contract_number,
+                  {'payment_index': idx, 'old_status': old_status, 'old_paid_date': old_paid_date},
+                  {'payment_index': idx, 'new_status': new_status, 'paid_date': payments[idx].get('paid_date', '')},
+                  user_email, ip_address)
+
+        # Notification
+        try:
+            notifications_module.create_notification(
+                user_email, 'payment_status_updated',
+                {'contract_number': contract_number, 'payment_index': idx, 'new_status': new_status}
+            )
+        except Exception:
+            pass
+
+        return {'success': True, 'message': 'Payment status updated', 'payments': payments}
+    except Exception as e:
+        logger.error(f"Error updating payment status: {e}")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def export_payment_schedule_excel(token_or_email=None):
+    """Export payment schedule to CSV - requires export permission."""
+    is_valid, _, error = _require_permission(token_or_email, 'export')
+    if not is_valid:
+        return {'success': False, 'message': 'Export permission required'}
+    try:
+        all_rows = list(app_tables.contracts.search())
+        all_rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            'Contract #', 'Client', 'Total Price', 'Payment #', 'Payment Label',
+            'Amount', 'Due Date', 'Status', 'Paid Date'
+        ])
+
+        for r in all_rows:
+            contract_num = r.get('contract_number', '')
+            client_name = r.get('client_name', '')
+            tp = r.get('total_price', '')
+            try:
+                total_price_val = float(str(tp).replace(',', '').replace('،', '').strip()) if tp not in (None, '') else ''
+            except (TypeError, ValueError):
+                total_price_val = tp
+
+            payments = []
+            try:
+                payments = json.loads(r.get('payments_json') or '[]')
+            except Exception:
+                pass
+
+            if not payments:
+                writer.writerow([contract_num, client_name, total_price_val, '', '', '', '', '', ''])
+            else:
+                for idx, p in enumerate(payments):
+                    amt = _parse_payment_amount(p)
+                    status = p.get('status') or _compute_payment_status(p.get('date', ''))
+                    writer.writerow([
+                        contract_num, client_name, total_price_val if idx == 0 else '',
+                        idx + 1, p.get('label_en', f'Installment {idx + 1}'),
+                        round(amt, 2) if amt else '', p.get('date', ''),
+                        status, p.get('paid_date', '')
+                    ])
+
+        csv_content = output.getvalue()
+        output.close()
+        media = anvil.BlobMedia('text/csv', csv_content.encode('utf-8-sig'), name='payment_schedule.csv')
+        return {'success': True, 'file': media}
+    except Exception as e:
+        logger.error(f"Error exporting payment schedule: {e}")
+        return {'success': False, 'message': str(e)}
 
 
 # =========================================================

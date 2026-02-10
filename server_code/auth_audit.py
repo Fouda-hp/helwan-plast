@@ -46,6 +46,7 @@ ACTION_LABELS = {
     'BACKUP_EXPORT': 'تحميل نسخة احتياطية',
     'BACKUP_SCHEDULED': 'نسخة احتياطية مجدولة',
     'BACKUP_RESTORE': 'استعادة نسخة احتياطية',
+    'UPDATE_PAYMENT_STATUS': 'تحديث حالة دفعة',
 }
 
 TABLE_LABELS = {

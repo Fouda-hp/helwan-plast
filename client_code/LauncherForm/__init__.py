@@ -142,6 +142,8 @@ class LauncherForm(LauncherFormTemplate):
             open_form('ContractPrintForm')
         elif hash_val == "#contract-edit":
             open_form('ContractEditForm')
+        elif hash_val == "#payment-dashboard":
+            open_form('PaymentDashboardForm')
         elif hash_val == "#login":
             open_form('LoginForm')
 
@@ -402,6 +404,12 @@ class LauncherForm(LauncherFormTemplate):
         elif h == "#contract-edit":
             try:
                 open_form("ContractEditForm")
+            except Exception as e:
+                try: anvil.js.window.showNotification('error', '', str(e))
+                except Exception: pass
+        elif h == "#payment-dashboard":
+            try:
+                open_form("PaymentDashboardForm")
             except Exception as e:
                 try: anvil.js.window.showNotification('error', '', str(e))
                 except Exception: pass

@@ -1,0 +1,584 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { margin: 0; }
+
+        .pd-wrapper { max-width: 1400px; margin: 0 auto; padding: 20px; min-height: 100vh; background: #f5f7fa; }
+
+        /* Header */
+        .pd-header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .pd-header h1 { margin: 0; font-size: 22px; color: #1a237e; flex: 1; min-width: 200px; }
+        .pd-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .pd-search { padding: 8px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; width: 220px; }
+        .pd-select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; background: #fff; }
+        .pd-btn { padding: 8px 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .pd-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .pd-btn-primary { background: #1976d2; color: #fff; }
+        .pd-btn-success { background: #4caf50; color: #fff; }
+        .pd-btn-secondary { background: #e0e0e0; color: #333; }
+        .pd-btn-danger { background: #f44336; color: #fff; }
+
+        /* Stats Cards */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .stat-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); text-align: center; transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+        .stat-card .stat-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .stat-card .stat-value { font-size: 28px; font-weight: 700; color: #1a237e; }
+        .stat-card .stat-sub { font-size: 11px; color: #999; margin-top: 4px; }
+        .stat-card.card-blue .stat-value { color: #1976d2; }
+        .stat-card.card-green .stat-value { color: #4caf50; }
+        .stat-card.card-orange .stat-value { color: #ff9800; }
+        .stat-card.card-red { border-left: 4px solid #f44336; }
+        .stat-card.card-red .stat-value { color: #f44336; }
+
+        /* Chart */
+        .chart-container { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .chart-container canvas { max-height: 280px; }
+
+        /* Alerts Banner */
+        .alerts-banner { background: linear-gradient(135deg, #ff5252, #f44336); color: #fff; padding: 14px 20px; border-radius: 10px; margin-bottom: 16px; display: none; align-items: center; gap: 12px; font-weight: 600; animation: pulse-alert 2s infinite; }
+        .alerts-banner .alert-icon { font-size: 22px; background: rgba(255,255,255,0.25); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        @keyframes pulse-alert { 0%,100% { box-shadow: 0 0 0 0 rgba(244,67,54,0.4); } 50% { box-shadow: 0 0 0 8px rgba(244,67,54,0); } }
+
+        /* Table */
+        .table-container { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+        .table-scroll { overflow-x: auto; }
+        .pd-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .pd-table thead th { background: #1a237e; color: #fff; padding: 12px 10px; text-align: left; font-weight: 600; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+        .pd-table tbody td { padding: 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+        .pd-table tbody tr:hover { background: #f8f9fe; }
+        .pd-table tbody tr.contract-row { cursor: pointer; }
+        .pd-table tbody tr.payment-row { background: #fafbff; }
+        .pd-table tbody tr.payment-row td { padding-left: 40px; font-size: 12px; }
+
+        /* Badges */
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .badge-paid { background: #e8f5e9; color: #2e7d32; }
+        .badge-due { background: #fff3e0; color: #e65100; }
+        .badge-overdue { background: #ffebee; color: #c62828; }
+        .badge-allPaid { background: #e8f5e9; color: #2e7d32; }
+        .badge-partial { background: #e3f2fd; color: #1565c0; }
+
+        .expand-btn { background: none; border: 1px solid #ccc; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 1; color: #666; }
+        .expand-btn:hover { background: #e3f2fd; border-color: #1976d2; color: #1976d2; }
+
+        .btn-mark-paid { padding: 3px 10px; border: none; border-radius: 6px; background: #4caf50; color: #fff; font-size: 11px; cursor: pointer; font-weight: 600; }
+        .btn-mark-paid:hover { background: #388e3c; }
+
+        /* Pagination */
+        .pagination { padding: 12px 16px; display: flex; justify-content: center; align-items: center; gap: 8px; border-top: 1px solid #f0f0f0; }
+        .page-btn { padding: 6px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-size: 12px; }
+        .page-btn:hover { background: #e3f2fd; }
+        .page-btn.active { background: #1976d2; color: #fff; border-color: #1976d2; }
+        .page-info { font-size: 12px; color: #888; }
+
+        /* Modal */
+        .pd-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 99999; }
+        .pd-modal-box { background: #fff; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .pd-modal-box h3 { margin: 0 0 16px; color: #1a237e; font-size: 18px; }
+        .pd-modal-box label { font-size: 13px; color: #555; display: block; margin-bottom: 4px; margin-top: 12px; }
+        .pd-modal-box select, .pd-modal-box input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .pd-modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+
+        /* Empty / Loading */
+        .pd-empty { text-align: center; padding: 60px 20px; color: #999; font-size: 16px; }
+        .pd-loading { text-align: center; padding: 40px; color: #1976d2; font-size: 14px; }
+
+        /* RTL */
+        body.rtl .pd-header h1 { text-align: right; }
+        body.rtl .pd-table thead th { text-align: right; }
+        body.rtl .pd-table tbody td { text-align: right; }
+        body.rtl .pd-table tbody tr.payment-row td { padding-left: 10px; padding-right: 40px; }
+        body.rtl .stat-card.card-red { border-left: none; border-right: 4px solid #f44336; }
+
+        /* Mobile */
+        @media (max-width: 700px) {
+          .pd-wrapper { padding: 10px; }
+          .pd-header { flex-direction: column; align-items: stretch; }
+          .pd-header h1 { font-size: 18px; text-align: center; }
+          .pd-toolbar { justify-content: center; }
+          .pd-search { width: 100%; }
+          .stats-row { grid-template-columns: repeat(2, 1fr); }
+          .stat-card .stat-value { font-size: 22px; }
+        }
+      </style>
+      <script src="_/theme/global-loading.js"></script>
+
+      <div class="pd-wrapper" id="pdWrapper">
+        <!-- Header -->
+        <div class="pd-header">
+          <h1 id="pdTitle">Payment Tracking Dashboard</h1>
+          <div class="pd-toolbar">
+            <input type="text" class="pd-search" id="pdSearch" placeholder="Search client or contract...">
+            <select class="pd-select" id="pdStatusFilter">
+              <option value="all" id="optAll">All</option>
+              <option value="overdue" id="optOverdue">Overdue</option>
+              <option value="due" id="optDue">Due</option>
+              <option value="paid" id="optPaid">Paid</option>
+            </select>
+            <select class="pd-select" id="pdTimeFilter">
+              <option value="0" id="optAllTime">All Time</option>
+              <option value="30" id="opt30">Next 30 Days</option>
+              <option value="60" id="opt60">Next 60 Days</option>
+              <option value="90" id="opt90">Next 90 Days</option>
+            </select>
+            <button class="pd-btn pd-btn-primary" id="pdRefreshBtn">Refresh</button>
+            <button class="pd-btn pd-btn-success" id="pdExportBtn">Export</button>
+            <button class="pd-btn pd-btn-secondary" id="pdBackBtn">Back</button>
+          </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-row" id="statsRow">
+          <div class="stat-card card-blue" id="cardContracts">
+            <div class="stat-label" id="lblContracts">Total Contracts</div>
+            <div class="stat-value" id="valContracts">0</div>
+          </div>
+          <div class="stat-card" id="cardValue">
+            <div class="stat-label" id="lblValue">Total Receivable</div>
+            <div class="stat-value" id="valValue">0</div>
+          </div>
+          <div class="stat-card card-green" id="cardPaid">
+            <div class="stat-label" id="lblPaid">Collected</div>
+            <div class="stat-value" id="valPaid">0</div>
+          </div>
+          <div class="stat-card card-orange" id="cardRemaining">
+            <div class="stat-label" id="lblRemaining">Remaining</div>
+            <div class="stat-value" id="valRemaining">0</div>
+          </div>
+          <div class="stat-card card-red" id="cardOverdue">
+            <div class="stat-label" id="lblOverdue">Overdue</div>
+            <div class="stat-value" id="valOverdue">0</div>
+            <div class="stat-sub" id="valOverdueCount"></div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-container" id="chartContainer">
+          <canvas id="paymentChart"></canvas>
+        </div>
+
+        <!-- Alerts Banner -->
+        <div class="alerts-banner" id="alertsBanner">
+          <span class="alert-icon">!</span>
+          <span id="alertsText"></span>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+          <div class="table-scroll">
+            <table class="pd-table" id="contractsTable">
+              <thead>
+                <tr>
+                  <th style="width:36px;"></th>
+                  <th id="thContract">Contract #</th>
+                  <th id="thClient">Client</th>
+                  <th id="thTotal">Total Price</th>
+                  <th id="thPaidCol">Paid</th>
+                  <th id="thRemainingCol">Remaining</th>
+                  <th id="thStatus">Status</th>
+                  <th id="thDelivery">Delivery</th>
+                </tr>
+              </thead>
+              <tbody id="contractsBody">
+                <tr><td colspan="8" class="pd-loading" id="loadingMsg">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="paginationRow"></div>
+        </div>
+      </div>
+
+      <!-- Status Update Modal -->
+      <div class="pd-modal" id="statusModal">
+        <div class="pd-modal-box">
+          <h3 id="modalTitle">Update Payment Status</h3>
+          <label id="lblStatus">Status</label>
+          <select id="statusSelect">
+            <option value="paid">Paid</option>
+            <option value="due">Due</option>
+            <option value="overdue">Overdue</option>
+          </select>
+          <div id="paidDateRow">
+            <label id="lblPaidDate">Payment Date</label>
+            <input type="date" id="paidDateInput">
+          </div>
+          <div class="pd-modal-actions">
+            <button class="pd-btn pd-btn-secondary" id="btnCancelStatus">Cancel</button>
+            <button class="pd-btn pd-btn-primary" id="btnSaveStatus">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <script>
+      (function() {
+        'use strict';
+
+        // ========== i18n ==========
+        var lang = localStorage.getItem('hp_language') || 'en';
+        var T = {
+          en: {
+            pdTitle: 'Payment Tracking Dashboard',
+            searchPH: 'Search client or contract...',
+            optAll: 'All', optOverdue: 'Overdue', optDue: 'Due', optPaid: 'Paid',
+            optAllTime: 'All Time', opt30: 'Next 30 Days', opt60: 'Next 60 Days', opt90: 'Next 90 Days',
+            refresh: 'Refresh', export_btn: 'Export', back: 'Back',
+            lblContracts: 'Total Contracts', lblValue: 'Total Receivable (EGP)',
+            lblPaid: 'Collected', lblRemaining: 'Remaining', lblOverdue: 'Overdue Amount',
+            thContract: 'Contract #', thClient: 'Client', thTotal: 'Total Price',
+            thPaidCol: 'Paid', thRemainingCol: 'Remaining', thStatus: 'Status', thDelivery: 'Delivery',
+            paid: 'Paid', due: 'Due', overdue: 'Overdue', allPaid: 'All Paid', partial: 'Partial',
+            markPaid: 'Mark Paid', noData: 'No contracts found', loading: 'Loading...',
+            modalTitle: 'Update Payment Status', lblStatus: 'Status', lblPaidDate: 'Payment Date',
+            save: 'Save', cancel: 'Cancel',
+            alertsText: '{count} overdue payment(s) require attention',
+            overdueCount: '{count} payment(s)',
+            chartDue: 'Due', chartPaid: 'Paid', chartOverdue: 'Overdue',
+            page: 'Page', of: 'of', prev: 'Prev', next: 'Next',
+            exportSuccess: 'Export started', exportFail: 'Export failed',
+            statusUpdated: 'Payment status updated'
+          },
+          ar: {
+            pdTitle: '\u0644\u0648\u062d\u0629 \u062a\u062a\u0628\u0639 \u0627\u0644\u0645\u062f\u0641\u0648\u0639\u0627\u062a',
+            searchPH: '\u0628\u062d\u062b \u0628\u0627\u0644\u0639\u0645\u064a\u0644 \u0623\u0648 \u0631\u0642\u0645 \u0627\u0644\u0639\u0642\u062f...',
+            optAll: '\u0627\u0644\u0643\u0644', optOverdue: '\u0645\u062a\u0623\u062e\u0631', optDue: '\u0645\u0633\u062a\u062d\u0642', optPaid: '\u0645\u062f\u0641\u0648\u0639',
+            optAllTime: '\u0643\u0644 \u0627\u0644\u0648\u0642\u062a', opt30: '\u0627\u0644\u0640 30 \u064a\u0648\u0645 \u0627\u0644\u0642\u0627\u062f\u0645\u0629', opt60: '\u0627\u0644\u0640 60 \u064a\u0648\u0645 \u0627\u0644\u0642\u0627\u062f\u0645\u0629', opt90: '\u0627\u0644\u0640 90 \u064a\u0648\u0645 \u0627\u0644\u0642\u0627\u062f\u0645\u0629',
+            refresh: '\u062a\u062d\u062f\u064a\u062b', export_btn: '\u062a\u0635\u062f\u064a\u0631', back: '\u0631\u062c\u0648\u0639',
+            lblContracts: '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0639\u0642\u0648\u062f', lblValue: '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0633\u062a\u062d\u0642 (\u062c.\u0645)',
+            lblPaid: '\u0627\u0644\u0645\u062d\u0635\u0644', lblRemaining: '\u0627\u0644\u0645\u062a\u0628\u0642\u064a', lblOverdue: '\u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u062a\u0623\u062e\u0631',
+            thContract: '\u0631\u0642\u0645 \u0627\u0644\u0639\u0642\u062f', thClient: '\u0627\u0644\u0639\u0645\u064a\u0644', thTotal: '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0633\u0639\u0631',
+            thPaidCol: '\u0627\u0644\u0645\u062f\u0641\u0648\u0639', thRemainingCol: '\u0627\u0644\u0645\u062a\u0628\u0642\u064a', thStatus: '\u0627\u0644\u062d\u0627\u0644\u0629', thDelivery: '\u0627\u0644\u062a\u0633\u0644\u064a\u0645',
+            paid: '\u0645\u062f\u0641\u0648\u0639', due: '\u0645\u0633\u062a\u062d\u0642', overdue: '\u0645\u062a\u0623\u062e\u0631', allPaid: '\u0645\u062f\u0641\u0648\u0639 \u0628\u0627\u0644\u0643\u0627\u0645\u0644', partial: '\u062c\u0632\u0626\u064a',
+            markPaid: '\u062a\u0633\u062c\u064a\u0644 \u0643\u0645\u062f\u0641\u0648\u0639', noData: '\u0644\u0627 \u062a\u0648\u062c\u062f \u0639\u0642\u0648\u062f', loading: '\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u062d\u0645\u064a\u0644...',
+            modalTitle: '\u062a\u062d\u062f\u064a\u062b \u062d\u0627\u0644\u0629 \u0627\u0644\u062f\u0641\u0639\u0629', lblStatus: '\u0627\u0644\u062d\u0627\u0644\u0629', lblPaidDate: '\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u062f\u0641\u0639',
+            save: '\u062d\u0641\u0638', cancel: '\u0625\u0644\u063a\u0627\u0621',
+            alertsText: '{count} \u062f\u0641\u0639\u0627\u062a \u0645\u062a\u0623\u062e\u0631\u0629 \u062a\u062d\u062a\u0627\u062c \u0627\u0647\u062a\u0645\u0627\u0645',
+            overdueCount: '{count} \u062f\u0641\u0639\u0629',
+            chartDue: '\u0645\u0633\u062a\u062d\u0642', chartPaid: '\u0645\u062f\u0641\u0648\u0639', chartOverdue: '\u0645\u062a\u0623\u062e\u0631',
+            page: '\u0635\u0641\u062d\u0629', of: '\u0645\u0646', prev: '\u0627\u0644\u0633\u0627\u0628\u0642', next: '\u0627\u0644\u062a\u0627\u0644\u064a',
+            exportSuccess: '\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u0635\u062f\u064a\u0631', exportFail: '\u0641\u0634\u0644 \u0627\u0644\u062a\u0635\u062f\u064a\u0631',
+            statusUpdated: '\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u062d\u0627\u0644\u0629 \u0627\u0644\u062f\u0641\u0639\u0629'
+          }
+        };
+        function t(k) { return (T[lang]||T['en'])[k] || k; }
+        function fmt(n) { if (n == null) return '0'; return Number(n).toLocaleString('en-US', {maximumFractionDigits: 0}); }
+
+        // ========== STATE ==========
+        var currentPage = 1, pageSize = 20, totalPages = 1;
+        var searchQuery = '', statusFilter = 'all', timeFilter = 0;
+        var contractsData = [], expandedRows = {};
+        var chartInstance = null;
+        var pendingUpdate = null;
+
+        // ========== INIT ==========
+        function waitForBridge() {
+          if (window.pyGetContractsList && window.pyGetPaymentDashboardData) {
+            init();
+          } else {
+            setTimeout(waitForBridge, 200);
+          }
+        }
+
+        function init() {
+          applyLang();
+          bindEvents();
+          loadAll();
+        }
+
+        function applyLang() {
+          if (lang === 'ar') {
+            document.body.classList.add('rtl');
+            document.documentElement.dir = 'rtl';
+          } else {
+            document.body.classList.remove('rtl');
+            document.documentElement.dir = 'ltr';
+          }
+          var ids = ['pdTitle','lblContracts','lblValue','lblPaid','lblRemaining','lblOverdue',
+                     'thContract','thClient','thTotal','thPaidCol','thRemainingCol','thStatus','thDelivery',
+                     'modalTitle','lblStatus','lblPaidDate'];
+          ids.forEach(function(id) { var el = document.getElementById(id); if (el) el.textContent = t(id); });
+          var el;
+          el = document.getElementById('pdSearch'); if (el) el.placeholder = t('searchPH');
+          el = document.getElementById('optAll'); if (el) el.textContent = t('optAll');
+          el = document.getElementById('optOverdue'); if (el) el.textContent = t('optOverdue');
+          el = document.getElementById('optDue'); if (el) el.textContent = t('optDue');
+          el = document.getElementById('optPaid'); if (el) el.textContent = t('optPaid');
+          el = document.getElementById('optAllTime'); if (el) el.textContent = t('optAllTime');
+          el = document.getElementById('opt30'); if (el) el.textContent = t('opt30');
+          el = document.getElementById('opt60'); if (el) el.textContent = t('opt60');
+          el = document.getElementById('opt90'); if (el) el.textContent = t('opt90');
+          el = document.getElementById('pdRefreshBtn'); if (el) el.textContent = t('refresh');
+          el = document.getElementById('pdExportBtn'); if (el) el.textContent = t('export_btn');
+          el = document.getElementById('pdBackBtn'); if (el) el.textContent = t('back');
+          el = document.getElementById('btnSaveStatus'); if (el) el.textContent = t('save');
+          el = document.getElementById('btnCancelStatus'); if (el) el.textContent = t('cancel');
+          el = document.getElementById('loadingMsg'); if (el) el.textContent = t('loading');
+        }
+
+        function bindEvents() {
+          var searchEl = document.getElementById('pdSearch');
+          var debounceTimer;
+          if (searchEl) searchEl.oninput = function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() { searchQuery = searchEl.value.trim(); currentPage = 1; loadContracts(); }, 400);
+          };
+          document.getElementById('pdStatusFilter').onchange = function() { statusFilter = this.value; renderTable(); };
+          document.getElementById('pdTimeFilter').onchange = function() { timeFilter = parseInt(this.value) || 0; renderTable(); };
+          document.getElementById('pdRefreshBtn').onclick = function() { loadAll(); };
+          document.getElementById('pdExportBtn').onclick = onExport;
+          document.getElementById('pdBackBtn').onclick = function() { window.pyGoBack && window.pyGoBack(); };
+          document.getElementById('btnSaveStatus').onclick = onSaveStatus;
+          document.getElementById('btnCancelStatus').onclick = closeModal;
+          document.getElementById('statusModal').onclick = function(e) { if (e.target === this) closeModal(); };
+          document.getElementById('statusSelect').onchange = function() {
+            document.getElementById('paidDateRow').style.display = this.value === 'paid' ? 'block' : 'none';
+          };
+        }
+
+        // ========== DATA ==========
+        function loadAll() {
+          loadDashboard();
+          loadContracts();
+        }
+
+        async function loadDashboard() {
+          try {
+            var r = await window.pyGetPaymentDashboardData();
+            if (r && r.success) {
+              renderStats(r.stats);
+              renderChart(r.finance_chart);
+              renderAlerts(r.overdue_payments);
+            }
+          } catch(e) { if (window.showNotification) window.showNotification('error','',String(e)); }
+        }
+
+        async function loadContracts() {
+          var tbody = document.getElementById('contractsBody');
+          tbody.innerHTML = '<tr><td colspan="8" class="pd-loading">' + t('loading') + '</td></tr>';
+          try {
+            var r = await window.pyGetContractsList(searchQuery, currentPage, pageSize);
+            if (r && r.success) {
+              contractsData = r.data || [];
+              totalPages = Math.ceil((r.total || 0) / pageSize) || 1;
+              renderTable();
+            } else {
+              tbody.innerHTML = '<tr><td colspan="8" class="pd-empty">' + (r && r.message || t('noData')) + '</td></tr>';
+            }
+          } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="8" class="pd-empty">Error: ' + String(e) + '</td></tr>';
+          }
+        }
+
+        // ========== RENDER ==========
+        function renderStats(s) {
+          document.getElementById('valContracts').textContent = s.total_contracts || 0;
+          document.getElementById('valValue').textContent = fmt(s.total_value);
+          document.getElementById('valPaid').textContent = fmt(s.total_paid);
+          document.getElementById('valRemaining').textContent = fmt(s.total_remaining);
+          document.getElementById('valOverdue').textContent = fmt(s.total_overdue);
+          document.getElementById('valOverdueCount').textContent = t('overdueCount').replace('{count}', s.overdue_count || 0);
+        }
+
+        function renderChart(chart) {
+          if (!window.Chart) return;
+          var ctx = document.getElementById('paymentChart');
+          if (!ctx) return;
+          if (chartInstance) chartInstance.destroy();
+          var monthLabels = lang === 'ar'
+            ? ['\u064a\u0646\u0627\u064a\u0631','\u0641\u0628\u0631\u0627\u064a\u0631','\u0645\u0627\u0631\u0633','\u0623\u0628\u0631\u064a\u0644','\u0645\u0627\u064a\u0648','\u064a\u0648\u0646\u064a\u0648','\u064a\u0648\u0644\u064a\u0648','\u0623\u063a\u0633\u0637\u0633','\u0633\u0628\u062a\u0645\u0628\u0631','\u0623\u0643\u062a\u0648\u0628\u0631','\u0646\u0648\u0641\u0645\u0628\u0631','\u062f\u064a\u0633\u0645\u0628\u0631']
+            : chart.months;
+          chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: monthLabels,
+              datasets: [
+                { label: t('chartDue'), data: chart.due, backgroundColor: 'rgba(255,152,0,0.7)', borderRadius: 4 },
+                { label: t('chartPaid'), data: chart.paid, backgroundColor: 'rgba(76,175,80,0.7)', borderRadius: 4 },
+                { label: t('chartOverdue'), data: chart.overdue, backgroundColor: 'rgba(244,67,54,0.7)', borderRadius: 4 }
+              ]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { position: 'top' } },
+              scales: { y: { beginAtZero: true, ticks: { callback: function(v) { return fmt(v); } } } }
+            }
+          });
+        }
+
+        function renderAlerts(overdueList) {
+          var banner = document.getElementById('alertsBanner');
+          if (!overdueList || overdueList.length === 0) { banner.style.display = 'none'; return; }
+          banner.style.display = 'flex';
+          document.getElementById('alertsText').textContent = t('alertsText').replace('{count}', overdueList.length);
+        }
+
+        function renderTable() {
+          var tbody = document.getElementById('contractsBody');
+          var data = filterContracts(contractsData);
+          if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="pd-empty">' + t('noData') + '</td></tr>';
+            renderPagination();
+            return;
+          }
+          var html = '';
+          var today = new Date(); today.setHours(0,0,0,0);
+          data.forEach(function(c) {
+            var payments = c.payments || [];
+            var paidAmt = 0, totalAmt = c.total_price || 0;
+            var hasOverdue = false, paidCount = 0;
+            payments.forEach(function(p) {
+              if (p.status === 'paid') { paidAmt += (p.amount || 0); paidCount++; }
+              if (p.status === 'overdue') hasOverdue = true;
+            });
+            var remaining = totalAmt - paidAmt;
+            var overall = paidCount === payments.length && payments.length > 0 ? 'allPaid' : (hasOverdue ? 'overdue' : (paidCount > 0 ? 'partial' : 'due'));
+            var qnum = c.quotation_number;
+            var isExp = expandedRows[qnum];
+
+            html += '<tr class="contract-row" onclick="window._pdToggle(' + qnum + ')">';
+            html += '<td><button class="expand-btn">' + (isExp ? '\u2212' : '+') + '</button></td>';
+            html += '<td>' + esc(c.contract_number || '') + '</td>';
+            html += '<td>' + esc(c.client_name || '') + '</td>';
+            html += '<td>' + fmt(totalAmt) + '</td>';
+            html += '<td>' + fmt(paidAmt) + '</td>';
+            html += '<td>' + fmt(remaining) + '</td>';
+            html += '<td><span class="badge badge-' + overall + '">' + t(overall) + '</span></td>';
+            html += '<td>' + esc(c.delivery_date || '') + '</td>';
+            html += '</tr>';
+
+            if (isExp) {
+              payments.forEach(function(p, idx) {
+                var status = p.status || 'due';
+                var label = lang === 'ar' ? (p.label_ar || ('\u0627\u0644\u062f\u0641\u0639\u0629 ' + (idx+1))) : (p.label_en || ('Installment ' + (idx+1)));
+                html += '<tr class="payment-row">';
+                html += '<td></td>';
+                html += '<td colspan="2">' + esc(label) + '</td>';
+                html += '<td>' + fmt(p.amount) + '</td>';
+                html += '<td>' + esc(p.date || '') + '</td>';
+                html += '<td><span class="badge badge-' + status + '">' + t(status) + '</span></td>';
+                html += '<td>';
+                if (status !== 'paid') {
+                  html += '<button class="btn-mark-paid" onclick="event.stopPropagation(); window._pdMarkPaid(' + qnum + ',' + (p.index != null ? p.index : idx) + ')">' + t('markPaid') + '</button>';
+                } else {
+                  html += esc(p.paid_date || '');
+                }
+                html += '</td>';
+                html += '<td></td>';
+                html += '</tr>';
+              });
+            }
+          });
+          tbody.innerHTML = html;
+          renderPagination();
+        }
+
+        function filterContracts(data) {
+          var today = new Date(); today.setHours(0,0,0,0);
+          return data.filter(function(c) {
+            var payments = c.payments || [];
+            if (statusFilter !== 'all') {
+              var hasMatch = payments.some(function(p) { return p.status === statusFilter; });
+              if (!hasMatch) return false;
+            }
+            if (timeFilter > 0) {
+              var cutoff = new Date(today.getTime() + timeFilter * 86400000);
+              var hasUpcoming = payments.some(function(p) {
+                if (!p.date) return false;
+                try { var d = new Date(p.date); return d >= today && d <= cutoff; } catch(e) { return false; }
+              });
+              if (!hasUpcoming) return false;
+            }
+            return true;
+          });
+        }
+
+        function renderPagination() {
+          var el = document.getElementById('paginationRow');
+          if (totalPages <= 1) { el.innerHTML = ''; return; }
+          var html = '';
+          html += '<button class="page-btn" onclick="window._pdPage(' + (currentPage - 1) + ')" ' + (currentPage <= 1 ? 'disabled' : '') + '>' + t('prev') + '</button>';
+          html += '<span class="page-info">' + t('page') + ' ' + currentPage + ' ' + t('of') + ' ' + totalPages + '</span>';
+          html += '<button class="page-btn" onclick="window._pdPage(' + (currentPage + 1) + ')" ' + (currentPage >= totalPages ? 'disabled' : '') + '>' + t('next') + '</button>';
+          el.innerHTML = html;
+        }
+
+        // ========== ACTIONS ==========
+        window._pdToggle = function(qnum) {
+          expandedRows[qnum] = !expandedRows[qnum];
+          renderTable();
+        };
+
+        window._pdPage = function(p) {
+          if (p < 1 || p > totalPages) return;
+          currentPage = p;
+          loadContracts();
+        };
+
+        window._pdMarkPaid = function(qnum, pidx) {
+          pendingUpdate = { qnum: qnum, pidx: pidx };
+          document.getElementById('statusSelect').value = 'paid';
+          document.getElementById('paidDateInput').value = new Date().toISOString().split('T')[0];
+          document.getElementById('paidDateRow').style.display = 'block';
+          document.getElementById('statusModal').style.display = 'flex';
+        };
+
+        async function onSaveStatus() {
+          if (!pendingUpdate) return;
+          var status = document.getElementById('statusSelect').value;
+          var paidDate = status === 'paid' ? document.getElementById('paidDateInput').value : null;
+          try {
+            var r = await window.pyUpdatePaymentStatus(pendingUpdate.qnum, pendingUpdate.pidx, status, paidDate);
+            if (r && r.success) {
+              if (window.showNotification) window.showNotification('success', '', t('statusUpdated'));
+              closeModal();
+              loadAll();
+            } else {
+              if (window.showNotification) window.showNotification('error', '', (r && r.message) || 'Error');
+            }
+          } catch(e) {
+            if (window.showNotification) window.showNotification('error', '', String(e));
+          }
+        }
+
+        function closeModal() {
+          document.getElementById('statusModal').style.display = 'none';
+          pendingUpdate = null;
+        }
+
+        async function onExport() {
+          try {
+            var r = await window.pyExportPaymentSchedule();
+            if (r && r.success) {
+              if (window.showNotification) window.showNotification('success', '', t('exportSuccess'));
+            } else {
+              if (window.showNotification) window.showNotification('error', '', (r && r.message) || t('exportFail'));
+            }
+          } catch(e) {
+            if (window.showNotification) window.showNotification('error', '', String(e));
+          }
+        }
+
+        function esc(s) {
+          if (s == null) return '';
+          return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        // ========== CHART.JS CDN ==========
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+        script.onload = function() { setTimeout(waitForBridge, 100); };
+        script.onerror = function() { setTimeout(waitForBridge, 100); };
+        document.head.appendChild(script);
+
+        // Listen for language changes
+        window.addEventListener('languageChanged', function(e) {
+          if (e.detail && e.detail.lang) { lang = e.detail.lang; applyLang(); renderTable(); }
+        });
+
+      })();
+      </script>
+  type: HtmlTemplate
+is_package: true

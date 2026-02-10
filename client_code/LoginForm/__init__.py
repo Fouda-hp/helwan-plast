@@ -135,6 +135,8 @@ class LoginForm(LoginFormTemplate):
             open_form('ContractPrintForm')
         elif hash_val == "#contract-edit":
             open_form('ContractEditForm')
+        elif hash_val == "#payment-dashboard":
+            open_form('PaymentDashboardForm')
         else:
             open_form('LauncherForm')
 

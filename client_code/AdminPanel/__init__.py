@@ -1998,10 +1998,41 @@ class AdminPanel(AdminPanelTemplate):
             if (needRetry) setTimeout(runPatches, 300);
           }
 
+          function insertNotifBell() {
+            var section = document.querySelector('.header-user-section');
+            if (!section || document.getElementById('hp-global-notif-bell')) return;
+            var wrap = document.createElement('div');
+            wrap.id = 'hp-global-notif-bell';
+            wrap.classList.add('hp-notif-inline');
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.setAttribute('aria-label', 'Notifications');
+            btn.innerHTML = '&#128276;';
+            btn.onclick = function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              if (window.toggleNotifDropdown) {
+                window.toggleNotifDropdown();
+              } else {
+                // Fallback: dispatch click to bell if global JS handles it
+                var ev = new CustomEvent('hp-notif-bell-click');
+                window.dispatchEvent(ev);
+              }
+            };
+            var badge = document.createElement('span');
+            badge.id = 'hp-notif-badge';
+            badge.style.display = 'none';
+            badge.textContent = '0';
+            wrap.appendChild(btn);
+            wrap.appendChild(badge);
+            section.insertBefore(wrap, section.firstChild);
+          }
+
           function run() {
             insertAccountantNav();
             insertDataImportNav();
             insertBackupNav();
+            insertNotifBell();
             patchSaveSetting();
             // تأخير الـ patches حتى يُحمّل قالب الصفحة (الدوال من form_template) ثم نستبدلها
             setTimeout(runPatches, 250);

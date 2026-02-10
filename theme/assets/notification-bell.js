@@ -62,8 +62,23 @@
   function createBell() {
     if (!isLoggedIn()) return;
 
-    // Remove existing bell if any (may be orphaned from a previous form)
+    // If AdminPanel already injected the bell, just attach click handler and skip
     var existing = document.getElementById(BELL_ID);
+    if (existing && document.body.contains(existing)) {
+      // Ensure the button has our click handler
+      var existingBtn = existing.querySelector('button');
+      if (existingBtn && !existingBtn.__hpBellBound) {
+        existingBtn.__hpBellBound = true;
+        existingBtn.onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleDropdown();
+        };
+      }
+      return;
+    }
+
+    // Remove orphaned bell
     if (existing) existing.remove();
 
     var wrap = document.createElement('div');
@@ -112,20 +127,30 @@
     }
 
     var bell = document.getElementById(BELL_ID);
-    if (!bell || !document.body.contains(bell)) {
-      createBell();
-    } else {
-      // Bell exists - check if it should move (e.g., AdminPanel loaded after fixed bell)
-      var headerUserSection = document.querySelector('.header-user-section');
+    var headerUserSection = document.querySelector('.header-user-section');
+
+    if (bell && document.body.contains(bell)) {
+      // Bell exists in DOM — just ensure click handler is bound
+      var btn = bell.querySelector('button');
+      if (btn && !btn.__hpBellBound) {
+        btn.__hpBellBound = true;
+        btn.onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleDropdown();
+        };
+      }
+      // Check if bell should move between inline/fixed
       if (headerUserSection && bell.classList.contains('hp-notif-fixed')) {
-        // AdminPanel appeared - move bell from fixed to inline
         bell.remove();
         createBell();
-      } else if (!headerUserSection && bell.classList.contains('hp-notif-inline')) {
-        // Left AdminPanel - move bell from inline to fixed
+      } else if (!headerUserSection && bell.classList.contains('hp-notif-inline') && !headerUserSection) {
         bell.remove();
         createBell();
       }
+    } else {
+      // Bell missing — create it
+      createBell();
     }
   }
 
@@ -346,6 +371,7 @@
 
   // Public API
   window.refreshNotificationBell = refreshBadge;
+  window.toggleNotifDropdown = toggleDropdown;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { setTimeout(init, 500); });

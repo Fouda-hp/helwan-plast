@@ -190,7 +190,7 @@ def add_account(code, name_en, name_ar, account_type, parent_code=None, token_or
         return {'success': False, 'message': str(e)}
 
 
-@anvil.server.callable
+@anvil.server.callable("seed_accounts")
 def seed_default_accounts(token_or_email=None):
     """Seed the chart of accounts with the default Helwan Plast accounts. Skips existing codes."""
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
@@ -551,19 +551,27 @@ def _generate_invoice_number():
 
 
 @anvil.server.callable
-def get_purchase_invoices(status=None, supplier_id=None, token_or_email=None):
-    """Return purchase invoices, optionally filtered."""
+def get_purchase_invoices(status=None, search='', token_or_email=None):
+    """Return purchase invoices, optionally filtered by status and search."""
     is_valid, user_email, error = _require_permission(token_or_email, 'read')
     if not is_valid:
         return error
     try:
         rows = list(app_tables.purchase_invoices.search())
         results = []
+        search_lower = _safe_str(search).lower()
         for r in rows:
             if status and r.get('status') != status:
                 continue
-            if supplier_id and r.get('supplier_id') != supplier_id:
-                continue
+            if search_lower:
+                searchable = ' '.join([
+                    _safe_str(r.get('invoice_number')),
+                    _safe_str(r.get('supplier_id')),
+                    _safe_str(r.get('machine_code')),
+                    _safe_str(r.get('notes')),
+                ]).lower()
+                if search_lower not in searchable:
+                    continue
             d = _row_to_dict(r, PURCHASE_INVOICE_COLS)
             # Parse items_json for convenience
             try:
@@ -762,7 +770,7 @@ VALID_COST_TYPES = ('shipping', 'customs', 'insurance', 'clearance', 'transport'
 
 
 @anvil.server.callable
-def add_import_cost(purchase_invoice_id, cost_type, description, amount, cost_date, token_or_email=None):
+def add_import_cost(purchase_invoice_id, cost_type, amount, description='', cost_date=None, token_or_email=None):
     """
     Add an import cost linked to a purchase invoice.
     DR Import Costs (5100)
@@ -1500,4 +1508,205 @@ def get_contract_profitability(contract_number=None, token_or_email=None):
         }
     except Exception as e:
         logger.exception("get_contract_profitability error")
+        return {'success': False, 'message': str(e)}
+
+
+# ===========================================================================
+# 10. MISSING CALLABLES (client-server alignment)
+# ===========================================================================
+
+@anvil.server.callable
+def delete_expense(expense_id, token_or_email=None):
+    """Delete an expense record."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'delete')
+    if not is_valid:
+        return error
+    try:
+        row = app_tables.expenses.get(id=expense_id)
+        if not row:
+            return {'success': False, 'message': 'Expense not found'}
+        row.update(status='cancelled', updated_at=get_utc_now())
+        logger.info("Expense %s cancelled by %s", expense_id, user_email)
+        return {'success': True}
+    except Exception as e:
+        logger.exception("delete_expense error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def delete_inventory_item(item_id, token_or_email=None):
+    """Delete an inventory item (only if in_stock)."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'delete')
+    if not is_valid:
+        return error
+    try:
+        row = app_tables.inventory.get(id=item_id)
+        if not row:
+            return {'success': False, 'message': 'Inventory item not found'}
+        if row.get('status') == 'sold':
+            return {'success': False, 'message': 'Cannot delete a sold item'}
+        row.delete()
+        logger.info("Inventory item %s deleted by %s", item_id, user_email)
+        return {'success': True}
+    except Exception as e:
+        logger.exception("delete_inventory_item error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_contracts_list_simple(token_or_email=None):
+    """Return simple list of contracts for dropdown/selection."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        contracts = []
+        for r in app_tables.quotations.search(is_deleted=False):
+            contract_num = r.get('Contract#') or r.get('contract_number')
+            if not contract_num:
+                continue
+            contracts.append({
+                'contract_number': str(contract_num),
+                'client_name': _safe_str(r.get('Client Name', '')),
+                'quotation_number': str(r.get('Quotation#', '')),
+            })
+        return {'success': True, 'contracts': contracts}
+    except Exception as e:
+        logger.exception("get_contracts_list_simple error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def update_purchase_invoice(invoice_id, data, token_or_email=None):
+    """Update a draft purchase invoice."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'edit')
+    if not is_valid:
+        return error
+    try:
+        row = app_tables.purchase_invoices.get(id=invoice_id)
+        if not row:
+            return {'success': False, 'message': 'Purchase invoice not found'}
+        if row.get('status') != 'draft':
+            return {'success': False, 'message': 'Only draft invoices can be edited'}
+
+        updates = {}
+        if 'supplier_id' in data:
+            updates['supplier_id'] = _safe_str(data['supplier_id'])
+        if 'date' in data:
+            updates['date'] = _safe_date(data['date']) or row.get('date')
+        if 'due_date' in data:
+            updates['due_date'] = _safe_date(data['due_date'])
+        if 'notes' in data:
+            updates['notes'] = _safe_str(data['notes'])
+        if 'machine_code' in data:
+            updates['machine_code'] = _safe_str(data['machine_code'])
+        if 'items' in data:
+            items = data['items']
+            subtotal = 0.0
+            for item in items:
+                line_total = _round2(item.get('total', 0))
+                if line_total == 0:
+                    qty = _round2(item.get('quantity', 0))
+                    up = _round2(item.get('unit_price', 0))
+                    line_total = _round2(qty * up)
+                    item['total'] = line_total
+                subtotal += line_total
+            tax_amount = _round2(data.get('tax_amount', row.get('tax_amount', 0)))
+            updates['items_json'] = json.dumps(items, ensure_ascii=False, default=str)
+            updates['subtotal'] = _round2(subtotal)
+            updates['tax_amount'] = tax_amount
+            updates['total'] = _round2(subtotal + tax_amount)
+
+        updates['updated_at'] = get_utc_now()
+        row.update(**updates)
+        logger.info("Purchase invoice %s updated by %s", invoice_id, user_email)
+        return {'success': True}
+    except Exception as e:
+        logger.exception("update_purchase_invoice error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def delete_purchase_invoice(invoice_id, token_or_email=None):
+    """Delete a draft purchase invoice."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'delete')
+    if not is_valid:
+        return error
+    try:
+        row = app_tables.purchase_invoices.get(id=invoice_id)
+        if not row:
+            return {'success': False, 'message': 'Purchase invoice not found'}
+        if row.get('status') != 'draft':
+            return {'success': False, 'message': 'Only draft invoices can be deleted'}
+        row.delete()
+        logger.info("Purchase invoice %s deleted by %s", invoice_id, user_email)
+        return {'success': True}
+    except Exception as e:
+        logger.exception("delete_purchase_invoice error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def record_invoice_payment(invoice_id, amount, method='cash', notes='', token_or_email=None):
+    """Record payment for a purchase invoice (alias for record_supplier_payment)."""
+    payment_date = str(date.today())
+    return record_supplier_payment(invoice_id, amount, method, payment_date, token_or_email)
+
+
+@anvil.server.callable
+def get_suppliers_list_simple(token_or_email=None):
+    """Return simple list of active suppliers for dropdown/selection."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        suppliers = []
+        for r in app_tables.suppliers.search(is_active=True):
+            suppliers.append({
+                'id': r.get('id', ''),
+                'name': _safe_str(r.get('name', '')),
+                'company': _safe_str(r.get('company', '')),
+            })
+        return {'success': True, 'suppliers': suppliers}
+    except Exception as e:
+        logger.exception("get_suppliers_list_simple error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_invoice_details(invoice_id, token_or_email=None):
+    """Get detailed purchase invoice with import costs."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        row = app_tables.purchase_invoices.get(id=invoice_id)
+        if not row:
+            return {'success': False, 'message': 'Purchase invoice not found'}
+
+        d = _row_to_dict(row, PURCHASE_INVOICE_COLS)
+        try:
+            d['items'] = json.loads(d.get('items_json') or '[]')
+        except (json.JSONDecodeError, TypeError):
+            d['items'] = []
+
+        # Get import costs
+        import_costs = []
+        try:
+            for ic in app_tables.import_costs.search(purchase_invoice_id=invoice_id):
+                import_costs.append(_row_to_dict(ic, IMPORT_COST_COLS))
+        except Exception:
+            pass
+        d['import_costs'] = import_costs
+
+        # Get supplier name
+        try:
+            supplier = app_tables.suppliers.get(id=d.get('supplier_id'))
+            d['supplier_name'] = _safe_str(supplier.get('name', '')) if supplier else ''
+        except Exception:
+            d['supplier_name'] = ''
+
+        return {'success': True, 'invoice': d}
+    except Exception as e:
+        logger.exception("get_invoice_details error")
         return {'success': False, 'message': str(e)}

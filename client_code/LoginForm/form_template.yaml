@@ -1024,6 +1024,7 @@ container:
           // ============================================
           function showMessage(id, type, text, isHtml) {
             var el = document.getElementById(id);
+            if (!el) return;
             el.className = 'message ' + type + ' show';
             if (isHtml) {
               el.innerHTML = text;

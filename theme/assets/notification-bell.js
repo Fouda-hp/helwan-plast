@@ -82,7 +82,18 @@
 
     wrap.appendChild(btn);
     wrap.appendChild(badge);
-    document.body.appendChild(wrap);
+
+    // Try to place inside AdminPanel header-user-section (next to user name)
+    var headerUserSection = document.querySelector('.header-user-section');
+    if (headerUserSection) {
+      wrap.classList.add('hp-notif-inline');
+      // Insert as first child (before user name)
+      headerUserSection.insertBefore(wrap, headerUserSection.firstChild);
+    } else {
+      // Fallback: fixed position top-right for all other pages
+      wrap.classList.add('hp-notif-fixed');
+      document.body.appendChild(wrap);
+    }
   }
 
   // ===== Dropdown =====
@@ -128,7 +139,17 @@
     body.innerHTML = '<div class="hp-notif-empty">' + t('loading') + '</div>';
     dd.appendChild(body);
 
-    document.body.appendChild(dd);
+    // Position dropdown relative to bell
+    var bellEl = document.getElementById(BELL_ID);
+    if (bellEl && bellEl.classList.contains('hp-notif-inline')) {
+      // Inside header: dropdown below the bell
+      dd.classList.add('hp-notif-dropdown-header');
+      bellEl.appendChild(dd);
+    } else {
+      // Fixed mode: dropdown below the fixed bell at top-right
+      dd.classList.add('hp-notif-dropdown-fixed');
+      document.body.appendChild(dd);
+    }
     _dropdownOpen = true;
 
     // Close on outside click

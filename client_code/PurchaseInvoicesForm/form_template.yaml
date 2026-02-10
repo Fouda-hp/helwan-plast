@@ -1,0 +1,587 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+        body { background: #f0f2f5; }
+        .pi-wrapper { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .pi-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .pi-header h1 { font-size: 24px; color: #1a1a2e; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+        .btn-back { background: #f0f2f5; color: #333; border: 1px solid #ddd; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; }
+        .btn-view { background: #2196f3; color: #fff; }
+        .btn-pay { background: #4caf50; color: #fff; }
+        .btn-delete { background: #f44336; color: #fff; }
+        .btn-save { background: #4caf50; color: #fff; }
+        .btn-cancel { background: #9e9e9e; color: #fff; }
+        .btn-add-row { background: #667eea; color: #fff; padding: 8px 16px; font-size: 13px; border: none; border-radius: 6px; cursor: pointer; }
+        .btn-remove-row { background: #f44336; color: #fff; padding: 4px 8px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer; }
+        .filter-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .filter-row input { flex: 1; min-width: 200px; padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .filter-row input:focus { outline: none; border-color: #667eea; }
+        .filter-btn { padding: 8px 16px; border: 2px solid #667eea; background: #fff; color: #667eea; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .filter-btn.active { background: #667eea; color: #fff; }
+        .table-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 12px 10px; text-align: left; position: sticky; top: 0; z-index: 2; white-space: nowrap; }
+        tbody td { padding: 10px; border-bottom: 1px solid #f0f0f0; }
+        tbody tr:hover { background: #f8f9ff; }
+        .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .status-draft { background: #f5f5f5; color: #666; }
+        .status-posted { background: #e3f2fd; color: #1565c0; }
+        .status-paid { background: #e8f5e9; color: #2e7d32; }
+        .status-partial { background: #fff3e0; color: #ef6c00; }
+        .empty-msg { text-align: center; padding: 40px; color: #999; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: #fff; border-radius: 12px; padding: 24px; width: 95%; max-width: 800px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+        .modal h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 20px; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 13px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #667eea; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .line-items-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
+        .line-items-table th { background: #f5f5f5; padding: 8px; text-align: left; border: 1px solid #ddd; }
+        .line-items-table td { padding: 6px; border: 1px solid #ddd; }
+        .line-items-table input { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+        .totals-section { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px; }
+        .totals-section .total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
+        .totals-section .total-row.grand { font-size: 16px; font-weight: 700; border-top: 2px solid #333; padding-top: 8px; margin-top: 4px; }
+        .import-costs-section { margin-top: 15px; padding: 15px; background: #fff8e1; border-radius: 8px; border: 1px solid #ffd54f; }
+        .import-costs-section h4 { margin: 0 0 10px; color: #f57f17; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .summary-card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; }
+        .summary-card .num { font-size: 24px; font-weight: 700; }
+        .summary-card .lbl { font-size: 12px; color: #666; margin-top: 4px; }
+        @media (max-width: 768px) {
+          .pi-header { flex-direction: column; align-items: flex-start; }
+          .form-row { grid-template-columns: 1fr; }
+        }
+      </style>
+
+      <div class="pi-wrapper">
+        <div class="pi-header">
+          <h1 id="pageTitle">Purchase Invoices</h1>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="openCreateModal()" id="btnCreate">+ New Invoice</button>
+            <button class="btn btn-back" onclick="goBack()" id="btnBack">Back</button>
+          </div>
+        </div>
+
+        <div class="summary-cards" id="summaryCards"></div>
+
+        <div class="filter-row">
+          <button class="filter-btn active" data-status="" onclick="setFilter(this)">All</button>
+          <button class="filter-btn" data-status="draft" onclick="setFilter(this)">Draft</button>
+          <button class="filter-btn" data-status="posted" onclick="setFilter(this)">Posted</button>
+          <button class="filter-btn" data-status="paid" onclick="setFilter(this)">Paid</button>
+          <button class="filter-btn" data-status="partial" onclick="setFilter(this)">Partial</button>
+          <input type="text" id="searchInput" placeholder="Search invoices..." oninput="debounceSearch()">
+        </div>
+
+        <div class="table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th id="thInvNo">Invoice #</th>
+                  <th id="thSupplier">Supplier</th>
+                  <th id="thDate">Date</th>
+                  <th id="thMachine">Machine Code</th>
+                  <th id="thTotal">Total</th>
+                  <th id="thPaid">Paid</th>
+                  <th id="thBalance">Balance</th>
+                  <th id="thStatus">Status</th>
+                  <th id="thActions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="invoicesBody">
+                <tr><td colspan="9" class="empty-msg">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create/Edit Invoice Modal -->
+      <div class="modal-overlay" id="invoiceModal">
+        <div class="modal">
+          <h2 id="invoiceModalTitle">New Purchase Invoice</h2>
+          <input type="hidden" id="editInvoiceId" value="">
+          <div class="form-row">
+            <div class="form-group">
+              <label id="lblSupplier">Supplier *</label>
+              <select id="fSupplier"><option value="">-- Select --</option></select>
+            </div>
+            <div class="form-group">
+              <label id="lblDate">Date *</label>
+              <input type="date" id="fDate">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label id="lblMachineCode">Machine Code</label>
+              <input type="text" id="fMachineCode">
+            </div>
+            <div class="form-group">
+              <label id="lblContractNo">Contract Number</label>
+              <input type="text" id="fContractNo">
+            </div>
+          </div>
+
+          <h4 style="margin:15px 0 8px;color:#333;" id="lblLineItems">Line Items</h4>
+          <table class="line-items-table">
+            <thead>
+              <tr>
+                <th style="width:40%;" id="liDesc">Description</th>
+                <th style="width:15%;" id="liQty">Qty</th>
+                <th style="width:20%;" id="liPrice">Unit Price</th>
+                <th style="width:20%;" id="liTotal">Total</th>
+                <th style="width:5%;"></th>
+              </tr>
+            </thead>
+            <tbody id="lineItemsBody">
+              <tr class="line-row">
+                <td><input type="text" class="li-desc"></td>
+                <td><input type="number" class="li-qty" value="1" min="1" oninput="calcLineTotals()"></td>
+                <td><input type="number" class="li-price" value="0" step="0.01" oninput="calcLineTotals()"></td>
+                <td class="li-total" style="text-align:right;font-weight:600;">0.00</td>
+                <td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button class="btn-add-row" onclick="addLineRow()" id="btnAddRow">+ Add Row</button>
+
+          <div class="import-costs-section">
+            <h4 id="lblImportCosts">Import Costs</h4>
+            <div id="importCostRows">
+              <div class="form-row import-cost-row" style="margin-bottom:8px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <select class="ic-type" style="padding:8px;">
+                    <option value="shipping">Shipping</option>
+                    <option value="customs">Customs</option>
+                    <option value="insurance">Insurance</option>
+                    <option value="clearance">Clearance</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcLineTotals()">
+                </div>
+              </div>
+            </div>
+            <button class="btn-add-row" onclick="addImportCostRow()" style="font-size:12px;padding:6px 12px;">+ Add Cost</button>
+          </div>
+
+          <div class="totals-section" id="totalsSection">
+            <div class="total-row"><span id="lblSubtotal">Subtotal:</span><span id="valSubtotal">0.00</span></div>
+            <div class="total-row"><span id="lblImportTotal">Import Costs:</span><span id="valImportTotal">0.00</span></div>
+            <div class="total-row grand"><span id="lblGrandTotal">Grand Total:</span><span id="valGrandTotal">0.00</span></div>
+          </div>
+
+          <div class="form-group" style="margin-top:15px;">
+            <label id="lblInvNotes">Notes</label>
+            <textarea id="fInvNotes" rows="2"></textarea>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-cancel" onclick="closeInvoiceModal()">Cancel</button>
+            <button class="btn btn-save" onclick="saveInvoice()">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment Modal -->
+      <div class="modal-overlay" id="paymentModal">
+        <div class="modal" style="max-width:450px;">
+          <h2 id="payModalTitle">Record Payment</h2>
+          <input type="hidden" id="payInvoiceId" value="">
+          <div class="form-group">
+            <label id="lblPayAmount">Amount *</label>
+            <input type="number" id="fPayAmount" step="0.01" value="0">
+          </div>
+          <div class="form-group">
+            <label id="lblPayMethod">Method</label>
+            <select id="fPayMethod">
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="cash">Cash</option>
+              <option value="check">Check</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label id="lblPayNotes">Notes</label>
+            <textarea id="fPayNotes" rows="2"></textarea>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-cancel" onclick="closePaymentModal()">Cancel</button>
+            <button class="btn btn-save" onclick="submitPayment()">Pay</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Invoice Details Modal -->
+      <div class="modal-overlay" id="detailsModal">
+        <div class="modal" style="max-width:700px;">
+          <h2 id="detailsTitle">Invoice Details</h2>
+          <div id="detailsContent" style="font-size:14px;"></div>
+          <div class="modal-actions">
+            <button class="btn btn-cancel" onclick="closeDetailsModal()">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <script src="_/theme/i18n.js"></script>
+      <script>
+        (function() {
+          var lang = localStorage.getItem('hp_language') || 'en';
+          var isAr = lang === 'ar';
+          var currentFilter = '';
+          var searchTimer = null;
+          var allInvoices = [];
+
+          function t(en, ar) { return isAr ? ar : en; }
+          function fmt(n) { return (n || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+
+          function applyI18n() {
+            document.getElementById('pageTitle').textContent = t('Purchase Invoices', 'فواتير الشراء');
+            document.getElementById('btnCreate').textContent = t('+ New Invoice', '+ فاتورة جديدة');
+            document.getElementById('btnBack').textContent = t('Back', 'رجوع');
+            document.getElementById('searchInput').placeholder = t('Search invoices...', 'بحث في الفواتير...');
+            document.getElementById('thInvNo').textContent = t('Invoice #', 'رقم الفاتورة');
+            document.getElementById('thSupplier').textContent = t('Supplier', 'المورد');
+            document.getElementById('thDate').textContent = t('Date', 'التاريخ');
+            document.getElementById('thMachine').textContent = t('Machine Code', 'كود الماكينة');
+            document.getElementById('thTotal').textContent = t('Total', 'الاجمالي');
+            document.getElementById('thPaid').textContent = t('Paid', 'المدفوع');
+            document.getElementById('thBalance').textContent = t('Balance', 'المتبقي');
+            document.getElementById('thStatus').textContent = t('Status', 'الحالة');
+            document.getElementById('thActions').textContent = t('Actions', 'اجراءات');
+            if (isAr) document.querySelector('.pi-wrapper').style.direction = 'rtl';
+          }
+
+          function renderSummary(data) {
+            var totalAmt = 0, totalPaid = 0, count = data.length;
+            data.forEach(function(inv) {
+              totalAmt += parseFloat(inv.total || 0);
+              totalPaid += parseFloat(inv.paid || 0);
+            });
+            var html = '';
+            html += '<div class="summary-card"><div class="num" style="color:#667eea;">' + count + '</div><div class="lbl">' + t('Total Invoices', 'اجمالي الفواتير') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#1565c0;">' + fmt(totalAmt) + '</div><div class="lbl">' + t('Total Amount', 'اجمالي المبلغ') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#2e7d32;">' + fmt(totalPaid) + '</div><div class="lbl">' + t('Total Paid', 'اجمالي المدفوع') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#c62828;">' + fmt(totalAmt - totalPaid) + '</div><div class="lbl">' + t('Outstanding', 'المتبقي') + '</div></div>';
+            document.getElementById('summaryCards').innerHTML = html;
+          }
+
+          window.setFilter = function(el) {
+            document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+            el.classList.add('active');
+            currentFilter = el.getAttribute('data-status');
+            loadInvoices();
+          };
+
+          window.debounceSearch = function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function() { loadInvoices(); }, 300);
+          };
+
+          async function loadInvoices() {
+            var search = document.getElementById('searchInput').value.trim();
+            var tbody = document.getElementById('invoicesBody');
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetPurchaseInvoices(currentFilter, search);
+              if (res && res.success) {
+                allInvoices = res.data || [];
+                renderSummary(allInvoices);
+                renderTable(allInvoices);
+              } else {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">' + err + '</td></tr>';
+            }
+          }
+
+          function renderTable(data) {
+            var tbody = document.getElementById('invoicesBody');
+            if (!data || data.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">' + t('No invoices found', 'لا توجد فواتير') + '</td></tr>';
+              return;
+            }
+            var html = '';
+            data.forEach(function(inv) {
+              var total = parseFloat(inv.total || 0);
+              var paid = parseFloat(inv.paid || 0);
+              var balance = total - paid;
+              var statusKey = (inv.status || 'draft').toLowerCase();
+              var statusLabels = { draft: t('Draft', 'مسودة'), posted: t('Posted', 'مرحلة'), paid: t('Paid', 'مدفوعة'), partial: t('Partial', 'جزئي') };
+              html += '<tr>';
+              html += '<td><strong>' + (inv.invoice_number || '') + '</strong></td>';
+              html += '<td>' + (inv.supplier_name || '') + '</td>';
+              html += '<td>' + (inv.date || '').substring(0, 10) + '</td>';
+              html += '<td>' + (inv.machine_code || '') + '</td>';
+              html += '<td>' + fmt(total) + '</td>';
+              html += '<td>' + fmt(paid) + '</td>';
+              html += '<td style="font-weight:600;color:' + (balance > 0 ? '#c62828' : '#2e7d32') + ';">' + fmt(balance) + '</td>';
+              html += '<td><span class="status-badge status-' + statusKey + '">' + (statusLabels[statusKey] || statusKey) + '</span></td>';
+              html += '<td style="white-space:nowrap;">';
+              html += '<button class="btn-sm btn-view" onclick="viewInvoice(\'' + inv.id + '\')">' + t('View', 'عرض') + '</button> ';
+              if (statusKey !== 'paid') {
+                html += '<button class="btn-sm btn-pay" onclick="openPaymentModal(\'' + inv.id + '\', ' + balance + ')">' + t('Pay', 'دفع') + '</button> ';
+              }
+              html += '<button class="btn-sm btn-delete" onclick="deleteInvoice(\'' + inv.id + '\')">' + t('Del', 'حذف') + '</button>';
+              html += '</td></tr>';
+            });
+            tbody.innerHTML = html;
+          }
+
+          window.calcLineTotals = function() {
+            var subtotal = 0;
+            document.querySelectorAll('#lineItemsBody .line-row').forEach(function(row) {
+              var qty = parseFloat(row.querySelector('.li-qty').value) || 0;
+              var price = parseFloat(row.querySelector('.li-price').value) || 0;
+              var lineTotal = qty * price;
+              row.querySelector('.li-total').textContent = fmt(lineTotal);
+              subtotal += lineTotal;
+            });
+            var importTotal = 0;
+            document.querySelectorAll('.import-cost-row .ic-amount').forEach(function(inp) {
+              importTotal += parseFloat(inp.value) || 0;
+            });
+            document.getElementById('valSubtotal').textContent = fmt(subtotal);
+            document.getElementById('valImportTotal').textContent = fmt(importTotal);
+            document.getElementById('valGrandTotal').textContent = fmt(subtotal + importTotal);
+          };
+
+          window.addLineRow = function() {
+            var tbody = document.getElementById('lineItemsBody');
+            var tr = document.createElement('tr');
+            tr.className = 'line-row';
+            tr.innerHTML = '<td><input type="text" class="li-desc"></td><td><input type="number" class="li-qty" value="1" min="1" oninput="calcLineTotals()"></td><td><input type="number" class="li-price" value="0" step="0.01" oninput="calcLineTotals()"></td><td class="li-total" style="text-align:right;font-weight:600;">0.00</td><td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td>';
+            tbody.appendChild(tr);
+          };
+
+          window.removeLineRow = function(btn) {
+            var rows = document.querySelectorAll('#lineItemsBody .line-row');
+            if (rows.length <= 1) return;
+            btn.closest('tr').remove();
+            calcLineTotals();
+          };
+
+          window.addImportCostRow = function() {
+            var container = document.getElementById('importCostRows');
+            var div = document.createElement('div');
+            div.className = 'form-row import-cost-row';
+            div.style.marginBottom = '8px';
+            div.innerHTML = '<div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">' + t('Shipping', 'شحن') + '</option><option value="customs">' + t('Customs', 'جمارك') + '</option><option value="insurance">' + t('Insurance', 'تامين') + '</option><option value="clearance">' + t('Clearance', 'تخليص') + '</option><option value="other">' + t('Other', 'اخرى') + '</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcLineTotals()"></div>';
+            container.appendChild(div);
+          };
+
+          async function loadSuppliers() {
+            try {
+              var res = await window.pyGetSuppliersList();
+              var sel = document.getElementById('fSupplier');
+              if (res && res.success) {
+                var opts = '<option value="">' + t('-- Select Supplier --', '-- اختر مورد --') + '</option>';
+                (res.data || []).forEach(function(s) {
+                  opts += '<option value="' + s.id + '">' + (s.name || '') + (s.company ? ' - ' + s.company : '') + '</option>';
+                });
+                sel.innerHTML = opts;
+              }
+            } catch (err) { /* ignore */ }
+          }
+
+          window.openCreateModal = function() {
+            document.getElementById('invoiceModalTitle').textContent = t('New Purchase Invoice', 'فاتورة شراء جديدة');
+            document.getElementById('editInvoiceId').value = '';
+            document.getElementById('fSupplier').value = '';
+            document.getElementById('fDate').value = new Date().toISOString().substring(0, 10);
+            document.getElementById('fMachineCode').value = '';
+            document.getElementById('fContractNo').value = '';
+            document.getElementById('fInvNotes').value = '';
+            document.getElementById('lineItemsBody').innerHTML = '<tr class="line-row"><td><input type="text" class="li-desc"></td><td><input type="number" class="li-qty" value="1" min="1" oninput="calcLineTotals()"></td><td><input type="number" class="li-price" value="0" step="0.01" oninput="calcLineTotals()"></td><td class="li-total" style="text-align:right;font-weight:600;">0.00</td><td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td></tr>';
+            document.getElementById('importCostRows').innerHTML = '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="other">Other</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcLineTotals()"></div></div>';
+            document.getElementById('valSubtotal').textContent = '0.00';
+            document.getElementById('valImportTotal').textContent = '0.00';
+            document.getElementById('valGrandTotal').textContent = '0.00';
+            loadSuppliers();
+            document.getElementById('invoiceModal').classList.add('show');
+          };
+
+          window.closeInvoiceModal = function() {
+            document.getElementById('invoiceModal').classList.remove('show');
+          };
+
+          window.saveInvoice = async function() {
+            var supplierId = document.getElementById('fSupplier').value;
+            var date = document.getElementById('fDate').value;
+            if (!supplierId || !date) {
+              if (window.showNotification) window.showNotification('error', '', t('Supplier and date are required', 'المورد والتاريخ مطلوبين'));
+              return;
+            }
+            var lineItems = [];
+            document.querySelectorAll('#lineItemsBody .line-row').forEach(function(row) {
+              var desc = row.querySelector('.li-desc').value.trim();
+              var qty = parseFloat(row.querySelector('.li-qty').value) || 0;
+              var price = parseFloat(row.querySelector('.li-price').value) || 0;
+              if (desc || qty > 0 || price > 0) {
+                lineItems.push({ description: desc, quantity: qty, unit_price: price, total: qty * price });
+              }
+            });
+            var importCosts = [];
+            document.querySelectorAll('.import-cost-row').forEach(function(row) {
+              var type = row.querySelector('.ic-type').value;
+              var amount = parseFloat(row.querySelector('.ic-amount').value) || 0;
+              if (amount > 0) {
+                importCosts.push({ cost_type: type, amount: amount });
+              }
+            });
+            var data = {
+              supplier_id: supplierId,
+              date: date,
+              machine_code: document.getElementById('fMachineCode').value.trim(),
+              contract_number: document.getElementById('fContractNo').value.trim(),
+              line_items: lineItems,
+              import_costs: importCosts,
+              notes: document.getElementById('fInvNotes').value.trim()
+            };
+            var editId = document.getElementById('editInvoiceId').value;
+            try {
+              var res;
+              if (editId) {
+                res = await window.pyUpdatePurchaseInvoice(editId, data);
+              } else {
+                res = await window.pyCreatePurchaseInvoice(data);
+              }
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Invoice saved', 'تم حفظ الفاتورة'));
+                closeInvoiceModal();
+                loadInvoices();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.openPaymentModal = function(id, balance) {
+            document.getElementById('payInvoiceId').value = id;
+            document.getElementById('fPayAmount').value = balance > 0 ? balance.toFixed(2) : '0';
+            document.getElementById('fPayMethod').value = 'bank_transfer';
+            document.getElementById('fPayNotes').value = '';
+            document.getElementById('paymentModal').classList.add('show');
+          };
+
+          window.closePaymentModal = function() {
+            document.getElementById('paymentModal').classList.remove('show');
+          };
+
+          window.submitPayment = async function() {
+            var invoiceId = document.getElementById('payInvoiceId').value;
+            var amount = parseFloat(document.getElementById('fPayAmount').value) || 0;
+            var method = document.getElementById('fPayMethod').value;
+            var notes = document.getElementById('fPayNotes').value.trim();
+            if (amount <= 0) {
+              if (window.showNotification) window.showNotification('error', '', t('Enter a valid amount', 'ادخل مبلغ صحيح'));
+              return;
+            }
+            try {
+              var res = await window.pyRecordInvoicePayment(invoiceId, amount, method, notes);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Payment recorded', 'تم تسجيل الدفع'));
+                closePaymentModal();
+                loadInvoices();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.viewInvoice = async function(id) {
+            document.getElementById('detailsContent').innerHTML = '<p style="text-align:center;color:#999;">' + t('Loading...', 'جاري التحميل...') + '</p>';
+            document.getElementById('detailsModal').classList.add('show');
+            try {
+              var res = await window.pyGetInvoiceDetails(id);
+              if (res && res.success) {
+                var inv = res.data;
+                var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px;">';
+                html += '<div><strong>' + t('Invoice #', 'رقم الفاتورة') + ':</strong> ' + (inv.invoice_number || '') + '</div>';
+                html += '<div><strong>' + t('Date', 'التاريخ') + ':</strong> ' + (inv.date || '').substring(0, 10) + '</div>';
+                html += '<div><strong>' + t('Supplier', 'المورد') + ':</strong> ' + (inv.supplier_name || '') + '</div>';
+                html += '<div><strong>' + t('Status', 'الحالة') + ':</strong> ' + (inv.status || '') + '</div>';
+                html += '<div><strong>' + t('Machine', 'الماكينة') + ':</strong> ' + (inv.machine_code || '-') + '</div>';
+                html += '<div><strong>' + t('Contract', 'العقد') + ':</strong> ' + (inv.contract_number || '-') + '</div>';
+                html += '</div>';
+                if (inv.line_items && inv.line_items.length > 0) {
+                  html += '<h4 style="margin:10px 0 5px;">' + t('Line Items', 'البنود') + '</h4>';
+                  html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f5f5f5;"><th style="padding:6px;border:1px solid #ddd;">' + t('Description', 'الوصف') + '</th><th style="padding:6px;border:1px solid #ddd;">' + t('Qty', 'الكمية') + '</th><th style="padding:6px;border:1px solid #ddd;">' + t('Price', 'السعر') + '</th><th style="padding:6px;border:1px solid #ddd;">' + t('Total', 'الاجمالي') + '</th></tr></thead><tbody>';
+                  inv.line_items.forEach(function(li) {
+                    html += '<tr><td style="padding:6px;border:1px solid #ddd;">' + (li.description || '') + '</td><td style="padding:6px;border:1px solid #ddd;">' + (li.quantity || 0) + '</td><td style="padding:6px;border:1px solid #ddd;">' + fmt(li.unit_price) + '</td><td style="padding:6px;border:1px solid #ddd;">' + fmt(li.total) + '</td></tr>';
+                  });
+                  html += '</tbody></table>';
+                }
+                if (inv.import_costs && inv.import_costs.length > 0) {
+                  html += '<h4 style="margin:10px 0 5px;color:#f57f17;">' + t('Import Costs', 'تكاليف الاستيراد') + '</h4>';
+                  inv.import_costs.forEach(function(ic) {
+                    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>' + (ic.cost_type || '') + '</span><span>' + fmt(ic.amount) + '</span></div>';
+                  });
+                }
+                html += '<div style="margin-top:15px;padding:10px;background:#f8f9fa;border-radius:8px;">';
+                html += '<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;"><span>' + t('Total', 'الاجمالي') + '</span><span>' + fmt(inv.total) + '</span></div>';
+                html += '<div style="display:flex;justify-content:space-between;"><span>' + t('Paid', 'المدفوع') + '</span><span style="color:#2e7d32;">' + fmt(inv.paid) + '</span></div>';
+                html += '<div style="display:flex;justify-content:space-between;"><span>' + t('Balance', 'المتبقي') + '</span><span style="color:#c62828;">' + fmt((inv.total || 0) - (inv.paid || 0)) + '</span></div>';
+                html += '</div>';
+                if (inv.notes) {
+                  html += '<div style="margin-top:10px;"><strong>' + t('Notes', 'ملاحظات') + ':</strong> ' + inv.notes + '</div>';
+                }
+                document.getElementById('detailsContent').innerHTML = html;
+              } else {
+                document.getElementById('detailsContent').innerHTML = '<p style="color:red;">' + (res ? res.message : 'Error') + '</p>';
+              }
+            } catch (err) {
+              document.getElementById('detailsContent').innerHTML = '<p style="color:red;">' + err + '</p>';
+            }
+          };
+
+          window.closeDetailsModal = function() {
+            document.getElementById('detailsModal').classList.remove('show');
+          };
+
+          window.deleteInvoice = async function(id) {
+            var ok = await (window.showConfirm || function(m) { return Promise.resolve(confirm(m)); })(t('Delete this invoice?', 'حذف هذه الفاتورة؟'));
+            if (!ok) return;
+            try {
+              var res = await window.pyDeletePurchaseInvoice(id);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Invoice deleted', 'تم حذف الفاتورة'));
+                loadInvoices();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.goBack = function() {
+            if (window.pyGoBack) window.pyGoBack();
+            else window.location.hash = '#admin';
+          };
+
+          applyI18n();
+          loadInvoices();
+        })();
+      </script>
+  type: HtmlTemplate
+is_package: true

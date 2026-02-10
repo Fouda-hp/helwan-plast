@@ -1,0 +1,602 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+        body { background: #f0f2f5; }
+        .acc-wrapper { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .acc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .acc-header h1 { font-size: 24px; color: #1a1a2e; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+        .btn-back { background: #f0f2f5; color: #333; border: 1px solid #ddd; }
+        .btn-save { background: #4caf50; color: #fff; }
+        .btn-cancel { background: #9e9e9e; color: #fff; }
+        .btn-delete { background: #f44336; color: #fff; padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; }
+        .btn-seed { background: #ff9800; color: #fff; padding: 8px 16px; font-size: 13px; }
+
+        /* Quick Navigation Cards */
+        .quick-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .quick-nav-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s; text-align: center; border: 2px solid transparent; }
+        .quick-nav-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); border-color: #667eea; }
+        .quick-nav-card .nav-icon { font-size: 32px; margin-bottom: 8px; }
+        .quick-nav-card .nav-label { font-size: 14px; font-weight: 600; color: #333; }
+
+        /* Sub-tabs */
+        .sub-tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; background: #fff; border-radius: 12px; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .sub-tab { padding: 10px 18px; border: none; background: transparent; color: #666; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 8px; transition: all 0.2s; white-space: nowrap; }
+        .sub-tab.active { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+        .sub-tab:hover:not(.active) { background: #f0f2f5; }
+
+        /* Tab panels */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Date filters */
+        .date-filter { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+        .date-filter label { font-weight: 600; color: #333; font-size: 13px; }
+        .date-filter input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; }
+        .date-filter input:focus { outline: none; border-color: #667eea; }
+        .date-filter button { padding: 8px 16px; background: #667eea; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+        /* Tables */
+        .report-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 20px; }
+        .report-card h3 { padding: 16px 20px; margin: 0; background: #f8f9fa; border-bottom: 1px solid #eee; font-size: 16px; color: #1a1a2e; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 12px 10px; text-align: left; position: sticky; top: 0; z-index: 2; white-space: nowrap; }
+        tbody td { padding: 10px; border-bottom: 1px solid #f0f0f0; }
+        tbody tr:hover { background: #f8f9ff; }
+        tbody tr.total-row { background: #f0f2f5; font-weight: 700; }
+        tbody tr.total-row td { border-top: 2px solid #667eea; }
+        .empty-msg { text-align: center; padding: 40px; color: #999; }
+        .text-right { text-align: right; }
+        .text-green { color: #2e7d32; }
+        .text-red { color: #c62828; }
+
+        /* Expense form */
+        .expense-form { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .expense-form h3 { margin: 0 0 15px; font-size: 16px; color: #1a1a2e; }
+        .expense-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 13px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #667eea; }
+
+        /* Summary boxes */
+        .summary-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .summary-box { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .summary-box .label { font-size: 12px; color: #666; margin-bottom: 4px; }
+        .summary-box .value { font-size: 22px; font-weight: 700; }
+
+        @media (max-width: 768px) {
+          .acc-header { flex-direction: column; align-items: flex-start; }
+          .sub-tabs { overflow-x: auto; flex-wrap: nowrap; }
+          .expense-grid { grid-template-columns: 1fr; }
+        }
+      </style>
+
+      <div class="acc-wrapper">
+        <div class="acc-header">
+          <h1 id="pageTitle">Accountant</h1>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-seed" onclick="seedAccounts()" id="btnSeed" title="Initialize chart of accounts">Setup Accounts</button>
+            <button class="btn btn-back" onclick="goBack()" id="btnBack">Back</button>
+          </div>
+        </div>
+
+        <!-- Quick Navigation -->
+        <div class="quick-nav">
+          <div class="quick-nav-card" onclick="navTo('suppliers')">
+            <div class="nav-icon">&#128666;</div>
+            <div class="nav-label" id="navSuppliers">Suppliers</div>
+          </div>
+          <div class="quick-nav-card" onclick="navTo('inventory')">
+            <div class="nav-icon">&#128230;</div>
+            <div class="nav-label" id="navInventory">Inventory</div>
+          </div>
+          <div class="quick-nav-card" onclick="navTo('invoices')">
+            <div class="nav-icon">&#128196;</div>
+            <div class="nav-label" id="navInvoices">Purchase Invoices</div>
+          </div>
+        </div>
+
+        <!-- Sub-tabs -->
+        <div class="sub-tabs" id="subTabs">
+          <button class="sub-tab active" data-tab="trial" onclick="switchTab(this)">Trial Balance</button>
+          <button class="sub-tab" data-tab="income" onclick="switchTab(this)">Income Statement</button>
+          <button class="sub-tab" data-tab="balance" onclick="switchTab(this)">Balance Sheet</button>
+          <button class="sub-tab" data-tab="profitability" onclick="switchTab(this)">Contract Profitability</button>
+          <button class="sub-tab" data-tab="expenses" onclick="switchTab(this)">Expenses</button>
+          <button class="sub-tab" data-tab="ledger" onclick="switchTab(this)">General Ledger</button>
+        </div>
+
+        <!-- Trial Balance Panel -->
+        <div class="tab-panel active" id="panel-trial">
+          <div class="date-filter">
+            <label>From:</label><input type="date" id="trialFrom">
+            <label>To:</label><input type="date" id="trialTo">
+            <button onclick="loadTrialBalance()">Load</button>
+          </div>
+          <div class="report-card">
+            <h3 id="trialTitle">Trial Balance</h3>
+            <div class="table-wrap">
+              <table><thead><tr><th id="trAcct">Account</th><th id="trDebit" class="text-right">Debit</th><th id="trCredit" class="text-right">Credit</th></tr></thead><tbody id="trialBody"><tr><td colspan="3" class="empty-msg">Click Load to generate report</td></tr></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Income Statement Panel -->
+        <div class="tab-panel" id="panel-income">
+          <div class="date-filter">
+            <label>From:</label><input type="date" id="incomeFrom">
+            <label>To:</label><input type="date" id="incomeTo">
+            <button onclick="loadIncomeStatement()">Load</button>
+          </div>
+          <div class="summary-row" id="incomeSummary"></div>
+          <div class="report-card">
+            <h3 id="incomeTitle">Income Statement</h3>
+            <div class="table-wrap">
+              <table><thead><tr><th>Category</th><th>Account</th><th class="text-right">Amount</th></tr></thead><tbody id="incomeBody"><tr><td colspan="3" class="empty-msg">Click Load to generate report</td></tr></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Balance Sheet Panel -->
+        <div class="tab-panel" id="panel-balance">
+          <div class="date-filter">
+            <label>As of:</label><input type="date" id="balanceDate">
+            <button onclick="loadBalanceSheet()">Load</button>
+          </div>
+          <div class="report-card">
+            <h3 id="balanceTitle">Balance Sheet</h3>
+            <div class="table-wrap">
+              <table><thead><tr><th>Category</th><th>Account</th><th class="text-right">Amount</th></tr></thead><tbody id="balanceBody"><tr><td colspan="3" class="empty-msg">Click Load to generate report</td></tr></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contract Profitability Panel -->
+        <div class="tab-panel" id="panel-profitability">
+          <div class="date-filter">
+            <button onclick="loadProfitability()">Load</button>
+          </div>
+          <div class="summary-row" id="profitSummary"></div>
+          <div class="report-card">
+            <h3 id="profitTitle">Contract Profitability</h3>
+            <div class="table-wrap">
+              <table><thead><tr><th>Contract #</th><th>Client</th><th class="text-right">Revenue</th><th class="text-right">Costs</th><th class="text-right">Profit</th><th class="text-right">Margin %</th></tr></thead><tbody id="profitBody"><tr><td colspan="6" class="empty-msg">Click Load to generate report</td></tr></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expenses Panel -->
+        <div class="tab-panel" id="panel-expenses">
+          <div class="expense-form">
+            <h3 id="expFormTitle">Add New Expense</h3>
+            <div class="expense-grid">
+              <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="expDate">
+              </div>
+              <div class="form-group">
+                <label>Category</label>
+                <select id="expCategory">
+                  <option value="salary">Salary</option>
+                  <option value="rent">Rent</option>
+                  <option value="utilities">Utilities</option>
+                  <option value="transport">Transport</option>
+                  <option value="office">Office Supplies</option>
+                  <option value="marketing">Marketing</option>
+                  <option value="maintenance">Maintenance</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Amount</label>
+                <input type="number" id="expAmount" step="0.01" value="0">
+              </div>
+              <div class="form-group">
+                <label>Description</label>
+                <input type="text" id="expDesc">
+              </div>
+            </div>
+            <button class="btn btn-save" onclick="addExpense()" style="margin-top:10px;">Add Expense</button>
+          </div>
+          <div class="date-filter">
+            <label>From:</label><input type="date" id="expFrom">
+            <label>To:</label><input type="date" id="expTo">
+            <label>Category:</label>
+            <select id="expFilterCat" style="padding:8px;border:1px solid #ddd;border-radius:8px;">
+              <option value="">All</option>
+              <option value="salary">Salary</option>
+              <option value="rent">Rent</option>
+              <option value="utilities">Utilities</option>
+              <option value="transport">Transport</option>
+              <option value="office">Office Supplies</option>
+              <option value="marketing">Marketing</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="other">Other</option>
+            </select>
+            <button onclick="loadExpenses()">Load</button>
+          </div>
+          <div class="summary-row" id="expSummary"></div>
+          <div class="report-card">
+            <h3 id="expTitle">Expenses</h3>
+            <div class="table-wrap">
+              <table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th class="text-right">Amount</th><th>Actions</th></tr></thead><tbody id="expBody"><tr><td colspan="5" class="empty-msg">Click Load to view expenses</td></tr></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- General Ledger Panel -->
+        <div class="tab-panel" id="panel-ledger">
+          <div class="date-filter">
+            <label>Account:</label>
+            <select id="ledgerAccount" style="padding:8px;border:1px solid #ddd;border-radius:8px;min-width:200px;">
+              <option value="">All Accounts</option>
+            </select>
+            <label>From:</label><input type="date" id="ledgerFrom">
+            <label>To:</label><input type="date" id="ledgerTo">
+            <button onclick="loadLedger()">Load</button>
+          </div>
+          <div class="report-card">
+            <h3 id="ledgerTitle">General Ledger</h3>
+            <div class="table-wrap">
+              <table><thead><tr><th>Date</th><th>Account</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th><th class="text-right">Balance</th></tr></thead><tbody id="ledgerBody"><tr><td colspan="6" class="empty-msg">Click Load to view ledger entries</td></tr></tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script src="_/theme/i18n.js"></script>
+      <script>
+        (function() {
+          var lang = localStorage.getItem('hp_language') || 'en';
+          var isAr = lang === 'ar';
+          function t(en, ar) { return isAr ? ar : en; }
+          function fmt(n) { return (n || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+
+          function applyI18n() {
+            document.getElementById('pageTitle').textContent = t('Accountant Dashboard', 'لوحة المحاسب');
+            document.getElementById('btnBack').textContent = t('Back', 'رجوع');
+            document.getElementById('btnSeed').textContent = t('Setup Accounts', 'تهيئة الحسابات');
+            document.getElementById('navSuppliers').textContent = t('Suppliers', 'الموردين');
+            document.getElementById('navInventory').textContent = t('Inventory', 'المخازن');
+            document.getElementById('navInvoices').textContent = t('Purchase Invoices', 'فواتير الشراء');
+            var tabLabels = {
+              trial: t('Trial Balance', 'ميزان المراجعة'),
+              income: t('Income Statement', 'قائمة الدخل'),
+              balance: t('Balance Sheet', 'الميزانية العمومية'),
+              profitability: t('Contract Profitability', 'ربحية العقود'),
+              expenses: t('Expenses', 'المصروفات'),
+              ledger: t('General Ledger', 'دفتر الاستاذ')
+            };
+            document.querySelectorAll('.sub-tab').forEach(function(tab) {
+              var key = tab.getAttribute('data-tab');
+              if (tabLabels[key]) tab.textContent = tabLabels[key];
+            });
+            if (isAr) document.querySelector('.acc-wrapper').style.direction = 'rtl';
+          }
+
+          window.switchTab = function(el) {
+            document.querySelectorAll('.sub-tab').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+            el.classList.add('active');
+            var tab = el.getAttribute('data-tab');
+            document.getElementById('panel-' + tab).classList.add('active');
+          };
+
+          window.navTo = function(page) {
+            if (page === 'suppliers' && window.pyOpenSuppliers) window.pyOpenSuppliers();
+            else if (page === 'inventory' && window.pyOpenInventory) window.pyOpenInventory();
+            else if (page === 'invoices' && window.pyOpenPurchaseInvoices) window.pyOpenPurchaseInvoices();
+          };
+
+          window.goBack = function() {
+            if (window.pyGoBack) window.pyGoBack();
+            else window.location.hash = '#admin';
+          };
+
+          window.seedAccounts = async function() {
+            var ok = await (window.showConfirm || function(m) { return Promise.resolve(confirm(m)); })(t('Initialize the chart of accounts? This will create default accounts if they do not exist.', 'تهيئة دليل الحسابات؟ سيتم انشاء الحسابات الافتراضية اذا لم تكن موجودة.'));
+            if (!ok) return;
+            try {
+              var res = await window.pySeedAccounts();
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Accounts initialized', 'تم تهيئة الحسابات'));
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          /* === Trial Balance === */
+          window.loadTrialBalance = async function() {
+            var from = document.getElementById('trialFrom').value;
+            var to = document.getElementById('trialTo').value;
+            var tbody = document.getElementById('trialBody');
+            tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetTrialBalance(from, to);
+              if (res && res.success) {
+                var data = res.data || [];
+                if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + t('No data', 'لا توجد بيانات') + '</td></tr>'; return; }
+                var html = '';
+                var totalDebit = 0, totalCredit = 0;
+                data.forEach(function(row) {
+                  var d = parseFloat(row.debit || 0); var c = parseFloat(row.credit || 0);
+                  totalDebit += d; totalCredit += c;
+                  html += '<tr><td>' + (row.account_name || '') + '</td><td class="text-right">' + fmt(d) + '</td><td class="text-right">' + fmt(c) + '</td></tr>';
+                });
+                html += '<tr class="total-row"><td><strong>' + t('Total', 'الاجمالي') + '</strong></td><td class="text-right"><strong>' + fmt(totalDebit) + '</strong></td><td class="text-right"><strong>' + fmt(totalCredit) + '</strong></td></tr>';
+                tbody.innerHTML = html;
+              } else {
+                tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + err + '</td></tr>';
+            }
+          };
+
+          /* === Income Statement === */
+          window.loadIncomeStatement = async function() {
+            var from = document.getElementById('incomeFrom').value;
+            var to = document.getElementById('incomeTo').value;
+            var tbody = document.getElementById('incomeBody');
+            tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetIncomeStatement(from, to);
+              if (res && res.success) {
+                var data = res.data || {};
+                var revenues = data.revenues || [];
+                var expenses = data.expenses || [];
+                var totalRevenue = parseFloat(data.total_revenue || 0);
+                var totalExpense = parseFloat(data.total_expenses || 0);
+                var netIncome = parseFloat(data.net_income || 0);
+                var summaryHtml = '';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Revenue', 'اجمالي الايرادات') + '</div><div class="value text-green">' + fmt(totalRevenue) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Expenses', 'اجمالي المصروفات') + '</div><div class="value text-red">' + fmt(totalExpense) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Net Income', 'صافي الدخل') + '</div><div class="value" style="color:' + (netIncome >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(netIncome) + '</div></div>';
+                document.getElementById('incomeSummary').innerHTML = summaryHtml;
+                var html = '';
+                if (revenues.length > 0) {
+                  revenues.forEach(function(r) { html += '<tr><td>' + t('Revenue', 'ايرادات') + '</td><td>' + (r.account_name || '') + '</td><td class="text-right text-green">' + fmt(r.amount) + '</td></tr>'; });
+                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Revenue', 'اجمالي الايرادات') + '</strong></td><td class="text-right text-green"><strong>' + fmt(totalRevenue) + '</strong></td></tr>';
+                }
+                if (expenses.length > 0) {
+                  expenses.forEach(function(e) { html += '<tr><td>' + t('Expense', 'مصروفات') + '</td><td>' + (e.account_name || '') + '</td><td class="text-right text-red">' + fmt(e.amount) + '</td></tr>'; });
+                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Expenses', 'اجمالي المصروفات') + '</strong></td><td class="text-right text-red"><strong>' + fmt(totalExpense) + '</strong></td></tr>';
+                }
+                html += '<tr class="total-row"><td></td><td><strong>' + t('Net Income', 'صافي الدخل') + '</strong></td><td class="text-right" style="color:' + (netIncome >= 0 ? '#2e7d32' : '#c62828') + ';"><strong>' + fmt(netIncome) + '</strong></td></tr>';
+                tbody.innerHTML = html || '<tr><td colspan="3" class="empty-msg">' + t('No data', 'لا توجد بيانات') + '</td></tr>';
+              } else {
+                tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + err + '</td></tr>';
+            }
+          };
+
+          /* === Balance Sheet === */
+          window.loadBalanceSheet = async function() {
+            var asOf = document.getElementById('balanceDate').value;
+            var tbody = document.getElementById('balanceBody');
+            tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetBalanceSheet(asOf);
+              if (res && res.success) {
+                var data = res.data || {};
+                var assets = data.assets || [];
+                var liabilities = data.liabilities || [];
+                var equity = data.equity || [];
+                var html = '';
+                if (assets.length > 0) {
+                  assets.forEach(function(a) { html += '<tr><td>' + t('Assets', 'اصول') + '</td><td>' + (a.account_name || '') + '</td><td class="text-right">' + fmt(a.amount) + '</td></tr>'; });
+                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Assets', 'اجمالي الاصول') + '</strong></td><td class="text-right"><strong>' + fmt(data.total_assets || 0) + '</strong></td></tr>';
+                }
+                if (liabilities.length > 0) {
+                  liabilities.forEach(function(l) { html += '<tr><td>' + t('Liabilities', 'التزامات') + '</td><td>' + (l.account_name || '') + '</td><td class="text-right">' + fmt(l.amount) + '</td></tr>'; });
+                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Liabilities', 'اجمالي الالتزامات') + '</strong></td><td class="text-right"><strong>' + fmt(data.total_liabilities || 0) + '</strong></td></tr>';
+                }
+                if (equity.length > 0) {
+                  equity.forEach(function(e) { html += '<tr><td>' + t('Equity', 'حقوق الملكية') + '</td><td>' + (e.account_name || '') + '</td><td class="text-right">' + fmt(e.amount) + '</td></tr>'; });
+                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Equity', 'اجمالي حقوق الملكية') + '</strong></td><td class="text-right"><strong>' + fmt(data.total_equity || 0) + '</strong></td></tr>';
+                }
+                tbody.innerHTML = html || '<tr><td colspan="3" class="empty-msg">' + t('No data', 'لا توجد بيانات') + '</td></tr>';
+              } else {
+                tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + err + '</td></tr>';
+            }
+          };
+
+          /* === Contract Profitability === */
+          window.loadProfitability = async function() {
+            var tbody = document.getElementById('profitBody');
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetContractProfitability();
+              if (res && res.success) {
+                var data = res.data || [];
+                if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + t('No data', 'لا توجد بيانات') + '</td></tr>'; return; }
+                var totalRev = 0, totalCost = 0, totalProfit = 0;
+                var html = '';
+                data.forEach(function(c) {
+                  var rev = parseFloat(c.revenue || 0);
+                  var cost = parseFloat(c.costs || 0);
+                  var profit = parseFloat(c.profit || (rev - cost));
+                  var margin = rev > 0 ? ((profit / rev) * 100).toFixed(1) : '0.0';
+                  totalRev += rev; totalCost += cost; totalProfit += profit;
+                  html += '<tr>';
+                  html += '<td><strong>' + (c.contract_number || '') + '</strong></td>';
+                  html += '<td>' + (c.client_name || '') + '</td>';
+                  html += '<td class="text-right">' + fmt(rev) + '</td>';
+                  html += '<td class="text-right">' + fmt(cost) + '</td>';
+                  html += '<td class="text-right" style="color:' + (profit >= 0 ? '#2e7d32' : '#c62828') + ';font-weight:600;">' + fmt(profit) + '</td>';
+                  html += '<td class="text-right">' + margin + '%</td>';
+                  html += '</tr>';
+                });
+                var totalMargin = totalRev > 0 ? ((totalProfit / totalRev) * 100).toFixed(1) : '0.0';
+                html += '<tr class="total-row"><td colspan="2"><strong>' + t('Total', 'الاجمالي') + '</strong></td><td class="text-right"><strong>' + fmt(totalRev) + '</strong></td><td class="text-right"><strong>' + fmt(totalCost) + '</strong></td><td class="text-right" style="color:' + (totalProfit >= 0 ? '#2e7d32' : '#c62828') + ';"><strong>' + fmt(totalProfit) + '</strong></td><td class="text-right"><strong>' + totalMargin + '%</strong></td></tr>';
+                tbody.innerHTML = html;
+                var summaryHtml = '';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Revenue', 'اجمالي الايرادات') + '</div><div class="value text-green">' + fmt(totalRev) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Costs', 'اجمالي التكاليف') + '</div><div class="value text-red">' + fmt(totalCost) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Profit', 'اجمالي الربح') + '</div><div class="value" style="color:' + (totalProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(totalProfit) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Avg Margin', 'متوسط الهامش') + '</div><div class="value">' + totalMargin + '%</div></div>';
+                document.getElementById('profitSummary').innerHTML = summaryHtml;
+              } else {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + err + '</td></tr>';
+            }
+          };
+
+          /* === Expenses === */
+          window.addExpense = async function() {
+            var date = document.getElementById('expDate').value;
+            var category = document.getElementById('expCategory').value;
+            var amount = parseFloat(document.getElementById('expAmount').value) || 0;
+            var desc = document.getElementById('expDesc').value.trim();
+            if (!date || amount <= 0) {
+              if (window.showNotification) window.showNotification('error', '', t('Date and amount are required', 'التاريخ والمبلغ مطلوبين'));
+              return;
+            }
+            try {
+              var res = await window.pyAddExpense({ date: date, category: category, amount: amount, description: desc });
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Expense added', 'تم اضافة المصروف'));
+                document.getElementById('expAmount').value = '0';
+                document.getElementById('expDesc').value = '';
+                loadExpenses();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.loadExpenses = async function() {
+            var from = document.getElementById('expFrom').value;
+            var to = document.getElementById('expTo').value;
+            var cat = document.getElementById('expFilterCat').value;
+            var tbody = document.getElementById('expBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetExpenses(from, to, cat);
+              if (res && res.success) {
+                var data = res.data || [];
+                if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">' + t('No expenses found', 'لا توجد مصروفات') + '</td></tr>'; return; }
+                var html = '';
+                var total = 0;
+                data.forEach(function(e) {
+                  var amt = parseFloat(e.amount || 0);
+                  total += amt;
+                  html += '<tr><td>' + (e.date || '').substring(0, 10) + '</td><td>' + (e.category || '') + '</td><td>' + (e.description || '') + '</td><td class="text-right">' + fmt(amt) + '</td><td><button class="btn-delete" onclick="delExpense(\'' + e.id + '\')">' + t('Del', 'حذف') + '</button></td></tr>';
+                });
+                html += '<tr class="total-row"><td colspan="3"><strong>' + t('Total', 'الاجمالي') + '</strong></td><td class="text-right"><strong>' + fmt(total) + '</strong></td><td></td></tr>';
+                tbody.innerHTML = html;
+                document.getElementById('expSummary').innerHTML = '<div class="summary-box"><div class="label">' + t('Total Expenses', 'اجمالي المصروفات') + '</div><div class="value text-red">' + fmt(total) + '</div></div><div class="summary-box"><div class="label">' + t('Count', 'العدد') + '</div><div class="value">' + data.length + '</div></div>';
+              } else {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">' + err + '</td></tr>';
+            }
+          };
+
+          window.delExpense = async function(id) {
+            var ok = await (window.showConfirm || function(m) { return Promise.resolve(confirm(m)); })(t('Delete this expense?', 'حذف هذا المصروف؟'));
+            if (!ok) return;
+            try {
+              var res = await window.pyDeleteExpense(id);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Deleted', 'تم الحذف'));
+                loadExpenses();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          /* === General Ledger === */
+          window.loadLedger = async function() {
+            var accountId = document.getElementById('ledgerAccount').value;
+            var from = document.getElementById('ledgerFrom').value;
+            var to = document.getElementById('ledgerTo').value;
+            var tbody = document.getElementById('ledgerBody');
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetLedgerEntries(accountId, from, to);
+              if (res && res.success) {
+                var data = res.data || [];
+                if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + t('No entries found', 'لا توجد قيود') + '</td></tr>'; return; }
+                var html = '';
+                var balance = 0;
+                data.forEach(function(entry) {
+                  var d = parseFloat(entry.debit || 0);
+                  var c = parseFloat(entry.credit || 0);
+                  balance += d - c;
+                  html += '<tr>';
+                  html += '<td>' + (entry.date || '').substring(0, 10) + '</td>';
+                  html += '<td>' + (entry.account_name || '') + '</td>';
+                  html += '<td>' + (entry.description || '') + '</td>';
+                  html += '<td class="text-right">' + (d > 0 ? fmt(d) : '-') + '</td>';
+                  html += '<td class="text-right">' + (c > 0 ? fmt(c) : '-') + '</td>';
+                  html += '<td class="text-right" style="font-weight:600;">' + fmt(balance) + '</td>';
+                  html += '</tr>';
+                });
+                tbody.innerHTML = html;
+              } else {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + err + '</td></tr>';
+            }
+          };
+
+          /* Populate ledger account dropdown from trial balance */
+          async function populateLedgerAccounts() {
+            try {
+              var res = await window.pyGetTrialBalance('', '');
+              if (res && res.success && res.data) {
+                var sel = document.getElementById('ledgerAccount');
+                var opts = '<option value="">' + t('All Accounts', 'كل الحسابات') + '</option>';
+                res.data.forEach(function(a) {
+                  opts += '<option value="' + (a.account_id || '') + '">' + (a.account_name || '') + '</option>';
+                });
+                sel.innerHTML = opts;
+              }
+            } catch (err) { /* ignore */ }
+          }
+
+          // Set default dates
+          var today = new Date().toISOString().substring(0, 10);
+          var yearStart = new Date().getFullYear() + '-01-01';
+          document.getElementById('trialFrom').value = yearStart;
+          document.getElementById('trialTo').value = today;
+          document.getElementById('incomeFrom').value = yearStart;
+          document.getElementById('incomeTo').value = today;
+          document.getElementById('balanceDate').value = today;
+          document.getElementById('expDate').value = today;
+          document.getElementById('expFrom').value = yearStart;
+          document.getElementById('expTo').value = today;
+          document.getElementById('ledgerFrom').value = yearStart;
+          document.getElementById('ledgerTo').value = today;
+
+          applyI18n();
+          populateLedgerAccounts();
+        })();
+      </script>
+  type: HtmlTemplate
+is_package: true

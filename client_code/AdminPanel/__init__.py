@@ -151,6 +151,10 @@ class AdminPanel(AdminPanelTemplate):
 
         # Navigation
         anvil.js.window.openDataImport = self.open_data_import
+        anvil.js.window.openAccountant = self.open_accountant
+        anvil.js.window.openSuppliers = self.open_suppliers
+        anvil.js.window.openInventory = self.open_inventory
+        anvil.js.window.openPurchaseInvoices = self.open_purchase_invoices
         anvil.js.window.logoutUser = self.logout_user
 
         # Debug
@@ -352,6 +356,46 @@ class AdminPanel(AdminPanelTemplate):
             item.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg><span></span>';
             attachBackupClick(item);
             return item;
+          }
+
+          function buildAccountantNavItem(id) {
+            var lang = (typeof localStorage !== 'undefined' && localStorage.getItem('hp_language')) || 'en';
+            var label = (lang === 'ar') ? 'المحاسب' : 'Accountant';
+            var item = document.createElement('a');
+            item.className = 'nav-item';
+            item.id = id;
+            item.href = '#';
+            item.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg><span>' + label + '</span>';
+            item.onclick = function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              if (window.openAccountant) window.openAccountant();
+            };
+            return item;
+          }
+
+          function insertAccountantNav() {
+            var topNav = document.querySelector('.header-row-nav');
+            if (topNav && !document.getElementById('navAccountantTop')) {
+              var settingsItem = topNav.querySelector('.nav-item[data-panel="settings"]');
+              var item = buildAccountantNavItem('navAccountantTop');
+              if (settingsItem && settingsItem.parentNode) {
+                settingsItem.parentNode.insertBefore(item, settingsItem);
+              } else {
+                topNav.appendChild(item);
+              }
+            }
+
+            var mobileMenu = document.getElementById('mobileMenu');
+            if (mobileMenu && !document.getElementById('navAccountantMobile')) {
+              var mobileSettings = mobileMenu.querySelector('.nav-item[data-panel="settings"]');
+              var mobileItem = buildAccountantNavItem('navAccountantMobile');
+              if (mobileSettings && mobileSettings.parentNode) {
+                mobileSettings.parentNode.insertBefore(mobileItem, mobileSettings);
+              } else {
+                mobileMenu.appendChild(mobileItem);
+              }
+            }
           }
 
           function insertDataImportNav() {
@@ -1955,6 +1999,7 @@ class AdminPanel(AdminPanelTemplate):
           }
 
           function run() {
+            insertAccountantNav();
             insertDataImportNav();
             insertBackupNav();
             patchSaveSetting();
@@ -2266,6 +2311,46 @@ class AdminPanel(AdminPanelTemplate):
         try:
             from ..DataImportForm import DataImportForm
             open_form("DataImportForm")
+        except Exception as e:
+            try:
+                anvil.js.window.showNotification('error', 'خطأ', str(e))
+            except Exception:
+                pass
+
+    def open_accountant(self):
+        """فتح لوحة المحاسب"""
+        try:
+            open_form("AccountantForm")
+        except Exception as e:
+            try:
+                anvil.js.window.showNotification('error', 'خطأ', str(e))
+            except Exception:
+                pass
+
+    def open_suppliers(self):
+        """فتح صفحة الموردين"""
+        try:
+            open_form("SuppliersForm")
+        except Exception as e:
+            try:
+                anvil.js.window.showNotification('error', 'خطأ', str(e))
+            except Exception:
+                pass
+
+    def open_inventory(self):
+        """فتح صفحة المخازن"""
+        try:
+            open_form("InventoryForm")
+        except Exception as e:
+            try:
+                anvil.js.window.showNotification('error', 'خطأ', str(e))
+            except Exception:
+                pass
+
+    def open_purchase_invoices(self):
+        """فتح صفحة فواتير الشراء"""
+        try:
+            open_form("PurchaseInvoicesForm")
         except Exception as e:
             try:
                 anvil.js.window.showNotification('error', 'خطأ', str(e))

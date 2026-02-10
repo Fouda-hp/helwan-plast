@@ -1,0 +1,411 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+        body { background: #f0f2f5; }
+        .inv-wrapper { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .inv-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .inv-header h1 { font-size: 24px; color: #1a1a2e; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+        .btn-back { background: #f0f2f5; color: #333; border: 1px solid #ddd; }
+        .btn-edit { background: #2196f3; color: #fff; padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+        .btn-link { background: #ff9800; color: #fff; padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+        .btn-delete { background: #f44336; color: #fff; padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+        .btn-save { background: #4caf50; color: #fff; }
+        .btn-cancel { background: #9e9e9e; color: #fff; }
+        .filter-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .filter-row input { flex: 1; min-width: 200px; padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .filter-row input:focus { outline: none; border-color: #667eea; }
+        .filter-btn { padding: 8px 16px; border: 2px solid #667eea; background: #fff; color: #667eea; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .filter-btn.active { background: #667eea; color: #fff; }
+        .table-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 12px 10px; text-align: left; position: sticky; top: 0; z-index: 2; white-space: nowrap; }
+        tbody td { padding: 10px; border-bottom: 1px solid #f0f0f0; }
+        tbody tr:hover { background: #f8f9ff; }
+        .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .status-in_stock { background: #e8f5e9; color: #2e7d32; }
+        .status-reserved { background: #fff3e0; color: #ef6c00; }
+        .status-sold { background: #e3f2fd; color: #1565c0; }
+        .profit-positive { color: #2e7d32; font-weight: 600; }
+        .profit-negative { color: #c62828; font-weight: 600; }
+        .empty-msg { text-align: center; padding: 40px; color: #999; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+        .modal h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 20px; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 13px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #667eea; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .summary-card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; }
+        .summary-card .num { font-size: 28px; font-weight: 700; }
+        .summary-card .lbl { font-size: 12px; color: #666; margin-top: 4px; }
+        @media (max-width: 768px) {
+          .inv-header { flex-direction: column; align-items: flex-start; }
+          .filter-row { flex-direction: column; }
+        }
+      </style>
+
+      <div class="inv-wrapper">
+        <div class="inv-header">
+          <h1 id="pageTitle">Inventory</h1>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="openAddItemModal()" id="btnAdd">+ Add Item</button>
+            <button class="btn btn-back" onclick="goBack()" id="btnBack">Back</button>
+          </div>
+        </div>
+
+        <div class="summary-cards" id="summaryCards"></div>
+
+        <div class="filter-row">
+          <button class="filter-btn active" data-status="" onclick="setFilter(this)" id="fAll">All</button>
+          <button class="filter-btn" data-status="in_stock" onclick="setFilter(this)" id="fStock">In Stock</button>
+          <button class="filter-btn" data-status="reserved" onclick="setFilter(this)" id="fReserved">Reserved</button>
+          <button class="filter-btn" data-status="sold" onclick="setFilter(this)" id="fSold">Sold</button>
+          <input type="text" id="searchInput" placeholder="Search by code or description..." oninput="debounceSearch()">
+        </div>
+
+        <div class="table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th id="thCode">Machine Code</th>
+                  <th id="thDesc">Description</th>
+                  <th id="thPurchase">Purchase Cost</th>
+                  <th id="thImport">Import Costs</th>
+                  <th id="thTotal">Total Cost</th>
+                  <th id="thSelling">Selling Price</th>
+                  <th id="thProfit">Profit/Loss</th>
+                  <th id="thStatus">Status</th>
+                  <th id="thActions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="invBody">
+                <tr><td colspan="9" class="empty-msg">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add/Edit Item Modal -->
+      <div class="modal-overlay" id="itemModal">
+        <div class="modal">
+          <h2 id="itemModalTitle">Add Inventory Item</h2>
+          <input type="hidden" id="editItemId" value="">
+          <div class="form-group">
+            <label id="lblCode">Machine Code *</label>
+            <input type="text" id="fCode" required>
+          </div>
+          <div class="form-group">
+            <label id="lblDesc">Description</label>
+            <input type="text" id="fDesc">
+          </div>
+          <div class="form-group">
+            <label id="lblPurchaseCost">Purchase Cost</label>
+            <input type="number" id="fPurchaseCost" step="0.01" value="0">
+          </div>
+          <div class="form-group">
+            <label id="lblLocation">Location</label>
+            <input type="text" id="fLocation">
+          </div>
+          <div class="form-group">
+            <label id="lblItemNotes">Notes</label>
+            <textarea id="fItemNotes" rows="3"></textarea>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-cancel" onclick="closeItemModal()">Cancel</button>
+            <button class="btn btn-save" onclick="saveItem()">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Link to Contract Modal -->
+      <div class="modal-overlay" id="linkModal">
+        <div class="modal">
+          <h2 id="linkModalTitle">Link to Contract</h2>
+          <input type="hidden" id="linkItemId" value="">
+          <div class="form-group">
+            <label id="lblContract">Contract *</label>
+            <select id="fContract"><option value="">-- Select Contract --</option></select>
+          </div>
+          <div class="form-group">
+            <label id="lblSellingPrice">Selling Price *</label>
+            <input type="number" id="fSellingPrice" step="0.01" value="0">
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-cancel" onclick="closeLinkModal()">Cancel</button>
+            <button class="btn btn-save" onclick="linkToContract()">Link</button>
+          </div>
+        </div>
+      </div>
+
+      <script src="_/theme/i18n.js"></script>
+      <script>
+        (function() {
+          var lang = localStorage.getItem('hp_language') || 'en';
+          var isAr = lang === 'ar';
+          var currentFilter = '';
+          var searchTimer = null;
+          var allItems = [];
+
+          function t(en, ar) { return isAr ? ar : en; }
+          function fmt(n) { return (n || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+
+          function applyI18n() {
+            document.getElementById('pageTitle').textContent = t('Inventory', 'المخازن');
+            document.getElementById('btnAdd').textContent = t('+ Add Item', '+ اضافة صنف');
+            document.getElementById('btnBack').textContent = t('Back', 'رجوع');
+            document.getElementById('fAll').textContent = t('All', 'الكل');
+            document.getElementById('fStock').textContent = t('In Stock', 'في المخزن');
+            document.getElementById('fReserved').textContent = t('Reserved', 'محجوز');
+            document.getElementById('fSold').textContent = t('Sold', 'مباع');
+            document.getElementById('searchInput').placeholder = t('Search by code or description...', 'بحث بالكود او الوصف...');
+            document.getElementById('thCode').textContent = t('Machine Code', 'كود الماكينة');
+            document.getElementById('thDesc').textContent = t('Description', 'الوصف');
+            document.getElementById('thPurchase').textContent = t('Purchase Cost', 'سعر الشراء');
+            document.getElementById('thImport').textContent = t('Import Costs', 'تكاليف الاستيراد');
+            document.getElementById('thTotal').textContent = t('Total Cost', 'التكلفة الاجمالية');
+            document.getElementById('thSelling').textContent = t('Selling Price', 'سعر البيع');
+            document.getElementById('thProfit').textContent = t('Profit/Loss', 'ربح/خسارة');
+            document.getElementById('thStatus').textContent = t('Status', 'الحالة');
+            document.getElementById('thActions').textContent = t('Actions', 'اجراءات');
+            document.getElementById('lblCode').textContent = t('Machine Code *', '* كود الماكينة');
+            document.getElementById('lblDesc').textContent = t('Description', 'الوصف');
+            document.getElementById('lblPurchaseCost').textContent = t('Purchase Cost', 'سعر الشراء');
+            document.getElementById('lblLocation').textContent = t('Location', 'الموقع');
+            document.getElementById('lblItemNotes').textContent = t('Notes', 'ملاحظات');
+            if (isAr) document.querySelector('.inv-wrapper').style.direction = 'rtl';
+          }
+
+          function renderSummary(data) {
+            var inStock = 0, reserved = 0, sold = 0, totalValue = 0;
+            (data || []).forEach(function(item) {
+              var s = (item.status || '').toLowerCase();
+              if (s === 'in_stock') inStock++;
+              else if (s === 'reserved') reserved++;
+              else if (s === 'sold') sold++;
+              totalValue += parseFloat(item.total_cost || item.purchase_cost || 0);
+            });
+            var html = '';
+            html += '<div class="summary-card"><div class="num" style="color:#667eea;">' + data.length + '</div><div class="lbl">' + t('Total Items', 'اجمالي الاصناف') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#2e7d32;">' + inStock + '</div><div class="lbl">' + t('In Stock', 'في المخزن') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#ef6c00;">' + reserved + '</div><div class="lbl">' + t('Reserved', 'محجوز') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#1565c0;">' + sold + '</div><div class="lbl">' + t('Sold', 'مباع') + '</div></div>';
+            document.getElementById('summaryCards').innerHTML = html;
+          }
+
+          window.setFilter = function(el) {
+            document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+            el.classList.add('active');
+            currentFilter = el.getAttribute('data-status');
+            loadInventory();
+          };
+
+          window.debounceSearch = function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function() { loadInventory(); }, 300);
+          };
+
+          async function loadInventory() {
+            var search = document.getElementById('searchInput').value.trim();
+            var tbody = document.getElementById('invBody');
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetInventory(currentFilter, search);
+              if (res && res.success) {
+                allItems = res.data || [];
+                renderSummary(allItems);
+                renderTable(allItems);
+              } else {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">' + err + '</td></tr>';
+            }
+          }
+
+          function renderTable(data) {
+            var tbody = document.getElementById('invBody');
+            if (!data || data.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">' + t('No items found', 'لا يوجد اصناف') + '</td></tr>';
+              return;
+            }
+            var html = '';
+            data.forEach(function(item) {
+              var purchaseCost = parseFloat(item.purchase_cost || 0);
+              var importCosts = parseFloat(item.import_costs || 0);
+              var totalCost = parseFloat(item.total_cost || (purchaseCost + importCosts));
+              var sellingPrice = parseFloat(item.selling_price || 0);
+              var profit = sellingPrice > 0 ? sellingPrice - totalCost : 0;
+              var profitClass = profit >= 0 ? 'profit-positive' : 'profit-negative';
+              var statusKey = (item.status || 'in_stock').toLowerCase();
+              var statusLabel = statusKey === 'in_stock' ? t('In Stock', 'في المخزن') : statusKey === 'reserved' ? t('Reserved', 'محجوز') : t('Sold', 'مباع');
+
+              html += '<tr>';
+              html += '<td><strong>' + (item.machine_code || '') + '</strong></td>';
+              html += '<td>' + (item.description || '') + '</td>';
+              html += '<td>' + fmt(purchaseCost) + '</td>';
+              html += '<td>' + fmt(importCosts) + '</td>';
+              html += '<td><strong>' + fmt(totalCost) + '</strong></td>';
+              html += '<td>' + (sellingPrice > 0 ? fmt(sellingPrice) : '-') + '</td>';
+              html += '<td class="' + profitClass + '">' + (sellingPrice > 0 ? fmt(profit) : '-') + '</td>';
+              html += '<td><span class="status-badge status-' + statusKey + '">' + statusLabel + '</span></td>';
+              html += '<td style="white-space:nowrap;">';
+              html += '<button class="btn btn-edit" onclick="editItem(\'' + item.id + '\')">' + t('Edit', 'تعديل') + '</button> ';
+              if (statusKey === 'in_stock') {
+                html += '<button class="btn btn-link" onclick="openLinkModal(\'' + item.id + '\')">' + t('Link', 'ربط') + '</button> ';
+              }
+              html += '<button class="btn btn-delete" onclick="deleteItem(\'' + item.id + '\')">' + t('Delete', 'حذف') + '</button>';
+              html += '</td></tr>';
+            });
+            tbody.innerHTML = html;
+          }
+
+          window.openAddItemModal = function() {
+            document.getElementById('itemModalTitle').textContent = t('Add Inventory Item', 'اضافة صنف');
+            document.getElementById('editItemId').value = '';
+            document.getElementById('fCode').value = '';
+            document.getElementById('fDesc').value = '';
+            document.getElementById('fPurchaseCost').value = '0';
+            document.getElementById('fLocation').value = '';
+            document.getElementById('fItemNotes').value = '';
+            document.getElementById('itemModal').classList.add('show');
+          };
+
+          window.editItem = function(id) {
+            var item = allItems.find(function(x) { return String(x.id) === String(id); });
+            if (!item) return;
+            document.getElementById('itemModalTitle').textContent = t('Edit Item', 'تعديل صنف');
+            document.getElementById('editItemId').value = item.id;
+            document.getElementById('fCode').value = item.machine_code || '';
+            document.getElementById('fDesc').value = item.description || '';
+            document.getElementById('fPurchaseCost').value = item.purchase_cost || 0;
+            document.getElementById('fLocation').value = item.location || '';
+            document.getElementById('fItemNotes').value = item.notes || '';
+            document.getElementById('itemModal').classList.add('show');
+          };
+
+          window.closeItemModal = function() {
+            document.getElementById('itemModal').classList.remove('show');
+          };
+
+          window.saveItem = async function() {
+            var code = document.getElementById('fCode').value.trim();
+            if (!code) {
+              if (window.showNotification) window.showNotification('error', '', t('Machine code is required', 'كود الماكينة مطلوب'));
+              return;
+            }
+            var data = {
+              machine_code: code,
+              description: document.getElementById('fDesc').value.trim(),
+              purchase_cost: parseFloat(document.getElementById('fPurchaseCost').value) || 0,
+              location: document.getElementById('fLocation').value.trim(),
+              notes: document.getElementById('fItemNotes').value.trim()
+            };
+            var editId = document.getElementById('editItemId').value;
+            try {
+              var res;
+              if (editId) {
+                res = await window.pyUpdateInventoryItem(editId, data);
+              } else {
+                res = await window.pyAddInventoryItem(data);
+              }
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Item saved', 'تم حفظ الصنف'));
+                closeItemModal();
+                loadInventory();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : t('Save failed', 'فشل الحفظ'));
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.openLinkModal = async function(id) {
+            document.getElementById('linkItemId').value = id;
+            document.getElementById('fSellingPrice').value = '0';
+            var sel = document.getElementById('fContract');
+            sel.innerHTML = '<option value="">' + t('-- Loading contracts --', '-- جاري تحميل العقود --') + '</option>';
+            document.getElementById('linkModal').classList.add('show');
+            try {
+              var res = await window.pyGetContractsList();
+              if (res && res.success) {
+                var opts = '<option value="">' + t('-- Select Contract --', '-- اختر عقد --') + '</option>';
+                (res.data || []).forEach(function(c) {
+                  opts += '<option value="' + c.id + '">' + (c.contract_number || '') + ' - ' + (c.client_name || '') + '</option>';
+                });
+                sel.innerHTML = opts;
+              }
+            } catch (err) {
+              sel.innerHTML = '<option value="">' + t('Error loading contracts', 'خطأ في تحميل العقود') + '</option>';
+            }
+          };
+
+          window.closeLinkModal = function() {
+            document.getElementById('linkModal').classList.remove('show');
+          };
+
+          window.linkToContract = async function() {
+            var itemId = document.getElementById('linkItemId').value;
+            var contractId = document.getElementById('fContract').value;
+            var sellingPrice = parseFloat(document.getElementById('fSellingPrice').value) || 0;
+            if (!contractId) {
+              if (window.showNotification) window.showNotification('error', '', t('Select a contract', 'اختر عقد'));
+              return;
+            }
+            if (sellingPrice <= 0) {
+              if (window.showNotification) window.showNotification('error', '', t('Enter selling price', 'ادخل سعر البيع'));
+              return;
+            }
+            try {
+              var res = await window.pyLinkToContract(itemId, contractId, sellingPrice);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Linked to contract', 'تم الربط بالعقد'));
+                closeLinkModal();
+                loadInventory();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.deleteItem = async function(id) {
+            var ok = await (window.showConfirm || function(m) { return Promise.resolve(confirm(m)); })(t('Delete this item?', 'حذف هذا الصنف؟'));
+            if (!ok) return;
+            try {
+              var res = await window.pyDeleteInventoryItem(id);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Item deleted', 'تم حذف الصنف'));
+                loadInventory();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.goBack = function() {
+            if (window.pyGoBack) window.pyGoBack();
+            else window.location.hash = '#admin';
+          };
+
+          applyI18n();
+          loadInventory();
+        })();
+      </script>
+  type: HtmlTemplate
+is_package: true

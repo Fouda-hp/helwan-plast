@@ -4,6 +4,8 @@ db_schema:
   audit_log:
     client: none
     columns:
+    - {admin_ui: null, name: action_description, type: string}
+    - {admin_ui: null, name: user_name, type: string}
     - admin_ui: {width: 200}
       name: log_id
       type: string
@@ -30,12 +32,6 @@ db_schema:
       type: string
     - admin_ui: {width: 200}
       name: ip_address
-      type: string
-    - admin_ui: {width: 200}
-      name: user_name
-      type: string
-    - admin_ui: {width: 300}
-      name: action_description
       type: string
     server: full
     title: AUDIT_LOG
@@ -96,7 +92,7 @@ db_schema:
     server: full
     title: CLIENTS
   contracts:
-    client: none
+    client: full
     columns:
     - admin_ui: {width: 200}
       name: contract_number
@@ -149,6 +145,15 @@ db_schema:
     - admin_ui: {width: 200}
       name: payments_json
       type: string
+    - admin_ui: {width: 200}
+      name: delivery_date
+      type: string
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: updated_at
+      type: datetime
     - admin_ui: {width: 120}
       name: payment_1_date
       type: string
@@ -221,15 +226,6 @@ db_schema:
     - admin_ui: {width: 120}
       name: payment_12_value
       type: string
-    - admin_ui: {width: 200}
-      name: delivery_date
-      type: string
-    - admin_ui: {width: 200}
-      name: created_at
-      type: datetime
-    - admin_ui: {width: 200}
-      name: updated_at
-      type: datetime
     server: full
     title: CONTRACTS
   counters:
@@ -246,13 +242,13 @@ db_schema:
   files:
     client: none
     columns:
-    - admin_ui: {order: 0, width: 200}
+    - admin_ui: {width: 200}
       name: path
       type: string
-    - admin_ui: {order: 1, width: 200}
+    - admin_ui: {width: 200}
       name: file
       type: media
-    - admin_ui: {order: 2, width: 200}
+    - admin_ui: {width: 200}
       name: file_version
       type: string
     server: full
@@ -722,10 +718,10 @@ db_schema:
   settings:
     client: none
     columns:
-    - admin_ui: {order: 0, width: 408}
+    - admin_ui: {width: 408}
       name: setting_key
       type: string
-    - admin_ui: {order: 1, width: 816}
+    - admin_ui: {width: 816}
       name: setting_value
       type: string
     - admin_ui: {width: 200}
@@ -742,6 +738,11 @@ db_schema:
       type: datetime
     server: full
     title: SETTINGS
+  table_17:
+    client: none
+    columns: []
+    server: full
+    title: Table 17
   users:
     client: none
     columns:
@@ -797,13 +798,13 @@ db_schema:
     - admin_ui: {width: 200}
       name: totp_secret
       type: string
-    - admin_ui: {order: 18, width: 200}
+    - admin_ui: {width: 200}
       name: enabled
       type: bool
-    - admin_ui: {order: 19, width: 200}
+    - admin_ui: {width: 200}
       name: n_password_failures
       type: number
-    - admin_ui: {order: 20, width: 200}
+    - admin_ui: {width: 200}
       name: confirmed_email
       type: bool
     server: full

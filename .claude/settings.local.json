@@ -28,7 +28,12 @@
       "Bash(node:*)",
       "Bash(dir:*)",
       "Bash(ls:*)",
-      "Bash(python -m py_compile:*)"
+      "Bash(python -m py_compile:*)",
+      "Bash(grep:*)",
+      "Bash(xargs find)",
+      "Bash(while read f)",
+      "Bash(do wc -l \"$f\")",
+      "Bash(done)"
     ]
   }
 }

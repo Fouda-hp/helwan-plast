@@ -80,8 +80,8 @@ class TestQuotationNumbers(unittest.TestCase):
         app_tables.quotations = MagicMock()
         app_tables.quotations.search.return_value = []
         qn = self._qn
-        with patch.object(qn, 'app_tables', app_tables):
-            n = qn.get_next_number_atomic('clients_next')
+        with patch.object(qn, 'app_tables', app_tables), patch.object(qn, '_require_auth', return_value=('test@test.com', None)):
+            n = qn.get_next_number_atomic('clients_next', 'fake_token')
         self.assertEqual(n, 1)
         app_tables.counters.add_row.assert_called_once()
         call_kw = app_tables.counters.add_row.call_args[1]
@@ -97,8 +97,8 @@ class TestQuotationNumbers(unittest.TestCase):
         app_tables.counters = MagicMock()
         app_tables.counters.get.return_value = row
         qn = self._qn
-        with patch.object(qn, 'app_tables', app_tables):
-            n = qn.get_next_number_atomic('quotations_next')
+        with patch.object(qn, 'app_tables', app_tables), patch.object(qn, '_require_auth', return_value=('test@test.com', None)):
+            n = qn.get_next_number_atomic('quotations_next', 'fake_token')
         self.assertEqual(n, 101)
         row.__setitem__.assert_called_with('value', 101)
 

@@ -127,45 +127,75 @@
   to   { opacity:1; transform:translateY(0); }
 }
 
-/* ================= UNIFIED HAND LOADER ================= */
+/* =========================================================
+   UNIFIED LOADING OVERLAY
+   Controls: localStorage 'hp_loader_type' = 'hand' | 'spinner'
+   ========================================================= */
+
+/* --- Overlay Container --- */
+.hp-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: transparent;
+}
+.hp-loading-overlay.show {
+  display: flex;
+}
+
+/* --- Loader inner wrapper (shared) --- */
+.hp-loader {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+}
+
+/* --- Hand Loader positioning --- */
+.hp-loader-hand .hand-loader {
+  margin-left: -40px;
+  margin-top: -30px;
+}
+
+/* --- Spinner (Dots) Loader --- */
+.hp-loader-spinner {
+  margin-left: -30px;
+  margin-top: -10px;
+}
+.hp-spinner-dots {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.hp-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  animation: hp-dot-bounce 1.4s ease-in-out infinite;
+}
+.hp-dot:nth-child(2) { animation-delay: 0.16s; }
+.hp-dot:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes hp-dot-bounce {
+  0%, 80%, 100% { transform: scale(0.4); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* --- Legacy wrapper classes (inline / btn-loader) --- */
 .hand-loader-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
 }
-
-.hand-loader-wrapper.fullscreen {
-  position: fixed;
-  inset: 0;
-  background: transparent;
-  backdrop-filter: none;
-  z-index: 2147483646;
-  padding: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.hand-loader-wrapper.fullscreen.show {
-  display: flex;
-}
-
-/* اليد في نص الشاشة (بدون transform عشان الأنيميشن يشتغل) */
-.hand-loader-wrapper.fullscreen .hand-loader {
-  margin-left: 0;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  margin-left: -40px;
-  margin-top: -30px;
-}
-
+.hand-loader-wrapper.fullscreen { display: none; }
 .hand-loader-wrapper.inline {
   padding: 30px 10px;
 }
-
 .hand-loader-wrapper.btn-loader {
   padding: 0;
   position: absolute;

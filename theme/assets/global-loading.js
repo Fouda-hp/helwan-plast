@@ -1,6 +1,15 @@
 /**
- * لودر اليد - خفيف جداً، بدون MutationObserver.
- * يظهر اليد عندما Anvil يعرض التحميل، ويخفيها عندما ينتهي (أو بعد وقت أقصى).
+ * نظام التحميل الموحد - Helwan Plast
+ * ====================================
+ * يدعم 2 لودر: "hand" (اليد) و "spinner" (دوائر)
+ *
+ * التحكم:
+ *   localStorage.setItem('hp_loader_type', 'hand')     ← لودر اليد (الافتراضي)
+ *   localStorage.setItem('hp_loader_type', 'spinner')   ← لودر الدوائر
+ *
+ *   window.showLoadingOverlay()  ← إظهار يدوي
+ *   window.hideLoadingOverlay()  ← إخفاء يدوي
+ *   window.setLoaderType('hand' | 'spinner') ← تغيير النوع وقت التشغيل
  */
 (function () {
   'use strict';
@@ -12,22 +21,51 @@
   var MAX_SHOW_MS = 45000;
   var showTime = 0;
 
-  var HAND_HTML =
-    '<div class="hand-loader">' +
-    '<div class="hand-finger"></div><div class="hand-finger"></div>' +
-    '<div class="hand-finger"></div><div class="hand-finger"></div>' +
-    '<div class="hand-palm"></div><div class="hand-thumb"></div></div>';
+  // ===== Loader Type Config =====
+  function getLoaderType() {
+    try { return localStorage.getItem('hp_loader_type') || 'hand'; }
+    catch (e) { return 'hand'; }
+  }
 
+  // ===== HTML Templates =====
+  var LOADERS = {
+    hand:
+      '<div class="hp-loader hp-loader-hand">' +
+        '<div class="hand-loader">' +
+          '<div class="hand-finger"></div><div class="hand-finger"></div>' +
+          '<div class="hand-finger"></div><div class="hand-finger"></div>' +
+          '<div class="hand-palm"></div><div class="hand-thumb"></div>' +
+        '</div>' +
+      '</div>',
+
+    spinner:
+      '<div class="hp-loader hp-loader-spinner">' +
+        '<div class="hp-spinner-dots">' +
+          '<div class="hp-dot"></div>' +
+          '<div class="hp-dot"></div>' +
+          '<div class="hp-dot"></div>' +
+        '</div>' +
+      '</div>'
+  };
+
+  // ===== Overlay =====
   function getOverlay() {
     try {
       if (!document.body) return null;
       var el = document.getElementById(OVERLAY_ID);
-      if (el) return el;
-      el = document.createElement('div');
-      el.id = OVERLAY_ID;
-      el.className = 'hand-loader-wrapper fullscreen';
-      el.innerHTML = HAND_HTML;
-      document.body.appendChild(el);
+      if (!el) {
+        el = document.createElement('div');
+        el.id = OVERLAY_ID;
+        el.className = 'hp-loading-overlay';
+        document.body.appendChild(el);
+      }
+      // Always update inner HTML to match current loader type
+      var type = getLoaderType();
+      var currentType = el.getAttribute('data-loader');
+      if (currentType !== type) {
+        el.innerHTML = LOADERS[type] || LOADERS.hand;
+        el.setAttribute('data-loader', type);
+      }
       return el;
     } catch (err) {
       return null;
@@ -52,10 +90,7 @@
     } catch (err) {}
   }
 
-  /**
-   * التحميل شغال = السبينر موجود وفي الـ layout (أو حاويه ظاهر).
-   * لو السبينر اتمسح من الـ DOM أو حاويه display:none أو مخفي = نختفي.
-   */
+  // ===== Spinner Detection =====
   function hasSpinner() {
     try {
       var el = document.querySelector && document.querySelector('.anvil-spinner');
@@ -77,13 +112,13 @@
     }
   }
 
+  // ===== Tick =====
   function tick() {
     try {
       if (!document.body) return;
       var overlay = document.getElementById(OVERLAY_ID);
       if (overlay && overlay.classList.contains('show') && showTime > 0) {
-        var elapsed = Date.now() - showTime;
-        if (elapsed > MAX_SHOW_MS) {
+        if (Date.now() - showTime > MAX_SHOW_MS) {
           hide();
           return;
         }
@@ -95,25 +130,30 @@
     }
   }
 
+  // ===== Start =====
   function start() {
     try {
-      if (!document.body) {
-        setTimeout(start, 100);
-        return;
-      }
+      if (!document.body) { setTimeout(start, 100); return; }
       setInterval(tick, 300);
       tick();
     } catch (err) {}
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () {
-      setTimeout(start, 200);
-    });
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(start, 200); });
   } else {
     setTimeout(start, 200);
   }
 
+  // ===== Public API =====
   window.showLoadingOverlay = show;
   window.hideLoadingOverlay = hide;
+  window.setLoaderType = function (type) {
+    if (type !== 'hand' && type !== 'spinner') return;
+    try { localStorage.setItem('hp_loader_type', type); } catch (e) {}
+    // Force rebuild overlay with new type
+    var el = document.getElementById(OVERLAY_ID);
+    if (el) el.removeAttribute('data-loader');
+  };
+  window.getLoaderType = getLoaderType;
 })();

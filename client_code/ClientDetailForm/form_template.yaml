@@ -389,12 +389,13 @@ container:
 
         function loadDetail() {
           window.pyGetClientDetail(clientCode).then(function(result) {
-            if (!result) return;
-            var data = result;
+            if (!result || !result.success) return;
+            var data = result.client || {};
+            var stats = result.stats || {};
 
             // Render client name
             var nameEl = document.getElementById('clientName');
-            if (nameEl) nameEl.textContent = data.name || clientCode;
+            if (nameEl) nameEl.textContent = data.client_name || clientCode;
 
             // Render meta
             var metaEl = document.getElementById('clientMeta');
@@ -413,14 +414,14 @@ container:
             }
 
             // Render stats
-            if (data.stats) renderStats(data.stats);
+            renderStats(stats);
 
             // Render tags
-            currentTags = data.tags || [];
+            currentTags = Array.isArray(data.tags) ? data.tags : [];
             renderTags(currentTags);
 
             // Render notes
-            renderNotes(data.notes || []);
+            renderNotes(Array.isArray(data.notes) ? data.notes : []);
           });
         }
 
@@ -459,9 +460,14 @@ container:
           }
           container.innerHTML = notes.map(function(note) {
             var safeId = (note.id || '').toString().replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            var author = note.author_name || note.author || '';
+            var noteDate = note.created_at || note.date || '';
+            if (noteDate && noteDate.indexOf('T') !== -1) {
+              noteDate = noteDate.split('T')[0];
+            }
             return '<div class="note-card">' +
               '<div class="note-header">' +
-                '<div><span class="note-author">' + (note.author || '') + '</span> <span class="note-date">' + (note.date || '') + '</span></div>' +
+                '<div><span class="note-author">' + author + '</span> <span class="note-date">' + noteDate + '</span></div>' +
                 '<span class="note-delete" onclick="window._cdDeleteNote(\'' + safeId + '\')">&times;</span>' +
               '</div>' +
               '<div class="note-text">' + (note.text || '') + '</div>' +
@@ -485,18 +491,24 @@ container:
         function renderTimeline(data) {
           var container = document.getElementById('timelineContainer');
           if (!container) return;
-          var items = data.items || [];
+          var items = data.data || data.items || [];
           if (items.length === 0) {
             container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">' + t('noTimeline') + '</div>';
             return;
           }
+          var summaryKey = (lang === 'ar') ? 'summary_ar' : 'summary_en';
           container.innerHTML = items.map(function(item) {
             var typeClass = (item.type || '').toLowerCase();
+            var itemDate = item.date || '';
+            if (itemDate && itemDate.indexOf('T') !== -1) {
+              itemDate = itemDate.split('T')[0];
+            }
+            var summary = item[summaryKey] || item.summary_en || item.summary || '';
             return '<div class="tl-item">' +
               '<div class="tl-dot ' + typeClass + '"></div>' +
-              '<div class="tl-date">' + (item.date || '') + '</div>' +
+              '<div class="tl-date">' + itemDate + '</div>' +
               '<span class="tl-type-badge ' + typeClass + '">' + (item.type || '') + '</span>' +
-              '<div class="tl-summary">' + (item.summary || '') + '</div>' +
+              '<div class="tl-summary">' + summary + '</div>' +
             '</div>';
           }).join('');
         }
@@ -527,17 +539,18 @@ container:
           var html = '';
           for (var i = 1; i <= totalTimelinePages; i++) {
             var active = (i === currentTimelinePage) ? ' active' : '';
-            html += '<button class=\"' + active + '\" onclick=\"window._cdTimelinePage(' + i + ')\">' + i + '</button>';
+            html += '<button class="' + active + '" onclick="window._cdTimelinePage(' + i + ')">' + i + '</button>';
           }
           container.innerHTML = html;
         }
 
         function loadTagSuggestions() {
           if (typeof window.pyGetAllTags === 'function') {
-            window.pyGetAllTags().then(function(tags) {
+            window.pyGetAllTags().then(function(result) {
               var dl = document.getElementById('tagSuggestions');
-              if (dl && tags) {
-                dl.innerHTML = tags.map(function(tg) {
+              var tagList = (result && result.tags) ? result.tags : (Array.isArray(result) ? result : []);
+              if (dl && tagList.length > 0) {
+                dl.innerHTML = tagList.map(function(tg) {
                   return '<option value="' + tg + '">';
                 }).join('');
               }

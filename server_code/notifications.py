@@ -47,25 +47,78 @@ def _get_admin_emails():
 
 
 def _send_notification_email(user_email, notif_type, payload):
-    """إرسال بريد إلكتروني عند إنشاء إشعار (fire-and-forget)."""
+    """
+    إرسال بريد إلكتروني عند إنشاء إشعار.
+    ⚠️ يتم الإرسال فقط لإشعارات المتابعة (follow-up) — باقي الأنواع تظهر في الجرس فقط.
+    """
     try:
+        # === Only send emails for follow-up notifications ===
+        if notif_type not in ('followup_set', 'followup_overdue', 'followup_snoozed', 'followup_completed'):
+            return
+
         if not user_email or not str(user_email).strip():
             return
-        msg_en = payload.get('message_en', '') if isinstance(payload, dict) else ''
-        msg_ar = payload.get('message_ar', '') if isinstance(payload, dict) else ''
-        if not msg_en and not msg_ar:
-            msg_en = f'Notification: {notif_type}'
-        subject = f'Helwan Plast - {msg_en[:80]}' if msg_en else f'Helwan Plast - {msg_ar[:80]}'
+
+        if not isinstance(payload, dict):
+            payload = {}
+
+        qn = payload.get('quotation_number', '')
+        client_name = payload.get('client_name', '') or 'N/A'
+        fu_date = payload.get('follow_up_date', '') or 'N/A'
+        created_by = payload.get('created_by', '') or 'N/A'
+
+        # Build subject
+        if notif_type == 'followup_set':
+            subject_en = f'Follow-Up Set - Quotation #{qn} - {client_name}'
+            title_en = 'New Follow-Up Created'
+            title_ar = 'تم إنشاء متابعة جديدة'
+        elif notif_type == 'followup_overdue':
+            subject_en = f'Follow-Up OVERDUE - Quotation #{qn} - {client_name}'
+            title_en = 'Follow-Up Overdue!'
+            title_ar = 'متابعة متأخرة!'
+        elif notif_type == 'followup_snoozed':
+            subject_en = f'Follow-Up Snoozed - Quotation #{qn}'
+            title_en = 'Follow-Up Snoozed'
+            title_ar = 'تم تأجيل المتابعة'
+        elif notif_type == 'followup_completed':
+            subject_en = f'Follow-Up Completed - Quotation #{qn}'
+            title_en = 'Follow-Up Completed'
+            title_ar = 'تم إتمام المتابعة'
+        else:
+            subject_en = f'Helwan Plast - Follow-Up #{qn}'
+            title_en = 'Follow-Up Notification'
+            title_ar = 'إشعار متابعة'
+
+        subject = f'Helwan Plast - {subject_en}'
+
         html_body = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0;">
-                <h1 style="color: white; margin: 0; text-align: center;">Helwan Plast</h1>
+            <div style="background: linear-gradient(135deg, #B8860B 0%, #DAA520 50%, #FFD700 100%); padding: 20px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,0.3);">Helwan Plast</h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0; text-align: center; font-size: 14px;">{title_en} / {title_ar}</p>
             </div>
-            <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
-                <p style="font-size: 16px; color: #333; direction: ltr;">{msg_en}</p>
-                <p style="font-size: 16px; color: #333; direction: rtl; text-align: right;">{msg_ar}</p>
-                <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-                <p style="font-size: 12px; color: #999; text-align: center;">Helwan Plast Notification System</p>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 15px;">
+                    <tr>
+                        <td style="padding: 10px 12px; font-weight: bold; color: #555; border-bottom: 1px solid #f0f0f0; width: 160px;">Quotation # / رقم العرض</td>
+                        <td style="padding: 10px 12px; color: #333; border-bottom: 1px solid #f0f0f0; font-weight: 600;">{qn}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px 12px; font-weight: bold; color: #555; border-bottom: 1px solid #f0f0f0;">Client / العميل</td>
+                        <td style="padding: 10px 12px; color: #333; border-bottom: 1px solid #f0f0f0; font-weight: 600;">{client_name}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px 12px; font-weight: bold; color: #555; border-bottom: 1px solid #f0f0f0;">Follow-Up Date / تاريخ المتابعة</td>
+                        <td style="padding: 10px 12px; color: #333; border-bottom: 1px solid #f0f0f0; font-weight: 600;">{fu_date}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px 12px; font-weight: bold; color: #555; border-bottom: 1px solid #f0f0f0;">Created By / أنشأها</td>
+                        <td style="padding: 10px 12px; color: #333; border-bottom: 1px solid #f0f0f0; font-weight: 600;">{created_by}</td>
+                    </tr>
+                </table>
+            </div>
+            <div style="background: #f8f9fa; padding: 16px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0; border-top: none;">
+                <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">Helwan Plast Notification System</p>
             </div>
         </div>
         """

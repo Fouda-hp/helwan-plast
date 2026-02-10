@@ -111,23 +111,28 @@ def set_followup(quotation_number, follow_up_date, token_or_email=None):
                     {'follow_up_date': str(fu_date), 'follow_up_status': 'pending'},
                     user_email, _get_client_ip())
 
-        # Notify the sales rep
-        sales_rep_email = row.get('Sales Rep', '') or row.get('Email', '')
-        if sales_rep_email:
-            try:
-                notifications_module.create_notification(
-                    sales_rep_email if '@' in str(sales_rep_email) else user_email,
-                    'followup_set',
-                    {
-                        'quotation_number': qn,
-                        'client_name': row.get('Client Name', ''),
-                        'follow_up_date': str(fu_date),
-                        'message_en': f'Follow-up set for Quotation #{qn} on {fu_date}',
-                        'message_ar': f'تم تعيين متابعة لعرض سعر #{qn} في {fu_date}',
-                    }
-                )
-            except Exception:
-                pass
+        # Notify the sales rep + all admins (with email for follow-ups)
+        client_name = row.get('Client Name', '') or ''
+        fu_payload = {
+            'quotation_number': qn,
+            'client_name': client_name,
+            'follow_up_date': str(fu_date),
+            'created_by': user_email,
+            'message_en': f'Follow-up set for Quotation #{qn} ({client_name}) on {fu_date} by {user_email}',
+            'message_ar': f'تم تعيين متابعة لعرض سعر #{qn} ({client_name}) في {fu_date} بواسطة {user_email}',
+        }
+        try:
+            # Notify the sales rep
+            sales_rep_email = row.get('Sales Rep', '') or row.get('Email', '')
+            if sales_rep_email and '@' in str(sales_rep_email):
+                notifications_module.create_notification(sales_rep_email, 'followup_set', fu_payload)
+            # Also notify the user who created it (if different from sales rep)
+            if user_email and user_email != sales_rep_email:
+                notifications_module.create_notification(user_email, 'followup_set', fu_payload)
+            # Notify all admins
+            notifications_module.create_notification_for_all_admins('followup_set', fu_payload)
+        except Exception:
+            pass
 
         return {'success': True, 'follow_up_date': str(fu_date), 'follow_up_status': 'pending'}
 
@@ -351,6 +356,7 @@ def check_overdue_followups(token_or_email=None):
             client_name = row.get('Client Name', '')
 
             # Notify all admins
+            sales_rep = row.get('Sales Rep', '') or row.get('updated_by', '') or ''
             try:
                 notifications_module.create_notification_for_all_admins(
                     'followup_overdue',
@@ -359,6 +365,7 @@ def check_overdue_followups(token_or_email=None):
                         'client_name': client_name,
                         'days_overdue': days_overdue,
                         'follow_up_date': str(fu_date),
+                        'created_by': sales_rep,
                         'message_en': f'Overdue follow-up: Quotation #{qn} ({client_name}) - {days_overdue} days overdue',
                         'message_ar': f'متابعة متأخرة: عرض سعر #{qn} ({client_name}) - متأخر {days_overdue} يوم',
                     }

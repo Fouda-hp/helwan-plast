@@ -22,6 +22,7 @@ class ClientDetailForm(ClientDetailFormTemplate):
         anvil.js.window.pySetClientTags = self.set_client_tags
         anvil.js.window.pyGetAllTags = self.get_all_tags
         anvil.js.window.pyGoBack = self.go_back
+        anvil.js.window.pySetFollowup = self.set_followup_cd
 
     def _auth(self):
         return get_auth_token()
@@ -43,6 +44,9 @@ class ClientDetailForm(ClientDetailFormTemplate):
 
     def get_all_tags(self):
         return anvil.server.call('get_all_tags', self._auth())
+
+    def set_followup_cd(self, quotation_number, follow_up_date):
+        return anvil.server.call('set_followup', quotation_number, follow_up_date, self._auth())
 
     def go_back(self):
         anvil.js.window.location.hash = '#clients'

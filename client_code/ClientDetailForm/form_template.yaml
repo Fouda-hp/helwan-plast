@@ -189,6 +189,8 @@ container:
         .cd-modal-box h3 { margin: 0 0 16px 0; font-size: 18px; }
         .cd-modal-box input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
         .cd-modal-box button { padding: 8px 20px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; background: #1976d2; color: #fff; }
+        .tl-fu-btn { background:none; border:1px solid #ddd; border-radius:6px; padding:2px 8px; cursor:pointer; font-size:14px; margin-left:8px; }
+        .tl-fu-btn:hover { background:#e3f2fd; border-color:#2196f3; }
 
         /* RTL Support */
         body.rtl .cd-wrapper { direction: rtl; }
@@ -260,6 +262,18 @@ container:
           <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;">
             <button onclick="window._cdSaveTag()">Save</button>
             <button onclick="document.getElementById('tagModal').style.display='none'" style="background:#999;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Follow-up Date Modal -->
+      <div id="cdSetFuModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:12px;padding:24px;max-width:350px;width:90%;text-align:center;">
+          <h3 style="margin:0 0 16px;">Set Follow-Up Date</h3>
+          <input type="date" id="cdFuDateInput" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;box-sizing:border-box;">
+          <div style="display:flex;gap:8px;justify-content:center;">
+            <button onclick="window._cdSaveFollowup()" style="background:#667eea;color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;">Save</button>
+            <button onclick="document.getElementById('cdSetFuModal').style.display='none'" style="background:#999;color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;">Cancel</button>
           </div>
         </div>
       </div>
@@ -502,11 +516,15 @@ container:
               itemDate = itemDate.split('T')[0];
             }
             var summary = item[summaryKey] || item.summary_en || item.summary || '';
+            var fuBtn = '';
+            if (typeClass === 'quotation' && item.detail_id) {
+              fuBtn = '<button class="tl-fu-btn" onclick="window._cdShowSetFollowup(' + "'" + item.detail_id + "'" + ')" title="Set Follow-up">&#128197;</button>';
+            }
             return '<div class="tl-item">' +
               '<div class="tl-dot ' + typeClass + '"></div>' +
               '<div class="tl-date">' + itemDate + '</div>' +
               '<span class="tl-type-badge ' + typeClass + '">' + (item.type || '') + '</span>' +
-              '<div class="tl-summary">' + summary + '</div>' +
+              '<div class="tl-summary">' + summary + fuBtn + '</div>' +
             '</div>';
           }).join('');
         }
@@ -609,6 +627,35 @@ container:
 
         window._cdTimelinePage = function(page) {
           loadTimeline(page);
+        };
+
+        window.loadTimeline = function() {
+          loadTimeline(currentTimelinePage);
+        };
+
+        var _cdPendingFuQn = null;
+
+        window._cdShowSetFollowup = function(qn) {
+          _cdPendingFuQn = qn;
+          var modal = document.getElementById('cdSetFuModal');
+          var input = document.getElementById('cdFuDateInput');
+          if (input) input.value = '';
+          if (modal) modal.style.display = 'flex';
+        };
+
+        window._cdSaveFollowup = function() {
+          if (!_cdPendingFuQn || !window.pySetFollowup) return;
+          var input = document.getElementById('cdFuDateInput');
+          if (!input || !input.value) return;
+          window.pySetFollowup(_cdPendingFuQn, input.value).then(function(res) {
+            document.getElementById('cdSetFuModal').style.display = 'none';
+            if (res && res.success) {
+              if (window.showNotification) window.showNotification('success', '', 'Follow-up set successfully');
+              if (window.loadTimeline) window.loadTimeline();
+            } else {
+              if (window.showNotification) window.showNotification('error', '', (res && res.message) || 'Error');
+            }
+          });
         };
 
         function waitForBridge() {

@@ -21,6 +21,7 @@ class FollowUpDashboardForm(FollowUpDashboardFormTemplate):
         anvil.js.window.pyCompleteFollowup = self.complete_followup
         anvil.js.window.pyCheckOverdue = self.check_overdue
         anvil.js.window.pyGoBack = self.go_back
+        anvil.js.window.pyGetQuotationsForFollowup = self.get_quotations_for_followup
 
     def _auth(self):
         return get_auth_token()
@@ -39,6 +40,9 @@ class FollowUpDashboardForm(FollowUpDashboardFormTemplate):
 
     def check_overdue(self):
         return anvil.server.call('check_overdue_followups', self._auth())
+
+    def get_quotations_for_followup(self, search=''):
+        return anvil.server.call('get_quotations_for_followup', self._auth(), search)
 
     def go_back(self):
         anvil.js.window.location.hash = '#launcher'

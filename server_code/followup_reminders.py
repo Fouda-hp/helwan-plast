@@ -372,3 +372,50 @@ def check_overdue_followups(token_or_email=None):
     except Exception as e:
         logger.exception("check_overdue_followups error: %s", e)
         return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_quotations_for_followup(token_or_email=None, search=''):
+    """جلب العروض المتاحة لإضافة متابعة (بدون متابعة نشطة)"""
+    is_valid, user_email, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        return error
+
+    try:
+        search_lower = (search or '').strip().lower()
+        results = []
+
+        for row in app_tables.quotations.search(is_deleted=False):
+            # Skip quotations that already have active follow-ups
+            fu_status = (row.get('follow_up_status', '') or '').strip().lower()
+            if fu_status in ('pending', 'snoozed'):
+                fu_date = _parse_date(row.get('follow_up_date', ''))
+                if fu_date:
+                    continue
+
+            qn = row.get('Quotation#', '')
+            client_name = row.get('Client Name', '')
+            company = row.get('Company', '')
+            model = row.get('Model', '')
+
+            # Apply search filter
+            if search_lower:
+                searchable = f"{qn} {client_name} {company} {model}".lower()
+                if search_lower not in searchable:
+                    continue
+
+            results.append({
+                'quotation_number': qn,
+                'client_name': client_name,
+                'company': company,
+                'model': model,
+            })
+
+            if len(results) >= 50:
+                break
+
+        return {'success': True, 'data': results}
+
+    except Exception as e:
+        logger.exception("get_quotations_for_followup error: %s", e)
+        return {'success': False, 'message': str(e), 'data': []}

@@ -204,7 +204,10 @@ container:
       <div class="fu-wrapper">
         <div class="fu-header">
           <h1 class="fu-title" id="fuTitle">Follow-Up Reminders</h1>
-          <button class="fu-back-btn" onclick="window.pyGoBack()">Back</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="newFuBtn" onclick="window._fuShowNewFollowup()" style="padding:8px 20px;border-radius:20px;border:none;background:#667eea;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">+ New Follow-Up</button>
+            <button class="fu-back-btn" onclick="window.pyGoBack()">Back</button>
+          </div>
         </div>
         <div class="stats-row" id="statsRow"></div>
         <div class="fu-filters" id="filtersRow"></div>
@@ -247,7 +250,21 @@ container:
           </div>
         </div>
       </div>
-      
+
+      <!-- New Follow-up Modal -->
+      <div class="fu-modal" id="newFuModal" style="display:none;">
+        <div class="fu-modal-box" style="max-width:500px;">
+          <h3 id="newFuTitle">New Follow-Up</h3>
+          <input type="text" id="newFuSearch" placeholder="Search quotations..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;box-sizing:border-box;">
+          <div id="newFuList" style="max-height:250px;overflow-y:auto;border:1px solid #eee;border-radius:8px;margin-bottom:12px;"></div>
+          <input type="date" id="newFuDateInput" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;box-sizing:border-box;">
+          <div style="display:flex;gap:8px;justify-content:center;">
+            <button onclick="window._fuSaveNewFollowup()">Save</button>
+            <button onclick="document.getElementById('newFuModal').style.display='none'" style="background:#999;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <script>
       (function() {
         var currentFilter = 'all';
@@ -290,7 +307,19 @@ container:
             overdueCount: 'Overdue',
             todayCount: 'Due Today',
             upcomingCount: 'Upcoming',
-            completedCount: 'Completed'
+            completedCount: 'Completed',
+            newFuTitle: 'New Follow-Up',
+            newFuBtn: '+ New Follow-Up',
+            newFuSearch: 'Search quotations...',
+            newFuSave: 'Save',
+            newFuCancel: 'Cancel',
+            newFuSelectQuotation: 'Select a quotation first',
+            newFuSelectDate: 'Select a follow-up date',
+            newFuSuccess: 'Follow-up added successfully',
+            newFuTypeToSearch: 'Type to search quotations...',
+            newFuLoading: 'Loading...',
+            newFuNoResults: 'No quotations found',
+            newFuError: 'Error loading quotations'
           },
           ar: {
             fuTitle: '\u062a\u0630\u0643\u064a\u0631\u0627\u062a \u0627\u0644\u0645\u062a\u0627\u0628\u0639\u0629',
@@ -327,7 +356,19 @@ container:
             overdueCount: '\u0645\u062a\u0623\u062e\u0631\u0629',
             todayCount: '\u0645\u0633\u062a\u062d\u0642\u0629 \u0627\u0644\u064a\u0648\u0645',
             upcomingCount: '\u0642\u0627\u062f\u0645\u0629',
-            completedCount: '\u0645\u0643\u062a\u0645\u0644\u0629'
+            completedCount: '\u0645\u0643\u062a\u0645\u0644\u0629',
+            newFuTitle: '\u0645\u062a\u0627\u0628\u0639\u0629 \u062c\u062f\u064a\u062f\u0629',
+            newFuBtn: '+ \u0645\u062a\u0627\u0628\u0639\u0629 \u062c\u062f\u064a\u062f\u0629',
+            newFuSearch: '\u0628\u062d\u062b \u0641\u064a \u0627\u0644\u0639\u0631\u0648\u0636...',
+            newFuSave: '\u062d\u0641\u0638',
+            newFuCancel: '\u0625\u0644\u063a\u0627\u0621',
+            newFuSelectQuotation: '\u0627\u062e\u062a\u0631 \u0639\u0631\u0636 \u0633\u0639\u0631 \u0623\u0648\u0644\u0627',
+            newFuSelectDate: '\u0627\u062e\u062a\u0631 \u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0645\u062a\u0627\u0628\u0639\u0629',
+            newFuSuccess: '\u062a\u0645 \u0625\u0636\u0627\u0641\u0629 \u0627\u0644\u0645\u062a\u0627\u0628\u0639\u0629 \u0628\u0646\u062c\u0627\u062d',
+            newFuTypeToSearch: '\u0627\u0643\u062a\u0628 \u0644\u0644\u0628\u062d\u062b \u0641\u064a \u0627\u0644\u0639\u0631\u0648\u0636...',
+            newFuLoading: '\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u062d\u0645\u064a\u0644...',
+            newFuNoResults: '\u0644\u0627 \u062a\u0648\u062c\u062f \u0639\u0631\u0648\u0636',
+            newFuError: '\u062e\u0637\u0623 \u0641\u064a \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0639\u0631\u0648\u0636'
           }
         };
       
@@ -352,6 +393,12 @@ container:
           if (stx) stx.textContent = t('snoozeText');
           var sft = document.getElementById('setFuTitle');
           if (sft) sft.textContent = t('setFuTitle');
+          var nft = document.getElementById('newFuTitle');
+          if (nft) nft.textContent = t('newFuTitle');
+          var nfb = document.getElementById('newFuBtn');
+          if (nfb) nfb.textContent = t('newFuBtn');
+          var nfs = document.getElementById('newFuSearch');
+          if (nfs) nfs.placeholder = t('newFuSearch');
         }
       
         function renderStats(stats) {
@@ -514,6 +561,7 @@ container:
       
         function init() {
           applyLang();
+          initNewFuSearch();
           if (window.pyCheckOverdue) {
             window.pyCheckOverdue().then(function() {
               loadDashboard();
@@ -575,7 +623,95 @@ container:
             console.error('Set follow-up failed:', err);
           });
         };
-      
+
+        /* === New Follow-up Feature === */
+        var selectedNewFuQn = null;
+        var _fuSearchTimer = null;
+
+        window._fuShowNewFollowup = function() {
+          selectedNewFuQn = null;
+          var modal = document.getElementById('newFuModal');
+          var searchInput = document.getElementById('newFuSearch');
+          var listDiv = document.getElementById('newFuList');
+          var dateInput = document.getElementById('newFuDateInput');
+          if (searchInput) searchInput.value = '';
+          if (dateInput) dateInput.value = '';
+          if (listDiv) listDiv.innerHTML = '<div style="padding:16px;text-align:center;color:#999;">' + t('newFuTypeToSearch') + '</div>';
+          if (modal) modal.style.display = 'flex';
+          window._fuLoadQuotations('');
+        };
+
+        window._fuLoadQuotations = function(search) {
+          if (!window.pyGetQuotationsForFollowup) return;
+          var listDiv = document.getElementById('newFuList');
+          if (listDiv) listDiv.innerHTML = '<div style="padding:16px;text-align:center;color:#999;">' + t('newFuLoading') + '</div>';
+          window.pyGetQuotationsForFollowup(search).then(function(res) {
+            if (!res || !res.success || !res.data || res.data.length === 0) {
+              if (listDiv) listDiv.innerHTML = '<div style="padding:16px;text-align:center;color:#999;">' + t('newFuNoResults') + '</div>';
+              return;
+            }
+            var html = '';
+            res.data.forEach(function(q) {
+              var bgColor = (selectedNewFuQn == q.quotation_number) ? '#e3f2fd' : '#fff';
+              html += '<div onclick="window._fuSelectQuotation(' + q.quotation_number + ', this)" style="padding:10px 12px;border-bottom:1px solid #f0f0f0;cursor:pointer;background:' + bgColor + ';" onmouseover="this.style.background=\'#f5f5f5\'" onmouseout="this.style.background=\'' + bgColor + '\'">';
+              html += '<strong>#' + q.quotation_number + '</strong> - ' + (q.client_name || '') + ' <span style="color:#888;">(' + (q.company || '') + ')</span>';
+              if (q.model) html += ' <span style="color:#667eea;font-size:12px;">' + q.model + '</span>';
+              html += '</div>';
+            });
+            if (listDiv) listDiv.innerHTML = html;
+          }).catch(function() {
+            if (listDiv) listDiv.innerHTML = '<div style="padding:16px;text-align:center;color:#c62828;">' + t('newFuError') + '</div>';
+          });
+        };
+
+        window._fuSelectQuotation = function(qn, el) {
+          selectedNewFuQn = qn;
+          var listDiv = document.getElementById('newFuList');
+          if (listDiv) {
+            var items = listDiv.querySelectorAll('div[onclick]');
+            items.forEach(function(item) { item.style.background = '#fff'; });
+          }
+          if (el) el.style.background = '#e3f2fd';
+        };
+
+        window._fuSaveNewFollowup = function() {
+          if (!selectedNewFuQn) {
+            if (window.showNotification) window.showNotification('error', '', t('newFuSelectQuotation'));
+            return;
+          }
+          var dateInput = document.getElementById('newFuDateInput');
+          if (!dateInput || !dateInput.value) {
+            if (window.showNotification) window.showNotification('error', '', t('newFuSelectDate'));
+            return;
+          }
+          if (!window.pySetFollowup) return;
+          window.pySetFollowup(selectedNewFuQn, dateInput.value).then(function(res) {
+            if (res && res.success) {
+              document.getElementById('newFuModal').style.display = 'none';
+              selectedNewFuQn = null;
+              if (window.showNotification) window.showNotification('success', '', t('newFuSuccess'));
+              loadDashboard();
+            } else {
+              if (window.showNotification) window.showNotification('error', '', (res && res.message) || 'Error');
+            }
+          }).catch(function(err) {
+            if (window.showNotification) window.showNotification('error', '', 'Error: ' + err);
+          });
+        };
+
+        function initNewFuSearch() {
+          var searchInput = document.getElementById('newFuSearch');
+          if (searchInput) {
+            searchInput.oninput = function() {
+              clearTimeout(_fuSearchTimer);
+              var val = searchInput.value;
+              _fuSearchTimer = setTimeout(function() {
+                window._fuLoadQuotations(val);
+              }, 300);
+            };
+          }
+        }
+
         function waitForBridge() {
           if (window.pyGetFollowupDashboard) {
             init();

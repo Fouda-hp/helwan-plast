@@ -249,6 +249,17 @@ container:
         </div>
       </div>
 
+      <div id="dbSetFuModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:12px;padding:24px;max-width:350px;width:90%;text-align:center;">
+          <h3 style="margin:0 0 16px;">Set Follow-Up Date</h3>
+          <input type="date" id="dbFuDateInput" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;box-sizing:border-box;">
+          <div style="display:flex;gap:8px;justify-content:center;">
+            <button onclick="window._dbSaveFollowup()" style="background:#667eea;color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;">Save</button>
+            <button onclick="document.getElementById('dbSetFuModal').style.display='none'" style="background:#999;color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <script>
         (function() {
           var currentTable = 'clients';
@@ -384,7 +395,7 @@ container:
                 html += '</tr>';
               });
             } else {
-              html += '<thead><tr><th>Q#</th><th>Date</th><th>Client</th><th>Model</th><th>Colors</th><th>Width</th><th>Given Price</th><th>Agreed Price</th></tr></thead>';
+              html += '<thead><tr><th>Q#</th><th>Date</th><th>Client</th><th>Model</th><th>Colors</th><th>Width</th><th>Given Price</th><th>Agreed Price</th><th>Follow-up</th></tr></thead>';
               html += '<tbody>';
               data.forEach(function(row) {
                 var given = row['Given Price'] || 0;
@@ -398,6 +409,7 @@ container:
                 html += '<td>' + (row['Machine width'] || '') + '</td>';
                 html += '<td class="price">' + Number(given).toLocaleString() + '</td>';
                 html += '<td class="price">' + Number(agreed).toLocaleString() + '</td>';
+                html += renderFollowupCell(row);
                 html += '</tr>';
               });
             }
@@ -410,6 +422,52 @@ container:
             document.getElementById('pageInfo').textContent = 'Page ' + currentPage + ' of ' + totalPages;
             document.getElementById('btnPrev').disabled = currentPage <= 1;
             document.getElementById('btnNext').disabled = currentPage >= totalPages;
+          }
+
+          window.loadQuotations = function() { loadData(); };
+
+          var _dbPendingFuQn = null;
+
+          window._dbShowSetFollowup = function(qn) {
+            _dbPendingFuQn = qn;
+            var modal = document.getElementById('dbSetFuModal');
+            var input = document.getElementById('dbFuDateInput');
+            if (input) input.value = '';
+            if (modal) modal.style.display = 'flex';
+          };
+
+          window._dbSaveFollowup = function() {
+            if (!_dbPendingFuQn || !window.pySetFollowup) return;
+            var input = document.getElementById('dbFuDateInput');
+            if (!input || !input.value) return;
+            window.pySetFollowup(_dbPendingFuQn, input.value).then(function(res) {
+              document.getElementById('dbSetFuModal').style.display = 'none';
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', 'Follow-up set');
+                loadData();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', (res && res.message) || 'Error');
+              }
+            });
+          };
+
+          function renderFollowupCell(row) {
+            var fuDate = row['follow_up_date'] || '';
+            var fuStatus = (row['follow_up_status'] || '').toLowerCase();
+            var qn = row['Quotation#'] || '';
+            if (!fuDate) {
+              return '<td style="text-align:center;"><button onclick="window._dbShowSetFollowup(\'' + qn + '\')" style="background:none;border:1px solid #ddd;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:14px;" title="Set Follow-up">&#x1F4C5;</button></td>';
+            }
+            var badgeColor = '#999';
+            var badgeText = fuStatus || 'pending';
+            if (fuStatus === 'completed') badgeColor = '#4caf50';
+            else if (fuStatus === 'snoozed') badgeColor = '#ff9800';
+            else {
+              var today = new Date().toISOString().split('T')[0];
+              if (fuDate < today) { badgeColor = '#f44336'; badgeText = 'overdue'; }
+              else { badgeColor = '#2196f3'; badgeText = 'pending'; }
+            }
+            return '<td style="text-align:center;font-size:12px;">' + fuDate + '<br><span style="background:' + badgeColor + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;">' + badgeText + '</span></td>';
           }
 
           // Wait for Python bridge

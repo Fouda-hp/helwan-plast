@@ -25,6 +25,7 @@ class DatabaseForm(DatabaseFormTemplate):
         anvil.js.window.pyGetQuotations = self.get_quotations
         anvil.js.window.pyExportClients = self.export_clients
         anvil.js.window.pyExportQuotations = self.export_quotations
+        anvil.js.window.pySetFollowup = self.set_followup_db
 
     def _auth(self):
         return get_auth_token()
@@ -44,3 +45,7 @@ class DatabaseForm(DatabaseFormTemplate):
     def export_quotations(self, include_deleted):
         """Export quotations data"""
         return anvil.server.call('export_quotations_data', include_deleted, self._auth())
+
+    def set_followup_db(self, quotation_number, follow_up_date):
+        """Set follow-up date for a quotation"""
+        return anvil.server.call('set_followup', quotation_number, follow_up_date, self._auth())

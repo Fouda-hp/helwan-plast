@@ -105,22 +105,22 @@ def get_client_detail(client_code, token_or_email=None):
             if q_date and (last_activity is None or (hasattr(q_date, '__gt__') and q_date > last_activity)):
                 last_activity = q_date
 
-        # Contract stats
+        # Contract stats - batch load all contracts in ONE query, then filter in memory
         total_contracts = 0
         total_contract_value = 0
-        for qn in q_numbers:
-            if qn is None:
+        q_numbers_set = set(qn for qn in q_numbers if qn is not None)
+        all_contracts = list(app_tables.contracts.search())
+        for c in all_contracts:
+            if c.get('quotation_number') not in q_numbers_set:
                 continue
-            contracts = list(app_tables.contracts.search(quotation_number=qn))
-            for c in contracts:
-                total_contracts += 1
-                try:
-                    total_contract_value += float(c.get('total_price') or 0)
-                except (TypeError, ValueError):
-                    pass
-                c_date = c.get('created_at')
-                if c_date and (last_activity is None or (hasattr(c_date, '__gt__') and c_date > last_activity)):
-                    last_activity = c_date
+            total_contracts += 1
+            try:
+                total_contract_value += float(c.get('total_price') or 0)
+            except (TypeError, ValueError):
+                pass
+            c_date = c.get('created_at')
+            if c_date and (last_activity is None or (hasattr(c_date, '__gt__') and c_date > last_activity)):
+                last_activity = c_date
 
         stats = {
             'total_quotations': total_quotations,
@@ -176,51 +176,51 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
         except Exception as e:
             logger.warning("Timeline quotations error: %s", e)
 
-        # 2. Contracts
+        # 2. Contracts - batch load all contracts in ONE query, then filter in memory
         try:
-            for qn in q_numbers:
-                if qn is None:
+            q_numbers_set = set(qn for qn in q_numbers if qn is not None)
+            all_contracts = list(app_tables.contracts.search())
+            for c in all_contracts:
+                if c.get('quotation_number') not in q_numbers_set:
                     continue
-                contracts = list(app_tables.contracts.search(quotation_number=qn))
-                for c in contracts:
-                    c_date = c.get('created_at')
-                    cn = c.get('contract_number', '')
-                    tp = 0
-                    try:
-                        tp = float(c.get('total_price') or 0)
-                    except (TypeError, ValueError):
-                        pass
+                c_date = c.get('created_at')
+                cn = c.get('contract_number', '')
+                tp = 0
+                try:
+                    tp = float(c.get('total_price') or 0)
+                except (TypeError, ValueError):
+                    pass
 
-                    events.append({
-                        'date': _safe_isoformat(c_date),
-                        'type': 'contract',
-                        'summary_en': f'Contract {cn} created - ${tp:,.0f}',
-                        'summary_ar': f'عقد {cn} تم إنشاؤه - ${tp:,.0f}',
-                        'detail_id': cn,
-                        'detail_type': 'contract',
-                    })
+                events.append({
+                    'date': _safe_isoformat(c_date),
+                    'type': 'contract',
+                    'summary_en': f'Contract {cn} created - ${tp:,.0f}',
+                    'summary_ar': f'عقد {cn} تم إنشاؤه - ${tp:,.0f}',
+                    'detail_id': cn,
+                    'detail_type': 'contract',
+                })
 
-                    # 3. Payments from contract
-                    payments = _parse_json(c.get('payments_json'))
-                    for i, p in enumerate(payments):
-                        p_date = p.get('date') or p.get('paid_date')
-                        status = p.get('status', '')
-                        if status == 'paid':
-                            amt = 0
-                            try:
-                                amt = float(p.get('amount') or p.get('value') or 0)
-                            except (TypeError, ValueError):
-                                pass
-                            label_en = p.get('label_en', f'Installment {i+1}')
-                            label_ar = p.get('label_ar', f'الدفعة {i+1}')
-                            events.append({
-                                'date': p.get('paid_date') or p_date or _safe_isoformat(c_date),
-                                'type': 'payment',
-                                'summary_en': f'Payment received: {label_en} - ${amt:,.0f} (Contract {cn})',
-                                'summary_ar': f'دفعة مستلمة: {label_ar} - ${amt:,.0f} (عقد {cn})',
-                                'detail_id': cn,
-                                'detail_type': 'contract',
-                            })
+                # 3. Payments from contract
+                payments = _parse_json(c.get('payments_json'))
+                for i, p in enumerate(payments):
+                    p_date = p.get('date') or p.get('paid_date')
+                    status = p.get('status', '')
+                    if status == 'paid':
+                        amt = 0
+                        try:
+                            amt = float(p.get('amount') or p.get('value') or 0)
+                        except (TypeError, ValueError):
+                            pass
+                        label_en = p.get('label_en', f'Installment {i+1}')
+                        label_ar = p.get('label_ar', f'الدفعة {i+1}')
+                        events.append({
+                            'date': p.get('paid_date') or p_date or _safe_isoformat(c_date),
+                            'type': 'payment',
+                            'summary_en': f'Payment received: {label_en} - ${amt:,.0f} (Contract {cn})',
+                            'summary_ar': f'دفعة مستلمة: {label_ar} - ${amt:,.0f} (عقد {cn})',
+                            'detail_id': cn,
+                            'detail_type': 'contract',
+                        })
         except Exception as e:
             logger.warning("Timeline contracts error: %s", e)
 

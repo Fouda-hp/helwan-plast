@@ -52,6 +52,10 @@ try:
     from .auth_utils import get_utc_now
 except ImportError:
     from auth_utils import get_utc_now
+try:
+    from .auth_rate_limit import check_rate_limit
+except ImportError:
+    from auth_rate_limit import check_rate_limit
 
 # =========================================================
 # إعداد نظام التسجيل (Logging)
@@ -215,6 +219,15 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
     دالة الحفظ الرئيسية مع الترقيم التلقائي وسجل التدقيق
     يتطلب مستخدم مسجل دخول بصلاحية create أو edit (ما عدا viewer)
     """
+    # ===== فحص Rate Limit =====
+    try:
+        ip = get_client_ip()
+        rl = check_rate_limit(ip, 'save_quotation')
+        if rl and not rl.get('allowed', True):
+            return {'success': False, 'message': 'Too many requests. Please wait before saving again.'}
+    except Exception:
+        pass  # لا نوقف الحفظ إذا فشل فحص Rate Limit
+
     # ===== التحقق من الصلاحيات =====
     auth_key = token_or_email or user_email
     if auth_key == 'system':
@@ -709,11 +722,11 @@ DEFAULT_PAGE = 1
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGINATION_SCAN = 50000
 
-def _quotation_matches_search(r, search_lower, clients_dict):
+def _quotation_matches_search(r, search_lower, get_client):
     if not search_lower:
         return True
     client_code = str(r.get('Client Code', ''))
-    client = clients_dict.get(client_code)
+    client = get_client(client_code)
     client_name = (r.get('Client Name') or '').lower()
     if not client_name and client:
         client_name = (client.get('Client Name') or '').lower()
@@ -764,14 +777,22 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
         q_iter = app_tables.quotations.search(is_deleted=False) if not include_deleted else app_tables.quotations.search()
 
     try:
-        all_clients = list(app_tables.clients.search())
-        clients_dict = {str(c['Client Code']): c for c in all_clients}
+        clients_cache = {}
+        def get_client(client_code):
+            code = str(client_code)
+            if code not in clients_cache:
+                try:
+                    row = app_tables.clients.get(**{'Client Code': code})
+                    clients_cache[code] = row
+                except Exception:
+                    clients_cache[code] = None
+            return clients_cache[code]
 
         total = 0
         page_rows = []
         skip = (page - 1) * per_page
         for r in q_iter:
-            if not _quotation_matches_search(r, search_lower, clients_dict):
+            if not _quotation_matches_search(r, search_lower, get_client):
                 continue
             total += 1
             if total > MAX_PAGINATION_SCAN:
@@ -786,7 +807,7 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
         rows = []
         for r in page_rows:
             client_code = r.get('Client Code') or ''
-            client = clients_dict.get(str(client_code))
+            client = get_client(client_code)
 
             # استخدام اسم العميل من العرض أو من جدول العملاء
             client_name = r.get('Client Name') or ''

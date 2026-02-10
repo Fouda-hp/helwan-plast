@@ -140,11 +140,37 @@
     }
   }
 
-  // ===== Start =====
+  // ===== Start (MutationObserver + fallback) =====
+  var _tickTimer = 0;
+  var DEBOUNCE_MS = 80;
+
+  function debouncedTick() {
+    if (_tickTimer) return;
+    _tickTimer = setTimeout(function () {
+      _tickTimer = 0;
+      tick();
+    }, DEBOUNCE_MS);
+  }
+
   function start() {
     try {
       if (!document.body) { setTimeout(start, 100); return; }
-      setInterval(tick, 300);
+
+      // Primary: MutationObserver on document.body
+      if (typeof MutationObserver !== 'undefined') {
+        var observer = new MutationObserver(debouncedTick);
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['class', 'style', 'hidden']
+        });
+      }
+
+      // Safety-net fallback at low frequency
+      setInterval(tick, 2000);
+
+      // Initial check
       tick();
     } catch (err) {}
   }

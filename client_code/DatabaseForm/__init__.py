@@ -13,6 +13,7 @@ import anvil.google.auth, anvil.google.drive
 from anvil.google.drive import app_files
 import anvil.server
 import anvil.js
+from ..auth_helpers import get_auth_token
 
 
 class DatabaseForm(DatabaseFormTemplate):
@@ -26,7 +27,7 @@ class DatabaseForm(DatabaseFormTemplate):
         anvil.js.window.pyExportQuotations = self.export_quotations
 
     def _auth(self):
-        return anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+        return get_auth_token()
 
     def get_clients(self, page, per_page, search, include_deleted):
         """Get clients data"""

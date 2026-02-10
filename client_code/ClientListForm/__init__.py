@@ -13,6 +13,7 @@ import anvil.google.auth, anvil.google.drive
 from anvil.google.drive import app_files
 import anvil.server
 import anvil.js
+from ..auth_helpers import get_auth_token
 
 
 class ClientListForm(ClientListFormTemplate):
@@ -26,15 +27,7 @@ class ClientListForm(ClientListFormTemplate):
         anvil.js.window.pyNavigateToClient = self.navigate_to_client
 
     def _auth(self):
-        token = anvil.js.window.sessionStorage.getItem('auth_token')
-        if not token:
-            token = anvil.js.window.localStorage.getItem('auth_token')
-            if token:
-                try:
-                    anvil.js.window.sessionStorage.setItem('auth_token', token)
-                except Exception:
-                    pass
-        return token
+        return get_auth_token()
 
     def get_clients(self, page, per_page, search, include_deleted):
         """Get clients data"""

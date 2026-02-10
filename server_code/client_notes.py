@@ -163,10 +163,23 @@ def delete_client_note(client_code, note_id, token_or_email=None):
             return {'success': False, 'message': 'No notes found'}
 
         old_notes = list(notes)
-        notes = [n for n in notes if n.get('id') != note_id]
 
-        if len(notes) == len(old_notes):
+        # Find the note to check ownership
+        target_note = None
+        for n in notes:
+            if n.get('id') == note_id:
+                target_note = n
+                break
+
+        if not target_note:
             return {'success': False, 'message': 'Note not found'}
+
+        # Only author or admin can delete
+        is_admin = AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(token_or_email)
+        if not is_admin and target_note.get('author_email') != user_email:
+            return {'success': False, 'message': 'You can only delete your own notes'}
+
+        notes = [n for n in notes if n.get('id') != note_id]
 
         row.update(
             notes_json=json.dumps(notes, ensure_ascii=False, default=str),

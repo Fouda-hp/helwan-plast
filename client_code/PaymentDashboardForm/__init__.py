@@ -12,6 +12,7 @@ from ._anvil_designer import PaymentDashboardFormTemplate
 from anvil import *
 import anvil.server
 import anvil.js
+from ..auth_helpers import get_auth_token
 
 
 class PaymentDashboardForm(PaymentDashboardFormTemplate):
@@ -26,16 +27,7 @@ class PaymentDashboardForm(PaymentDashboardFormTemplate):
         anvil.js.window.pyGoBack = self.go_back
 
     def _auth(self):
-        """Get auth token from sessionStorage with localStorage fallback."""
-        token = anvil.js.window.sessionStorage.getItem('auth_token')
-        if not token:
-            token = anvil.js.window.localStorage.getItem('auth_token')
-            if token:
-                try:
-                    anvil.js.window.sessionStorage.setItem('auth_token', token)
-                except Exception:
-                    pass
-        return token
+        return get_auth_token()
 
     def get_contracts_list(self, search='', page=1, page_size=20):
         return anvil.server.call('get_contracts_list', search, self._auth(), page, page_size)

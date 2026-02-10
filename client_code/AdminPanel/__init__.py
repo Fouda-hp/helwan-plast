@@ -36,7 +36,7 @@ class AdminPanel(AdminPanelTemplate):
         if not self._is_admin():
             try:
                 anvil.js.window._adminPanelDelayedCheck = self._delayed_admin_check
-                anvil.js.window.eval("setTimeout(function(){ try { if (window._adminPanelDelayedCheck) window._adminPanelDelayedCheck(); } catch(e){} }, 280);")
+                anvil.js.window.setTimeout(self._delayed_admin_check, 280)
             except Exception:
                 try:
                     anvil.js.window.location.hash = '#launcher'
@@ -2077,7 +2077,12 @@ class AdminPanel(AdminPanelTemplate):
           }
         })();
         """
-        anvil.js.window.eval(js_code)
+        # Execute JS safely via a <script> element instead of eval()
+        doc = anvil.js.window.document
+        script_el = doc.createElement('script')
+        script_el.textContent = js_code
+        doc.body.appendChild(script_el)
+        doc.body.removeChild(script_el)
 
     # =========================================================
     # التوجيه

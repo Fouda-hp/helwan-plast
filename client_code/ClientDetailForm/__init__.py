@@ -7,6 +7,7 @@ from ._anvil_designer import ClientDetailFormTemplate
 from anvil import *
 import anvil.server
 import anvil.js
+from ..auth_helpers import get_auth_token
 
 
 class ClientDetailForm(ClientDetailFormTemplate):
@@ -23,15 +24,7 @@ class ClientDetailForm(ClientDetailFormTemplate):
         anvil.js.window.pyGoBack = self.go_back
 
     def _auth(self):
-        token = anvil.js.window.sessionStorage.getItem('auth_token')
-        if not token:
-            token = anvil.js.window.localStorage.getItem('auth_token')
-            if token:
-                try:
-                    anvil.js.window.sessionStorage.setItem('auth_token', token)
-                except Exception:
-                    pass
-        return token
+        return get_auth_token()
 
     def get_client_detail(self, client_code):
         return anvil.server.call('get_client_detail', client_code, self._auth())

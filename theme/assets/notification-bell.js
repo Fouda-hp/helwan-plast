@@ -20,6 +20,7 @@
   var DROPDOWN_ID = 'hp-notif-dropdown';
   var BADGE_ID = 'hp-notif-badge';
   var REFRESH_MS = 60000;
+  var CHECK_MS = 2000; // Check bell existence every 2s
   var _dropdownOpen = false;
   var _cachedData = null;
 
@@ -60,7 +61,10 @@
   // ===== Create Bell =====
   function createBell() {
     if (!isLoggedIn()) return;
-    if (document.getElementById(BELL_ID)) return;
+
+    // Remove existing bell if any (may be orphaned from a previous form)
+    var existing = document.getElementById(BELL_ID);
+    if (existing) existing.remove();
 
     var wrap = document.createElement('div');
     wrap.id = BELL_ID;
@@ -90,9 +94,38 @@
       // Insert as first child (before user name)
       headerUserSection.insertBefore(wrap, headerUserSection.firstChild);
     } else {
-      // Fallback: fixed position top-right for all other pages
+      // Fixed position top-right for all other pages
       wrap.classList.add('hp-notif-fixed');
       document.body.appendChild(wrap);
+    }
+  }
+
+  // ===== Ensure Bell Exists =====
+  function ensureBell() {
+    if (!isLoggedIn()) {
+      // Remove bell if logged out
+      var bell = document.getElementById(BELL_ID);
+      if (bell) bell.remove();
+      var dd = document.getElementById(DROPDOWN_ID);
+      if (dd) dd.remove();
+      return;
+    }
+
+    var bell = document.getElementById(BELL_ID);
+    if (!bell || !document.body.contains(bell)) {
+      createBell();
+    } else {
+      // Bell exists - check if it should move (e.g., AdminPanel loaded after fixed bell)
+      var headerUserSection = document.querySelector('.header-user-section');
+      if (headerUserSection && bell.classList.contains('hp-notif-fixed')) {
+        // AdminPanel appeared - move bell from fixed to inline
+        bell.remove();
+        createBell();
+      } else if (!headerUserSection && bell.classList.contains('hp-notif-inline')) {
+        // Left AdminPanel - move bell from inline to fixed
+        bell.remove();
+        createBell();
+      }
     }
   }
 
@@ -142,11 +175,9 @@
     // Position dropdown relative to bell
     var bellEl = document.getElementById(BELL_ID);
     if (bellEl && bellEl.classList.contains('hp-notif-inline')) {
-      // Inside header: dropdown below the bell
       dd.classList.add('hp-notif-dropdown-header');
       bellEl.appendChild(dd);
     } else {
-      // Fixed mode: dropdown below the fixed bell at top-right
       dd.classList.add('hp-notif-dropdown-fixed');
       document.body.appendChild(dd);
     }
@@ -283,31 +314,34 @@
   // ===== Init =====
   function init() {
     if (!document.body) { setTimeout(init, 200); return; }
-    createBell();
+
+    ensureBell();
+
     // Try initial fetch
     if (window.__hpNotifGetAll) {
       refreshBadge();
     }
-    // Auto refresh
+
+    // Fast check: ensure bell exists every 2s (handles form navigation)
+    setInterval(function () {
+      ensureBell();
+    }, CHECK_MS);
+
+    // Slower refresh: update badge count every 60s
     setInterval(function () {
       if (isLoggedIn()) {
-        // Re-create bell if missing (e.g. after form navigation)
-        if (!document.getElementById(BELL_ID)) createBell();
         refreshBadge();
-      } else {
-        // Remove bell if logged out
-        var bell = document.getElementById(BELL_ID);
-        if (bell) bell.remove();
-        var dd = document.getElementById(DROPDOWN_ID);
-        if (dd) dd.remove();
       }
     }, REFRESH_MS);
   }
 
   // Listen for bridge ready event (fired by Python form init)
   window.addEventListener('hp-notif-bridge-ready', function () {
-    if (!document.getElementById(BELL_ID)) createBell();
-    refreshBadge();
+    // Small delay to let Anvil finish rendering form HTML
+    setTimeout(function () {
+      ensureBell();
+      refreshBadge();
+    }, 300);
   });
 
   // Public API

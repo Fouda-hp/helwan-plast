@@ -209,8 +209,6 @@ container:
         }
       </style>
 
-      <script src="_/theme/global-loading.js"></script>
-
       <div class="cd-wrapper">
         <!-- Header -->
         <div class="cd-header">

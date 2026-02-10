@@ -105,8 +105,6 @@ container:
           .stat-card .stat-value { font-size: 22px; }
         }
       </style>
-      <script src="_/theme/global-loading.js"></script>
-
       <div class="pd-wrapper" id="pdWrapper">
         <!-- Header -->
         <div class="pd-header">

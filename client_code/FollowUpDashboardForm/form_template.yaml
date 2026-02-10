@@ -201,8 +201,6 @@ container:
         }
       </style>
       
-      <script src="_/theme/global-loading.js"></script>
-      
       <div class="fu-wrapper">
         <div class="fu-header">
           <h1 class="fu-title" id="fuTitle">Follow-Up Reminders</h1>

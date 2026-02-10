@@ -217,7 +217,6 @@ container:
         @keyframes hand-tap-3{0%,50%,100%{transform:rotate(10deg) scale(0.8)}40%{transform:rotate(50deg) scale(0.8)}}
         @keyframes hand-tap-4{0%,50%,100%{transform:rotate(10deg) scale(1)}40%{transform:rotate(50deg) scale(1)}}
       </style>
-      <script src="_/theme/global-loading.js"></script>
       <div class="db-wrapper">
         <div class="db-header">
           <h1>🗄️ Database Viewer (Read Only)</h1>

@@ -335,23 +335,26 @@ def get_ledger_entries(account_code=None, date_from=None, date_to=None, ref_type
     if not is_valid:
         return error
     try:
-        rows = list(app_tables.ledger.search())
-        results = []
+        # Build search kwargs to filter at DB level
+        search_kwargs = {}
+        if account_code:
+            search_kwargs['account_code'] = account_code
+        if ref_type:
+            search_kwargs['reference_type'] = ref_type
+
         d_from = _safe_date(date_from)
         d_to = _safe_date(date_to)
+        results = []
 
-        for r in rows:
-            if account_code and r.get('account_code') != account_code:
-                continue
-            row_date = r.get('date')
-            if isinstance(row_date, datetime):
-                row_date = row_date.date()
-            if d_from and row_date and row_date < d_from:
-                continue
-            if d_to and row_date and row_date > d_to:
-                continue
-            if ref_type and r.get('reference_type') != ref_type:
-                continue
+        for r in app_tables.ledger.search(**search_kwargs):
+            if d_from or d_to:
+                row_date = r.get('date')
+                if isinstance(row_date, datetime):
+                    row_date = row_date.date()
+                if d_from and row_date and row_date < d_from:
+                    continue
+                if d_to and row_date and row_date > d_to:
+                    continue
             results.append(_row_to_dict(r, LEDGER_COLS))
 
         results.sort(key=lambda x: (x.get('date', ''), x.get('created_at', '')))
@@ -1198,18 +1201,21 @@ def _get_all_balances(as_of_date=None):
             'balance': 0.0,
         }
 
-    # Sum all ledger entries
-    for entry in app_tables.ledger.search():
-        code = entry.get('account_code')
-        if code not in accounts:
-            continue
-        row_date = entry.get('date')
-        if isinstance(row_date, datetime):
-            row_date = row_date.date()
-        if cutoff and row_date and row_date > cutoff:
-            continue
-        accounts[code]['total_debit'] += _round2(entry.get('debit', 0))
-        accounts[code]['total_credit'] += _round2(entry.get('credit', 0))
+    # Sum ledger entries (iterate, don't load all into memory)
+    try:
+        for entry in app_tables.ledger.search():
+            code = entry.get('account_code')
+            if code not in accounts:
+                continue
+            row_date = entry.get('date')
+            if isinstance(row_date, datetime):
+                row_date = row_date.date()
+            if cutoff and row_date and row_date > cutoff:
+                continue
+            accounts[code]['total_debit'] += _round2(entry.get('debit', 0))
+            accounts[code]['total_credit'] += _round2(entry.get('credit', 0))
+    except Exception as e:
+        logger.warning("_get_all_balances ledger scan error: %s", e)
 
     # Calculate balances based on account type
     for code, info in accounts.items():

@@ -21,7 +21,7 @@
   var DROPDOWN_ID = 'hp-notif-dropdown';
   var BADGE_ID = 'hp-notif-badge';
   var REFRESH_MS = 60000;
-  var CHECK_MS = 2000;
+  var CHECK_MS = 5000; // Check bell every 5s (was 2s — too aggressive)
   var _dropdownOpen = false;
   var _cachedData = null;
 

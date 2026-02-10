@@ -979,27 +979,26 @@ def export_clients_data(include_deleted=False, token_or_email=None):
     if not is_valid:
         return []
 
-    all_rows = list(app_tables.clients.search())
-
-    if not include_deleted:
-        all_rows = [r for r in all_rows if not r.get('is_deleted', False)]
-
-    data = []
-    for r in all_rows:
-        data.append({
-            "Client Code": r["Client Code"],
-            "Client Name": r["Client Name"],
-            "Company": r["Company"],
-            "Phone": r["Phone"],
-            "Country": r["Country"],
-            "Address": r["Address"],
-            "Email": r["Email"],
-            "Sales Rep": r["Sales Rep"],
-            "Source": r["Source"],
-            "Date": str(r["Date"] or "")
-        })
-
-    return data
+    try:
+        search_kwargs = {} if include_deleted else {'is_deleted': False}
+        data = []
+        for r in app_tables.clients.search(**search_kwargs):
+            data.append({
+                "Client Code": r["Client Code"],
+                "Client Name": r["Client Name"],
+                "Company": r["Company"],
+                "Phone": r["Phone"],
+                "Country": r["Country"],
+                "Address": r["Address"],
+                "Email": r["Email"],
+                "Sales Rep": r["Sales Rep"],
+                "Source": r["Source"],
+                "Date": str(r["Date"] or "")
+            })
+        return data
+    except Exception as e:
+        logger.exception("export_clients_data error: %s", e)
+        return []
 
 
 @anvil.server.callable
@@ -1009,47 +1008,52 @@ def export_quotations_data(include_deleted=False, token_or_email=None):
     if not is_valid:
         return []
 
-    all_rows = list(app_tables.quotations.search())
+    try:
+        search_kwargs = {} if include_deleted else {'is_deleted': False}
 
-    if not include_deleted:
-        all_rows = [r for r in all_rows if not r.get('is_deleted', False)]
+        # Build clients lookup (iterate, don't hold full list)
+        clients_dict = {}
+        for c in app_tables.clients.search():
+            clients_dict[str(c['Client Code'])] = {
+                'Client Name': c.get('Client Name', ''),
+                'Company': c.get('Company', ''),
+                'Phone': c.get('Phone', ''),
+            }
 
-    # جلب جميع العملاء مرة واحدة
-    all_clients = list(app_tables.clients.search())
-    clients_dict = {str(c['Client Code']): c for c in all_clients}
+        data = []
+        for r in app_tables.quotations.search(**search_kwargs):
+            client_code = str(r.get('Client Code', ''))
+            client = clients_dict.get(client_code)
 
-    data = []
-    for r in all_rows:
-        client_code = str(r.get('Client Code', ''))
-        client = clients_dict.get(client_code)
+            client_name = r.get('Client Name') or ''
+            if not client_name and client:
+                client_name = client.get('Client Name', '')
 
-        # استخدام اسم العميل من العرض أو من جدول العملاء
-        client_name = r.get('Client Name') or ''
-        if not client_name and client:
-            client_name = client.get('Client Name', '')
+            row_data = {
+                "Quotation#": r["Quotation#"],
+                "Date": str(r["Date"] or ""),
+                "Client Code": client_code,
+                "Client Name": client_name,
+                "Company": (client.get("Company") or "") if client else "",
+                "Phone": (client.get("Phone") or "") if client else "",
+                "Model": r["Model"],
+                "Machine type": r["Machine type"],
+                "Number of colors": r["Number of colors"],
+                "Machine width": r["Machine width"],
+                "Material": r["Material"],
+                "Winder": r["Winder"],
+                "Given Price": r["Given Price"],
+                "Agreed Price": r["Agreed Price"],
+                "In Stock": r["In Stock"],
+                "New Order": r["New Order"],
+                "Notes": r["Notes"]
+            }
+            data.append(row_data)
 
-        row_data = {
-            "Quotation#": r["Quotation#"],
-            "Date": str(r["Date"] or ""),
-            "Client Code": client_code,
-            "Client Name": client_name,
-            "Company": (client.get("Company") or "") if client else "",
-            "Phone": (client.get("Phone") or "") if client else "",
-            "Model": r["Model"],
-            "Machine type": r["Machine type"],
-            "Number of colors": r["Number of colors"],
-            "Machine width": r["Machine width"],
-            "Material": r["Material"],
-            "Winder": r["Winder"],
-            "Given Price": r["Given Price"],
-            "Agreed Price": r["Agreed Price"],
-            "In Stock": r["In Stock"],
-            "New Order": r["New Order"],
-            "Notes": r["Notes"]
-        }
-        data.append(row_data)
-
-    return data
+        return data
+    except Exception as e:
+        logger.exception("export_quotations_data error: %s", e)
+        return []
 
 
 # =========================================================
@@ -1068,27 +1072,41 @@ def get_dashboard_stats(token_or_email=None):
                 "finance_chart": {"months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
                                  "paid": [0] * 12, "due": [0] * 12, "overdue": [0] * 12}}
 
-    active_clients = list(app_tables.clients.search(is_deleted=False))
-    active_quotations = list(app_tables.quotations.search(is_deleted=False))
-    deleted_clients_count = len(list(app_tables.clients.search(is_deleted=True)))
-    deleted_quotations_count = len(list(app_tables.quotations.search(is_deleted=True)))
-
-    total_agreed = sum(q['Agreed Price'] or 0 for q in active_quotations)
-
-    # هذا الشهر
     now = get_utc_now()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    month_start_date = month_start.date()
 
-    this_month_quotations = [
-        q for q in active_quotations
-        if q['Date'] and q['Date'] >= month_start.date()
-    ]
+    # Iterate once — do NOT load entire tables into lists
+    try:
+        active_clients_count = len(app_tables.clients.search(is_deleted=False))
+    except Exception:
+        active_clients_count = 0
 
-    this_month_value = sum(q['Agreed Price'] or 0 for q in this_month_quotations)
+    active_quotations_count = 0
+    total_agreed = 0
+    this_month_q_count = 0
+    this_month_value = 0
+    try:
+        for q in app_tables.quotations.search(is_deleted=False):
+            active_quotations_count += 1
+            price = q['Agreed Price'] or 0
+            total_agreed += price
+            d = q['Date']
+            if d and d >= month_start_date:
+                this_month_q_count += 1
+                this_month_value += price
+    except Exception as e:
+        logger.warning("Dashboard quotation stats: %s", e)
 
-    # ----- Contract stats (from contracts table only) -----
-    all_contracts = list(app_tables.contracts.search())
-    total_contracts = len(all_contracts)
+    try:
+        deleted_clients_count = len(app_tables.clients.search(is_deleted=True))
+        deleted_quotations_count = len(app_tables.quotations.search(is_deleted=True))
+    except Exception:
+        deleted_clients_count = 0
+        deleted_quotations_count = 0
+
+    # ----- Contract stats (iterate, don't load all into memory) -----
+    total_contracts = 0
     contracts_value_egp = 0
     this_month_contracts = 0
     total_due_payments_egp = 0
@@ -1098,7 +1116,8 @@ def get_dashboard_stats(token_or_email=None):
 
     try:
         year = now.year
-        for row in all_contracts:
+        for row in app_tables.contracts.search():
+            total_contracts += 1
             try:
                 total_price_val = row.get('total_price')
                 if total_price_val is not None:
@@ -1180,10 +1199,10 @@ def get_dashboard_stats(token_or_email=None):
     }
 
     return {
-        "total_clients": len(active_clients),
-        "total_quotations": len(active_quotations),
+        "total_clients": active_clients_count,
+        "total_quotations": active_quotations_count,
         "total_value": total_agreed,
-        "this_month_quotations": len(this_month_quotations),
+        "this_month_quotations": this_month_q_count,
         "this_month_value": this_month_value,
         "deleted_clients": deleted_clients_count,
         "deleted_quotations": deleted_quotations_count,

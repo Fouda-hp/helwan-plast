@@ -320,7 +320,7 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
                 'upcoming_count': upcoming_count,
                 'completed_count': completed_count,
             },
-            'data': data,
+            'data': data[:200],
         }
 
     except Exception as e:

@@ -5,6 +5,11 @@ import anvil
 import json
 import logging
 
+try:
+    from ..notif_bridge import register_notif_bridges
+except ImportError:
+    from notif_bridge import register_notif_bridges
+
 logger = logging.getLogger(__name__)
 
 
@@ -44,6 +49,9 @@ class CalculatorForm(CalculatorFormTemplate):
         c.add_event_handler("change", self.on_model_change)
       if getattr(c, "name", None) == "Client Name":
         c.add_event_handler("change", self.on_client_name_change)
+
+    # ---------- Notification bridges
+    register_notif_bridges()
 
   # =================================================
   # JS → PYTHON BRIDGES

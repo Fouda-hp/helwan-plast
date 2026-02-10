@@ -16,6 +16,11 @@ import anvil.server
 import anvil.js
 import logging
 
+try:
+    from ..notif_bridge import register_notif_bridges
+except ImportError:
+    from notif_bridge import register_notif_bridges
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,6 +37,9 @@ class DataImportForm(DataImportFormTemplate):
         anvil.js.window.pyImportClients = self.import_clients
         anvil.js.window.pyImportQuotations = self.import_quotations
         anvil.js.window.pyGoBack = self.go_back
+
+        # Notification bridges
+        register_notif_bridges()
 
         # Listen for hash changes
         anvil.js.window.addEventListener("hashchange", self.on_hash_change)

@@ -14,6 +14,11 @@ import anvil.server
 import anvil.js
 from ..auth_helpers import get_auth_token
 
+try:
+    from ..notif_bridge import register_notif_bridges
+except ImportError:
+    from notif_bridge import register_notif_bridges
+
 
 class PaymentDashboardForm(PaymentDashboardFormTemplate):
     def __init__(self, **properties):
@@ -25,6 +30,9 @@ class PaymentDashboardForm(PaymentDashboardFormTemplate):
         anvil.js.window.pyUpdatePaymentStatus = self.update_payment_status
         anvil.js.window.pyExportPaymentSchedule = self.export_payment_schedule
         anvil.js.window.pyGoBack = self.go_back
+
+        # Notification bridges
+        register_notif_bridges()
 
     def _auth(self):
         return get_auth_token()

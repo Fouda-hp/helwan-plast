@@ -17,6 +17,11 @@ import anvil.js
 import json
 import logging
 
+try:
+    from ..notif_bridge import register_notif_bridges
+except ImportError:
+    from notif_bridge import register_notif_bridges
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,6 +69,7 @@ class AdminPanel(AdminPanelTemplate):
         self.check_route()
         anvil.js.window.addEventListener("hashchange", self.on_hash_change)
         self._setup_js_bridges()
+        register_notif_bridges()
         self._inject_admin_panel_enhancements()
 
     def _load_user_info(self):
@@ -113,11 +119,6 @@ class AdminPanel(AdminPanelTemplate):
 
         # Audit Logs
         anvil.js.window.getAuditLogs = self.get_audit_logs
-        anvil.js.window.getMyNotifications = self.get_my_notifications
-        anvil.js.window.clearAllMyNotifications = self.clear_all_my_notifications
-        anvil.js.window.deleteAllMyNotifications = self.delete_all_my_notifications
-        anvil.js.window.deleteOneNotification = self.delete_one_notification
-
         # Clients & Quotations & Contracts
         anvil.js.window.getAllClients = self.get_all_clients
         anvil.js.window.getAllQuotations = self.get_all_quotations
@@ -410,114 +411,6 @@ class AdminPanel(AdminPanelTemplate):
             }
             window.updateBackupNavLabel = updateBackupNavLabel;
             updateBackupNavLabel();
-          }
-
-          function insertNotificationBell() {
-            var section = document.querySelector('.header-user-section');
-            if (!section || document.getElementById('adminNotificationBell')) return;
-            var wrap = document.createElement('div');
-            wrap.id = 'adminNotificationBell';
-            wrap.style.cssText = 'position:relative;display:flex;align-items:center;';
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.setAttribute('aria-label', 'Notifications');
-            btn.style.cssText = 'background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;';
-            btn.innerHTML = '&#128276;';
-            btn.onclick = function(e) {
-              e.preventDefault();
-              e.stopPropagation();
-              var dd = document.getElementById('adminNotificationsDropdown');
-              if (dd) {
-                dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
-                return;
-              }
-              var dropdown = document.createElement('div');
-              dropdown.id = 'adminNotificationsDropdown';
-              dropdown.style.cssText = 'position:absolute;top:100%;right:0;margin-top:8px;background:#fff;border:1px solid #ddd;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.2);min-width:320px;max-width:400px;max-height:400px;overflow:auto;z-index:10001;';
-              dropdown.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:20px;">' + (window.HAND_LOADER_HTML || 'جاري التحميل...') + '</div>';
-              wrap.appendChild(dropdown);
-              function closeDropdown() {
-                if (dropdown.parentNode) dropdown.style.display = 'none';
-                document.removeEventListener('click', closeDropdown);
-              }
-              setTimeout(function() { document.addEventListener('click', closeDropdown); }, 0);
-              function renderList(res) {
-                var list = (res && res.success && res.notifications) ? res.notifications : [];
-                var header = '<div style="padding:12px;border-bottom:1px solid #eee;font-weight:700;color:#1a1a2e;display:flex;justify-content:space-between;align-items:center;">';
-                header += '<span>الإشعارات</span>';
-                header += '<button type="button" id="adminNotificationsClearAll" style="background:#c62828;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;">مسح الكل من الجدول</button></div>';
-                if (list.length === 0) {
-                  dropdown.innerHTML = header + '<div style="padding:16px;text-align:center;color:#666;font-size:14px;">لا توجد إشعارات</div>';
-                  var clearBtn = dropdown.querySelector('#adminNotificationsClearAll');
-                  if (clearBtn) clearBtn.onclick = function() { closeDropdown(); };
-                  return;
-                }
-                var html = header;
-                list.forEach(function(n) {
-                  var ts = (n.timestamp || '').replace('T', ' ').substring(0, 19);
-                  var desc = (n.action_description || n.action || '-');
-                  var bg = n.read_at ? '#fff' : 'rgba(0,120,215,0.06)';
-                  var nid = (n.id || '').replace(/"/g, '&quot;');
-                  html += '<div class="admin-notif-row" data-notif-id="' + nid + '" style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333;background:' + bg + ';display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">';
-                  html += '<div style="flex:1;min-width:0;">';
-                  html += '<div style="color:#999;font-size:11px;margin-bottom:4px;">' + ts + '</div>';
-                  html += '<div>' + (desc.length > 80 ? desc.substring(0, 77) + '...' : desc) + '</div></div>';
-                  html += '<button type="button" class="admin-notif-delete" title="حذف الإشعار" style="flex-shrink:0;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;padding:2px 8px;border-radius:6px;cursor:pointer;font-size:11px;">✕</button>';
-                  html += '</div>';
-                });
-                dropdown.innerHTML = html;
-                var clearBtn = dropdown.querySelector('#adminNotificationsClearAll');
-                if (clearBtn && window.deleteAllMyNotifications) {
-                  clearBtn.onclick = function(ev) {
-                    ev.stopPropagation();
-                    var prom = window.deleteAllMyNotifications();
-                    if (prom && typeof prom.then === 'function') {
-                      prom.then(function(r) {
-                        if (r && r.success && window.showNotification) window.showNotification('success', '', 'تم مسح ' + (r.deleted_count || 0) + ' إشعار');
-                        renderList({ success: true, notifications: [] });
-                      }).catch(function() {
-                        if (window.showNotification) window.showNotification('error', '', 'فشل مسح الإشعارات');
-                      });
-                    } else {
-                      renderList({ success: true, notifications: [] });
-                    }
-                  };
-                }
-                dropdown.querySelectorAll('.admin-notif-delete').forEach(function(btn) {
-                  var row = btn.closest('.admin-notif-row');
-                  var id = row && row.getAttribute('data-notif-id');
-                  if (!id || !window.deleteOneNotification) return;
-                  btn.onclick = function(ev) {
-                    ev.stopPropagation();
-                    var p = window.deleteOneNotification(id);
-                    if (p && typeof p.then === 'function') {
-                      p.then(function(r) {
-                        if (r && r.success) {
-                          if (row.parentNode) row.remove();
-                          if (dropdown.querySelectorAll('.admin-notif-row').length === 0) {
-                            renderList({ success: true, notifications: [] });
-                          }
-                        } else if (window.showNotification) window.showNotification('error', '', r && r.message ? r.message : 'فشل حذف الإشعار');
-                      });
-                    }
-                  };
-                });
-              }
-              if (!window.getMyNotifications) {
-                dropdown.innerHTML = '<div style="padding:16px;text-align:center;color:#666;">لا توجد إشعارات</div>';
-                return;
-              }
-              var p = window.getMyNotifications();
-              if (p && typeof p.then === 'function') {
-                p.then(renderList).catch(function() {
-                  dropdown.innerHTML = '<div style="padding:16px;text-align:center;color:#666;">لا توجد إشعارات</div>';
-                });
-              } else {
-                renderList(p || {});
-              }
-            };
-            wrap.appendChild(btn);
-            section.insertBefore(wrap, section.firstChild);
           }
 
           // === Broadcast helper: إرسال تحديث لكل الـ tabs (Calculator etc.) ===
@@ -2064,7 +1957,6 @@ class AdminPanel(AdminPanelTemplate):
           function run() {
             insertDataImportNav();
             insertBackupNav();
-            insertNotificationBell();
             patchSaveSetting();
             // تأخير الـ patches حتى يُحمّل قالب الصفحة (الدوال من form_template) ثم نستبدلها
             setTimeout(runPatches, 250);
@@ -2227,60 +2119,6 @@ class AdminPanel(AdminPanelTemplate):
     # =========================================================
     def get_audit_logs(self, limit, offset, filters):
         return anvil.server.call('get_audit_logs', self.get_auth(), limit, offset, filters)
-
-    def get_my_notifications(self):
-        """إشعارات المستخدم الحالي من جدول notifications (للأيقونة في الهيدر)."""
-        res = anvil.server.call('get_user_notifications', self.get_auth(), 50, False)
-        if not res.get('success') or not res.get('data'):
-            return {'success': True, 'notifications': []}
-        notifications = []
-        import json as _json
-        for n in res['data']:
-            payload = n.get('payload') or {}
-            if isinstance(payload, str):
-                try:
-                    payload = _json.loads(payload)
-                except Exception:
-                    payload = {}
-            desc = payload.get('message') or payload.get('action') or n.get('type', '')
-            if n.get('type') == 'quotation_saved':
-                desc = 'تم حفظ عرض سعر #' + str(payload.get('quotation_number', ''))
-            elif n.get('type') == 'contract_saved':
-                desc = 'تم حفظ عقد ' + str(payload.get('contract_number', ''))
-            elif n.get('type') == 'user_approved':
-                desc = 'تمت الموافقة على حسابك بدور ' + str(payload.get('role', ''))
-            elif n.get('type') == 'user_rejected':
-                desc = 'تم رفض طلب التسجيل'
-            elif n.get('type') == 'backup_created':
-                desc = 'تم إنشاء نسخة احتياطية: ' + str(payload.get('filename', ''))
-            elif n.get('type') == 'backup_restored':
-                desc = 'تمت استعادة نسخة احتياطية'
-            elif n.get('type') == 'audit_action':
-                # إشعار تسجيل الدخول: نعرض اسم المستخدم وليس الـ user_id
-                if payload.get('action') == 'LOGIN' and payload.get('user_name'):
-                    desc = 'تسجيل دخول - ' + str(payload.get('user_name', '')).strip()
-                else:
-                    desc = payload.get('action_description') or (str(payload.get('action', '')) + ' - ' + str(payload.get('table_name', '')))
-            notifications.append({
-                'id': n.get('id'),
-                'timestamp': n.get('created_at') or '',
-                'action_description': desc,
-                'action': n.get('type', ''),
-                'read_at': n.get('read_at'),
-            })
-        return {'success': True, 'notifications': notifications}
-
-    def clear_all_my_notifications(self):
-        """تفريغ قائمة الإشعارات (تعليم الكل كمقروء)."""
-        return anvil.server.call('clear_all_notifications', self.get_auth())
-
-    def delete_all_my_notifications(self):
-        """حذف كل الإشعارات من الجدول للمستخدم الحالي."""
-        return anvil.server.call('delete_all_my_notifications', self.get_auth())
-
-    def delete_one_notification(self, notification_id):
-        """حذف إشعار واحد من الجدول."""
-        return anvil.server.call('delete_notification', notification_id, self.get_auth())
 
     # =========================================================
     # Clients & Quotations

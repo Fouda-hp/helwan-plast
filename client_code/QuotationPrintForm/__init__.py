@@ -5,6 +5,11 @@ import anvil.server
 import anvil.js
 import logging
 
+try:
+    from ..notif_bridge import register_notif_bridges
+except ImportError:
+    from notif_bridge import register_notif_bridges
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,6 +46,9 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     anvil.js.window.exportPDF = self.export_pdf
     anvil.js.window.exportExcel = self.export_excel
     anvil.js.window.updateDeliveryDate = self.update_delivery_date
+
+    # Notification bridges
+    register_notif_bridges()
 
   def _show_msg(self, msg, typ='error'):
     """عرض رسالة من نظام التطبيق بدل alert البراوزر"""

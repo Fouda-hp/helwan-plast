@@ -30,6 +30,11 @@ try:
 except ImportError:
     import AuthManager
 
+try:
+    from . import auth_email
+except ImportError:
+    import auth_email
+
 
 def _get_admin_emails():
     """قائمة بريد كل الأدمن النشطين (لإرسال إشعار لكل أدمن عند أي إجراء)."""
@@ -39,6 +44,34 @@ def _get_admin_emails():
     except Exception as e:
         logger.warning("Failed to get admin emails: %s", e)
         return []
+
+
+def _send_notification_email(user_email, notif_type, payload):
+    """إرسال بريد إلكتروني عند إنشاء إشعار (fire-and-forget)."""
+    try:
+        if not user_email or not str(user_email).strip():
+            return
+        msg_en = payload.get('message_en', '') if isinstance(payload, dict) else ''
+        msg_ar = payload.get('message_ar', '') if isinstance(payload, dict) else ''
+        if not msg_en and not msg_ar:
+            msg_en = f'Notification: {notif_type}'
+        subject = f'Helwan Plast - {msg_en[:80]}' if msg_en else f'Helwan Plast - {msg_ar[:80]}'
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; text-align: center;">Helwan Plast</h1>
+            </div>
+            <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+                <p style="font-size: 16px; color: #333; direction: ltr;">{msg_en}</p>
+                <p style="font-size: 16px; color: #333; direction: rtl; text-align: right;">{msg_ar}</p>
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+                <p style="font-size: 12px; color: #999; text-align: center;">Helwan Plast Notification System</p>
+            </div>
+        </div>
+        """
+        auth_email.send_email_smtp(str(user_email).strip(), subject, html_body)
+    except Exception as e:
+        logger.warning("Notification email failed for %s: %s", user_email, e)
 
 
 def create_notification(user_email, notif_type, payload):
@@ -57,6 +90,7 @@ def create_notification(user_email, notif_type, payload):
             created_at=get_utc_now(),
             read_at=None
         )
+        _send_notification_email(user_email, notif_type, payload)
     except Exception as e:
         logger.warning("Failed to create notification for %s: %s", user_email, e)
 
@@ -77,6 +111,7 @@ def create_notification_for_all_admins(notif_type, payload):
                 created_at=get_utc_now(),
                 read_at=None
             )
+            _send_notification_email(email, notif_type, payload)
         except Exception as e:
             logger.warning("Failed to create admin notification for %s: %s", email, e)
 
@@ -190,3 +225,40 @@ def delete_notification(notification_id, token_or_email):
         return {'success': False, 'message': 'Notification not found or access denied'}
     except Exception as e:
         return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_all_notifications_admin(token_or_email, limit=50):
+    """جلب كل الإشعارات (لكل المستخدمين) — للأدمن فقط."""
+    user_email = _user_email_from_token(token_or_email)
+    if not user_email:
+        return {'success': False, 'data': [], 'message': 'Authentication required'}
+    # Verify admin
+    is_admin = AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(user_email)
+    if not is_admin:
+        return {'success': False, 'data': [], 'message': 'Admin access required'}
+    try:
+        limit = max(1, min(200, int(limit) if limit is not None else 50))
+        try:
+            rows = list(app_tables.notifications.search(order_by=[anvil_order_by('created_at', False)]))
+        except Exception:
+            rows = list(app_tables.notifications.search())
+            rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
+        rows = rows[:limit]
+        data = []
+        for r in rows:
+            try:
+                pl = json.loads(r['payload']) if isinstance(r.get('payload'), str) else (r.get('payload') or {})
+            except (json.JSONDecodeError, TypeError):
+                pl = {}
+            data.append({
+                'id': r['id'],
+                'type': r.get('type', ''),
+                'payload': pl,
+                'user_email': r.get('user_email', ''),
+                'created_at': r.get('created_at').isoformat() if r.get('created_at') else None,
+                'read_at': r.get('read_at').isoformat() if r.get('read_at') else None,
+            })
+        return {'success': True, 'data': data}
+    except Exception as e:
+        return {'success': False, 'data': [], 'message': str(e)}

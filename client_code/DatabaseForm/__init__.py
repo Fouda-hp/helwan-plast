@@ -15,6 +15,11 @@ import anvil.server
 import anvil.js
 from ..auth_helpers import get_auth_token
 
+try:
+    from ..notif_bridge import register_notif_bridges
+except ImportError:
+    from notif_bridge import register_notif_bridges
+
 
 class DatabaseForm(DatabaseFormTemplate):
     def __init__(self, **properties):
@@ -26,6 +31,9 @@ class DatabaseForm(DatabaseFormTemplate):
         anvil.js.window.pyExportClients = self.export_clients
         anvil.js.window.pyExportQuotations = self.export_quotations
         anvil.js.window.pySetFollowup = self.set_followup_db
+
+        # Notification bridges
+        register_notif_bridges()
 
     def _auth(self):
         return get_auth_token()

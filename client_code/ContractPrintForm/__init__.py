@@ -8,6 +8,11 @@ import logging
 import re
 from datetime import datetime, date
 
+try:
+    from ..notif_bridge import register_notif_bridges
+except ImportError:
+    from notif_bridge import register_notif_bridges
+
 logger = logging.getLogger(__name__)
 
 
@@ -59,6 +64,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.saveContract = self.save_contract
         anvil.js.window.deleteContract = self.delete_contract
         anvil.js.window.validateNumPayments = self.validate_num_payments
+
+        # Notification bridges
+        register_notif_bridges()
 
     def _show_msg(self, msg, typ='error'):
         """عرض رسالة من النظام فقط (بدون alert البراوزر)."""

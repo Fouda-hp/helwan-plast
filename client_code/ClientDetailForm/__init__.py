@@ -9,6 +9,11 @@ import anvil.server
 import anvil.js
 from ..auth_helpers import get_auth_token
 
+try:
+    from ..notif_bridge import register_notif_bridges
+except ImportError:
+    from notif_bridge import register_notif_bridges
+
 
 class ClientDetailForm(ClientDetailFormTemplate):
     def __init__(self, **properties):
@@ -23,6 +28,9 @@ class ClientDetailForm(ClientDetailFormTemplate):
         anvil.js.window.pyGetAllTags = self.get_all_tags
         anvil.js.window.pyGoBack = self.go_back
         anvil.js.window.pySetFollowup = self.set_followup_cd
+
+        # Notification bridges
+        register_notif_bridges()
 
     def _auth(self):
         return get_auth_token()

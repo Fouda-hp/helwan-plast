@@ -9,6 +9,11 @@ import anvil.server
 import anvil.js
 from ..auth_helpers import get_auth_token
 
+try:
+    from ..notif_bridge import register_notif_bridges
+except ImportError:
+    from notif_bridge import register_notif_bridges
+
 
 class FollowUpDashboardForm(FollowUpDashboardFormTemplate):
     def __init__(self, **properties):
@@ -22,6 +27,9 @@ class FollowUpDashboardForm(FollowUpDashboardFormTemplate):
         anvil.js.window.pyCheckOverdue = self.check_overdue
         anvil.js.window.pyGoBack = self.go_back
         anvil.js.window.pyGetQuotationsForFollowup = self.get_quotations_for_followup
+
+        # Notification bridges
+        register_notif_bridges()
 
     def _auth(self):
         return get_auth_token()

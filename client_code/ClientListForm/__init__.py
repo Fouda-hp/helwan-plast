@@ -15,6 +15,11 @@ import anvil.server
 import anvil.js
 from ..auth_helpers import get_auth_token
 
+try:
+    from ..notif_bridge import register_notif_bridges
+except ImportError:
+    from notif_bridge import register_notif_bridges
+
 
 class ClientListForm(ClientListFormTemplate):
     def __init__(self, **properties):
@@ -25,6 +30,9 @@ class ClientListForm(ClientListFormTemplate):
         anvil.js.window.pyExportClients = self.export_clients
         anvil.js.window.pyGetAllTags = self.get_all_tags
         anvil.js.window.pyNavigateToClient = self.navigate_to_client
+
+        # Notification bridges
+        register_notif_bridges()
 
     def _auth(self):
         return get_auth_token()

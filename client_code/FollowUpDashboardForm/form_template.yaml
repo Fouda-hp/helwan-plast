@@ -1,0 +1,597 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        .fu-wrapper {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 30px;
+        }
+        .fu-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+        }
+        .fu-title {
+          font-size: 24px;
+          font-weight: bold;
+          color: #1976d2;
+          margin: 0;
+        }
+        .stats-row {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+        .stat-card {
+          background: #fff;
+          border-radius: 12px;
+          padding: 20px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          text-align: center;
+        }
+        .stat-value {
+          font-size: 32px;
+          font-weight: bold;
+        }
+        .stat-label {
+          font-size: 13px;
+          color: #888;
+          margin-top: 4px;
+        }
+        .card-red .stat-value { color: #f44336; }
+        .card-orange .stat-value { color: #ff9800; }
+        .card-blue .stat-value { color: #1976d2; }
+        .card-green .stat-value { color: #4caf50; }
+        .fu-filters {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+        }
+        .fu-filter-btn {
+          padding: 8px 16px;
+          border-radius: 20px;
+          border: 1px solid #ddd;
+          background: #fff;
+          cursor: pointer;
+          font-size: 13px;
+          transition: all 0.2s;
+        }
+        .fu-filter-btn:hover {
+          border-color: #1976d2;
+        }
+        .fu-filter-btn.active {
+          background: #1976d2;
+          color: #fff;
+          border-color: #1976d2;
+        }
+        .fu-table-wrap {
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          overflow: hidden;
+        }
+        .fu-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .fu-table th {
+          background: #1976d2;
+          color: #fff;
+          padding: 12px;
+          position: sticky;
+          top: 0;
+          font-size: 13px;
+          text-align: left;
+        }
+        .fu-table td {
+          padding: 12px;
+          border-bottom: 1px solid #eee;
+          font-size: 13px;
+        }
+        .fu-table tr:hover {
+          background: #f8f9fa;
+        }
+        .badge {
+          display: inline-block;
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 11px;
+          font-weight: 600;
+        }
+        .badge-overdue { background: #ffebee; color: #c62828; }
+        .badge-today { background: #fff3e0; color: #e65100; }
+        .badge-upcoming { background: #e3f2fd; color: #1565c0; }
+        .badge-completed { background: #e8f5e9; color: #2e7d32; }
+        .badge-snoozed { background: #f3e5f5; color: #7b1fa2; }
+        .btn-action {
+          padding: 4px 12px;
+          border-radius: 20px;
+          border: none;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+          margin: 2px;
+        }
+        .btn-snooze { background: #7b1fa2; color: #fff; }
+        .btn-complete { background: #4caf50; color: #fff; }
+        .btn-snooze:hover { opacity: 0.85; }
+        .btn-complete:hover { opacity: 0.85; }
+        .fu-empty {
+          text-align: center;
+          padding: 40px;
+          color: #888;
+        }
+        .fu-back-btn {
+          padding: 8px 20px;
+          border-radius: 20px;
+          border: 1px solid #1976d2;
+          background: #fff;
+          color: #1976d2;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 600;
+          transition: all 0.2s;
+        }
+        .fu-back-btn:hover {
+          background: #1976d2;
+          color: #fff;
+        }
+        .fu-modal {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0,0,0,0.4);
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .fu-modal-box {
+          background: #fff;
+          border-radius: 12px;
+          padding: 30px;
+          min-width: 300px;
+          max-width: 400px;
+          text-align: center;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .fu-modal-box h3 {
+          margin-top: 0;
+          color: #333;
+        }
+        .fu-modal-box button {
+          padding: 8px 24px;
+          border-radius: 20px;
+          border: none;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 600;
+          color: #fff;
+          background: #1976d2;
+          min-width: 120px;
+        }
+        .fu-modal-box button:hover { opacity: 0.85; }
+        .fu-modal-box input[type='date'] {
+          padding: 8px 12px;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          font-size: 14px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        [dir='rtl'] .fu-table th,
+        [dir='rtl'] .fu-table td {
+          text-align: right;
+        }
+        [dir='rtl'] .fu-header {
+          flex-direction: row-reverse;
+        }
+        [dir='rtl'] .fu-filters {
+          flex-direction: row-reverse;
+        }
+        @media (max-width: 768px) {
+          .fu-wrapper { padding: 12px; }
+          .stats-row { grid-template-columns: 1fr 1fr; }
+          .fu-table-wrap { overflow-x: auto; }
+          .fu-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+        }
+      </style>
+      
+      <script src="_/theme/global-loading.js"></script>
+      
+      <div class="fu-wrapper">
+        <div class="fu-header">
+          <h1 class="fu-title" id="fuTitle">Follow-Up Reminders</h1>
+          <button class="fu-back-btn" onclick="window.pyGoBack()">Back</button>
+        </div>
+        <div class="stats-row" id="statsRow"></div>
+        <div class="fu-filters" id="filtersRow"></div>
+        <div class="fu-table-wrap">
+          <div style="overflow-x:auto;">
+            <table class="fu-table">
+              <thead>
+                <tr id="tableHead"></tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr><td colspan="8" style="text-align:center;padding:40px;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Snooze Modal -->
+      <div class="fu-modal" id="snoozeModal" style="display:none;">
+        <div class="fu-modal-box">
+          <h3 id="snoozeTitle">Snooze Follow-Up</h3>
+          <p id="snoozeText">Choose how long to snooze:</p>
+          <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+            <button onclick="window._fuSnooze(1)">1 Day</button>
+            <button onclick="window._fuSnooze(3)">3 Days</button>
+            <button onclick="window._fuSnooze(7)">1 Week</button>
+            <button onclick="document.getElementById('snoozeModal').style.display='none'" style="background:#999;">Cancel</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Set Follow-up Modal -->
+      <div class="fu-modal" id="setFuModal" style="display:none;">
+        <div class="fu-modal-box">
+          <h3 id="setFuTitle">Set Follow-Up Date</h3>
+          <input type="date" id="setFuDateInput">
+          <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;">
+            <button onclick="window._fuSaveDate()">Save</button>
+            <button onclick="document.getElementById('setFuModal').style.display='none'" style="background:#999;">Cancel</button>
+          </div>
+        </div>
+      </div>
+      
+      <script>
+      (function() {
+        var currentFilter = 'all';
+        var pendingSnoozeQn = null;
+        var dashboardData = [];
+      
+        var i18n = {
+          en: {
+            fuTitle: 'Follow-Up Reminders',
+            back: 'Back',
+            overdue: 'Overdue',
+            today: 'Due Today',
+            upcoming: 'Upcoming',
+            completed: 'Completed',
+            all: 'All',
+            snoozed: 'Snoozed',
+            snooze: 'Snooze',
+            complete: 'Complete',
+            snoozeTitle: 'Snooze Follow-Up',
+            snoozeText: 'Choose how long to snooze:',
+            day1: '1 Day',
+            day3: '3 Days',
+            week1: '1 Week',
+            cancel: 'Cancel',
+            setFuTitle: 'Set Follow-Up Date',
+            save: 'Save',
+            thQn: 'Q#',
+            thClient: 'Client',
+            thCompany: 'Company',
+            thPrice: 'Price',
+            thDate: 'Follow-Up Date',
+            thStatus: 'Status',
+            thDays: 'Days',
+            thActions: 'Actions',
+            noData: 'No follow-ups found',
+            loading: 'Loading',
+            daysOverdue: '{0} days overdue',
+            daysAway: 'in {0} days',
+            todayLabel: 'Today',
+            overdueCount: 'Overdue',
+            todayCount: 'Due Today',
+            upcomingCount: 'Upcoming',
+            completedCount: 'Completed'
+          },
+          ar: {
+            fuTitle: '\u062a\u0630\u0643\u064a\u0631\u0627\u062a \u0627\u0644\u0645\u062a\u0627\u0628\u0639\u0629',
+            back: '\u0631\u062c\u0648\u0639',
+            overdue: '\u0645\u062a\u0623\u062e\u0631',
+            today: '\u0627\u0644\u064a\u0648\u0645',
+            upcoming: '\u0642\u0627\u062f\u0645\u0629',
+            completed: '\u0645\u0643\u062a\u0645\u0644\u0629',
+            all: '\u0627\u0644\u0643\u0644',
+            snoozed: '\u0645\u0624\u062c\u0644\u0629',
+            snooze: '\u062a\u0623\u062c\u064a\u0644',
+            complete: '\u0625\u062a\u0645\u0627\u0645',
+            snoozeTitle: '\u062a\u0623\u062c\u064a\u0644 \u0627\u0644\u0645\u062a\u0627\u0628\u0639\u0629',
+            snoozeText: '\u0627\u062e\u062a\u0631 \u0645\u062f\u0629 \u0627\u0644\u062a\u0623\u062c\u064a\u0644:',
+            day1: '\u064a\u0648\u0645 \u0648\u0627\u062d\u062f',
+            day3: '3 \u0623\u064a\u0627\u0645',
+            week1: '\u0623\u0633\u0628\u0648\u0639',
+            cancel: '\u0625\u0644\u063a\u0627\u0621',
+            setFuTitle: '\u062a\u0639\u064a\u064a\u0646 \u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0645\u062a\u0627\u0628\u0639\u0629',
+            save: '\u062d\u0641\u0638',
+            thQn: '\u0631\u0642\u0645 \u0627\u0644\u0639\u0631\u0636',
+            thClient: '\u0627\u0644\u0639\u0645\u064a\u0644',
+            thCompany: '\u0627\u0644\u0634\u0631\u0643\u0629',
+            thPrice: '\u0627\u0644\u0633\u0639\u0631',
+            thDate: '\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0645\u062a\u0627\u0628\u0639\u0629',
+            thStatus: '\u0627\u0644\u062d\u0627\u0644\u0629',
+            thDays: '\u0627\u0644\u0623\u064a\u0627\u0645',
+            thActions: '\u0625\u062c\u0631\u0627\u0621\u0627\u062a',
+            noData: '\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u062a\u0627\u0628\u0639\u0627\u062a',
+            loading: '\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u062d\u0645\u064a\u0644',
+            daysOverdue: '\u0645\u062a\u0623\u062e\u0631 {0} \u064a\u0648\u0645',
+            daysAway: '\u0628\u0639\u062f {0} \u064a\u0648\u0645',
+            todayLabel: '\u0627\u0644\u064a\u0648\u0645',
+            overdueCount: '\u0645\u062a\u0623\u062e\u0631\u0629',
+            todayCount: '\u0645\u0633\u062a\u062d\u0642\u0629 \u0627\u0644\u064a\u0648\u0645',
+            upcomingCount: '\u0642\u0627\u062f\u0645\u0629',
+            completedCount: '\u0645\u0643\u062a\u0645\u0644\u0629'
+          }
+        };
+      
+        function t(key) {
+          var lang = (window._appLang || 'en');
+          return (i18n[lang] && i18n[lang][key]) || (i18n['en'][key]) || key;
+        }
+      
+        function applyLang() {
+          var lang = (window._appLang || 'en');
+          var wrapper = document.querySelector('.fu-wrapper');
+          if (wrapper) {
+            wrapper.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+          }
+          var el = document.getElementById('fuTitle');
+          if (el) el.textContent = t('fuTitle');
+          var backBtn = document.querySelector('.fu-back-btn');
+          if (backBtn) backBtn.textContent = t('back');
+          var st = document.getElementById('snoozeTitle');
+          if (st) st.textContent = t('snoozeTitle');
+          var stx = document.getElementById('snoozeText');
+          if (stx) stx.textContent = t('snoozeText');
+          var sft = document.getElementById('setFuTitle');
+          if (sft) sft.textContent = t('setFuTitle');
+        }
+      
+        function renderStats(stats) {
+          var row = document.getElementById('statsRow');
+          if (!row) return;
+          var cards = [
+            { key: 'overdue', label: t('overdueCount'), cls: 'card-red', val: stats.overdue || 0 },
+            { key: 'today', label: t('todayCount'), cls: 'card-orange', val: stats.today || 0 },
+            { key: 'upcoming', label: t('upcomingCount'), cls: 'card-blue', val: stats.upcoming || 0 },
+            { key: 'completed', label: t('completedCount'), cls: 'card-green', val: stats.completed || 0 }
+          ];
+          row.innerHTML = '';
+          cards.forEach(function(c) {
+            var div = document.createElement('div');
+            div.className = 'stat-card ' + c.cls;
+            div.innerHTML = '<div class="stat-value">' + c.val + '</div><div class="stat-label">' + c.label + '</div>';
+            row.appendChild(div);
+          });
+        }
+      
+        function renderFilters() {
+          var row = document.getElementById('filtersRow');
+          if (!row) return;
+          var filters = [
+            { key: 'all', label: t('all') },
+            { key: 'overdue', label: t('overdue') },
+            { key: 'today', label: t('today') },
+            { key: 'upcoming', label: t('upcoming') },
+            { key: 'completed', label: t('completed') }
+          ];
+          row.innerHTML = '';
+          filters.forEach(function(f) {
+            var btn = document.createElement('button');
+            btn.className = 'fu-filter-btn' + (currentFilter === f.key ? ' active' : '');
+            btn.textContent = f.label;
+            btn.onclick = function() { window._fuSetFilter(f.key); };
+            row.appendChild(btn);
+          });
+        }
+      
+        function renderTable(data) {
+          var head = document.getElementById('tableHead');
+          var body = document.getElementById('tableBody');
+          if (!head || !body) return;
+      
+          head.innerHTML = '';
+          var cols = ['thQn','thClient','thCompany','thPrice','thDate','thStatus','thDays','thActions'];
+          cols.forEach(function(c) {
+            var th = document.createElement('th');
+            th.textContent = t(c);
+            head.appendChild(th);
+          });
+      
+          body.innerHTML = '';
+          if (!data || data.length === 0) {
+            body.innerHTML = '<tr><td colspan="8" class="fu-empty">' + t('noData') + '</td></tr>';
+            return;
+          }
+      
+          data.forEach(function(row) {
+            var tr = document.createElement('tr');
+      
+            var tdQn = document.createElement('td');
+            tdQn.textContent = row.quotation_number || '';
+            tr.appendChild(tdQn);
+      
+            var tdClient = document.createElement('td');
+            tdClient.textContent = row.client_name || '';
+            tr.appendChild(tdClient);
+      
+            var tdCompany = document.createElement('td');
+            tdCompany.textContent = row.company_name || '';
+            tr.appendChild(tdCompany);
+      
+            var tdPrice = document.createElement('td');
+            tdPrice.textContent = row.total_price || '';
+            tr.appendChild(tdPrice);
+      
+            var tdDate = document.createElement('td');
+            tdDate.textContent = row.follow_up_date || '';
+            tr.appendChild(tdDate);
+      
+            var tdStatus = document.createElement('td');
+            var badge = document.createElement('span');
+            badge.className = 'badge';
+            if (row.follow_up_status === 'snoozed') {
+              badge.classList.add('badge-snoozed');
+              badge.textContent = t('snoozed');
+            } else if (row.category === 'overdue') {
+              badge.classList.add('badge-overdue');
+              badge.textContent = t('overdue');
+            } else if (row.category === 'today') {
+              badge.classList.add('badge-today');
+              badge.textContent = t('today');
+            } else if (row.category === 'upcoming') {
+              badge.classList.add('badge-upcoming');
+              badge.textContent = t('upcoming');
+            } else if (row.category === 'completed') {
+              badge.classList.add('badge-completed');
+              badge.textContent = t('completed');
+            }
+            tdStatus.appendChild(badge);
+            tr.appendChild(tdStatus);
+      
+            var tdDays = document.createElement('td');
+            if (row.category === 'overdue') {
+              tdDays.style.color = '#f44336';
+              tdDays.textContent = t('daysOverdue').replace('{0}', Math.abs(row.days_until || 0));
+            } else if (row.category === 'today') {
+              tdDays.style.color = '#ff9800';
+              tdDays.textContent = t('todayLabel');
+            } else if (row.category === 'upcoming') {
+              tdDays.style.color = '#1976d2';
+              tdDays.textContent = t('daysAway').replace('{0}', row.days_until || 0);
+            } else if (row.category === 'completed') {
+              tdDays.innerHTML = '\u2714';
+              tdDays.style.color = '#4caf50';
+            }
+            tr.appendChild(tdDays);
+      
+            var tdActions = document.createElement('td');
+            if (row.category !== 'completed') {
+              var btnSnooze = document.createElement('button');
+              btnSnooze.className = 'btn-action btn-snooze';
+              btnSnooze.textContent = t('snooze');
+              btnSnooze.onclick = (function(qn) {
+                return function() { window._fuShowSnooze(qn); };
+              })(row.quotation_number);
+              tdActions.appendChild(btnSnooze);
+      
+              var btnComplete = document.createElement('button');
+              btnComplete.className = 'btn-action btn-complete';
+              btnComplete.textContent = t('complete');
+              btnComplete.onclick = (function(qn) {
+                return function() { window._fuComplete(qn); };
+              })(row.quotation_number);
+              tdActions.appendChild(btnComplete);
+            } else {
+              tdActions.innerHTML = '<span style="color:#4caf50;">\u2714</span>';
+            }
+            tr.appendChild(tdActions);
+      
+            body.appendChild(tr);
+          });
+        }
+      
+        function loadDashboard() {
+          if (!window.pyGetFollowupDashboard) return;
+          window.pyGetFollowupDashboard(currentFilter).then(function(result) {
+            if (result && result.stats) {
+              renderStats(result.stats);
+            }
+            dashboardData = (result && result.data) || [];
+            renderFilters();
+            renderTable(dashboardData);
+          }).catch(function(err) {
+            console.error('Failed to load follow-up dashboard:', err);
+          });
+        }
+      
+        function init() {
+          applyLang();
+          if (window.pyCheckOverdue) {
+            window.pyCheckOverdue().then(function() {
+              loadDashboard();
+            }).catch(function() {
+              loadDashboard();
+            });
+          } else {
+            loadDashboard();
+          }
+        }
+      
+        window._fuSetFilter = function(f) {
+          currentFilter = f;
+          loadDashboard();
+        };
+      
+        window._fuShowSnooze = function(qn) {
+          pendingSnoozeQn = qn;
+          var modal = document.getElementById('snoozeModal');
+          if (modal) modal.style.display = 'flex';
+        };
+      
+        window._fuSnooze = function(days) {
+          if (!pendingSnoozeQn || !window.pySnoozeFollowup) return;
+          window.pySnoozeFollowup(pendingSnoozeQn, days).then(function() {
+            var modal = document.getElementById('snoozeModal');
+            if (modal) modal.style.display = 'none';
+            pendingSnoozeQn = null;
+            loadDashboard();
+          }).catch(function(err) {
+            console.error('Snooze failed:', err);
+          });
+        };
+      
+        window._fuComplete = function(qn) {
+          if (!window.pyCompleteFollowup) return;
+          window.pyCompleteFollowup(qn).then(function() {
+            loadDashboard();
+          }).catch(function(err) {
+            console.error('Complete failed:', err);
+          });
+        };
+      
+        window._fuShowSetDate = function(qn) {
+          pendingSnoozeQn = qn;
+          var modal = document.getElementById('setFuModal');
+          if (modal) modal.style.display = 'flex';
+        };
+      
+        window._fuSaveDate = function() {
+          var input = document.getElementById('setFuDateInput');
+          if (!input || !input.value || !pendingSnoozeQn || !window.pySetFollowup) return;
+          window.pySetFollowup(pendingSnoozeQn, input.value).then(function() {
+            var modal = document.getElementById('setFuModal');
+            if (modal) modal.style.display = 'none';
+            pendingSnoozeQn = null;
+            loadDashboard();
+          }).catch(function(err) {
+            console.error('Set follow-up failed:', err);
+          });
+        };
+      
+        function waitForBridge() {
+          if (window.pyGetFollowupDashboard) {
+            init();
+          } else {
+            setTimeout(waitForBridge, 100);
+          }
+        }
+      
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', waitForBridge);
+        } else {
+          waitForBridge();
+        }
+      })();
+      </script>
+  type: HtmlTemplate
+is_package: true

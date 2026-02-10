@@ -542,6 +542,14 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
         'updated_at': get_utc_now()
     }
 
+    # حفظ بيانات المتابعة إن وُجدت
+    fu_date = form_data.get('follow_up_date')
+    if fu_date is not None:
+        data['follow_up_date'] = safe_strip(fu_date)
+    fu_status = form_data.get('follow_up_status')
+    if fu_status is not None:
+        data['follow_up_status'] = safe_strip(fu_status)
+
     # إضافة بيانات الأسطوانات
     for i in range(1, 13):
         data[f'Size in CM{i}'] = safe_strip(form_data.get(f'Size in CM{i}'))
@@ -832,7 +840,9 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
                 "Overseas clients": r.get("Overseas clients", ""),
                 "Contract": r.get("Contract", ""),
                 "Expected delivery time": r.get("Expected delivery time").isoformat() if r.get("Expected delivery time") and hasattr(r.get("Expected delivery time"), 'isoformat') else str(r.get("Expected delivery time", "")),
-                "is_deleted": r.get("is_deleted", False)
+                "is_deleted": r.get("is_deleted", False),
+                "follow_up_date": r.get("follow_up_date", ""),
+                "follow_up_status": r.get("follow_up_status", ""),
             }
 
             for i in range(1, 13):
@@ -922,7 +932,8 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
                 "Sales Rep": r.get("Sales Rep", ""),
                 "Source": r.get("Source", ""),
                 "Date": r.get("Date").isoformat() if r.get("Date") and hasattr(r.get("Date"), 'isoformat') else str(r.get("Date") or ""),
-                "is_deleted": r.get("is_deleted", False)
+                "is_deleted": r.get("is_deleted", False),
+                "tags_json": r.get("tags_json", "[]"),
             })
 
         return {

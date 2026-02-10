@@ -47,6 +47,12 @@ ACTION_LABELS = {
     'BACKUP_SCHEDULED': 'نسخة احتياطية مجدولة',
     'BACKUP_RESTORE': 'استعادة نسخة احتياطية',
     'UPDATE_PAYMENT_STATUS': 'تحديث حالة دفعة',
+    'ADD_CLIENT_NOTE': 'إضافة ملاحظة عميل',
+    'DELETE_CLIENT_NOTE': 'حذف ملاحظة عميل',
+    'UPDATE_CLIENT_TAGS': 'تحديث وسوم عميل',
+    'SET_FOLLOWUP': 'تعيين متابعة عرض سعر',
+    'SNOOZE_FOLLOWUP': 'تأجيل متابعة',
+    'COMPLETE_FOLLOWUP': 'إتمام متابعة',
 }
 
 TABLE_LABELS = {

@@ -89,6 +89,8 @@ db_schema:
     - admin_ui: {width: 200}
       name: updated_at
       type: datetime
+    - {admin_ui: null, name: notes_json, type: string}
+    - {admin_ui: null, name: tags_json, type: string}
     server: full
     title: CLIENTS
   contracts:
@@ -650,6 +652,8 @@ db_schema:
     - admin_ui: {width: 200}
       name: Source
       type: string
+    - {admin_ui: null, name: follow_up_date, type: string}
+    - {admin_ui: null, name: follow_up_status, type: string}
     server: full
     title: QUOTATIONS
   rate_limits:

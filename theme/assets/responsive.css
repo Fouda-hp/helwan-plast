@@ -1,0 +1,313 @@
+/* ===================================================
+   responsive.css - Global Mobile Responsive Overrides
+   ===================================================
+   Applies to ALL forms across the Helwan Plast system.
+   Loaded from standard-page.html.
+*/
+
+/* ===== TABLET (max-width: 768px) ===== */
+@media (max-width: 768px) {
+
+  /* --- Navigation buttons --- */
+  .buttons {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 10px;
+  }
+
+  .btn {
+    font-size: 15px !important;
+    height: 48px !important;
+    min-height: 44px; /* touch target */
+  }
+
+  /* --- Cards grid → single column --- */
+  .stats-row,
+  .stat-cards,
+  .pd-stats,
+  .fu-stats {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* --- Tables → horizontal scroll --- */
+  .table-scroll,
+  .table-container,
+  .pd-table-wrap,
+  .fu-table-wrap,
+  .cl-table-wrap,
+  .db-table-wrap,
+  .tl-section {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-scroll table,
+  .table-container table,
+  .pd-table-wrap table,
+  .fu-table-wrap table,
+  .cl-table-wrap table,
+  .db-table-wrap table {
+    min-width: 600px;
+  }
+
+  /* --- Forms → full width inputs --- */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important; /* prevents iOS zoom */
+  }
+
+  /* --- Modals → full width on mobile --- */
+  .modal-box,
+  .fu-modal-box,
+  .cd-tag-modal-box {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin: 10px auto !important;
+  }
+
+  /* --- Launcher card --- */
+  .launcher-card {
+    padding: 20px 15px !important;
+  }
+
+  /* --- Search bars --- */
+  .pd-search,
+  .cl-search,
+  .fu-search,
+  input[type="search"],
+  input[type="text"].search-input {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* --- Pagination --- */
+  .pd-pagination,
+  .qo-pagination,
+  .cl-pagination,
+  .fu-pagination,
+  .tl-pagination {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    justify-content: center !important;
+  }
+
+  /* --- Filter tabs / bars --- */
+  .fu-filters,
+  .tl-filters,
+  .pd-filters {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .fu-filters button,
+  .tl-filters button,
+  .pd-filters button {
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+    min-height: 36px;
+  }
+
+  /* --- Client detail header --- */
+  .cd-header-info {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .cd-stat-cards {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* --- General toolbar/header rows --- */
+  .pd-header,
+  .fu-header,
+  .cl-header,
+  .cd-header {
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: stretch !important;
+  }
+
+  /* --- Page top bars (back button + title) --- */
+  .pd-topbar,
+  .fu-topbar,
+  .cd-topbar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  /* --- Print forms and wide content --- */
+  .print-container,
+  .contract-container {
+    width: 100% !important;
+    padding: 10px !important;
+    overflow-x: auto !important;
+  }
+
+  /* --- RTL adjustments for mobile --- */
+  body.rtl .pd-header,
+  body.rtl .fu-header,
+  body.rtl .cl-header {
+    text-align: right;
+  }
+}
+
+/* ===== SMALL PHONE (max-width: 480px) ===== */
+@media (max-width: 480px) {
+
+  .stat-card,
+  .pd-stat-card,
+  .fu-stat-card,
+  .cd-stat-card {
+    padding: 12px !important;
+  }
+
+  .stat-value,
+  .pd-stat-value,
+  .fu-stat-value,
+  .cd-stat-value {
+    font-size: 20px !important;
+  }
+
+  .title,
+  .pd-title,
+  .fu-title,
+  .cd-title {
+    font-size: 18px !important;
+  }
+
+  .footer {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 4px;
+  }
+
+  /* Tables on very small screens */
+  .table-scroll table,
+  .table-container table,
+  .pd-table-wrap table,
+  .fu-table-wrap table,
+  .cl-table-wrap table,
+  .db-table-wrap table {
+    min-width: 500px;
+    font-size: 12px;
+  }
+
+  table th,
+  table td {
+    padding: 6px 8px !important;
+  }
+
+  /* Client detail stat cards → single column */
+  .cd-stat-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Timeline items compact */
+  .tl-item {
+    padding: 8px 10px !important;
+  }
+
+  /* Snooze/action buttons */
+  .fu-actions button,
+  .fu-snooze-btn {
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+  }
+
+  /* Notes section */
+  .cd-note-item {
+    padding: 8px !important;
+  }
+
+  /* Tag badges */
+  .tag-badge,
+  .cd-tag-badge {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+  }
+
+  /* Back buttons */
+  .pd-back-btn,
+  .fu-back-btn,
+  .cd-back-btn {
+    font-size: 13px !important;
+    padding: 6px 12px !important;
+  }
+}
+
+/* ===== LANDSCAPE PHONE ===== */
+@media (max-height: 500px) and (orientation: landscape) {
+  .launcher {
+    padding: 10px 20px !important;
+    min-height: auto !important;
+  }
+
+  .launcher-card {
+    padding: 15px 20px !important;
+  }
+
+  .logos img {
+    height: 50px !important;
+  }
+}
+
+/* ===== TOUCH-FRIENDLY OVERRIDES ===== */
+@media (pointer: coarse) {
+  /* Ensure all interactive elements are at least 44px */
+  button,
+  .btn,
+  a.btn,
+  select,
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger tap targets for table row actions */
+  .fu-actions button,
+  .pd-actions button,
+  .tl-actions button {
+    min-height: 36px;
+    min-width: 36px;
+    padding: 6px 10px;
+  }
+
+  /* Pagination buttons */
+  .pd-pagination button,
+  .cl-pagination button,
+  .fu-pagination button,
+  .tl-pagination button {
+    min-height: 40px;
+    min-width: 40px;
+  }
+}
+
+/* ===== GLOBAL SCROLLBAR STYLING (for horizontal scroll tables) ===== */
+.table-scroll::-webkit-scrollbar,
+.table-container::-webkit-scrollbar,
+.pd-table-wrap::-webkit-scrollbar,
+.fu-table-wrap::-webkit-scrollbar,
+.cl-table-wrap::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb,
+.table-container::-webkit-scrollbar-thumb,
+.pd-table-wrap::-webkit-scrollbar-thumb,
+.fu-table-wrap::-webkit-scrollbar-thumb,
+.cl-table-wrap::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+.table-scroll::-webkit-scrollbar-track,
+.table-container::-webkit-scrollbar-track,
+.pd-table-wrap::-webkit-scrollbar-track,
+.fu-table-wrap::-webkit-scrollbar-track,
+.cl-table-wrap::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}

@@ -107,11 +107,42 @@ container:
 
         .data-table tr:hover {
           background: #f8f9fa;
+          cursor: pointer;
         }
 
         .data-table tr:nth-child(even) {
           background: #fafafa;
         }
+
+        .tag-badge {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 600;
+          margin: 1px 2px;
+          background: #e3f2fd;
+          color: #1565c0;
+        }
+
+        .tag-filter-select {
+          padding: 12px 16px;
+          border: 2px solid #e0e0e0;
+          border-radius: 8px;
+          font-size: 14px;
+          background: white;
+          cursor: pointer;
+        }
+
+        .tag-filter-select:focus {
+          outline: none;
+          border-color: #667eea;
+        }
+
+        body.rtl .data-table th,
+        body.rtl .data-table td { text-align: right; }
+        body.rtl .cl-header,
+        body.rtl .search-row { direction: rtl; }
 
         .pagination {
           display: flex;
@@ -177,14 +208,17 @@ container:
       <script src="_/theme/global-loading.js"></script>
       <div class="cl-wrapper">
         <div class="cl-header">
-          <h1>📋 Clients List (Read Only)</h1>
+          <h1 id="clTitle">Clients List</h1>
         </div>
 
         <div class="search-row">
           <input type="text" class="search-input" id="searchInput" placeholder="Search clients...">
-          <button class="action-btn primary" onclick="doSearch()">🔍 Search</button>
-          <button class="action-btn secondary" onclick="exportData()">📥 Export CSV</button>
-          <button class="action-btn secondary" onclick="goBack()">🔙 Back</button>
+          <select class="tag-filter-select" id="tagFilter" onchange="filterByTag()">
+            <option value="">All Tags</option>
+          </select>
+          <button class="action-btn primary" onclick="doSearch()">Search</button>
+          <button class="action-btn secondary" onclick="exportData()">Export CSV</button>
+          <button class="action-btn secondary" onclick="goBack()">Back</button>
         </div>
 
         <div class="table-container">
@@ -208,10 +242,96 @@ container:
           var totalPages = 1;
           var perPage = 20;
           var searchQuery = '';
+          var selectedTag = '';
+          var allClientsData = [];
+
+          // i18n
+          var lang = localStorage.getItem('hp_language') || 'en';
+          var T = {
+            en: {
+              clTitle: 'Clients List',
+              searchPh: 'Search clients...',
+              allTags: 'All Tags',
+              search: 'Search',
+              exportCsv: 'Export CSV',
+              back: 'Back',
+              prev: 'Previous',
+              next: 'Next',
+              pageOf: 'Page {0} of {1}',
+              noClients: 'No clients found',
+              loadErr: 'Error loading clients',
+              exportOk: 'Export completed!',
+              exportErr: 'Export error',
+              noData: 'No data to export',
+              thCode: 'Code', thName: 'Client Name', thCompany: 'Company',
+              thPhone: 'Phone', thCountry: 'Country', thEmail: 'Email',
+              thSalesRep: 'Sales Rep', thTags: 'Tags'
+            },
+            ar: {
+              clTitle: 'قائمة العملاء',
+              searchPh: 'بحث عن عميل...',
+              allTags: 'كل الوسوم',
+              search: 'بحث',
+              exportCsv: 'تصدير CSV',
+              back: 'رجوع',
+              prev: 'السابق',
+              next: 'التالي',
+              pageOf: 'صفحة {0} من {1}',
+              noClients: 'لا يوجد عملاء',
+              loadErr: 'خطأ في تحميل البيانات',
+              exportOk: 'تم التصدير بنجاح!',
+              exportErr: 'خطأ في التصدير',
+              noData: 'لا توجد بيانات للتصدير',
+              thCode: 'الكود', thName: 'اسم العميل', thCompany: 'الشركة',
+              thPhone: 'الهاتف', thCountry: 'البلد', thEmail: 'البريد',
+              thSalesRep: 'مندوب المبيعات', thTags: 'الوسوم'
+            }
+          };
+          function t(k) { return (T[lang]||T['en'])[k] || k; }
+
+          function applyLang() {
+            if (lang === 'ar') {
+              document.body.classList.add('rtl');
+              document.documentElement.dir = 'rtl';
+            } else {
+              document.body.classList.remove('rtl');
+              document.documentElement.dir = 'ltr';
+            }
+            var el = document.getElementById('clTitle');
+            if (el) el.textContent = t('clTitle');
+            var si = document.getElementById('searchInput');
+            if (si) si.placeholder = t('searchPh');
+            var tf = document.getElementById('tagFilter');
+            if (tf && tf.options.length > 0) tf.options[0].text = t('allTags');
+          }
 
           function init() {
+            applyLang();
+            loadTags();
             loadData();
           }
+
+          async function loadTags() {
+            try {
+              var result = await window.pyGetAllTags();
+              if (result && result.success && result.tags) {
+                var sel = document.getElementById('tagFilter');
+                sel.innerHTML = '<option value="">' + t('allTags') + '</option>';
+                result.tags.forEach(function(tag) {
+                  var opt = document.createElement('option');
+                  opt.value = tag;
+                  opt.textContent = tag;
+                  sel.appendChild(opt);
+                });
+              }
+            } catch(e) { /* silent */ }
+          }
+
+          window.filterByTag = function() {
+            selectedTag = document.getElementById('tagFilter').value;
+            currentPage = 1;
+            loadData();
+          };
 
           window.doSearch = function() {
             searchQuery = document.getElementById('searchInput').value;
@@ -219,36 +339,39 @@ container:
             loadData();
           };
 
+          document.getElementById('searchInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') window.doSearch();
+          });
+
           window.prevPage = function() {
-            if (currentPage > 1) {
-              currentPage--;
-              loadData();
-            }
+            if (currentPage > 1) { currentPage--; loadData(); }
           };
 
           window.nextPage = function() {
-            if (currentPage < totalPages) {
-              currentPage++;
-              loadData();
-            }
+            if (currentPage < totalPages) { currentPage++; loadData(); }
           };
 
           window.goBack = function() {
             window.location.hash = '#launcher';
           };
 
+          window._clOpenClient = function(code) {
+            if (window.pyNavigateToClient) {
+              window.pyNavigateToClient(code);
+            } else {
+              window.location.hash = '#client-detail?code=' + encodeURIComponent(code);
+            }
+          };
+
           window.exportData = async function() {
             try {
               var data = await window.pyExportClients(false);
-
               if (!data || data.length === 0) {
-                if (window.showNotification) window.showNotification('error', '', 'No data to export');
+                if (window.showNotification) window.showNotification('error', '', t('noData'));
                 return;
               }
-
               var headers = Object.keys(data[0]);
               var csv = headers.join(',') + '\n';
-
               data.forEach(function(row) {
                 var values = headers.map(function(h) {
                   var val = (row[h] || '').toString().replace(/"/g, '""');
@@ -256,55 +379,86 @@ container:
                 });
                 csv += values.join(',') + '\n';
               });
-
               var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
               var link = document.createElement('a');
               link.href = URL.createObjectURL(blob);
               link.download = 'clients_export.csv';
               link.click();
-
-              if (window.showNotification) window.showNotification('success', '', 'Export completed!');
+              if (window.showNotification) window.showNotification('success', '', t('exportOk'));
             } catch (e) {
-              if (window.showNotification) window.showNotification('error', '', 'Export error: ' + e);
+              if (window.showNotification) window.showNotification('error', '', t('exportErr') + ': ' + e);
             }
           };
 
           async function loadData() {
             var container = document.getElementById('tableContent');
             container.innerHTML = '<div class="loading"><div class="hand-loader"><div class="hand-finger"></div><div class="hand-finger"></div><div class="hand-finger"></div><div class="hand-finger"></div><div class="hand-palm"></div><div class="hand-thumb"></div></div></div>';
-
             try {
               var result = await window.pyGetClients(currentPage, perPage, searchQuery, false);
-
               totalPages = result.total_pages || 1;
-              renderTable(result.data || []);
+              allClientsData = result.data || [];
+              renderTable(allClientsData);
               updatePagination();
             } catch (e) {
-              container.innerHTML = '<div class="empty-state"><h4>Error loading clients</h4><p>' + e + '</p></div>';
+              container.innerHTML = '<div class="empty-state"><h4>' + t('loadErr') + '</h4><p>' + e + '</p></div>';
             }
           }
 
           function renderTable(data) {
             var container = document.getElementById('tableContent');
 
-            if (!data || data.length === 0) {
-              container.innerHTML = '<div class="empty-state"><h4>No clients found</h4></div>';
+            // Client-side tag filter
+            var filtered = data;
+            if (selectedTag) {
+              filtered = data.filter(function(row) {
+                var tags = row['tags'] || row['tags_json'] || [];
+                if (typeof tags === 'string') {
+                  try { tags = JSON.parse(tags); } catch(e) { tags = []; }
+                }
+                return Array.isArray(tags) && tags.indexOf(selectedTag) !== -1;
+              });
+            }
+
+            if (!filtered || filtered.length === 0) {
+              container.innerHTML = '<div class="empty-state"><h4>' + t('noClients') + '</h4></div>';
               return;
             }
 
             var html = '<table class="data-table">';
-            html += '<thead><tr><th>Code</th><th>Client Name</th><th>Company</th><th>Phone</th><th>Country</th><th>Email</th><th>Sales Rep</th></tr></thead>';
-            html += '<tbody>';
+            html += '<thead><tr>';
+            html += '<th>' + t('thCode') + '</th>';
+            html += '<th>' + t('thName') + '</th>';
+            html += '<th>' + t('thCompany') + '</th>';
+            html += '<th>' + t('thPhone') + '</th>';
+            html += '<th>' + t('thCountry') + '</th>';
+            html += '<th>' + t('thEmail') + '</th>';
+            html += '<th>' + t('thSalesRep') + '</th>';
+            html += '<th>' + t('thTags') + '</th>';
+            html += '</tr></thead><tbody>';
 
-            data.forEach(function(row) {
-              html += '<tr>';
-              html += '<td><strong>' + (row['Client Code'] || '') + '</strong></td>';
+            filtered.forEach(function(row) {
+              var code = row['Client Code'] || '';
+              html += '<tr onclick="window._clOpenClient(\'' + code.replace(/'/g, "\\'") + '\')">';
+              html += '<td><strong>' + code + '</strong></td>';
               html += '<td>' + (row['Client Name'] || '') + '</td>';
               html += '<td>' + (row['Company'] || '') + '</td>';
               html += '<td>' + (row['Phone'] || '') + '</td>';
               html += '<td>' + (row['Country'] || '') + '</td>';
               html += '<td>' + (row['Email'] || '') + '</td>';
               html += '<td>' + (row['Sales Rep'] || '') + '</td>';
+
+              // Tags column
+              var tags = row['tags'] || row['tags_json'] || [];
+              if (typeof tags === 'string') {
+                try { tags = JSON.parse(tags); } catch(e) { tags = []; }
+              }
+              var tagsHtml = '';
+              if (Array.isArray(tags)) {
+                tags.forEach(function(tag) {
+                  tagsHtml += '<span class="tag-badge">' + tag + '</span>';
+                });
+              }
+              html += '<td>' + tagsHtml + '</td>';
               html += '</tr>';
             });
 
@@ -313,20 +467,20 @@ container:
           }
 
           function updatePagination() {
-            document.getElementById('pageInfo').textContent = 'Page ' + currentPage + ' of ' + totalPages;
+            var info = t('pageOf').replace('{0}', currentPage).replace('{1}', totalPages);
+            document.getElementById('pageInfo').textContent = info;
             document.getElementById('btnPrev').disabled = currentPage <= 1;
             document.getElementById('btnNext').disabled = currentPage >= totalPages;
           }
 
           // Wait for Python bridge
           function waitForBridge() {
-            if (window.pyGetClients) {
+            if (window.pyGetClients && window.pyGetAllTags) {
               init();
             } else {
               setTimeout(waitForBridge, 200);
             }
           }
-
           setTimeout(waitForBridge, 300);
         })();
       </script>

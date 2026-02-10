@@ -137,6 +137,10 @@ class LoginForm(LoginFormTemplate):
             open_form('ContractEditForm')
         elif hash_val == "#payment-dashboard":
             open_form('PaymentDashboardForm')
+        elif hash_val.startswith("#client-detail"):
+            open_form('ClientDetailForm')
+        elif hash_val == "#follow-ups":
+            open_form('FollowUpDashboardForm')
         else:
             open_form('LauncherForm')
 

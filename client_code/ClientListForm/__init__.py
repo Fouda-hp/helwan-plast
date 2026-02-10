@@ -22,9 +22,19 @@ class ClientListForm(ClientListFormTemplate):
         # Setup JavaScript bridge functions
         anvil.js.window.pyGetClients = self.get_clients
         anvil.js.window.pyExportClients = self.export_clients
+        anvil.js.window.pyGetAllTags = self.get_all_tags
+        anvil.js.window.pyNavigateToClient = self.navigate_to_client
 
     def _auth(self):
-        return anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+        token = anvil.js.window.sessionStorage.getItem('auth_token')
+        if not token:
+            token = anvil.js.window.localStorage.getItem('auth_token')
+            if token:
+                try:
+                    anvil.js.window.sessionStorage.setItem('auth_token', token)
+                except Exception:
+                    pass
+        return token
 
     def get_clients(self, page, per_page, search, include_deleted):
         """Get clients data"""
@@ -33,3 +43,11 @@ class ClientListForm(ClientListFormTemplate):
     def export_clients(self, include_deleted):
         """Export clients data"""
         return anvil.server.call('export_clients_data', include_deleted, self._auth())
+
+    def get_all_tags(self):
+        """Get all unique tags across clients"""
+        return anvil.server.call('get_all_tags', self._auth())
+
+    def navigate_to_client(self, client_code):
+        """Navigate to client detail page"""
+        anvil.js.window.location.hash = '#client-detail?code=' + str(client_code)

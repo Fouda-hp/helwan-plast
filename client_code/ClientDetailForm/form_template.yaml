@@ -1,0 +1,613 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        .cd-wrapper {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 30px;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .cd-header {
+          display: flex;
+          flex-direction: row;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 24px;
+        }
+        .cd-client-info h1 {
+          font-size: 24px;
+          color: #1976d2;
+          margin: 0 0 12px 0;
+        }
+        .cd-client-meta {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px 24px;
+        }
+        .cd-meta-item {
+          display: flex;
+          flex-direction: column;
+        }
+        .cd-meta-item .meta-label {
+          font-size: 11px;
+          color: #999;
+          text-transform: uppercase;
+          margin-bottom: 2px;
+        }
+        .cd-meta-item .meta-value {
+          font-size: 14px;
+          color: #333;
+          font-weight: 500;
+        }
+        .stats-row {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+        .stat-card {
+          background: #fff;
+          border-radius: 10px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+          padding: 20px;
+          text-align: center;
+        }
+        .stat-value {
+          font-size: 28px;
+          font-weight: 700;
+        }
+        .stat-label {
+          font-size: 12px;
+          color: #999;
+          margin-top: 4px;
+        }
+        .card-blue .stat-value { color: #1976d2; }
+        .card-green .stat-value { color: #4caf50; }
+        .card-purple .stat-value { color: #9c27b0; }
+        .card-orange .stat-value { color: #ff9800; }
+        .cd-section {
+          margin-top: 30px;
+        }
+        .cd-section-title {
+          font-size: 18px;
+          font-weight: 700;
+          padding-bottom: 10px;
+          border-bottom: 2px solid #e0e0e0;
+          margin-bottom: 16px;
+        }
+        .cd-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .cd-tag {
+          display: inline-block;
+          background: #e3f2fd;
+          color: #1976d2;
+          border-radius: 50px;
+          padding: 6px 14px;
+          font-size: 13px;
+          font-weight: 500;
+        }
+        .cd-tag .tag-remove {
+          margin-left: 6px;
+          cursor: pointer;
+          color: #d32f2f;
+          font-weight: 700;
+        }
+        .cd-tag-add {
+          display: inline-block;
+          border: 2px dashed #bbb;
+          border-radius: 50px;
+          padding: 6px 14px;
+          font-size: 13px;
+          color: #888;
+          cursor: pointer;
+          background: transparent;
+        }
+        .cd-tag-add:hover {
+          border-color: #1976d2;
+          color: #1976d2;
+        }
+        .notes-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .note-card {
+          background: #fff;
+          border-radius: 8px;
+          padding: 16px;
+          border-left: 3px solid #1976d2;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .note-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+        .note-author { font-weight: 700; font-size: 13px; }
+        .note-date { font-size: 12px; color: #999; }
+        .note-delete { color: #d32f2f; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .note-delete:hover { text-decoration: underline; }
+        .note-text { white-space: pre-wrap; font-size: 14px; color: #333; line-height: 1.5; }
+        .note-input-area {
+          display: flex;
+          flex-direction: column;
+          margin-bottom: 16px;
+        }
+        .note-input-area textarea {
+          height: 100px;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          padding: 12px;
+          font-size: 14px;
+          resize: vertical;
+          font-family: inherit;
+        }
+        .note-input-area textarea:focus { outline: none; border-color: #1976d2; }
+        .note-input-area button {
+          align-self: flex-end;
+          margin-top: 8px;
+          background: #1976d2;
+          color: #fff;
+          border: none;
+          border-radius: 6px;
+          padding: 8px 20px;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        .note-input-area button:hover { background: #1565c0; }
+        .timeline-filters { display: flex; gap: 8px; margin-bottom: 16px; }
+        .tl-filter-btn { border: 1px solid #ddd; border-radius: 50px; padding: 6px 16px; font-size: 13px; background: #fff; cursor: pointer; color: #555; }
+        .tl-filter-btn:hover { border-color: #1976d2; color: #1976d2; }
+        .tl-filter-btn.active { background: #1976d2; color: #fff; border-color: #1976d2; }
+        .timeline { position: relative; border-left: 2px solid #e0e0e0; padding-left: 30px; margin-left: 8px; }
+        .tl-item { position: relative; margin-bottom: 20px; }
+        .tl-dot { position: absolute; left: -37px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: #ccc; }
+        .tl-dot.quotation { background: #1976d2; }
+        .tl-dot.contract { background: #4caf50; }
+        .tl-dot.payment { background: #ff9800; }
+        .tl-dot.note { background: #9c27b0; }
+        .tl-date { font-size: 12px; color: #999; margin-bottom: 2px; }
+        .tl-type-badge { display: inline-block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 50px; font-weight: 600; margin-bottom: 4px; }
+        .tl-type-badge.quotation { background: #e3f2fd; color: #1976d2; }
+        .tl-type-badge.contract { background: #e8f5e9; color: #4caf50; }
+        .tl-type-badge.payment { background: #fff3e0; color: #ff9800; }
+        .tl-type-badge.note { background: #f3e5f5; color: #9c27b0; }
+        .tl-summary { font-size: 14px; color: #333; }
+        .cd-pagination { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
+        .cd-pagination button { border: 1px solid #ddd; background: #fff; border-radius: 6px; padding: 6px 14px; cursor: pointer; font-size: 13px; }
+        .cd-pagination button.active { background: #1976d2; color: #fff; border-color: #1976d2; }
+        .cd-back-btn { border-radius: 50px; background: #1976d2; color: #fff; border: none; padding: 10px 24px; font-size: 14px; cursor: pointer; font-weight: 600; }
+        .cd-back-btn:hover { background: #1565c0; }
+        .cd-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .cd-modal-box { background: #fff; border-radius: 12px; padding: 24px; min-width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
+        .cd-modal-box h3 { margin: 0 0 16px 0; font-size: 18px; }
+        .cd-modal-box input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+        .cd-modal-box button { padding: 8px 20px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; background: #1976d2; color: #fff; }
+
+        /* RTL Support */
+        body.rtl .cd-wrapper { direction: rtl; }
+        body.rtl .cd-header { flex-direction: row-reverse; }
+        body.rtl .cd-client-info { text-align: right; }
+        body.rtl .note-card { border-left: none; border-right: 3px solid #1976d2; }
+        body.rtl .timeline { border-left: none; border-right: 2px solid #e0e0e0; padding-left: 0; padding-right: 30px; margin-left: 0; margin-right: 8px; }
+        body.rtl .tl-dot { left: auto; right: -37px; }
+        body.rtl .cd-tag .tag-remove { margin-left: 0; margin-right: 6px; }
+        body.rtl .note-input-area button { align-self: flex-start; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+          .cd-header { flex-direction: column; gap: 16px; }
+          .cd-client-meta { grid-template-columns: 1fr; }
+          .stats-row { grid-template-columns: 1fr; }
+          .timeline-filters { flex-wrap: wrap; }
+        }
+      </style>
+
+      <script src="_/theme/global-loading.js"></script>
+
+      <div class="cd-wrapper">
+        <!-- Header -->
+        <div class="cd-header">
+          <div class="cd-client-info">
+            <h1 id="clientName">Loading...</h1>
+            <div class="cd-client-meta" id="clientMeta"></div>
+          </div>
+          <div>
+            <button class="cd-back-btn" onclick="window.pyGoBack()">Back</button>
+          </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-row" id="statsRow"></div>
+
+        <!-- Tags Section -->
+        <div class="cd-section">
+          <div class="cd-section-title" id="tagsSectionTitle">Tags</div>
+          <div class="cd-tags" id="tagsContainer"></div>
+        </div>
+
+        <!-- Notes Section -->
+        <div class="cd-section">
+          <div class="cd-section-title" id="notesSectionTitle">Notes</div>
+          <div class="note-input-area">
+            <textarea id="noteInput" placeholder="Add a note..." rows="3"></textarea>
+            <button id="addNoteBtn" onclick="window._cdAddNote()">Add Note</button>
+          </div>
+          <div class="notes-list" id="notesList"></div>
+        </div>
+
+        <!-- Timeline Section -->
+        <div class="cd-section">
+          <div class="cd-section-title" id="timelineSectionTitle">Activity Timeline</div>
+          <div class="timeline-filters" id="timelineFilters"></div>
+          <div class="timeline" id="timelineContainer">
+            <div style="text-align:center;padding:40px;color:#999;">Loading...</div>
+          </div>
+          <div class="cd-pagination" id="timelinePagination"></div>
+        </div>
+      </div>
+
+      <!-- Tag Add Modal -->
+      <div class="cd-modal" id="tagModal" style="display:none;">
+        <div class="cd-modal-box">
+          <h3 id="tagModalTitle">Add Tag</h3>
+          <input type="text" id="tagInput" placeholder="Enter tag name" list="tagSuggestions">
+          <datalist id="tagSuggestions"></datalist>
+          <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;">
+            <button onclick="window._cdSaveTag()">Save</button>
+            <button onclick="document.getElementById('tagModal').style.display='none'" style="background:#999;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <script>
+      (function() {
+        var clientCode = '';
+        var lang = localStorage.getItem('hp_language') || 'en';
+        var currentTags = [];
+        var currentTimelinePage = 1;
+        var totalTimelinePages = 1;
+        var timelineFilter = 'all';
+
+        var T = {
+          en: {
+            back: 'Back',
+            tags: 'Tags',
+            notes: 'Notes',
+            timeline: 'Activity Timeline',
+            addNote: 'Add Note',
+            addTag: 'Add Tag',
+            save: 'Save',
+            cancel: 'Cancel',
+            quotations: 'Quotations',
+            contracts: 'Contracts',
+            payments: 'Payments',
+            all: 'All',
+            totalQuotations: 'Total Quotations',
+            totalValue: 'Total Value',
+            totalContracts: 'Total Contracts',
+            lastActivity: 'Last Activity',
+            noteAdded: 'Note added successfully',
+            noteDeleted: 'Note deleted successfully',
+            tagsUpdated: 'Tags updated successfully',
+            noNotes: 'No notes yet',
+            noTimeline: 'No activity yet',
+            loading: 'Loading...',
+            deleteConfirm: 'Are you sure?',
+            by: 'by',
+            phone: 'Phone',
+            email: 'Email',
+            country: 'Country',
+            company: 'Company',
+            salesRep: 'Sales Rep',
+            source: 'Source'
+          },
+          ar: {
+            back: 'رجوع',
+            tags: 'الوسوم',
+            notes: 'الملاحظات',
+            timeline: 'التايم لاين',
+            addNote: 'أضف ملاحظة',
+            addTag: 'أضف وسم',
+            save: 'حفظ',
+            cancel: 'إلغاء',
+            quotations: 'عروض أسعار',
+            contracts: 'عقود',
+            payments: 'مدفوعات',
+            all: 'الكل',
+            totalQuotations: 'إجمالي العروض',
+            totalValue: 'إجمالي القيمة',
+            totalContracts: 'إجمالي العقود',
+            lastActivity: 'آخر نشاط',
+            noteAdded: 'تمت إضافة الملاحظة',
+            noteDeleted: 'تم حذف الملاحظة',
+            tagsUpdated: 'تم تحديث الوسوم',
+            noNotes: 'لا توجد ملاحظات',
+            noTimeline: 'لا يوجد نشاط',
+            loading: 'جاري التحميل',
+            deleteConfirm: 'هل أنت متأكد؟',
+            by: 'بواسطة',
+            phone: 'الهاتف',
+            email: 'البريد',
+            country: 'البلد',
+            company: 'الشركة',
+            salesRep: 'مندوب المبيعات',
+            source: 'المصدر'
+          }
+        };
+
+        function t(key) {
+          return (T[lang] && T[lang][key]) || (T['en'] && T['en'][key]) || key;
+        }
+
+        function applyLang() {
+          lang = localStorage.getItem('hp_language') || 'en';
+          if (lang === 'ar') {
+            document.body.classList.add('rtl');
+          } else {
+            document.body.classList.remove('rtl');
+          }
+          var backBtn = document.querySelector('.cd-back-btn');
+          if (backBtn) backBtn.textContent = t('back');
+          var tagsSectionTitle = document.getElementById('tagsSectionTitle');
+          if (tagsSectionTitle) tagsSectionTitle.textContent = t('tags');
+          var notesSectionTitle = document.getElementById('notesSectionTitle');
+          if (notesSectionTitle) notesSectionTitle.textContent = t('notes');
+          var timelineSectionTitle = document.getElementById('timelineSectionTitle');
+          if (timelineSectionTitle) timelineSectionTitle.textContent = t('timeline');
+          var addNoteBtn = document.getElementById('addNoteBtn');
+          if (addNoteBtn) addNoteBtn.textContent = t('addNote');
+          var noteInput = document.getElementById('noteInput');
+          if (noteInput) noteInput.placeholder = t('addNote') + '...';
+          var tagModalTitle = document.getElementById('tagModalTitle');
+          if (tagModalTitle) tagModalTitle.textContent = t('addTag');
+        }
+
+        function extractClientCode() {
+          var hash = window.location.hash || '';
+          var match = hash.match(/[?&]code=([^&]*)/);
+          return match ? decodeURIComponent(match[1]) : '';
+        }
+
+        function init() {
+          clientCode = extractClientCode();
+          applyLang();
+          if (\!clientCode) {
+            document.getElementById('clientName').textContent = 'No client code provided';
+            return;
+          }
+          loadDetail();
+          loadTimeline(1);
+          loadTagSuggestions();
+        }
+
+        function loadDetail() {
+          window.pyGetClientDetail(clientCode).then(function(result) {
+            if (\!result) return;
+            var data = result;
+
+            // Render client name
+            var nameEl = document.getElementById('clientName');
+            if (nameEl) nameEl.textContent = data.name || clientCode;
+
+            // Render meta
+            var metaEl = document.getElementById('clientMeta');
+            if (metaEl) {
+              var fields = [
+                { label: t('phone'), value: data.phone || '-' },
+                { label: t('email'), value: data.email || '-' },
+                { label: t('country'), value: data.country || '-' },
+                { label: t('company'), value: data.company || '-' },
+                { label: t('salesRep'), value: data.sales_rep || '-' },
+                { label: t('source'), value: data.source || '-' }
+              ];
+              metaEl.innerHTML = fields.map(function(f) {
+                return '<div class=\"cd-meta-item\"><span class=\"meta-label\">' + f.label + '</span><span class=\"meta-value\">' + f.value + '</span></div>';
+              }).join('');
+            }
+
+            // Render stats
+            if (data.stats) renderStats(data.stats);
+
+            // Render tags
+            currentTags = data.tags || [];
+            renderTags(currentTags);
+
+            // Render notes
+            renderNotes(data.notes || []);
+          });
+        }
+
+        function renderStats(stats) {
+          var row = document.getElementById('statsRow');
+          if (!row) return;
+          var cards = [
+            { label: t('totalQuotations'), value: stats.total_quotations || 0, cls: 'card-blue' },
+            { label: t('totalValue'), value: stats.total_value || '0', cls: 'card-green' },
+            { label: t('totalContracts'), value: stats.total_contracts || 0, cls: 'card-purple' },
+            { label: t('lastActivity'), value: stats.last_activity || '-', cls: 'card-orange' }
+          ];
+          row.innerHTML = cards.map(function(c) {
+            return '<div class=\"stat-card ' + c.cls + '\"><div class=\"stat-value\">' + c.value + '</div><div class=\"stat-label\">' + c.label + '</div></div>';
+          }).join('');
+        }
+
+        function renderTags(tags) {
+          var container = document.getElementById('tagsContainer');
+          if (!container) return;
+          var html = '';
+          tags.forEach(function(tag) {
+            html += '<span class=\"cd-tag\">' + tag + '<span class=\"tag-remove\" onclick=\"window._cdDeleteTag(\\'' + tag.replace(/'/g, \\') + '\\')\">&times;</span></span>';
+          });
+          html += '<button class=\"cd-tag-add\" onclick=\"window._cdShowTagModal()\">+ ' + t('addTag') + '</button>';
+          container.innerHTML = html;
+        }
+
+        function renderNotes(notes) {
+          var container = document.getElementById('notesList');
+          if (!container) return;
+          if (!notes || notes.length === 0) {
+            container.innerHTML = '<div style=\"text-align:center;padding:20px;color:#999;\">' + t('noNotes') + '</div>';
+            return;
+          }
+          container.innerHTML = notes.map(function(note) {
+            return '<div class=\"note-card\">' +
+              '<div class=\"note-header\">' +
+                '<div><span class=\"note-author\">' + (note.author || '') + '</span> <span class=\"note-date\">' + (note.date || '') + '</span></div>' +
+                '<span class=\"note-delete\" onclick=\"window._cdDeleteNote(\\'' + (note.id || '') + '\\')\">&times;</span>' +
+              '</div>' +
+              '<div class=\"note-text\">' + (note.text || '') + '</div>' +
+            '</div>';
+          }).join('');
+        }
+
+        function loadTimeline(page) {
+          currentTimelinePage = page || 1;
+          renderTimelineFilters();
+          var container = document.getElementById('timelineContainer');
+          if (container) container.innerHTML = '<div style=\"text-align:center;padding:40px;color:#999;\">' + t('loading') + '</div>';
+          window.pyGetClientTimeline(clientCode, timelineFilter, currentTimelinePage, 20).then(function(result) {
+            if (\!result) return;
+            totalTimelinePages = result.total_pages || 1;
+            renderTimeline(result);
+            renderTimelinePagination();
+          });
+        }
+
+        function renderTimeline(data) {
+          var container = document.getElementById('timelineContainer');
+          if (\!container) return;
+          var items = data.items || [];
+          if (items.length === 0) {
+            container.innerHTML = '<div style=\"text-align:center;padding:40px;color:#999;\">' + t('noTimeline') + '</div>';
+            return;
+          }
+          container.innerHTML = items.map(function(item) {
+            var typeClass = (item.type || '').toLowerCase();
+            return '<div class=\"tl-item\">' +
+              '<div class=\"tl-dot ' + typeClass + '\"></div>' +
+              '<div class=\"tl-date\">' + (item.date || '') + '</div>' +
+              '<span class=\"tl-type-badge ' + typeClass + '\">' + (item.type || '') + '</span>' +
+              '<div class=\"tl-summary\">' + (item.summary || '') + '</div>' +
+            '</div>';
+          }).join('');
+        }
+
+        function renderTimelineFilters() {
+          var container = document.getElementById('timelineFilters');
+          if (!container) return;
+          var filters = [
+            { key: 'all', label: t('all') },
+            { key: 'quotation', label: t('quotations') },
+            { key: 'contract', label: t('contracts') },
+            { key: 'payment', label: t('payments') },
+            { key: 'note', label: t('notes') }
+          ];
+          container.innerHTML = filters.map(function(f) {
+            var active = (timelineFilter === f.key) ? ' active' : '';
+            return '<button class=\"tl-filter-btn' + active + '\" onclick=\"window._cdSetTimelineFilter(\\'' + f.key + '\\')\">' + f.label + '</button>';
+          }).join('');
+        }
+
+        function renderTimelinePagination() {
+          var container = document.getElementById('timelinePagination');
+          if (!container) return;
+          if (totalTimelinePages <= 1) {
+            container.innerHTML = '';
+            return;
+          }
+          var html = '';
+          for (var i = 1; i <= totalTimelinePages; i++) {
+            var active = (i === currentTimelinePage) ? ' active' : '';
+            html += '<button class=\"' + active + '\" onclick=\"window._cdTimelinePage(' + i + ')\">' + i + '</button>';
+          }
+          container.innerHTML = html;
+        }
+
+        function loadTagSuggestions() {
+          if (typeof window.pyGetAllTags === 'function') {
+            window.pyGetAllTags().then(function(tags) {
+              var dl = document.getElementById('tagSuggestions');
+              if (dl && tags) {
+                dl.innerHTML = tags.map(function(tg) {
+                  return '<option value=\"' + tg + '\">';
+                }).join('');
+              }
+            });
+          }
+        }
+
+        // Exposed functions
+        window._cdAddNote = function() {
+          var textarea = document.getElementById('noteInput');
+          var text = textarea ? textarea.value.trim() : '';
+          if (!text) return;
+          window.pyAddClientNote(clientCode, text).then(function() {
+            if (textarea) textarea.value = '';
+            loadDetail();
+          });
+        };
+
+        window._cdDeleteNote = function(noteId) {
+          if (!confirm(t('deleteConfirm'))) return;
+          window.pyDeleteClientNote(clientCode, noteId).then(function() {
+            loadDetail();
+          });
+        };
+
+        window._cdDeleteTag = function(tag) {
+          if (!confirm(t('deleteConfirm'))) return;
+          var idx = currentTags.indexOf(tag);
+          if (idx > -1) currentTags.splice(idx, 1);
+          window.pySetClientTags(clientCode, currentTags).then(function() {
+            loadDetail();
+          });
+        };
+
+        window._cdShowTagModal = function() {
+          document.getElementById('tagModal').style.display = 'flex';
+          document.getElementById('tagInput').value = '';
+          loadTagSuggestions();
+        };
+
+        window._cdSaveTag = function() {
+          var input = document.getElementById('tagInput');
+          var tag = input ? input.value.trim() : '';
+          if (!tag) return;
+          if (currentTags.indexOf(tag) === -1) {
+            currentTags.push(tag);
+          }
+          window.pySetClientTags(clientCode, currentTags).then(function() {
+            document.getElementById('tagModal').style.display = 'none';
+            loadDetail();
+          });
+        };
+
+        window._cdSetTimelineFilter = function(filter) {
+          timelineFilter = filter;
+          loadTimeline(1);
+        };
+
+        window._cdTimelinePage = function(page) {
+          loadTimeline(page);
+        };
+
+        function waitForBridge() {
+          if (typeof window.pyGetClientDetail === 'function') {
+            init();
+          } else {
+            setTimeout(waitForBridge, 100);
+          }
+        }
+
+        waitForBridge();
+      })();
+      </script>
+  type: HtmlTemplate
+is_package: true

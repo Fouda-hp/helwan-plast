@@ -59,18 +59,38 @@ def _parse_json(val):
 
 
 def _to_datetime(val):
-    """Convert date/datetime to datetime for safe comparison."""
+    """Convert date/datetime to naive datetime for safe comparison.
+
+    Always strips timezone info so all values are offset-naive,
+    preventing 'can't compare offset-naive and offset-aware' errors.
+    """
     if val is None:
         return None
     if isinstance(val, datetime):
-        return val
+        return val.replace(tzinfo=None)
     if isinstance(val, date):
         return datetime(val.year, val.month, val.day)
     # Try parsing string
     try:
-        return datetime.fromisoformat(str(val).replace('Z', '+00:00'))
+        dt = datetime.fromisoformat(str(val).replace('Z', '+00:00'))
+        return dt.replace(tzinfo=None)
     except Exception:
         return None
+
+
+def _date_only(val):
+    """Return date string (YYYY-MM-DD) from any date/datetime value."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val.strftime('%Y-%m-%d')
+    if isinstance(val, date):
+        return val.isoformat()
+    s = str(val)
+    # Strip time portion if present (e.g. "2026-02-07T00:00:00")
+    if 'T' in s:
+        return s.split('T')[0]
+    return s[:10] if len(s) >= 10 else s
 
 
 def _parse_price(val):
@@ -153,7 +173,7 @@ def get_client_detail(client_code, token_or_email=None):
             'total_value': round(total_value, 2),
             'total_contracts': total_contracts,
             'total_contract_value': round(total_contract_value, 2),
-            'last_activity': _safe_isoformat(last_activity),
+            'last_activity': _date_only(last_activity),
         }
 
         return {'success': True, 'client': client, 'stats': stats}

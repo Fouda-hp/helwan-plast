@@ -286,6 +286,7 @@ container:
         var currentTimelinePage = 1;
         var totalTimelinePages = 1;
         var timelineFilter = 'all';
+        var clientCurrency = '$';
 
         var T = {
           en: {
@@ -408,6 +409,7 @@ container:
             }
             var data = result.client || {};
             var stats = result.stats || {};
+            clientCurrency = result.currency || '$';
 
             // Render client name
             var nameEl = document.getElementById('clientName');
@@ -445,12 +447,17 @@ container:
           });
         }
 
+        function formatCurrency(val) {
+          var num = Number(val) || 0;
+          return num.toLocaleString() + ' ' + clientCurrency;
+        }
+
         function renderStats(stats) {
           var row = document.getElementById('statsRow');
           if (!row) return;
           var cards = [
             { label: t('totalQuotations'), value: stats.total_quotations || 0, cls: 'card-blue' },
-            { label: t('totalValue'), value: stats.total_value || '0', cls: 'card-green' },
+            { label: t('totalValue'), value: formatCurrency(stats.total_value), cls: 'card-green' },
             { label: t('totalContracts'), value: stats.total_contracts || 0, cls: 'card-purple' },
             { label: t('lastActivity'), value: stats.last_activity || '-', cls: 'card-orange' }
           ];

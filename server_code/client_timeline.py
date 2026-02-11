@@ -168,6 +168,11 @@ def get_client_detail(client_code, token_or_email=None):
             if c_dt and (last_activity is None or c_dt > last_activity):
                 last_activity = c_dt
 
+        # Currency based on country
+        country = (row.get('Country') or '').strip().lower()
+        is_egypt = country in ('مصر', 'egypt', 'eg', 'مصري')
+        currency = 'ج.م' if is_egypt else '$'
+
         stats = {
             'total_quotations': total_quotations,
             'total_value': round(total_value, 2),
@@ -176,7 +181,7 @@ def get_client_detail(client_code, token_or_email=None):
             'last_activity': _date_only(last_activity),
         }
 
-        return {'success': True, 'client': client, 'stats': stats}
+        return {'success': True, 'client': client, 'stats': stats, 'currency': currency}
 
     except Exception as e:
         logger.exception("get_client_detail error: %s", e)
@@ -195,6 +200,12 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
         page = max(1, int(page) if page else 1)
         page_size = max(1, min(50, int(page_size) if page_size else 20))
 
+        # Determine currency from client country
+        client_row = app_tables.clients.get(**{'Client Code': client_code})
+        country = (client_row.get('Country') or '').strip().lower() if client_row else ''
+        is_egypt = country in ('مصر', 'egypt', 'eg', 'مصري')
+        cur = 'ج.م' if is_egypt else '$'
+
         events = []
 
         # 1. Quotations
@@ -210,8 +221,8 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
                 events.append({
                     'date': _safe_isoformat(q_date),
                     'type': 'quotation',
-                    'summary_en': f'Quotation #{qn} - {q.get("Model", "")} - ${agreed:,.0f}',
-                    'summary_ar': f'عرض سعر #{qn} - {q.get("Model", "")} - ${agreed:,.0f}',
+                    'summary_en': f'Quotation #{qn} - {q.get("Model", "")} - {agreed:,.0f} {cur}',
+                    'summary_ar': f'عرض سعر #{qn} - {q.get("Model", "")} - {agreed:,.0f} {cur}',
                     'detail_id': str(qn),
                     'detail_type': 'quotation',
                 })
@@ -236,8 +247,8 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
                 events.append({
                     'date': _safe_isoformat(c_date),
                     'type': 'contract',
-                    'summary_en': f'Contract {cn} created - ${tp:,.0f}',
-                    'summary_ar': f'عقد {cn} تم إنشاؤه - ${tp:,.0f}',
+                    'summary_en': f'Contract {cn} created - {tp:,.0f} {cur}',
+                    'summary_ar': f'عقد {cn} تم إنشاؤه - {tp:,.0f} {cur}',
                     'detail_id': cn,
                     'detail_type': 'contract',
                 })
@@ -254,8 +265,8 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
                         events.append({
                             'date': p.get('paid_date') or p_date or _safe_isoformat(c_date),
                             'type': 'payment',
-                            'summary_en': f'Payment received: {label_en} - ${amt:,.0f} (Contract {cn})',
-                            'summary_ar': f'دفعة مستلمة: {label_ar} - ${amt:,.0f} (عقد {cn})',
+                            'summary_en': f'Payment received: {label_en} - {amt:,.0f} {cur} (Contract {cn})',
+                            'summary_ar': f'دفعة مستلمة: {label_ar} - {amt:,.0f} {cur} (عقد {cn})',
                             'detail_id': cn,
                             'detail_type': 'contract',
                         })
@@ -264,7 +275,7 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
 
         # 4. Notes from client
         try:
-            row = app_tables.clients.get(**{'Client Code': client_code})
+            row = client_row
             if row:
                 notes = _parse_json(row.get('notes_json'))
                 for n in notes:

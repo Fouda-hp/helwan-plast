@@ -481,11 +481,9 @@
   pointer-events: none;
 }
 
-/* ---- Dropdown: inside header (absolute below bell) ---- */
+/* ---- Dropdown: inside header (now fixed, appended to body to avoid overflow clipping) ---- */
 #hp-notif-dropdown.hp-notif-dropdown-header {
-  position: absolute;
-  top: 48px;
-  right: 0;
+  position: fixed;
   width: 380px;
   max-width: 90vw;
   max-height: 450px;

@@ -203,10 +203,22 @@
     dd.appendChild(body);
 
     // Position dropdown relative to bell
+    // Always append to body to avoid overflow:hidden clipping in AdminPanel header
     var bellEl = document.getElementById(BELL_ID);
     if (bellEl && bellEl.classList.contains('hp-notif-inline')) {
+      var rect = bellEl.getBoundingClientRect();
+      var isRTL = document.documentElement.dir === 'rtl' || getLang() === 'ar';
       dd.classList.add('hp-notif-dropdown-header');
-      bellEl.appendChild(dd);
+      dd.style.position = 'fixed';
+      dd.style.top = (rect.bottom + 6) + 'px';
+      if (isRTL) {
+        dd.style.left = Math.max(8, rect.left) + 'px';
+        dd.style.right = 'auto';
+      } else {
+        dd.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
+        dd.style.left = 'auto';
+      }
+      document.body.appendChild(dd);
     } else {
       dd.classList.add('hp-notif-dropdown-fixed');
       document.body.appendChild(dd);

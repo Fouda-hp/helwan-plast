@@ -414,6 +414,32 @@ container:
           40% { transform: rotate(50deg) scale(1); }
         }
 
+        /* ================= PAGE LOADING OVERLAY ================= */
+        .login-loading-overlay {
+          display: none;
+          position: fixed;
+          inset: 0;
+          background: rgba(26, 26, 46, 0.55);
+          backdrop-filter: blur(4px);
+          z-index: 99999;
+          align-items: center;
+          justify-content: center;
+          flex-direction: column;
+          gap: 18px;
+        }
+        .login-loading-overlay.show {
+          display: flex;
+        }
+        .login-loading-overlay .loader-hand-wrap {
+          transform: scale(1.1);
+        }
+        .login-loading-overlay .loading-text {
+          color: #fff;
+          font-size: 16px;
+          font-weight: 600;
+          letter-spacing: 0.5px;
+        }
+
         /* ================= MOBILE ================= */
         @media (max-width: 600px) {
           .login-wrapper {
@@ -513,6 +539,14 @@ container:
           if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>window.i18n.init())}else{window.i18n.init()}
         })();
       </script>
+
+      <!-- Full-page loading overlay -->
+      <div class="login-loading-overlay" id="pageLoadingOverlay">
+        <div class="loader-hand-wrap">
+          <div class="hand-loader"><div class="hand-finger"></div><div class="hand-finger"></div><div class="hand-finger"></div><div class="hand-finger"></div><div class="hand-palm"></div><div class="hand-thumb"></div></div>
+        </div>
+        <div class="loading-text" id="loadingText">Loading...</div>
+      </div>
 
       <div class="login-wrapper">
         <!-- Language Switcher -->
@@ -1039,13 +1073,17 @@ container:
             });
           }
 
-          function setLoading(btn, loading) {
+          var _overlay = document.getElementById('pageLoadingOverlay');
+          var _loadingText = document.getElementById('loadingText');
+
+          function setLoading(btn, loading, text) {
             if (loading) {
-              btn.classList.add('loading');
               btn.disabled = true;
+              if (_loadingText) _loadingText.textContent = text || (currentLang === 'ar' ? 'جاري التحميل...' : 'Loading...');
+              if (_overlay) _overlay.classList.add('show');
             } else {
-              btn.classList.remove('loading');
               btn.disabled = false;
+              if (_overlay) _overlay.classList.remove('show');
             }
           }
 
@@ -1084,11 +1122,11 @@ container:
             var password = loginPassword.value;
 
             if (!email || !password) {
-              showMessage('loginMessage', 'error', 'Please enter email and password');
+              showMessage('loginMessage', 'error', currentLang === 'ar' ? 'الرجاء إدخال البريد وكلمة المرور' : 'Please enter email and password');
               return;
             }
 
-            setLoading(loginBtn, true);
+            setLoading(loginBtn, true, currentLang === 'ar' ? 'جاري تسجيل الدخول...' : 'Signing in...');
 
             try {
               var result = await window.loginUser(email, password);
@@ -1159,16 +1197,20 @@ container:
             localStorage.setItem('user_email', result.user.email);
             localStorage.setItem('user_name', result.user.full_name);
             localStorage.setItem('user_role', result.user.role);
+            // Also store in sessionStorage for immediate availability
+            sessionStorage.setItem('auth_token', result.token);
+            sessionStorage.setItem('user_email', result.user.email);
+            sessionStorage.setItem('user_name', result.user.full_name);
+            sessionStorage.setItem('user_role', result.user.role);
 
-            showMessage('loginMessage', 'success', 'Login successful! Redirecting...');
-
+            // Navigate immediately - the overlay is already showing
             setTimeout(function() {
               if (result.user.role === 'admin') {
                 location.hash = '#admin';
               } else {
                 location.hash = '#launcher';
               }
-            }, 800);
+            }, 300);
           }
 
           // Enter key for login
@@ -1181,8 +1223,10 @@ container:
           // ============================================
           var verifyOtpLoginBtn = document.getElementById('verifyOtpLoginBtn');
           var otpLoginCode = document.getElementById('otpLoginCode');
+          var _otpLoginBusy = false;
 
           verifyOtpLoginBtn.onclick = async function() {
+            if (_otpLoginBusy) return;
             clearMessages();
             var otp = otpLoginCode.value.trim();
 
@@ -1191,13 +1235,16 @@ container:
               return;
             }
 
-            setLoading(verifyOtpLoginBtn, true);
+            _otpLoginBusy = true;
+            setLoading(verifyOtpLoginBtn, true, currentLang === 'ar' ? 'جاري التحقق...' : 'Verifying...');
 
             try {
               var result = await window.verifyLoginOtp(pendingLoginEmail, otp);
 
               if (result.success) {
+                setLoading(verifyOtpLoginBtn, true, currentLang === 'ar' ? 'تم التحقق! جاري الدخول...' : 'Verified! Redirecting...');
                 completeLogin(result);
+                return; // Keep overlay visible during redirect
               } else {
                 showMessage('otpLoginMessage', result.fallback_to_email ? 'info' : 'error', result.message);
                 if (result.fallback_to_email) {
@@ -1212,6 +1259,7 @@ container:
               showMessage('otpLoginMessage', 'error', 'Verification failed');
             }
 
+            _otpLoginBusy = false;
             setLoading(verifyOtpLoginBtn, false);
           };
 
@@ -1223,9 +1271,9 @@ container:
           // Auto-verify when 6 digits are entered
           otpLoginCode.oninput = function() {
             var val = otpLoginCode.value.replace(/\D/g, '');
-            otpLoginCode.value = val;
-            if (val.length === 6) {
-              verifyOtpLoginBtn.click();
+            if (otpLoginCode.value !== val) otpLoginCode.value = val;
+            if (val.length === 6 && !_otpLoginBusy) {
+              setTimeout(function() { verifyOtpLoginBtn.click(); }, 100);
             }
           };
 
@@ -1284,7 +1332,7 @@ container:
               return;
             }
 
-            setLoading(registerBtn, true);
+            setLoading(registerBtn, true, currentLang === 'ar' ? 'جاري إنشاء الحساب...' : 'Creating account...');
 
             try {
               // Check if bridge function is ready
@@ -1335,8 +1383,10 @@ container:
           // ============================================
           var verifyOtpRegBtn = document.getElementById('verifyOtpRegBtn');
           var otpRegCode = document.getElementById('otpRegCode');
+          var _otpRegBusy = false;
 
           verifyOtpRegBtn.onclick = async function() {
+            if (_otpRegBusy) return;
             clearMessages();
             var otp = otpRegCode.value.trim();
 
@@ -1345,12 +1395,14 @@ container:
               return;
             }
 
-            setLoading(verifyOtpRegBtn, true);
+            _otpRegBusy = true;
+            setLoading(verifyOtpRegBtn, true, currentLang === 'ar' ? 'جاري التحقق...' : 'Verifying...');
 
             try {
               var result = await window.verifyRegistrationOtp(pendingRegEmail, otp);
 
               if (result.success) {
+                setLoading(verifyOtpRegBtn, false);
                 showMessage('otpRegMessage', 'success', result.message);
                 // Clear form and go back to login after 2 seconds
                 setTimeout(function() {
@@ -1377,6 +1429,7 @@ container:
               showMessage('otpRegMessage', 'error', 'Verification failed');
             }
 
+            _otpRegBusy = false;
             setLoading(verifyOtpRegBtn, false);
           };
 
@@ -1388,9 +1441,9 @@ container:
           // Auto-verify when 6 digits are entered
           otpRegCode.oninput = function() {
             var val = otpRegCode.value.replace(/\D/g, '');
-            otpRegCode.value = val;
-            if (val.length === 6) {
-              verifyOtpRegBtn.click();
+            if (otpRegCode.value !== val) otpRegCode.value = val;
+            if (val.length === 6 && !_otpRegBusy) {
+              setTimeout(function() { verifyOtpRegBtn.click(); }, 100);
             }
           };
 
@@ -1440,7 +1493,7 @@ container:
               return;
             }
 
-            setLoading(setupBtn, true);
+            setLoading(setupBtn, true, currentLang === 'ar' ? 'جاري الإعداد...' : 'Setting up...');
 
             try {
               var result = await window.setupAdmin(email, password, name, phone || null);
@@ -1511,7 +1564,7 @@ container:
               return;
             }
 
-            setLoading(sendResetCodeBtn, true);
+            setLoading(sendResetCodeBtn, true, currentLang === 'ar' ? 'جاري الإرسال...' : 'Sending code...');
 
             try {
               var result = await window.requestPasswordReset(email);
@@ -1552,7 +1605,7 @@ container:
               return;
             }
 
-            setLoading(verifyForgotOtpBtn, true);
+            setLoading(verifyForgotOtpBtn, true, currentLang === 'ar' ? 'جاري التحقق...' : 'Verifying...');
 
             try {
               var result = await window.verifyPasswordResetOtp(pendingResetEmail, otp);
@@ -1582,9 +1635,9 @@ container:
           // Auto-verify when 6 digits are entered
           forgotOtpCode.oninput = function() {
             var val = forgotOtpCode.value.replace(/\D/g, '');
-            forgotOtpCode.value = val;
+            if (forgotOtpCode.value !== val) forgotOtpCode.value = val;
             if (val.length === 6) {
-              verifyForgotOtpBtn.click();
+              setTimeout(function() { verifyForgotOtpBtn.click(); }, 100);
             }
           };
 
@@ -1641,7 +1694,7 @@ container:
               return;
             }
 
-            setLoading(setNewPasswordBtn, true);
+            setLoading(setNewPasswordBtn, true, currentLang === 'ar' ? 'جاري حفظ كلمة المرور...' : 'Saving password...');
 
             try {
               var result = await window.completePasswordReset(pendingResetEmail, newPass);
@@ -1739,7 +1792,7 @@ container:
                 return;
               }
 
-              setLoading(resetBtn, true);
+              setLoading(resetBtn, true, currentLang === 'ar' ? 'جاري إعادة التعيين...' : 'Resetting...');
 
               try {
                 var result = await window.resetAdminPassword(email, newPassword, secretKey);

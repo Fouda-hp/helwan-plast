@@ -163,7 +163,8 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       empty_state.style.display = 'none'
     if template_content:
       template_content.style.display = 'block'
-      template_content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:60px 20px;">' + (str(anvil.js.window.HAND_LOADER_HTML) if anvil.js.window.HAND_LOADER_HTML else 'Loading...') + '</div>'
+      _loader_html = getattr(anvil.js.window, 'HAND_LOADER_HTML', None)
+      template_content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:60px 20px;">' + (str(_loader_html) if _loader_html else '<div style="font-size:18px;color:#888;">Loading...</div>') + '</div>'
 
     try:
       user_email = anvil.js.window.sessionStorage.getItem('user_email') or ''

@@ -149,21 +149,19 @@
 
 /* --- Loader inner wrapper (shared) --- */
 .hp-loader {
-  position: absolute;
-  left: 50%;
-  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* --- Hand Loader positioning --- */
 .hp-loader-hand .hand-loader {
-  margin-left: -40px;
-  margin-top: -30px;
+  margin-left: 0;
 }
 
 /* --- Spinner (Dots) Loader --- */
 .hp-loader-spinner {
-  margin-left: -30px;
-  margin-top: -10px;
+  /* centered by flex */
 }
 .hp-spinner-dots {
   display: flex;
@@ -187,7 +185,7 @@
 
 /* --- Code Loader (<LOADING.../>) --- */
 .hp-loader-code {
-  transform: translate(-50%, -50%);
+  /* centered by parent flex */
 }
 .hp-code-loader {
   font-size: 2em;

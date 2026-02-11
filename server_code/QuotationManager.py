@@ -2072,11 +2072,15 @@ def get_quotations_list_without_contract(search='', token_or_email=None, page=1,
     if not is_valid:
         return {'success': False, 'data': [], 'message': 'Permission denied', 'total_count': 0}
     try:
+        # Build exclusion set by streaming contracts (not list())
         quoted_ids = set()
         for row in app_tables.contracts.search():
             qn = row.get('quotation_number')
             if qn is not None:
-                quoted_ids.add(int(qn) if not isinstance(qn, int) else qn)
+                try:
+                    quoted_ids.add(int(qn))
+                except (TypeError, ValueError):
+                    quoted_ids.add(qn)
         page = max(1, int(page) if page is not None else 1)
         page_size = max(1, min(1000, int(page_size) if page_size is not None else 500))
         search_lower = (search or '').strip().lower()
@@ -2457,24 +2461,35 @@ def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
         page = max(1, int(page) if page else 1)
         page_size = max(1, min(200, int(page_size) if page_size else 50))
 
-        all_rows = list(app_tables.contracts.search())
+        # Use DB-level ordering instead of loading all into memory
+        try:
+            c_iter = app_tables.contracts.search(order_by=[anvil_order_by('created_at', False)])
+        except Exception:
+            c_iter = app_tables.contracts.search()
 
-        # Filter by search
-        if search:
-            search = search.lower()
-            all_rows = [r for r in all_rows
-                       if search in str(r.get('client_name', '') or '').lower()
-                       or search in str(r.get('contract_number', '') or '').lower()]
-
-        # Sort by created_at descending
-        all_rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
-
-        total = len(all_rows)
-        start = (page - 1) * page_size
-        page_rows = all_rows[start:start + page_size]
-
+        # Single-pass: stream through results with search filter + pagination
+        search_lower = (search or '').strip().lower()
+        total = 0
         data = []
-        for r in page_rows:
+        skip = (page - 1) * page_size
+        MAX_SCAN = 10000  # safety limit
+        collected = 0
+
+        for r in c_iter:
+            if total >= MAX_SCAN:
+                break
+            # Apply search filter
+            if search_lower:
+                cn = str(r.get('client_name', '') or '').lower()
+                cnum = str(r.get('contract_number', '') or '').lower()
+                if search_lower not in cn and search_lower not in cnum:
+                    continue
+            total += 1
+            if skip > 0:
+                skip -= 1
+                continue
+            if collected >= page_size:
+                continue  # keep counting total for pagination info
             tp = r.get('total_price')
             try:
                 if tp is not None and tp != '':
@@ -2523,6 +2538,7 @@ def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
                 'created_at': r.get('created_at').isoformat() if r.get('created_at') and hasattr(r.get('created_at'), 'isoformat') else '',
                 'payments': payments_display
             })
+            collected += 1
 
         return {'success': True, 'data': data, 'count': len(data), 'total': total, 'page': page, 'page_size': page_size}
 
@@ -2616,7 +2632,8 @@ def get_payment_dashboard_data(token_or_email=None):
     if not is_valid:
         return {'success': False, 'message': 'Permission denied'}
     try:
-        all_contracts = list(app_tables.contracts.search())
+        # Stream contracts instead of loading all into memory
+        c_iter = app_tables.contracts.search()
         now = get_utc_now()
         year = now.year
         today = now.date() if hasattr(now, 'date') else now
@@ -2630,8 +2647,10 @@ def get_payment_dashboard_data(token_or_email=None):
         month_totals_due = [0.0] * 12
         month_totals_paid = [0.0] * 12
         month_totals_overdue = [0.0] * 12
+        total_contracts = 0
 
-        for row in all_contracts:
+        for row in c_iter:
+            total_contracts += 1
             # Parse total price
             tp = row.get('total_price')
             contract_total = 0.0
@@ -2727,7 +2746,7 @@ def get_payment_dashboard_data(token_or_email=None):
         return {
             'success': True,
             'stats': {
-                'total_contracts': len(all_contracts),
+                'total_contracts': total_contracts,
                 'total_value': round(total_value, 2),
                 'total_paid': round(total_paid, 2),
                 'total_remaining': round(total_remaining, 2),

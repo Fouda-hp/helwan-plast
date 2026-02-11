@@ -58,6 +58,34 @@ def _parse_json(val):
         return []
 
 
+def _to_datetime(val):
+    """Convert date/datetime to datetime for safe comparison."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val
+    if isinstance(val, date):
+        return datetime(val.year, val.month, val.day)
+    # Try parsing string
+    try:
+        return datetime.fromisoformat(str(val).replace('Z', '+00:00'))
+    except Exception:
+        return None
+
+
+def _parse_price(val):
+    """Parse a price value that may be string with commas."""
+    if val is None or val == '':
+        return 0.0
+    try:
+        if isinstance(val, (int, float)):
+            return float(val)
+        s = str(val).replace(',', '').replace('،', '').strip()
+        return float(s) if s else 0.0
+    except (TypeError, ValueError):
+        return 0.0
+
+
 @anvil.server.callable
 def get_client_detail(client_code, token_or_email=None):
     """جلب بيانات العميل مع إحصائيات ملخصة"""
@@ -92,18 +120,15 @@ def get_client_detail(client_code, token_or_email=None):
         total_quotations = len(quotations)
         total_value = 0
         q_numbers = []
-        last_activity = row.get('Date')
+        last_activity = _to_datetime(row.get('Date'))
 
         for q in quotations:
             q_numbers.append(q.get('Quotation#'))
-            try:
-                agreed = float(q.get('Agreed Price') or 0)
-            except (TypeError, ValueError):
-                agreed = 0
+            agreed = _parse_price(q.get('Agreed Price'))
             total_value += agreed
-            q_date = q.get('Date') or q.get('created_at')
-            if q_date and (last_activity is None or (hasattr(q_date, '__gt__') and q_date > last_activity)):
-                last_activity = q_date
+            q_dt = _to_datetime(q.get('Date') or q.get('created_at'))
+            if q_dt and (last_activity is None or q_dt > last_activity):
+                last_activity = q_dt
 
         # Contract stats - lookup per quotation number (avoids loading ALL contracts)
         total_contracts = 0
@@ -118,13 +143,10 @@ def get_client_detail(client_code, token_or_email=None):
             if not c:
                 continue
             total_contracts += 1
-            try:
-                total_contract_value += float(c.get('total_price') or 0)
-            except (TypeError, ValueError):
-                pass
-            c_date = c.get('created_at')
-            if c_date and (last_activity is None or (hasattr(c_date, '__gt__') and c_date > last_activity)):
-                last_activity = c_date
+            total_contract_value += _parse_price(c.get('total_price'))
+            c_dt = _to_datetime(c.get('created_at'))
+            if c_dt and (last_activity is None or c_dt > last_activity):
+                last_activity = c_dt
 
         stats = {
             'total_quotations': total_quotations,
@@ -163,11 +185,7 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
                 qn = q.get('Quotation#')
                 q_numbers.append(qn)
                 q_date = q.get('Date') or q.get('created_at')
-                agreed = 0
-                try:
-                    agreed = float(q.get('Agreed Price') or 0)
-                except (TypeError, ValueError):
-                    pass
+                agreed = _parse_price(q.get('Agreed Price'))
 
                 events.append({
                     'date': _safe_isoformat(q_date),
@@ -193,11 +211,7 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
                     continue
                 c_date = c.get('created_at')
                 cn = c.get('contract_number', '')
-                tp = 0
-                try:
-                    tp = float(c.get('total_price') or 0)
-                except (TypeError, ValueError):
-                    pass
+                tp = _parse_price(c.get('total_price'))
 
                 events.append({
                     'date': _safe_isoformat(c_date),
@@ -214,11 +228,7 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
                     p_date = p.get('date') or p.get('paid_date')
                     status = p.get('status', '')
                     if status == 'paid':
-                        amt = 0
-                        try:
-                            amt = float(p.get('amount') or p.get('value') or 0)
-                        except (TypeError, ValueError):
-                            pass
+                        amt = _parse_price(p.get('amount') or p.get('value'))
                         label_en = p.get('label_en', f'Installment {i+1}')
                         label_ar = p.get('label_ar', f'الدفعة {i+1}')
                         events.append({

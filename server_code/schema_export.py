@@ -6,6 +6,9 @@ from anvil.google.drive import app_files
 import anvil.secrets
 from anvil.tables import app_tables
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 TABLE_NAMES = [
   "quotations",
@@ -36,4 +39,4 @@ def export_schema():
         "type": col["type"]
       })
 
-  print(json.dumps(schema, indent=2, default=str))
+  logger.debug("Schema export: %s", json.dumps(schema, indent=2, default=str))

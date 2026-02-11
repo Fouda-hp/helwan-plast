@@ -2585,35 +2585,74 @@ def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
             error['message'] = 'صلاحية غير كافية'
         return error
 
-    all_logs = list(app_tables.audit_log.search())
-
-    # ترتيب تنازلي حسب التاريخ
-    all_logs.sort(key=lambda x: x['timestamp'] or datetime.min, reverse=True)
-
-    # تطبيق الفلاتر
+    # Push equality filters to DB level, stream instead of list()
+    search_kwargs = {}
     if filters:
         if filters.get('action'):
-            all_logs = [l for l in all_logs if l['action'] == filters['action']]
+            search_kwargs['action'] = filters['action']
+        if filters.get('table_name'):
+            search_kwargs['table_name'] = filters['table_name']
+
+    try:
+        from anvil.tables import order_by as _ob
+        log_iter = app_tables.audit_log.search(order_by=[_ob('timestamp', False)], **search_kwargs)
+    except Exception:
+        log_iter = app_tables.audit_log.search(**search_kwargs)
+
+    # Parse date filters once
+    date_from_val = None
+    date_to_val = None
+    user_filter = ''
+    if filters:
         if filters.get('user_email'):
             user_filter = filters['user_email'].lower()
-            all_logs = [l for l in all_logs if (l.get('user_name') and user_filter in (l.get('user_name') or '').lower()) or (l.get('user_email') and user_filter in (l.get('user_email') or '').lower())]
-        if filters.get('table_name'):
-            all_logs = [l for l in all_logs if l['table_name'] == filters['table_name']]
         if filters.get('date_from'):
             try:
-                date_from = make_aware(datetime.strptime(filters['date_from'], '%Y-%m-%d'))
-                all_logs = [l for l in all_logs if l['timestamp'] and make_aware(l['timestamp']) >= date_from]
+                date_from_val = make_aware(datetime.strptime(filters['date_from'], '%Y-%m-%d'))
             except ValueError:
                 pass
         if filters.get('date_to'):
             try:
-                date_to = make_aware(datetime.strptime(filters['date_to'], '%Y-%m-%d').replace(hour=23, minute=59, second=59))
-                all_logs = [l for l in all_logs if l['timestamp'] and make_aware(l['timestamp']) <= date_to]
+                date_to_val = make_aware(datetime.strptime(filters['date_to'], '%Y-%m-%d').replace(hour=23, minute=59, second=59))
             except ValueError:
                 pass
 
-    total = len(all_logs)
-    page_logs = all_logs[offset:offset + limit]
+    # Single-pass streaming with pagination
+    total = 0
+    page_logs = []
+    skip = offset
+    MAX_SCAN = 50000  # safety limit
+
+    for log in log_iter:
+        if total >= MAX_SCAN:
+            break
+        # Apply remaining filters that can't be pushed to DB
+        if user_filter:
+            name_match = user_filter in (log.get('user_name') or '').lower()
+            email_match = user_filter in (log.get('user_email') or '').lower()
+            if not name_match and not email_match:
+                continue
+        ts = log.get('timestamp')
+        if date_from_val and ts:
+            try:
+                ts_aware = make_aware(ts) if ts.tzinfo is None else ts
+                if ts_aware < date_from_val:
+                    continue
+            except Exception:
+                pass
+        if date_to_val and ts:
+            try:
+                ts_aware = make_aware(ts) if ts.tzinfo is None else ts
+                if ts_aware > date_to_val:
+                    continue
+            except Exception:
+                pass
+        total += 1
+        if skip > 0:
+            skip -= 1
+            continue
+        if len(page_logs) < limit:
+            page_logs.append(log)
 
     logs = []
     for log in page_logs:

@@ -560,12 +560,14 @@ def get_purchase_invoices(status=None, search='', token_or_email=None):
     if not is_valid:
         return error
     try:
-        rows = list(app_tables.purchase_invoices.search())
+        # Filter at DB level when status is provided, stream instead of list()
+        search_kwargs = {}
+        if status:
+            search_kwargs['status'] = status
+        rows = app_tables.purchase_invoices.search(**search_kwargs)
         results = []
         search_lower = _safe_str(search).lower()
         for r in rows:
-            if status and r.get('status') != status:
-                continue
             if search_lower:
                 searchable = ' '.join([
                     _safe_str(r.get('invoice_number')),
@@ -896,15 +898,17 @@ def get_expenses(date_from=None, date_to=None, category=None, token_or_email=Non
     if not is_valid:
         return error
     try:
-        rows = list(app_tables.expenses.search())
+        # Filter at DB level where possible, stream instead of list()
+        search_kwargs = {}
+        if category:
+            search_kwargs['category'] = category
+        rows = app_tables.expenses.search(**search_kwargs)
         results = []
         d_from = _safe_date(date_from)
         d_to = _safe_date(date_to)
 
         for r in rows:
             if r.get('status') == 'cancelled':
-                continue
-            if category and r.get('category') != category:
                 continue
             row_date = r.get('date')
             if isinstance(row_date, datetime):
@@ -1009,12 +1013,14 @@ def get_inventory(status=None, search='', token_or_email=None):
     if not is_valid:
         return error
     try:
-        rows = list(app_tables.inventory.search())
+        # Filter at DB level when status is provided, stream instead of list()
+        search_kwargs = {}
+        if status:
+            search_kwargs['status'] = status
+        rows = app_tables.inventory.search(**search_kwargs)
         results = []
         search_lower = _safe_str(search).lower()
         for r in rows:
-            if status and r.get('status') != status:
-                continue
             if search_lower:
                 searchable = ' '.join([
                     _safe_str(r.get('machine_code')),

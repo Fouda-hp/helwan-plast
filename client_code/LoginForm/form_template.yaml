@@ -431,7 +431,13 @@ container:
           display: flex;
         }
         .login-loading-overlay .loader-hand-wrap {
-          transform: scale(1.1);
+          transform: scale(1.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .login-loading-overlay .hand-loader {
+          margin-left: 0;
         }
         .login-loading-overlay .loading-text {
           color: #fff;

@@ -92,7 +92,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     """Load all quotations for dropdown"""
     try:
       auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
-      result = anvil.server.call('get_quotations_list', '', False, auth)
+      result = anvil.server.call('get_quotations_list_without_contract', '', auth)
       if result and result.get('success'):
         self.all_quotations = result.get('data', [])
         self.populate_dropdown(self.all_quotations)

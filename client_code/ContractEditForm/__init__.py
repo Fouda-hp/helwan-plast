@@ -16,10 +16,7 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
     def __init__(self, **properties):
         ContractPrintForm.__init__(self, **properties)
         anvil.js.window.saveContract = self.update_contract
-        try:
-            anvil.js.window.deleteContract = lambda: None
-        except Exception:
-            pass
+        anvil.js.window.deleteContract = self.delete_contract
 
     def init_page(self):
         saved_lang = anvil.js.window.localStorage.getItem('hp_language')
@@ -28,6 +25,7 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
             self.update_language_buttons()
         self.load_contracts_list()
         self._set_update_button_label()
+        self._inject_delete_button()
 
     def _set_update_button_label(self):
         try:
@@ -206,6 +204,72 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
         except Exception as e:
             is_ar = self.current_lang == 'ar'
             self._show_msg('فشل التحديث: ' + str(e) if is_ar else 'Update failed: ' + str(e))
+
+    def _inject_delete_button(self):
+        """Inject a Delete button next to Update button (admin-only on server)"""
+        try:
+            anvil.js.window.eval("""
+            (function(){
+                var updateBtn = document.querySelector('button[onclick*="saveContract"]');
+                if (!updateBtn || document.getElementById('deleteContractBtn')) return;
+                var delBtn = document.createElement('button');
+                delBtn.id = 'deleteContractBtn';
+                delBtn.type = 'button';
+                delBtn.style.cssText = 'background:#c00000;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-weight:bold;font-size:15px;cursor:pointer;margin-left:12px;margin-right:12px;';
+                delBtn.textContent = (localStorage.getItem('hp_language') === 'ar') ? 'حذف العقد' : 'Delete Contract';
+                delBtn.onclick = function(){
+                    var lang = localStorage.getItem('hp_language') || 'en';
+                    var msg = lang === 'ar' ? 'هل أنت متأكد من حذف هذا العقد وكل بياناته؟ لا يمكن التراجع!' : 'Are you sure you want to delete this contract and all its data? This cannot be undone!';
+                    if (confirm(msg)) {
+                        if (window.deleteContract) window.deleteContract();
+                    }
+                };
+                updateBtn.parentNode.insertBefore(delBtn, updateBtn.nextSibling);
+            })();
+            """)
+        except Exception:
+            pass
+
+    def delete_contract(self):
+        """Delete the selected contract (admin-only, checked on server)"""
+        if not self.current_data:
+            is_ar = self.current_lang == 'ar'
+            self._show_msg('اختر عقداً أولاً' if is_ar else 'Please select a contract first')
+            return
+        q_num = self.current_data.get('quotation_number')
+        try:
+            q_num = int(q_num) if q_num not in (None, '') else None
+        except (TypeError, ValueError):
+            q_num = None
+        if q_num is None:
+            self._show_msg('Invalid contract')
+            return
+        try:
+            auth = self._get_auth_token()
+            result = anvil.server.call('delete_contract', q_num, auth)
+            is_ar = self.current_lang == 'ar'
+            if result and result.get('success'):
+                Notification(result.get('message', 'Deleted') if is_ar else result.get('message_en', 'Contract deleted'), style='success').show()
+                self.current_data = None
+                self.payment_data = []
+                # Reload contracts list
+                self.load_contracts_list()
+                # Clear template display
+                template_content = anvil.js.window.document.getElementById('templateContent')
+                if template_content:
+                    template_content.innerHTML = ''
+                    template_content.style.display = 'none'
+                empty_state = anvil.js.window.document.getElementById('emptyState')
+                if empty_state:
+                    empty_state.style.display = 'block'
+            else:
+                msg = result.get('message', 'Delete failed') if result else 'Delete failed'
+                if 'permission' in msg.lower() or 'denied' in msg.lower():
+                    msg = 'ارجع للأدمن' if is_ar else 'Contact admin for permission'
+                self._show_msg(msg)
+        except Exception as e:
+            is_ar = self.current_lang == 'ar'
+            self._show_msg('فشل الحذف: ' + str(e) if is_ar else 'Delete failed: ' + str(e))
 
     def filter_quotations(self):
         search_input = anvil.js.window.document.getElementById('searchInput')

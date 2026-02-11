@@ -30,6 +30,9 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Simple server-side cache for dashboard data (invalidated after 60 seconds)
+_dashboard_cache = {'data': None, 'timestamp': 0, 'filter': None}
+
 
 # =========================================================
 # Permission helpers
@@ -79,11 +82,16 @@ def _parse_date(date_str):
 # Follow-up CRUD
 # =========================================================
 @anvil.server.callable
+def _invalidate_dashboard_cache():
+    _dashboard_cache['data'] = None
+    _dashboard_cache['timestamp'] = 0
+
 def set_followup(quotation_number, follow_up_date, token_or_email=None):
     """تعيين تاريخ متابعة لعرض سعر"""
     is_valid, user_email, error = _require_permission(token_or_email, 'edit')
     if not is_valid:
         return error
+    _invalidate_dashboard_cache()
 
     try:
         qn = int(quotation_number)
@@ -147,6 +155,7 @@ def snooze_followup(quotation_number, snooze_days, token_or_email=None):
     is_valid, user_email, error = _require_permission(token_or_email, 'edit')
     if not is_valid:
         return error
+    _invalidate_dashboard_cache()
 
     try:
         snooze_days = int(snooze_days)
@@ -193,6 +202,7 @@ def complete_followup(quotation_number, token_or_email=None):
     is_valid, user_email, error = _require_permission(token_or_email, 'edit')
     if not is_valid:
         return error
+    _invalidate_dashboard_cache()
 
     try:
         qn = int(quotation_number)
@@ -228,6 +238,14 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
     is_valid, user_email, error = _require_permission(token_or_email, 'view')
     if not is_valid:
         return error
+
+    # Check cache (60 second TTL)
+    import time as _time
+    now_ts = _time.time()
+    if (_dashboard_cache['data'] is not None
+        and _dashboard_cache['filter'] == filter_status
+        and (now_ts - _dashboard_cache['timestamp']) < 60):
+        return _dashboard_cache['data']
 
     try:
         today = date.today()
@@ -312,7 +330,7 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
 
         data.sort(key=sort_key)
 
-        return {
+        result = {
             'success': True,
             'stats': {
                 'overdue_count': overdue_count,
@@ -322,6 +340,13 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
             },
             'data': data[:200],
         }
+
+        # Update cache
+        _dashboard_cache['data'] = result
+        _dashboard_cache['filter'] = filter_status
+        _dashboard_cache['timestamp'] = _time.time()
+
+        return result
 
     except Exception as e:
         logger.exception("get_followup_dashboard error: %s", e)

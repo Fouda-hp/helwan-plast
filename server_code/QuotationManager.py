@@ -21,6 +21,7 @@ from anvil.tables import app_tables
 from anvil.tables import order_by as anvil_order_by
 from datetime import datetime, date, timedelta
 import json
+import time as _time
 import uuid
 import logging
 import csv
@@ -721,6 +722,9 @@ def restore_quotation(quotation_number, token_or_email=None):
 DEFAULT_PAGE = 1
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGINATION_SCAN = 50000
+
+# Payment dashboard cache (60 second TTL)
+_payment_dashboard_cache = {'data': None, 'timestamp': 0}
 
 def _quotation_matches_search(r, search_lower, get_client):
     if not search_lower:
@@ -2623,6 +2627,10 @@ def _parse_payment_amount(p):
 
 
 @anvil.server.callable
+def _invalidate_payment_cache():
+    _payment_dashboard_cache['data'] = None
+    _payment_dashboard_cache['timestamp'] = 0
+
 def get_payment_dashboard_data(token_or_email=None):
     """
     Aggregated payment tracking data for the dashboard.
@@ -2631,6 +2639,13 @@ def get_payment_dashboard_data(token_or_email=None):
     is_valid, _, error = _require_permission(token_or_email, 'view')
     if not is_valid:
         return {'success': False, 'message': 'Permission denied'}
+
+    # Check cache (60 second TTL)
+    now_ts = _time.time()
+    if (_payment_dashboard_cache['data'] is not None
+        and (now_ts - _payment_dashboard_cache['timestamp']) < 60):
+        return _payment_dashboard_cache['data']
+
     try:
         # Stream contracts instead of loading all into memory
         c_iter = app_tables.contracts.search()
@@ -2743,7 +2758,7 @@ def get_payment_dashboard_data(token_or_email=None):
             "overdue": [round(x, 2) for x in month_totals_overdue],
         }
 
-        return {
+        result = {
             'success': True,
             'stats': {
                 'total_contracts': total_contracts,
@@ -2756,6 +2771,12 @@ def get_payment_dashboard_data(token_or_email=None):
             'finance_chart': finance_chart,
             'overdue_payments': overdue_payments,
         }
+
+        # Update cache
+        _payment_dashboard_cache['data'] = result
+        _payment_dashboard_cache['timestamp'] = _time.time()
+
+        return result
     except Exception as e:
         logger.error(f"Error in get_payment_dashboard_data: {e}")
         return {'success': False, 'message': str(e)}
@@ -2767,6 +2788,7 @@ def update_payment_status(quotation_number, payment_index, new_status, paid_date
     Update the status of a single payment within a contract.
     Requires 'edit' permission.
     """
+    _invalidate_payment_cache()
     auth_key = token_or_email
     if not auth_key:
         return {'success': False, 'message': 'Authentication required'}

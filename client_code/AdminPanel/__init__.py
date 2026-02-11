@@ -54,11 +54,16 @@ class AdminPanel(AdminPanelTemplate):
 
         self._finish_admin_init()
 
-    def _delayed_admin_check(self):
+    def _delayed_admin_check(self, retry_count=0):
         """إعادة التحقق من صلاحية الأدمن بعد تأخير (لحالة تأخر توكن الجلسة)."""
         self._load_user_info()
         if self._is_admin():
             self._finish_admin_init()
+        elif retry_count < 3:
+            # Retry up to 3 times with increasing delay
+            next_delay = 400 * (retry_count + 1)
+            self._retry_count = retry_count + 1
+            anvil.js.window.setTimeout(lambda: self._delayed_admin_check(self._retry_count), next_delay)
         else:
             try:
                 anvil.js.window.location.hash = '#launcher'

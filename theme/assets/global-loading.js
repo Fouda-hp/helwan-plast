@@ -24,8 +24,8 @@
 
   // ===== Loader Type Config =====
   function getLoaderType() {
-    try { return localStorage.getItem('hp_loader_type') || 'hand'; }
-    catch (e) { return 'hand'; }
+    try { return localStorage.getItem('hp_loader_type') || 'code'; }
+    catch (e) { return 'code'; }
   }
 
   // ===== HTML Templates =====

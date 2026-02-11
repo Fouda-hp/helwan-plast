@@ -401,7 +401,11 @@ container:
 
         function loadDetail() {
           window.pyGetClientDetail(clientCode).then(function(result) {
-            if (!result || !result.success) return;
+            if (!result || !result.success) {
+              var nameEl = document.getElementById('clientName');
+              if (nameEl) nameEl.textContent = (result && result.message) || clientCode;
+              return;
+            }
             var data = result.client || {};
             var stats = result.stats || {};
 
@@ -434,6 +438,10 @@ container:
 
             // Render notes
             renderNotes(Array.isArray(data.notes) ? data.notes : []);
+          }).catch(function(err) {
+            console.warn('loadDetail error:', err);
+            var nameEl = document.getElementById('clientName');
+            if (nameEl) nameEl.textContent = clientCode;
           });
         }
 
@@ -493,10 +501,16 @@ container:
           var container = document.getElementById('timelineContainer');
           if (container) container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">' + t('loading') + '</div>';
           window.pyGetClientTimeline(clientCode, timelineFilter, currentTimelinePage, 20).then(function(result) {
-            if (!result) return;
+            if (!result || !result.success) {
+              if (container) container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">' + t('noTimeline') + '</div>';
+              return;
+            }
             totalTimelinePages = result.total_pages || 1;
             renderTimeline(result);
             renderTimelinePagination();
+          }).catch(function(err) {
+            console.warn('loadTimeline error:', err);
+            if (container) container.innerHTML = '<div style="text-align:center;padding:40px;color:#d32f2f;">Error loading timeline</div>';
           });
         }
 

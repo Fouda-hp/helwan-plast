@@ -65,28 +65,24 @@
   };
 
   // ----------------------------------------
-  // Hand Loader HTML generator (unified across project)
+  // Code Loader HTML generator (unified across project)
   // ----------------------------------------
-  var HAND_LOADER_HTML =
-    '<div class="hand-loader">' +
-      '<div class="hand-finger"></div>' +
-      '<div class="hand-finger"></div>' +
-      '<div class="hand-finger"></div>' +
-      '<div class="hand-finger"></div>' +
-      '<div class="hand-palm"></div>' +
-      '<div class="hand-thumb"></div>' +
+  var CODE_LOADER_HTML =
+    '<div class="hp-code-loader" style="font-size:1.5em;font-weight:900;">' +
+      '<span>&lt;</span><span>LOADING...</span><span>/&gt;</span>' +
     '</div>';
 
-  window.HAND_LOADER_HTML = HAND_LOADER_HTML;
+  window.HAND_LOADER_HTML = CODE_LOADER_HTML; // backward compat
+  window.CODE_LOADER_HTML = CODE_LOADER_HTML;
 
   window.getHandLoaderHTML = function (variant) {
-    var cls = 'hand-loader-wrapper';
+    var cls = 'loading';
     if (variant) cls += ' ' + variant;
-    return '<div class="' + cls + '">' + HAND_LOADER_HTML + '</div>';
+    return '<div class="' + cls + '">' + CODE_LOADER_HTML + '</div>';
   };
 
   // ----------------------------------------
-  // showLoading - unified hand loader UI
+  // showLoading - unified code loader UI
   // ----------------------------------------
   window.showLoading = function (container) {
     if (!container) return;

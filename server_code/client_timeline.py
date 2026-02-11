@@ -105,13 +105,17 @@ def get_client_detail(client_code, token_or_email=None):
             if q_date and (last_activity is None or (hasattr(q_date, '__gt__') and q_date > last_activity)):
                 last_activity = q_date
 
-        # Contract stats - batch load all contracts in ONE query, then filter in memory
+        # Contract stats - lookup per quotation number (avoids loading ALL contracts)
         total_contracts = 0
         total_contract_value = 0
-        q_numbers_set = set(qn for qn in q_numbers if qn is not None)
-        all_contracts = list(app_tables.contracts.search())
-        for c in all_contracts:
-            if c.get('quotation_number') not in q_numbers_set:
+        for qn in q_numbers:
+            if qn is None:
+                continue
+            try:
+                c = app_tables.contracts.get(quotation_number=qn)
+            except Exception:
+                c = None
+            if not c:
                 continue
             total_contracts += 1
             try:
@@ -176,12 +180,16 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
         except Exception as e:
             logger.warning("Timeline quotations error: %s", e)
 
-        # 2. Contracts - batch load all contracts in ONE query, then filter in memory
+        # 2. Contracts - lookup per quotation number (avoids loading ALL contracts)
         try:
-            q_numbers_set = set(qn for qn in q_numbers if qn is not None)
-            all_contracts = list(app_tables.contracts.search())
-            for c in all_contracts:
-                if c.get('quotation_number') not in q_numbers_set:
+            for qn in q_numbers:
+                if qn is None:
+                    continue
+                try:
+                    c = app_tables.contracts.get(quotation_number=qn)
+                except Exception:
+                    c = None
+                if not c:
                     continue
                 c_date = c.get('created_at')
                 cn = c.get('contract_number', '')

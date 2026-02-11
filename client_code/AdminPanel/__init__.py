@@ -19,8 +19,10 @@ import logging
 
 try:
     from ..notif_bridge import register_notif_bridges
+    from ..auth_helpers import validate_token_cached
 except ImportError:
     from notif_bridge import register_notif_bridges
+    from auth_helpers import validate_token_cached
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +79,7 @@ class AdminPanel(AdminPanelTemplate):
         try:
             token = self.get_token()
             if token:
-                result = anvil.server.call('validate_token', token)
+                result = validate_token_cached(token)
                 if result.get('valid'):
                     self.current_user = result['user']
                     self.user_email = self.current_user.get('email', '')

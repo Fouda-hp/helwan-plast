@@ -18,8 +18,10 @@ import anvil.js
 
 try:
     from ..notif_bridge import register_notif_bridges
+    from ..auth_helpers import validate_token_cached, clear_token_cache
 except ImportError:
     from notif_bridge import register_notif_bridges
+    from auth_helpers import validate_token_cached, clear_token_cache
 
 
 class LauncherForm(LauncherFormTemplate):
@@ -49,12 +51,12 @@ class LauncherForm(LauncherFormTemplate):
         return anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.localStorage.getItem('auth_token')
 
     def _user_is_admin(self):
-        """التحقق من السيرفر أن المستخدم الحالي أدمن."""
+        """التحقق من السيرفر أن المستخدم الحالي أدمن (مع cache)."""
         try:
             token = self.get_token()
             if not token:
                 return False
-            result = anvil.server.call('validate_token', token)
+            result = validate_token_cached(token)
             if not result.get('valid') or not result.get('user'):
                 return False
             return (result.get('user', {}).get('role') or '').strip().lower() == 'admin'
@@ -84,6 +86,7 @@ class LauncherForm(LauncherFormTemplate):
                 anvil.server.call('logout_user', token)
             except Exception:
                 pass
+        clear_token_cache()
         try:
             for k in ('auth_token', 'user_email', 'user_name', 'user_role'):
                 anvil.js.window.sessionStorage.removeItem(k)

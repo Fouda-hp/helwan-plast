@@ -93,6 +93,8 @@ def validate_session(token):
         return {
             'email': session['user_email'],
             'role': user['role'],
+            'full_name': user.get('full_name', ''),
+            'phone': user.get('phone', ''),
             'is_active': user['is_active'],
             'is_approved': user['is_approved'],
             'created': session['created_at'],

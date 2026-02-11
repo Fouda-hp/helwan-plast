@@ -965,35 +965,21 @@ def logout_user(token):
 def validate_token(token):
     """
     التحقق من صحة الجلسة وإرجاع معلومات المستخدم
+    validate_session already does sliding expiration + user lookup,
+    so we just use its cached results — no duplicate DB queries.
     """
     session = validate_session(token)
 
     if not session:
         return {'valid': False}
 
-    user = app_tables.users.get(email=session['email'])
-
-    if not user or not user['is_active'] or not user['is_approved']:
-        destroy_session(token)
-        return {'valid': False}
-
-    # تمديد الجلسة عند كل استخدام (sliding expiration) حتى لا تنتهي أثناء الاستخدام
-    try:
-        from .auth_sessions import _hash_token
-        token_hash = _hash_token(token)
-        session_row = app_tables.sessions.get(session_token=token_hash, is_active=True)
-        if session_row:
-            session_row.update(expires_at=get_utc_now() + timedelta(minutes=SESSION_DURATION_MINUTES))
-    except Exception as e:
-        pass
-
     return {
         'valid': True,
         'user': {
-            'email': user['email'],
-            'full_name': user['full_name'],
-            'role': user['role'],
-            'phone': user.get('phone', '')
+            'email': session['email'],
+            'full_name': session.get('full_name', ''),
+            'role': session['role'],
+            'phone': session.get('phone', '')
         }
     }
 

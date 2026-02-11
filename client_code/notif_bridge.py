@@ -110,15 +110,22 @@ def _mark_notification_read(notification_id):
 
 
 def register_notif_bridges():
-    """Register JS bridges and fire event so notification-bell.js can fetch."""
+    """Register JS bridges and fire event so notification-bell.js can fetch.
+
+    Safe to call multiple times — bridges are re-bound (idempotent) but
+    the CustomEvent is only dispatched once per page load to avoid
+    redundant notification fetches.
+    """
     try:
         anvil.js.window.__hpNotifGetAll = _get_all_notifications
         anvil.js.window.__hpNotifDeleteOne = _delete_one_notification
         anvil.js.window.__hpNotifDeleteAll = _delete_all_notifications
         anvil.js.window.__hpNotifMarkRead = _mark_notification_read
-        # Tell the global bell JS that bridges are ready
-        anvil.js.window.dispatchEvent(
-            anvil.js.window.CustomEvent.new('hp-notif-bridge-ready')
-        )
+        # Only fire the ready event once per page to avoid duplicate fetches
+        if not getattr(anvil.js.window, '__hpNotifBridgeReady', False):
+            anvil.js.window.__hpNotifBridgeReady = True
+            anvil.js.window.dispatchEvent(
+                anvil.js.window.CustomEvent.new('hp-notif-bridge-ready')
+            )
     except Exception:
         pass

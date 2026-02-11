@@ -19,6 +19,11 @@ import anvil.js
 import json
 import logging
 
+try:
+    from ..auth_helpers import validate_token_cached
+except ImportError:
+    from auth_helpers import validate_token_cached
+
 logger = logging.getLogger(__name__)
 
 
@@ -81,8 +86,8 @@ class LoginForm(LoginFormTemplate):
 
             # Only check if we have saved credentials
             if auth_token and user_email:
-                # Validate the token with the server
-                result = anvil.server.call('validate_token', auth_token)
+                # Validate the token with the server (cached)
+                result = validate_token_cached(auth_token)
                 if result.get('valid'):
                     # لا نغيّر الـ hash إذا المستخدم كان على صفحة معيّنة (مثلاً بعد الـ refresh)
                     current_hash = (anvil.js.window.location.hash or '').strip()
@@ -145,12 +150,12 @@ class LoginForm(LoginFormTemplate):
             open_form('LauncherForm')
 
     def _user_is_admin(self):
-        """التحقق من السيرفر أن المستخدم الحالي أدمن (لا نعتمد على sessionStorage فقط)."""
+        """التحقق من السيرفر أن المستخدم الحالي أدمن (مع cache)."""
         try:
             token = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.localStorage.getItem('auth_token')
             if not token:
                 return False
-            result = anvil.server.call('validate_token', token)
+            result = validate_token_cached(token)
             if not result.get('valid') or not result.get('user'):
                 return False
             return (result.get('user', {}).get('role') or '').strip().lower() == 'admin'

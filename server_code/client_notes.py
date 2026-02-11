@@ -73,8 +73,8 @@ def _get_user_name(user_email):
         user = app_tables.users.get(email=str(user_email).strip().lower())
         if user and user.get('full_name'):
             return str(user['full_name']).strip()
-    except Exception:
-        pass
+    except Exception as _e:
+        logger.debug("Suppressed: %s", _e)
     return str(user_email).split('@')[0] if user_email else 'Unknown'
 
 

@@ -548,8 +548,8 @@ def _generate_invoice_number():
                         max_seq = seq
                 except (ValueError, TypeError):
                     pass
-    except Exception:
-        pass
+    except Exception as _e:
+        logger.debug("Suppressed: %s", _e)
     return f"{prefix}{max_seq + 1:04d}"
 
 
@@ -1707,8 +1707,8 @@ def get_invoice_details(invoice_id, token_or_email=None):
         try:
             for ic in app_tables.import_costs.search(purchase_invoice_id=invoice_id):
                 import_costs.append(_row_to_dict(ic, IMPORT_COST_COLS))
-        except Exception:
-            pass
+        except Exception as _e:
+            logger.debug("Suppressed: %s", _e)
         d['import_costs'] = import_costs
 
         # Get supplier name

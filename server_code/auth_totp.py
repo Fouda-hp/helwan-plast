@@ -58,8 +58,8 @@ def setup_totp_start_impl(user_email):
             old = app_tables.settings.get(setting_key=pending_key)
             if old:
                 old.delete()
-        except Exception:
-            pass
+        except Exception as _e:
+            logger.debug("Suppressed: %s", _e)
         expires_at = (get_utc_now() + timedelta(minutes=10)).isoformat()
         app_tables.settings.add_row(
             setting_key=pending_key,

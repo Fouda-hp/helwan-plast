@@ -131,8 +131,8 @@ def set_followup(quotation_number, follow_up_date, token_or_email=None):
                 notifications_module.create_notification(user_email, 'followup_set', fu_payload)
             # Notify all admins
             notifications_module.create_notification_for_all_admins('followup_set', fu_payload)
-        except Exception:
-            pass
+        except Exception as _e:
+            logger.debug("Suppressed: %s", _e)
 
         return {'success': True, 'follow_up_date': str(fu_date), 'follow_up_status': 'pending'}
 
@@ -371,8 +371,8 @@ def check_overdue_followups(token_or_email=None):
                     }
                 )
                 notified += 1
-            except Exception:
-                pass
+            except Exception as _e:
+                logger.debug("Suppressed: %s", _e)
 
         return {'success': True, 'notified': notified}
 

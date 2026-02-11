@@ -60,7 +60,7 @@ def _get_global_otp_channel():
       if ch in ('email', 'sms', 'whatsapp'):
         return ch
   except Exception as e:
-    pass
+    logger.debug("Suppressed: %s", e)
   return 'email'
 
 
@@ -1091,8 +1091,8 @@ def approve_user(token_or_email, user_id, role='viewer', custom_permissions=None
         except ImportError:
             import notifications as notif_mod
         notif_mod.create_notification(user_email, 'user_approved', {'role': role, 'approved_by': admin_email})
-    except Exception:
-        pass
+    except Exception as _e:
+        logger.debug("Suppressed: %s", _e)
 
     # إرسال إيميل للمستخدم
     email_sent = send_approval_email(user_email, user_name, role, approved=True)
@@ -1128,8 +1128,8 @@ def reject_user(token_or_email, user_id):
         except ImportError:
             import notifications as notif_mod
         notif_mod.create_notification(user_email, 'user_rejected', {'rejected_by': admin_email})
-    except Exception:
-        pass
+    except Exception as _e:
+        logger.debug("Suppressed: %s", _e)
 
     # إرسال إيميل للمستخدم قبل الحذف
     email_sent = send_approval_email(user_email, user_name, '', approved=False)
@@ -2638,15 +2638,15 @@ def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
                 ts_aware = make_aware(ts) if ts.tzinfo is None else ts
                 if ts_aware < date_from_val:
                     continue
-            except Exception:
-                pass
+            except Exception as _e:
+                logger.debug("Suppressed: %s", _e)
         if date_to_val and ts:
             try:
                 ts_aware = make_aware(ts) if ts.tzinfo is None else ts
                 if ts_aware > date_to_val:
                     continue
-            except Exception:
-                pass
+            except Exception as _e:
+                logger.debug("Suppressed: %s", _e)
         total += 1
         if skip > 0:
             skip -= 1

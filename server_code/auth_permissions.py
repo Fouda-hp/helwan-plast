@@ -82,8 +82,8 @@ def require_admin(token_or_email):
         user_by_id = app_tables.users.get(user_id=token_or_email)
         if user_by_id and user_by_id['role'] == 'admin' and user_by_id['is_active'] and user_by_id['is_approved']:
             return True, None
-    except Exception:
-        pass
+    except Exception as _e:
+        logger.debug("Suppressed: %s", _e)
     return False, {'success': False, 'message': 'Admin access required'}
 
 

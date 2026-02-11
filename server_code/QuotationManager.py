@@ -431,8 +431,8 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
                     'quotation_saved',
                     {'quotation_number': quotation_number, 'client_code': client_code, 'action': quotation_action}
                 )
-            except Exception:
-                pass
+            except Exception as _e:
+                logger.debug("Suppressed: %s", _e)
 
         return {
             "success": True,
@@ -1139,14 +1139,14 @@ def get_dashboard_stats(token_or_email=None):
                     d = created if isinstance(created, date) else datetime.fromisoformat(str(created).replace('Z', '+00:00')).date()
                     if d >= month_start.date():
                         this_month_contracts += 1
-                except Exception:
-                    pass
+                except Exception as _e:
+                    logger.debug("Suppressed: %s", _e)
 
             payments = []
             try:
                 payments = json.loads(row.get('payments_json') or '[]')
-            except Exception:
-                pass
+            except Exception as _e:
+                logger.debug("Suppressed: %s", _e)
             for p in payments:
                 amt = _parse_payment_amount(p)
                 if amt <= 0:
@@ -2044,8 +2044,8 @@ def get_quotations_list(search='', include_deleted=False, token_or_email=None, p
                         client = app_tables.clients.get(Phone=r.get('Phone'), is_deleted=False) if r.get('Phone') else None
                         if client:
                             company = client.get('Company', '') or ''
-                    except Exception:
-                        pass
+                    except Exception as _e:
+                        logger.debug("Suppressed: %s", _e)
                 data.append({
                     'Quotation#': r.get('Quotation#'),
                     'Client Name': r.get('Client Name', ''),
@@ -2110,8 +2110,8 @@ def get_quotations_list_without_contract(search='', token_or_email=None, page=1,
                         client = app_tables.clients.get(Phone=r.get('Phone'), is_deleted=False)
                         if client:
                             company = client.get('Company', '') or ''
-                    except Exception:
-                        pass
+                    except Exception as _e:
+                        logger.debug("Suppressed: %s", _e)
                 data.append({
                     'Quotation#': r.get('Quotation#'),
                     'Client Name': r.get('Client Name', ''),
@@ -2235,8 +2235,8 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
                     user_email, 'contract_saved',
                     {'contract_number': contract_number, 'quotation_number': quotation_number}
                 )
-            except Exception:
-                pass
+            except Exception as _e:
+                logger.debug("Suppressed: %s", _e)
             return {'success': True, 'message': 'Contract saved', 'contract_number': contract_number}
             
         except Exception as e:
@@ -2326,8 +2326,8 @@ def update_contract(contract_data, user_email='system', token_or_email=None):
                 user_email, 'contract_saved',
                 {'contract_number': contract_number, 'quotation_number': quotation_number}
             )
-        except Exception:
-            pass
+        except Exception as _e:
+            logger.debug("Suppressed: %s", _e)
         return {'success': True, 'message': 'Contract updated', 'contract_number': contract_number}
     except Exception as e:
         logger.error(f"Error updating contract: {e}")
@@ -2353,7 +2353,7 @@ def get_contract(quotation_number, token_or_email=None):
             try:
                 payments = json.loads(row['payments_json'] or '[]')
             except Exception as e:
-                pass
+                logger.debug("Suppressed: %s", e)
             
             return {'success': True, 'data': {
                 'contract_number': row['contract_number'],
@@ -2439,8 +2439,8 @@ def delete_contract(quotation_number, token_or_email=None):
         user_email = None
         try:
             is_valid, user_email, _ = _require_permission(token_or_email, 'view')
-        except Exception:
-            pass
+        except Exception as _e:
+            logger.debug("Suppressed: %s", _e)
         log_audit('DELETE', 'contracts', contract_number, old_data, None, user_email or 'unknown', get_client_ip())
         logger.info(f"Contract {contract_number} (quotation {q_num}) deleted")
         return {'success': True, 'message': 'تم حذف العقد وبيناته بالكامل', 'message_en': 'Contract and all its data have been deleted'}
@@ -2505,8 +2505,8 @@ def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
                     payments_list = json.loads(raw)
                 elif isinstance(raw, list):
                     payments_list = raw
-            except Exception:
-                pass
+            except Exception as _e:
+                logger.debug("Suppressed: %s", _e)
             payments_display = []
             for pidx, p in enumerate((payments_list or [])[:12]):
                 date_str = str(p.get('date') or p.get('payment_date') or '').strip()
@@ -2567,8 +2567,8 @@ def export_contracts_data(token_or_email=None):
             try:
                 raw = r.get('payments_json') or '[]'
                 payments_list = json.loads(raw) if isinstance(raw, str) else (raw if isinstance(raw, list) else [])
-            except Exception:
-                pass
+            except Exception as _e:
+                logger.debug("Suppressed: %s", _e)
             payments_str = ' | '.join(
                 (str(p.get('date') or '').split('T')[0] + ': ' + str(p.get('amount') or p.get('value') or ''))
                 for p in (payments_list or [])[:12])
@@ -2665,8 +2665,8 @@ def get_payment_dashboard_data(token_or_email=None):
             payments = []
             try:
                 payments = json.loads(row.get('payments_json') or '[]')
-            except Exception:
-                pass
+            except Exception as _e:
+                logger.debug("Suppressed: %s", _e)
 
             for idx, p in enumerate(payments):
                 amt = _parse_payment_amount(p)
@@ -2699,8 +2699,8 @@ def get_payment_dashboard_data(token_or_email=None):
                         if len(d_parts) >= 3:
                             payment_date = date(int(d_parts[0]), int(d_parts[1]), int(d_parts[2]))
                             days_overdue = (today - payment_date).days
-                    except Exception:
-                        pass
+                    except Exception as _e:
+                        logger.debug("Suppressed: %s", _e)
                     overdue_payments.append({
                         'contract_number': row.get('contract_number', ''),
                         'client_name': row.get('client_name', ''),
@@ -2791,8 +2791,8 @@ def update_payment_status(quotation_number, payment_index, new_status, paid_date
         payments = []
         try:
             payments = json.loads(row.get('payments_json') or '[]')
-        except Exception:
-            pass
+        except Exception as _e:
+            logger.debug("Suppressed: %s", _e)
 
         idx = int(payment_index)
         if idx < 0 or idx >= len(payments):
@@ -2824,8 +2824,8 @@ def update_payment_status(quotation_number, payment_index, new_status, paid_date
                 user_email, 'payment_status_updated',
                 {'contract_number': contract_number, 'payment_index': idx, 'new_status': new_status}
             )
-        except Exception:
-            pass
+        except Exception as _e:
+            logger.debug("Suppressed: %s", _e)
 
         return {'success': True, 'message': 'Payment status updated', 'payments': payments}
     except Exception as e:
@@ -2862,8 +2862,8 @@ def export_payment_schedule_excel(token_or_email=None):
             payments = []
             try:
                 payments = json.loads(r.get('payments_json') or '[]')
-            except Exception:
-                pass
+            except Exception as _e:
+                logger.debug("Suppressed: %s", _e)
 
             if not payments:
                 writer.writerow([contract_num, client_name, total_price_val, '', '', '', '', '', ''])
@@ -3013,7 +3013,7 @@ def create_backup(token_or_email):
             if s.get('valid') and s.get('user'):
                 user_email = s['user'].get('email', '')
         except Exception as e:
-            pass
+            logger.debug("Suppressed: %s", e)
     user_email = user_email or 'admin'
 
     try:
@@ -3043,8 +3043,8 @@ def create_backup(token_or_email):
                 user_email, 'backup_created',
                 {'filename': filename, 'drive_uploaded': drive_ok}
             )
-        except Exception:
-            pass
+        except Exception as _e:
+            logger.debug("Suppressed: %s", _e)
         return {'success': True, 'file': media, 'filename': filename, 'drive_uploaded': drive_ok, 'drive_message': drive_msg}
     except Exception as e:
         logger.exception("create_backup error")
@@ -3115,7 +3115,7 @@ def restore_backup(token_or_email, backup_media):
             if s.get('valid') and s.get('user'):
                 user_email = s['user'].get('email', '')
         except Exception as e:
-            pass
+            logger.debug("Suppressed: %s", e)
     stats = {'clients': 0, 'quotations': 0, 'contracts': 0, 'settings': 0, 'machine_specs': 0}
     try:
         def clear_table(table):
@@ -3249,8 +3249,8 @@ def restore_backup(token_or_email, backup_media):
                 user_email, 'backup_restored',
                 {'export_date': data.get('export_date', ''), 'stats': stats}
             )
-        except Exception:
-            pass
+        except Exception as _e:
+            logger.debug("Suppressed: %s", _e)
         return {'success': True, 'message': 'تمت الاستعادة بنجاح', 'stats': stats}
     except Exception as e:
         logger.exception("restore_backup: %s", e)

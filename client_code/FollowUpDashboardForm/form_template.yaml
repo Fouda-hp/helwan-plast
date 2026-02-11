@@ -200,7 +200,7 @@ container:
           .fu-header { flex-direction: column; gap: 12px; align-items: flex-start; }
         }
       </style>
-      
+
       <div class="fu-wrapper">
         <div class="fu-header">
           <h1 class="fu-title" id="fuTitle">Follow-Up Reminders</h1>
@@ -224,7 +224,7 @@ container:
           </div>
         </div>
       </div>
-      
+
       <!-- Snooze Modal -->
       <div class="fu-modal" id="snoozeModal" style="display:none;">
         <div class="fu-modal-box">
@@ -238,7 +238,7 @@ container:
           </div>
         </div>
       </div>
-      
+
       <!-- Set Follow-up Modal -->
       <div class="fu-modal" id="setFuModal" style="display:none;">
         <div class="fu-modal-box">
@@ -270,7 +270,7 @@ container:
         var currentFilter = 'all';
         var pendingSnoozeQn = null;
         var dashboardData = [];
-      
+
         var i18n = {
           en: {
             fuTitle: 'Follow-Up Reminders',
@@ -371,12 +371,12 @@ container:
             newFuError: '\u062e\u0637\u0623 \u0641\u064a \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0639\u0631\u0648\u0636'
           }
         };
-      
+
         function t(key) {
           var lang = (window._appLang || 'en');
           return (i18n[lang] && i18n[lang][key]) || (i18n['en'][key]) || key;
         }
-      
+
         function applyLang() {
           var lang = (window._appLang || 'en');
           var wrapper = document.querySelector('.fu-wrapper');
@@ -400,7 +400,7 @@ container:
           var nfs = document.getElementById('newFuSearch');
           if (nfs) nfs.placeholder = t('newFuSearch');
         }
-      
+
         function renderStats(stats) {
           var row = document.getElementById('statsRow');
           if (!row) return;
@@ -418,7 +418,7 @@ container:
             row.appendChild(div);
           });
         }
-      
+
         function renderFilters() {
           var row = document.getElementById('filtersRow');
           if (!row) return;
@@ -438,12 +438,12 @@ container:
             row.appendChild(btn);
           });
         }
-      
+
         function renderTable(data) {
           var head = document.getElementById('tableHead');
           var body = document.getElementById('tableBody');
           if (!head || !body) return;
-      
+
           head.innerHTML = '';
           var cols = ['thQn','thClient','thCompany','thPrice','thDate','thStatus','thDays','thActions'];
           cols.forEach(function(c) {
@@ -451,36 +451,36 @@ container:
             th.textContent = t(c);
             head.appendChild(th);
           });
-      
+
           body.innerHTML = '';
           if (!data || data.length === 0) {
             body.innerHTML = '<tr><td colspan="8" class="fu-empty">' + t('noData') + '</td></tr>';
             return;
           }
-      
+
           data.forEach(function(row) {
             var tr = document.createElement('tr');
-      
+
             var tdQn = document.createElement('td');
             tdQn.textContent = row.quotation_number || '';
             tr.appendChild(tdQn);
-      
+
             var tdClient = document.createElement('td');
             tdClient.textContent = row.client_name || '';
             tr.appendChild(tdClient);
-      
+
             var tdCompany = document.createElement('td');
             tdCompany.textContent = row.company_name || '';
             tr.appendChild(tdCompany);
-      
+
             var tdPrice = document.createElement('td');
             tdPrice.textContent = row.total_price || '';
             tr.appendChild(tdPrice);
-      
+
             var tdDate = document.createElement('td');
             tdDate.textContent = row.follow_up_date || '';
             tr.appendChild(tdDate);
-      
+
             var tdStatus = document.createElement('td');
             var badge = document.createElement('span');
             badge.className = 'badge';
@@ -502,7 +502,7 @@ container:
             }
             tdStatus.appendChild(badge);
             tr.appendChild(tdStatus);
-      
+
             var tdDays = document.createElement('td');
             if (row.category === 'overdue') {
               tdDays.style.color = '#f44336';
@@ -518,7 +518,7 @@ container:
               tdDays.style.color = '#4caf50';
             }
             tr.appendChild(tdDays);
-      
+
             var tdActions = document.createElement('td');
             if (row.category !== 'completed') {
               var btnSnooze = document.createElement('button');
@@ -528,7 +528,7 @@ container:
                 return function() { window._fuShowSnooze(qn); };
               })(row.quotation_number);
               tdActions.appendChild(btnSnooze);
-      
+
               var btnComplete = document.createElement('button');
               btnComplete.className = 'btn-action btn-complete';
               btnComplete.textContent = t('complete');
@@ -540,11 +540,11 @@ container:
               tdActions.innerHTML = '<span style="color:#4caf50;">\u2714</span>';
             }
             tr.appendChild(tdActions);
-      
+
             body.appendChild(tr);
           });
         }
-      
+
         function loadDashboard() {
           if (!window.pyGetFollowupDashboard) return;
           window.pyGetFollowupDashboard(currentFilter).then(function(result) {
@@ -558,7 +558,7 @@ container:
             console.error('Failed to load follow-up dashboard:', err);
           });
         }
-      
+
         function init() {
           applyLang();
           initNewFuSearch();
@@ -572,18 +572,18 @@ container:
             loadDashboard();
           }
         }
-      
+
         window._fuSetFilter = function(f) {
           currentFilter = f;
           loadDashboard();
         };
-      
+
         window._fuShowSnooze = function(qn) {
           pendingSnoozeQn = qn;
           var modal = document.getElementById('snoozeModal');
           if (modal) modal.style.display = 'flex';
         };
-      
+
         window._fuSnooze = function(days) {
           if (!pendingSnoozeQn || !window.pySnoozeFollowup) return;
           window.pySnoozeFollowup(pendingSnoozeQn, days).then(function() {
@@ -595,7 +595,7 @@ container:
             console.error('Snooze failed:', err);
           });
         };
-      
+
         window._fuComplete = function(qn) {
           if (!window.pyCompleteFollowup) return;
           window.pyCompleteFollowup(qn).then(function() {
@@ -604,13 +604,13 @@ container:
             console.error('Complete failed:', err);
           });
         };
-      
+
         window._fuShowSetDate = function(qn) {
           pendingSnoozeQn = qn;
           var modal = document.getElementById('setFuModal');
           if (modal) modal.style.display = 'flex';
         };
-      
+
         window._fuSaveDate = function() {
           var input = document.getElementById('setFuDateInput');
           if (!input || !input.value || !pendingSnoozeQn || !window.pySetFollowup) return;
@@ -719,7 +719,7 @@ container:
             setTimeout(waitForBridge, 100);
           }
         }
-      
+
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', waitForBridge);
         } else {

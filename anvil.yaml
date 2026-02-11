@@ -1,284 +1,6 @@
 allow_embedding: false
 correct_dependency_ids: {}
 db_schema:
-  chart_of_accounts:
-    client: none
-    columns:
-    - admin_ui: {width: 120}
-      name: code
-      type: string
-    - admin_ui: {width: 200}
-      name: name_en
-      type: string
-    - admin_ui: {width: 200}
-      name: name_ar
-      type: string
-    - admin_ui: {width: 150}
-      name: account_type
-      type: string
-    - admin_ui: {width: 120}
-      name: parent_code
-      type: string
-    - admin_ui: {width: 80}
-      name: is_active
-      type: bool
-    - admin_ui: {width: 200}
-      name: created_at
-      type: datetime
-    server: full
-    title: CHART_OF_ACCOUNTS
-  expenses:
-    client: none
-    columns:
-    - admin_ui: {width: 200}
-      name: id
-      type: string
-    - admin_ui: {width: 120}
-      name: date
-      type: date
-    - admin_ui: {width: 150}
-      name: category
-      type: string
-    - admin_ui: {width: 250}
-      name: description
-      type: string
-    - admin_ui: {width: 120}
-      name: amount
-      type: number
-    - admin_ui: {width: 120}
-      name: payment_method
-      type: string
-    - admin_ui: {width: 150}
-      name: reference
-      type: string
-    - admin_ui: {width: 120}
-      name: account_code
-      type: string
-    - admin_ui: {width: 100}
-      name: status
-      type: string
-    - admin_ui: {width: 200}
-      name: created_by
-      type: string
-    - admin_ui: {width: 200}
-      name: created_at
-      type: datetime
-    - admin_ui: {width: 200}
-      name: updated_at
-      type: datetime
-    server: full
-    title: EXPENSES
-  import_costs:
-    client: none
-    columns:
-    - admin_ui: {width: 200}
-      name: id
-      type: string
-    - admin_ui: {width: 200}
-      name: purchase_invoice_id
-      type: string
-    - admin_ui: {width: 150}
-      name: cost_type
-      type: string
-    - admin_ui: {width: 250}
-      name: description
-      type: string
-    - admin_ui: {width: 120}
-      name: amount
-      type: number
-    - admin_ui: {width: 120}
-      name: date
-      type: date
-    - admin_ui: {width: 200}
-      name: created_by
-      type: string
-    - admin_ui: {width: 200}
-      name: created_at
-      type: datetime
-    server: full
-    title: IMPORT_COSTS
-  inventory:
-    client: none
-    columns:
-    - admin_ui: {width: 200}
-      name: id
-      type: string
-    - admin_ui: {width: 150}
-      name: machine_code
-      type: string
-    - admin_ui: {width: 250}
-      name: description
-      type: string
-    - admin_ui: {width: 200}
-      name: purchase_invoice_id
-      type: string
-    - admin_ui: {width: 150}
-      name: contract_number
-      type: string
-    - admin_ui: {width: 120}
-      name: purchase_cost
-      type: number
-    - admin_ui: {width: 120}
-      name: import_costs_total
-      type: number
-    - admin_ui: {width: 120}
-      name: total_cost
-      type: number
-    - admin_ui: {width: 120}
-      name: selling_price
-      type: number
-    - admin_ui: {width: 100}
-      name: status
-      type: string
-    - admin_ui: {width: 150}
-      name: location
-      type: string
-    - admin_ui: {width: 200}
-      name: notes
-      type: string
-    - admin_ui: {width: 200}
-      name: created_at
-      type: datetime
-    - admin_ui: {width: 200}
-      name: updated_at
-      type: datetime
-    server: full
-    title: INVENTORY
-  ledger:
-    client: none
-    columns:
-    - admin_ui: {width: 200}
-      name: id
-      type: string
-    - admin_ui: {width: 200}
-      name: transaction_id
-      type: string
-    - admin_ui: {width: 120}
-      name: date
-      type: date
-    - admin_ui: {width: 120}
-      name: account_code
-      type: string
-    - admin_ui: {width: 120}
-      name: debit
-      type: number
-    - admin_ui: {width: 120}
-      name: credit
-      type: number
-    - admin_ui: {width: 300}
-      name: description
-      type: string
-    - admin_ui: {width: 150}
-      name: reference_type
-      type: string
-    - admin_ui: {width: 200}
-      name: reference_id
-      type: string
-    - admin_ui: {width: 200}
-      name: created_by
-      type: string
-    - admin_ui: {width: 200}
-      name: created_at
-      type: datetime
-    server: full
-    title: LEDGER
-  purchase_invoices:
-    client: none
-    columns:
-    - admin_ui: {width: 200}
-      name: id
-      type: string
-    - admin_ui: {width: 150}
-      name: invoice_number
-      type: string
-    - admin_ui: {width: 200}
-      name: supplier_id
-      type: string
-    - admin_ui: {width: 120}
-      name: date
-      type: date
-    - admin_ui: {width: 120}
-      name: due_date
-      type: date
-    - admin_ui: {width: 400}
-      name: items_json
-      type: string
-    - admin_ui: {width: 120}
-      name: subtotal
-      type: number
-    - admin_ui: {width: 120}
-      name: tax_amount
-      type: number
-    - admin_ui: {width: 120}
-      name: total
-      type: number
-    - admin_ui: {width: 120}
-      name: paid_amount
-      type: number
-    - admin_ui: {width: 100}
-      name: status
-      type: string
-    - admin_ui: {width: 250}
-      name: notes
-      type: string
-    - admin_ui: {width: 150}
-      name: machine_code
-      type: string
-    - admin_ui: {width: 150}
-      name: contract_number
-      type: string
-    - admin_ui: {width: 200}
-      name: created_by
-      type: string
-    - admin_ui: {width: 200}
-      name: created_at
-      type: datetime
-    - admin_ui: {width: 200}
-      name: updated_at
-      type: datetime
-    server: full
-    title: PURCHASE_INVOICES
-  suppliers:
-    client: none
-    columns:
-    - admin_ui: {width: 200}
-      name: id
-      type: string
-    - admin_ui: {width: 200}
-      name: name
-      type: string
-    - admin_ui: {width: 200}
-      name: company
-      type: string
-    - admin_ui: {width: 150}
-      name: phone
-      type: string
-    - admin_ui: {width: 200}
-      name: email
-      type: string
-    - admin_ui: {width: 150}
-      name: country
-      type: string
-    - admin_ui: {width: 250}
-      name: address
-      type: string
-    - admin_ui: {width: 150}
-      name: tax_id
-      type: string
-    - admin_ui: {width: 250}
-      name: notes
-      type: string
-    - admin_ui: {width: 80}
-      name: is_active
-      type: bool
-    - admin_ui: {width: 200}
-      name: created_at
-      type: datetime
-    - admin_ui: {width: 200}
-      name: updated_at
-      type: datetime
-    server: full
-    title: SUPPLIERS
   audit_log:
     client: none
     columns:
@@ -313,6 +35,32 @@ db_schema:
       type: string
     server: full
     title: AUDIT_LOG
+  chart_of_accounts:
+    client: none
+    columns:
+    - admin_ui: {width: 120}
+      name: code
+      type: string
+    - admin_ui: {width: 200}
+      name: name_en
+      type: string
+    - admin_ui: {width: 200}
+      name: name_ar
+      type: string
+    - admin_ui: {width: 150}
+      name: account_type
+      type: string
+    - admin_ui: {width: 120}
+      name: parent_code
+      type: string
+    - admin_ui: {width: 80}
+      name: is_active
+      type: bool
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    server: full
+    title: CHART_OF_ACCOUNTS
   clients:
     client: none
     columns:
@@ -519,6 +267,47 @@ db_schema:
       type: number
     server: full
     title: COUNTERS
+  expenses:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: id
+      type: string
+    - admin_ui: {width: 120}
+      name: date
+      type: date
+    - admin_ui: {width: 150}
+      name: category
+      type: string
+    - admin_ui: {width: 250}
+      name: description
+      type: string
+    - admin_ui: {width: 120}
+      name: amount
+      type: number
+    - admin_ui: {width: 120}
+      name: payment_method
+      type: string
+    - admin_ui: {width: 150}
+      name: reference
+      type: string
+    - admin_ui: {width: 120}
+      name: account_code
+      type: string
+    - admin_ui: {width: 100}
+      name: status
+      type: string
+    - admin_ui: {width: 200}
+      name: created_by
+      type: string
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: updated_at
+      type: datetime
+    server: full
+    title: EXPENSES
   files:
     client: none
     columns:
@@ -533,6 +322,120 @@ db_schema:
       type: string
     server: full
     title: Files
+  import_costs:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: id
+      type: string
+    - admin_ui: {width: 200}
+      name: purchase_invoice_id
+      type: string
+    - admin_ui: {width: 150}
+      name: cost_type
+      type: string
+    - admin_ui: {width: 250}
+      name: description
+      type: string
+    - admin_ui: {width: 120}
+      name: amount
+      type: number
+    - admin_ui: {width: 120}
+      name: date
+      type: date
+    - admin_ui: {width: 200}
+      name: created_by
+      type: string
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    server: full
+    title: IMPORT_COSTS
+  inventory:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: id
+      type: string
+    - admin_ui: {width: 150}
+      name: machine_code
+      type: string
+    - admin_ui: {width: 250}
+      name: description
+      type: string
+    - admin_ui: {width: 200}
+      name: purchase_invoice_id
+      type: string
+    - admin_ui: {width: 150}
+      name: contract_number
+      type: string
+    - admin_ui: {width: 120}
+      name: purchase_cost
+      type: number
+    - admin_ui: {width: 120}
+      name: import_costs_total
+      type: number
+    - admin_ui: {width: 120}
+      name: total_cost
+      type: number
+    - admin_ui: {width: 120}
+      name: selling_price
+      type: number
+    - admin_ui: {width: 100}
+      name: status
+      type: string
+    - admin_ui: {width: 150}
+      name: location
+      type: string
+    - admin_ui: {width: 200}
+      name: notes
+      type: string
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: updated_at
+      type: datetime
+    server: full
+    title: INVENTORY
+  ledger:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: id
+      type: string
+    - admin_ui: {width: 200}
+      name: transaction_id
+      type: string
+    - admin_ui: {width: 120}
+      name: date
+      type: date
+    - admin_ui: {width: 120}
+      name: account_code
+      type: string
+    - admin_ui: {width: 120}
+      name: debit
+      type: number
+    - admin_ui: {width: 120}
+      name: credit
+      type: number
+    - admin_ui: {width: 300}
+      name: description
+      type: string
+    - admin_ui: {width: 150}
+      name: reference_type
+      type: string
+    - admin_ui: {width: 200}
+      name: reference_id
+      type: string
+    - admin_ui: {width: 200}
+      name: created_by
+      type: string
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    server: full
+    title: LEDGER
   machine_specs:
     client: none
     columns:
@@ -687,6 +590,62 @@ db_schema:
       type: datetime
     server: full
     title: PENDING_PASSWORDS
+  purchase_invoices:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: id
+      type: string
+    - admin_ui: {width: 150}
+      name: invoice_number
+      type: string
+    - admin_ui: {width: 200}
+      name: supplier_id
+      type: string
+    - admin_ui: {width: 120}
+      name: date
+      type: date
+    - admin_ui: {width: 120}
+      name: due_date
+      type: date
+    - admin_ui: {width: 400}
+      name: items_json
+      type: string
+    - admin_ui: {width: 120}
+      name: subtotal
+      type: number
+    - admin_ui: {width: 120}
+      name: tax_amount
+      type: number
+    - admin_ui: {width: 120}
+      name: total
+      type: number
+    - admin_ui: {width: 120}
+      name: paid_amount
+      type: number
+    - admin_ui: {width: 100}
+      name: status
+      type: string
+    - admin_ui: {width: 250}
+      name: notes
+      type: string
+    - admin_ui: {width: 150}
+      name: machine_code
+      type: string
+    - admin_ui: {width: 150}
+      name: contract_number
+      type: string
+    - admin_ui: {width: 200}
+      name: created_by
+      type: string
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: updated_at
+      type: datetime
+    server: full
+    title: PURCHASE_INVOICES
   quotations:
     client: none
     columns:
@@ -1020,6 +979,47 @@ db_schema:
       type: datetime
     server: full
     title: SETTINGS
+  suppliers:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: id
+      type: string
+    - admin_ui: {width: 200}
+      name: name
+      type: string
+    - admin_ui: {width: 200}
+      name: company
+      type: string
+    - admin_ui: {width: 150}
+      name: phone
+      type: string
+    - admin_ui: {width: 200}
+      name: email
+      type: string
+    - admin_ui: {width: 150}
+      name: country
+      type: string
+    - admin_ui: {width: 250}
+      name: address
+      type: string
+    - admin_ui: {width: 150}
+      name: tax_id
+      type: string
+    - admin_ui: {width: 250}
+      name: notes
+      type: string
+    - admin_ui: {width: 80}
+      name: is_active
+      type: bool
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: updated_at
+      type: datetime
+    server: full
+    title: SUPPLIERS
   table_17:
     client: none
     columns: []

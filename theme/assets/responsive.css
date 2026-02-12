@@ -144,6 +144,163 @@
     width: 100% !important;
     padding: 10px !important;
     overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Print form controls bar */
+  .controls-bar {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 15px !important;
+  }
+
+  .controls-row,
+  .buttons-row {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 10px !important;
+  }
+
+  /* Search sections in print forms */
+  .search-section {
+    flex-direction: column !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .search-section select,
+  .search-section input {
+    width: 100% !important;
+    min-width: 100% !important;
+    font-size: 16px !important;
+  }
+
+  /* Delivery date input */
+  .delivery-date-section {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 6px !important;
+  }
+
+  #deliveryDateInput {
+    width: 100% !important;
+    font-size: 16px !important;
+  }
+
+  /* Language toggle buttons */
+  .lang-toggle {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .lang-btn {
+    flex: 1 !important;
+    min-height: 44px !important;
+    font-size: 14px !important;
+  }
+
+  /* Action buttons in print forms */
+  .action-buttons {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+
+  .action-buttons .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 44px !important;
+  }
+
+  /* Template preview area */
+  .template-preview {
+    max-height: calc(100vh - 400px) !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .template-page {
+    padding: 15px !important;
+    min-width: 600px;
+  }
+
+  /* Print form tables */
+  .details-table,
+  .tech-table,
+  .cylinders-table,
+  .payment-table,
+  .payment-schedule-table,
+  .payment-table-simple {
+    font-size: 12px !important;
+  }
+
+  .details-table th,
+  .details-table td,
+  .tech-table th,
+  .tech-table td,
+  .payment-table th,
+  .payment-table td,
+  .payment-schedule-table th,
+  .payment-schedule-table td {
+    padding: 8px 6px !important;
+    font-size: 12px !important;
+  }
+
+  /* Header in print forms */
+  .header {
+    flex-direction: column !important;
+    gap: 15px !important;
+  }
+
+  .header-left,
+  .header-right {
+    text-align: center !important;
+  }
+
+  /* Info grid → single column */
+  .info-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Financial box */
+  .financial-box {
+    padding: 12px !important;
+  }
+
+  .total-price {
+    font-size: 20px !important;
+    padding: 10px !important;
+  }
+
+  /* Payment modal */
+  .payment-modal {
+    width: 95% !important;
+    max-width: 95% !important;
+  }
+
+  .payment-config {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .payment-method {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .payments-table {
+    font-size: 11px !important;
+  }
+
+  .payments-table th,
+  .payments-table td {
+    padding: 8px 4px !important;
+    font-size: 11px !important;
+  }
+
+  .payments-table input {
+    font-size: 14px !important;
   }
 
   /* --- RTL adjustments for mobile --- */
@@ -336,6 +493,64 @@
   .optional-block {
     padding-left: 0 !important;
   }
+
+  /* --- Print forms small phone --- */
+  .print-container,
+  .contract-container {
+    padding: 8px !important;
+  }
+
+  .controls-bar {
+    padding: 10px !important;
+    gap: 10px !important;
+  }
+
+  .controls-row,
+  .buttons-row {
+    gap: 8px !important;
+  }
+
+  .btn {
+    font-size: 13px !important;
+    padding: 10px 16px !important;
+  }
+
+  .lang-btn {
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+  }
+
+  .template-page {
+    padding: 10px !important;
+    min-width: 500px;
+  }
+
+  .header {
+    margin-bottom: 12px !important;
+  }
+
+  .section-title {
+    font-size: 13px !important;
+  }
+
+  .quotation-number,
+  .client-info {
+    font-size: 13px !important;
+  }
+
+  .total-price {
+    font-size: 18px !important;
+  }
+
+  .payment-modal-header h2 {
+    font-size: 16px !important;
+  }
+
+  .payments-table th,
+  .payments-table td {
+    font-size: 10px !important;
+    padding: 6px 2px !important;
+  }
 }
 
 /* ===== LANDSCAPE PHONE ===== */
@@ -384,6 +599,19 @@
     min-height: 40px;
     min-width: 40px;
   }
+
+  /* Print form buttons */
+  .controls-bar .btn,
+  .action-buttons .btn,
+  .lang-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Payment modal buttons */
+  .payment-modal-footer .btn {
+    min-height: 44px;
+  }
 }
 
 /* ===== GLOBAL SCROLLBAR STYLING (for horizontal scroll tables) ===== */
@@ -391,7 +619,9 @@
 .table-container::-webkit-scrollbar,
 .pd-table-wrap::-webkit-scrollbar,
 .fu-table-wrap::-webkit-scrollbar,
-.cl-table-wrap::-webkit-scrollbar {
+.cl-table-wrap::-webkit-scrollbar,
+.print-container::-webkit-scrollbar,
+.template-preview::-webkit-scrollbar {
   height: 6px;
 }
 
@@ -399,7 +629,9 @@
 .table-container::-webkit-scrollbar-thumb,
 .pd-table-wrap::-webkit-scrollbar-thumb,
 .fu-table-wrap::-webkit-scrollbar-thumb,
-.cl-table-wrap::-webkit-scrollbar-thumb {
+.cl-table-wrap::-webkit-scrollbar-thumb,
+.print-container::-webkit-scrollbar-thumb,
+.template-preview::-webkit-scrollbar-thumb {
   background: #ccc;
   border-radius: 3px;
 }
@@ -408,6 +640,8 @@
 .table-container::-webkit-scrollbar-track,
 .pd-table-wrap::-webkit-scrollbar-track,
 .fu-table-wrap::-webkit-scrollbar-track,
-.cl-table-wrap::-webkit-scrollbar-track {
+.cl-table-wrap::-webkit-scrollbar-track,
+.print-container::-webkit-scrollbar-track,
+.template-preview::-webkit-scrollbar-track {
   background: #f0f0f0;
 }

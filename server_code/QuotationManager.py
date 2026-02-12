@@ -2228,6 +2228,13 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
                 num_payments=contract_data.get('num_payments', 0),
                 payments_json=payments_json,
                 delivery_date=contract_data.get('delivery_date', ''),
+                # Cost fields are NOT set from the contract form.
+                # Procurement is handled separately via create_contract_purchase().
+                fob_cost=None,
+                cylinder_cost=None,
+                supplier_id=None,
+                purchase_invoice_id=None,
+                currency=None,
                 created_at=get_utc_now(),
                 updated_at=get_utc_now(),
                 **payment_cols
@@ -2241,6 +2248,10 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
                 )
             except Exception as _e:
                 logger.debug("Suppressed: %s", _e)
+
+            # NOTE: Purchase invoice creation is NOT triggered here.
+            # Procurement is handled separately via create_contract_purchase()
+            # from the accounting module — keeping sales and procurement layers separate.
             return {'success': True, 'message': 'Contract saved', 'contract_number': contract_number}
             
         except Exception as e:

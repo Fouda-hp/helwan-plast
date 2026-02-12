@@ -118,8 +118,12 @@ DEFAULT_ACCOUNTS = [
     # Assets
     ('1000', 'Cash',               'النقدية',           'asset',    None),
     ('1010', 'Bank',               'البنك',             'asset',    '1000'),
+    ('1011', 'Bank - CIB',         'بنك CIB',          'asset',    '1010'),
+    ('1012', 'Bank - NBE',         'البنك الأهلي',      'asset',    '1010'),
+    ('1013', 'Bank - QNB',         'بنك QNB',          'asset',    '1010'),
     ('1100', 'Accounts Receivable','ذمم مدينة',         'asset',    None),
     ('1200', 'Inventory',          'المخزون',           'asset',    None),
+    ('1210', 'Purchase in Transit','مشتريات في الطريق', 'asset',    '1200'),
     # Liabilities
     ('2000', 'Accounts Payable',   'ذمم دائنة',         'liability', None),
     ('2100', 'Tax Payable',        'ضريبة مستحقة',      'liability', None),
@@ -141,6 +145,32 @@ DEFAULT_ACCOUNTS = [
     ('6050', 'Maintenance',        'الصيانة',           'expense',  None),
     ('6090', 'Other Expenses',     'مصروفات أخرى',      'expense',  None),
 ]
+
+# Map bank names to account codes
+BANK_ACCOUNT_MAP = {
+    'cash': '1000',
+    'bank': '1010',
+    'cib': '1011',
+    'nbe': '1012',
+    'qnb': '1013',
+}
+
+
+def _resolve_payment_account(payment_method):
+    """Resolve payment method string to the correct account code.
+    Supports: cash, bank, cib, nbe, qnb, or a direct account code like '1011'.
+    """
+    if not payment_method:
+        return '1000'
+    method = _safe_str(payment_method).lower().strip()
+    # Direct account code
+    if method in BANK_ACCOUNT_MAP:
+        return BANK_ACCOUNT_MAP[method]
+    # Check if it's a valid account code directly (e.g., '1011')
+    if _validate_account_exists(method):
+        return method
+    # Default fallback
+    return '1010' if 'bank' in method else '1000'
 
 
 @anvil.server.callable
@@ -712,11 +742,219 @@ def post_purchase_invoice(invoice_id, token_or_email=None):
 
 
 @anvil.server.callable
+def create_contract_purchase(contract_number, fob_cost, cylinder_cost, supplier_id,
+                             currency='USD', token_or_email=None):
+    """
+    PART 1: Contract → Purchase Invoice auto-generation.
+    When a contract is created, call this to:
+    1) Create a Purchase Invoice from FOB + Cylinder cost
+    2) Post journal: DR Inventory (1200), CR Accounts Payable (2000)
+    3) Create inventory item linked to the contract
+    4) Link purchase invoice back to the contract
+
+    Returns: {success, invoice_id, invoice_number, inventory_id, transaction_id}
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+
+    fob_cost = _round2(fob_cost)
+    cylinder_cost = _round2(cylinder_cost)
+    if fob_cost <= 0:
+        return {'success': False, 'message': 'FOB cost must be greater than zero'}
+    if not supplier_id:
+        return {'success': False, 'message': 'Supplier is required'}
+    if not contract_number:
+        return {'success': False, 'message': 'Contract number is required'}
+
+    try:
+        # Verify supplier exists
+        supplier = app_tables.suppliers.get(id=supplier_id)
+        if not supplier:
+            return {'success': False, 'message': 'Supplier not found'}
+
+        # Build line items
+        items = [{'description': 'FOB Cost (Machine)', 'quantity': 1, 'unit_price': fob_cost, 'total': fob_cost}]
+        if cylinder_cost > 0:
+            items.append({'description': 'Cylinder Cost', 'quantity': 1, 'unit_price': cylinder_cost, 'total': cylinder_cost})
+
+        subtotal = _round2(fob_cost + cylinder_cost)
+
+        # Create purchase invoice in draft then post it
+        inv_id = _uuid()
+        inv_number = _generate_invoice_number()
+        now = get_utc_now()
+        today = date.today()
+
+        app_tables.purchase_invoices.add_row(
+            id=inv_id,
+            invoice_number=inv_number,
+            supplier_id=supplier_id,
+            date=today,
+            due_date=None,
+            items_json=json.dumps(items, ensure_ascii=False, default=str),
+            subtotal=subtotal,
+            tax_amount=0.0,
+            total=subtotal,
+            paid_amount=0.0,
+            status='draft',
+            notes=f"Auto-generated from contract {contract_number} | Currency: {currency}",
+            machine_code=None,
+            contract_number=contract_number,
+            created_by=user_email,
+            created_at=now,
+            updated_at=now,
+        )
+
+        # Post the invoice immediately (DR Inventory, CR AP)
+        entries = [
+            {'account_code': '1200', 'debit': subtotal, 'credit': 0},
+            {'account_code': '2000', 'debit': 0, 'credit': subtotal},
+        ]
+        je_result = post_journal_entry(
+            today, entries,
+            f"Purchase from contract {contract_number} - {inv_number}",
+            'purchase_invoice', inv_id, user_email,
+        )
+        if not je_result.get('success'):
+            # Rollback: delete the draft invoice
+            try:
+                row = app_tables.purchase_invoices.get(id=inv_id)
+                if row:
+                    row.delete()
+            except Exception:
+                pass
+            return je_result
+
+        # Mark invoice as posted
+        inv_row = app_tables.purchase_invoices.get(id=inv_id)
+        if inv_row:
+            inv_row.update(status='posted', updated_at=get_utc_now())
+
+        # Create inventory item linked to this purchase — starts as in_transit
+        inv_item_id = _uuid()
+        app_tables.inventory.add_row(
+            id=inv_item_id,
+            machine_code=contract_number,
+            description=f"Machine for contract {contract_number}",
+            purchase_invoice_id=inv_id,
+            contract_number=None,  # Not sold yet — will be set when sale is recorded
+            purchase_cost=subtotal,
+            import_costs_total=0.0,
+            total_cost=subtotal,
+            selling_price=0.0,
+            status='in_transit',
+            location='',
+            notes=f"FOB: {fob_cost}, Cylinders: {cylinder_cost}",
+            created_at=now,
+            updated_at=now,
+        )
+
+        # Update contract row with purchase_invoice_id
+        try:
+            contract_row = app_tables.contracts.get(contract_number=contract_number)
+            if contract_row:
+                contract_row.update(
+                    fob_cost=fob_cost,
+                    cylinder_cost=cylinder_cost,
+                    supplier_id=supplier_id,
+                    purchase_invoice_id=inv_id,
+                    currency=_safe_str(currency) or 'USD',
+                    updated_at=get_utc_now(),
+                )
+        except Exception as e:
+            logger.warning("Could not update contract with purchase info: %s", e)
+
+        logger.info("Contract purchase created: %s -> %s by %s", contract_number, inv_number, user_email)
+        return {
+            'success': True,
+            'invoice_id': inv_id,
+            'invoice_number': inv_number,
+            'inventory_id': inv_item_id,
+            'transaction_id': je_result['transaction_id'],
+            'total': subtotal,
+        }
+    except Exception as e:
+        logger.exception("create_contract_purchase error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_contract_payable_status(contract_number=None, token_or_email=None):
+    """
+    Get payable tracking for a contract or all contracts.
+    Returns: total, paid, remaining, payment_history per contract.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+
+    try:
+        if contract_number:
+            invoices = list(app_tables.purchase_invoices.search(contract_number=contract_number))
+        else:
+            # Get all purchase invoices that have a contract_number
+            invoices = [r for r in app_tables.purchase_invoices.search() if r.get('contract_number')]
+
+        results = []
+        for inv in invoices:
+            inv_id = inv.get('id')
+            total = _round2(inv.get('total', 0))
+            paid = _round2(inv.get('paid_amount', 0))
+            remaining = _round2(total - paid)
+
+            # Get payment history from ledger
+            payment_history = []
+            for entry in app_tables.ledger.search(reference_id=inv_id, reference_type='payment'):
+                if _round2(entry.get('debit', 0)) > 0 and entry.get('account_code') == '2000':
+                    payment_history.append({
+                        'date': entry.get('date').isoformat() if entry.get('date') else '',
+                        'amount': _round2(entry.get('debit', 0)),
+                        'description': entry.get('description', ''),
+                        'transaction_id': entry.get('transaction_id', ''),
+                    })
+
+            # Get import costs for this invoice
+            import_costs = []
+            import_total = 0.0
+            for ic in app_tables.import_costs.search(purchase_invoice_id=inv_id):
+                ic_amt = _round2(ic.get('amount', 0))
+                import_costs.append({
+                    'type': ic.get('cost_type', ''),
+                    'amount': ic_amt,
+                    'description': ic.get('description', ''),
+                    'date': ic.get('date').isoformat() if ic.get('date') else '',
+                })
+                import_total += ic_amt
+
+            results.append({
+                'contract_number': inv.get('contract_number', ''),
+                'invoice_number': inv.get('invoice_number', ''),
+                'invoice_id': inv_id,
+                'supplier_id': inv.get('supplier_id', ''),
+                'total': total,
+                'paid': paid,
+                'remaining': remaining,
+                'status': inv.get('status', ''),
+                'import_costs': import_costs,
+                'import_total': _round2(import_total),
+                'landed_cost': _round2(total + import_total),
+                'payment_history': payment_history,
+            })
+
+        return {'success': True, 'contracts': results, 'count': len(results)}
+    except Exception as e:
+        logger.exception("get_contract_payable_status error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
 def record_supplier_payment(invoice_id, amount, payment_method, payment_date, token_or_email=None):
     """
     Record a payment against a purchase invoice.
     DR Accounts Payable (2000)
-    CR Cash (1000) or Bank (1010)
+    CR Cash (1000) or Bank (1010/1011/1012/1013)
+    Supports multiple banks: cash, bank, cib, nbe, qnb, or direct account code.
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
@@ -738,8 +976,8 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date, to
         if current_paid + amount > total + 0.005:
             return {'success': False, 'message': f'Payment of {amount:.2f} exceeds remaining balance of {total - current_paid:.2f}'}
 
-        # Determine cash/bank account
-        cash_account = '1010' if payment_method == 'bank' else '1000'
+        # Determine cash/bank account — supports multiple banks
+        cash_account = _resolve_payment_account(payment_method)
         parsed_date = _safe_date(payment_date) or date.today()
 
         entries = [
@@ -769,18 +1007,29 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date, to
 # ===========================================================================
 # 5. IMPORT COSTS
 # ===========================================================================
-IMPORT_COST_COLS = ['id', 'purchase_invoice_id', 'cost_type', 'description', 'amount', 'date', 'created_by', 'created_at']
+IMPORT_COST_COLS = ['id', 'purchase_invoice_id', 'cost_type', 'description', 'amount', 'date',
+                    'created_by', 'created_at', 'contract_number', 'payment_account']
 
 VALID_COST_TYPES = ('shipping', 'customs', 'insurance', 'clearance', 'transport', 'other')
 
 
 @anvil.server.callable
-def add_import_cost(purchase_invoice_id, cost_type, amount, description='', cost_date=None, token_or_email=None):
+def add_import_cost(purchase_invoice_id, cost_type, amount, description='',
+                    cost_date=None, payment_method='cash', contract_number=None,
+                    token_or_email=None):
     """
     Add an import cost linked to a purchase invoice.
-    DR Import Costs (5100)
-    CR Cash (1000) or Bank (1010)
-    Also updates the related inventory item totals.
+    CRITICAL: Import costs are part of Landed Cost, NOT period expenses.
+
+    If inventory is NOT sold yet (in_transit / in_stock):
+        DR 1200 Inventory — increases inventory (landed cost)
+        CR Cash/Bank (selected account)
+
+    If inventory is ALREADY SOLD:
+        Import costs are blocked. Late costs after sale must be posted
+        manually as adjustments.
+
+    payment_method: cash, bank, cib, nbe, qnb, or direct account code
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
@@ -797,18 +1046,39 @@ def add_import_cost(purchase_invoice_id, cost_type, amount, description='', cost
         if not inv_row:
             return {'success': False, 'message': 'Purchase invoice not found'}
 
+        # Auto-detect contract_number from the invoice if not provided
+        if not contract_number:
+            contract_number = inv_row.get('contract_number')
+
+        # Check if related inventory item is already sold
+        inv_items = list(app_tables.inventory.search(purchase_invoice_id=purchase_invoice_id))
+        sold_items = [it for it in inv_items if it.get('status') == 'sold']
+        if sold_items:
+            return {
+                'success': False,
+                'message': 'Cannot add import costs: machine is already sold. '
+                           'Use a manual COGS adjustment entry instead.',
+            }
+
         parsed_date = _safe_date(cost_date) or date.today()
         cost_id = _uuid()
+        credit_account = _resolve_payment_account(payment_method)
 
-        # Ledger entry: DR Import Costs, CR Cash
+        # Resolve the inventory account from chart of accounts (not hardcoded)
+        inventory_account = '1200'
+        acct_check = app_tables.chart_of_accounts.get(code=inventory_account)
+        if not acct_check or not acct_check.get('is_active', True):
+            return {'success': False, 'message': f'Inventory account {inventory_account} not found or inactive'}
+
+        # Ledger entry: DR Inventory (landed cost), CR Cash/Bank
         entries = [
-            {'account_code': '5100', 'debit': amount, 'credit': 0},
-            {'account_code': '1000', 'debit': 0, 'credit': amount},
+            {'account_code': inventory_account, 'debit': amount, 'credit': 0},
+            {'account_code': credit_account, 'debit': 0, 'credit': amount},
         ]
         je_result = post_journal_entry(
             parsed_date, entries,
-            f"Import cost ({cost_type}): {description}",
-            'expense', cost_id, user_email,
+            f"Import cost ({cost_type}) for {contract_number or purchase_invoice_id}: {description}",
+            'import_cost', cost_id, user_email,
         )
         if not je_result.get('success'):
             return je_result
@@ -822,12 +1092,16 @@ def add_import_cost(purchase_invoice_id, cost_type, amount, description='', cost
             date=parsed_date,
             created_by=user_email,
             created_at=get_utc_now(),
+            contract_number=_safe_str(contract_number) or None,
+            payment_account=credit_account,
         )
 
-        # Update linked inventory items
+        # Update linked inventory items — recalculate landed cost
         _update_inventory_import_totals(purchase_invoice_id)
 
-        logger.info("Import cost %s (%.2f) added to %s by %s", cost_type, amount, purchase_invoice_id, user_email)
+        logger.info("Import cost %s (%.2f) added to %s by %s [DR %s, CR %s]",
+                     cost_type, amount, purchase_invoice_id, user_email,
+                     inventory_account, credit_account)
         return {'success': True, 'id': cost_id, 'transaction_id': je_result['transaction_id']}
     except Exception as e:
         logger.exception("add_import_cost error")
@@ -958,8 +1232,8 @@ def add_expense(data, token_or_email=None):
     parsed_date = _safe_date(data.get('date')) or date.today()
     expense_id = _uuid()
 
-    # Determine credit account
-    credit_account = '1010' if payment_method == 'bank' else '1000'
+    # Determine credit account — supports multiple banks
+    credit_account = _resolve_payment_account(payment_method)
 
     entries = [
         {'account_code': account_code, 'debit': amount, 'credit': 0},
@@ -1004,6 +1278,131 @@ INVENTORY_COLS = [
     'purchase_cost', 'import_costs_total', 'total_cost', 'selling_price',
     'status', 'location', 'notes', 'created_at', 'updated_at',
 ]
+
+
+@anvil.server.callable
+def receive_inventory(item_id, location='', token_or_email=None):
+    """
+    Mark an inventory item as received (in_transit → in_stock).
+    No P&L impact — this is just a status change.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'edit')
+    if not is_valid:
+        return error
+    try:
+        row = app_tables.inventory.get(id=item_id)
+        if not row:
+            return {'success': False, 'message': 'Inventory item not found'}
+        current_status = row.get('status', '')
+        if current_status not in ('in_transit', 'reserved'):
+            return {'success': False, 'message': f"Cannot receive item with status '{current_status}'. Must be 'in_transit'."}
+        updates = {'status': 'in_stock', 'updated_at': get_utc_now()}
+        if location:
+            updates['location'] = _safe_str(location)
+        row.update(**updates)
+        logger.info("Inventory %s received (in_stock) by %s", item_id, user_email)
+        return {'success': True, 'status': 'in_stock'}
+    except Exception as e:
+        logger.exception("receive_inventory error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_bank_accounts(token_or_email=None):
+    """Return list of cash/bank accounts for payment dropdowns."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        accounts = []
+        for r in app_tables.chart_of_accounts.search(is_active=True):
+            code = r.get('code', '')
+            # Include cash and all bank sub-accounts
+            if code == '1000' or (code.startswith('101') and len(code) == 4):
+                accounts.append({
+                    'code': code,
+                    'name_en': r.get('name_en', ''),
+                    'name_ar': r.get('name_ar', ''),
+                })
+        accounts.sort(key=lambda a: a.get('code', ''))
+        return {'success': True, 'accounts': accounts}
+    except Exception as e:
+        logger.exception("get_bank_accounts error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def migrate_import_costs_to_inventory(token_or_email=None):
+    """
+    MIGRATION: Fix previously posted import costs that debited 5100 (expense)
+    instead of 1200 (inventory).
+
+    For each import cost that was posted with DR 5100:
+    1) Post adjusting entry: DR 1200, CR 5100 (move from expense to inventory)
+    2) Update inventory item totals
+
+    This is a ONE-TIME migration. Safe to run multiple times (idempotent).
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+
+    try:
+        migrated = 0
+        skipped = 0
+        errors = []
+
+        for ic in app_tables.import_costs.search():
+            cost_id = ic.get('id')
+            amount = _round2(ic.get('amount', 0))
+            if amount <= 0:
+                skipped += 1
+                continue
+
+            # Check if this cost was posted to 5100 (old logic)
+            old_entries = list(app_tables.ledger.search(reference_id=cost_id, account_code='5100'))
+            if not old_entries:
+                skipped += 1
+                continue
+
+            # Already has a migration entry? (check for import_cost_migration type)
+            migration_entries = list(app_tables.ledger.search(
+                reference_id=f"MIG-{cost_id}", reference_type='import_cost_migration'))
+            if migration_entries:
+                skipped += 1
+                continue
+
+            # Post adjusting entry: DR 1200 Inventory, CR 5100 Import Costs
+            adj_entries = [
+                {'account_code': '1200', 'debit': amount, 'credit': 0},
+                {'account_code': '5100', 'debit': 0, 'credit': amount},
+            ]
+            adj_date = ic.get('date') or date.today()
+            adj_result = post_journal_entry(
+                adj_date, adj_entries,
+                f"Migration: reclassify import cost {cost_id} from expense to inventory",
+                'import_cost_migration', f"MIG-{cost_id}", user_email,
+            )
+            if adj_result.get('success'):
+                migrated += 1
+                # Update inventory totals
+                pi_id = ic.get('purchase_invoice_id')
+                if pi_id:
+                    _update_inventory_import_totals(pi_id)
+            else:
+                errors.append(f"{cost_id}: {adj_result.get('message', 'unknown')}")
+
+        logger.info("Import cost migration: %d migrated, %d skipped, %d errors by %s",
+                     migrated, skipped, len(errors), user_email)
+        return {
+            'success': True,
+            'migrated': migrated,
+            'skipped': skipped,
+            'errors': errors,
+        }
+    except Exception as e:
+        logger.exception("migrate_import_costs_to_inventory error")
+        return {'success': False, 'message': str(e)}
 
 
 @anvil.server.callable
@@ -1112,11 +1511,15 @@ def update_inventory_item(item_id, data, token_or_email=None):
 
 
 @anvil.server.callable
-def link_inventory_to_contract(item_id, contract_number, selling_price, token_or_email=None):
+def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
+                   token_or_email=None):
     """
-    Link an inventory item to a sales contract (mark as sold).
+    Record the sale of an inventory item (mark as sold).
+    Only items with status 'in_stock' can be sold.
+    COGS = Landed Cost (purchase_cost + import_costs_total = total_cost).
+
     Creates two journal entries:
-    1) DR COGS (5000), CR Inventory (1200) — for total_cost
+    1) DR COGS (5000), CR Inventory (1200) — for total_cost (landed cost)
     2) DR Accounts Receivable (1100), CR Sales Revenue (4000) — for selling_price
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
@@ -1126,6 +1529,8 @@ def link_inventory_to_contract(item_id, contract_number, selling_price, token_or
     selling_price = _round2(selling_price)
     if selling_price <= 0:
         return {'success': False, 'message': 'Selling price must be greater than zero'}
+    if not contract_number:
+        return {'success': False, 'message': 'Contract number is required'}
 
     try:
         row = app_tables.inventory.get(id=item_id)
@@ -1133,18 +1538,21 @@ def link_inventory_to_contract(item_id, contract_number, selling_price, token_or
             return {'success': False, 'message': 'Inventory item not found'}
         if row.get('status') == 'sold':
             return {'success': False, 'message': 'Item is already sold'}
+        if row.get('status') == 'in_transit':
+            return {'success': False, 'message': 'Item is still in transit. Receive it first before selling.'}
 
+        # Landed cost = purchase_cost + import_costs_total
         total_cost = _round2(row.get('total_cost', 0))
-        today = date.today()
+        sale_day = _safe_date(sale_date) or date.today()
 
-        # Entry 1: Record cost of goods sold
+        # Entry 1: Record cost of goods sold (COGS = Landed Cost)
         if total_cost > 0:
             cogs_entries = [
                 {'account_code': '5000', 'debit': total_cost, 'credit': 0},
                 {'account_code': '1200', 'debit': 0, 'credit': total_cost},
             ]
             cogs_result = post_journal_entry(
-                today, cogs_entries,
+                sale_day, cogs_entries,
                 f"COGS for {row.get('machine_code', item_id)} — contract {contract_number}",
                 'sales_invoice', item_id, user_email,
             )
@@ -1157,12 +1565,15 @@ def link_inventory_to_contract(item_id, contract_number, selling_price, token_or
             {'account_code': '4000', 'debit': 0, 'credit': selling_price},
         ]
         sales_result = post_journal_entry(
-            today, sales_entries,
+            sale_day, sales_entries,
             f"Sale of {row.get('machine_code', item_id)} — contract {contract_number}",
             'sales_invoice', item_id, user_email,
         )
         if not sales_result.get('success'):
             return sales_result
+
+        gross_profit = _round2(selling_price - total_cost)
+        margin = _round2((gross_profit / selling_price * 100) if selling_price else 0)
 
         row.update(
             contract_number=_safe_str(contract_number),
@@ -1170,16 +1581,27 @@ def link_inventory_to_contract(item_id, contract_number, selling_price, token_or
             status='sold',
             updated_at=get_utc_now(),
         )
-        logger.info("Inventory %s linked to contract %s (sold %.2f) by %s",
-                     item_id, contract_number, selling_price, user_email)
+        logger.info("Inventory %s sold to contract %s (revenue %.2f, COGS %.2f, profit %.2f) by %s",
+                     item_id, contract_number, selling_price, total_cost, gross_profit, user_email)
         return {
             'success': True,
-            'gross_profit': _round2(selling_price - total_cost),
-            'margin_pct': _round2(((selling_price - total_cost) / selling_price * 100) if selling_price else 0),
+            'gross_profit': gross_profit,
+            'margin_pct': margin,
+            'landed_cost': total_cost,
+            'revenue': selling_price,
         }
     except Exception as e:
-        logger.exception("link_inventory_to_contract error")
+        logger.exception("sell_inventory error")
         return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def link_inventory_to_contract(item_id, contract_number, selling_price, token_or_email=None):
+    """
+    Backward-compatible alias for sell_inventory.
+    Link an inventory item to a sales contract (mark as sold).
+    """
+    return sell_inventory(item_id, contract_number, selling_price, token_or_email=token_or_email)
 
 
 # ===========================================================================
@@ -1467,9 +1889,14 @@ def get_balance_sheet(as_of_date, token_or_email=None):
 @anvil.server.callable
 def get_contract_profitability(contract_number=None, token_or_email=None):
     """
-    Calculate profitability per contract.
-    For each contract: selling_price - total_cost (purchase + import) = gross profit.
-    If contract_number is None, returns profitability for all sold items.
+    PART 4: Detailed profitability report per contract.
+    For each contract:
+      - Purchase Cost (FOB + Cylinders)
+      - Import Expenses breakdown (shipping, customs, etc.)
+      - Total Landed Cost = Purchase Cost + Import Expenses
+      - Sale Revenue
+      - Gross Profit = Revenue - Landed Cost
+    VAT does NOT reduce profit (goes to liability account 2100).
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'read')
     if not is_valid:
@@ -1477,12 +1904,16 @@ def get_contract_profitability(contract_number=None, token_or_email=None):
     try:
         if contract_number:
             items = list(app_tables.inventory.search(contract_number=contract_number))
+            if not items:
+                # Also check unsold items that were created for this contract
+                items = list(app_tables.inventory.search(machine_code=contract_number))
         else:
             items = list(app_tables.inventory.search(status='sold'))
 
         results = []
         grand_cost = 0.0
         grand_revenue = 0.0
+        grand_import = 0.0
 
         for item in items:
             purchase_cost = _round2(item.get('purchase_cost', 0))
@@ -1492,18 +1923,43 @@ def get_contract_profitability(contract_number=None, token_or_email=None):
             gross_profit = _round2(selling_price - total_cost)
             margin = _round2((gross_profit / selling_price * 100) if selling_price else 0)
 
+            # Get detailed import cost breakdown
+            import_breakdown = []
+            pi_id = item.get('purchase_invoice_id')
+            if pi_id:
+                for ic in app_tables.import_costs.search(purchase_invoice_id=pi_id):
+                    import_breakdown.append({
+                        'type': ic.get('cost_type', ''),
+                        'description': ic.get('description', ''),
+                        'amount': _round2(ic.get('amount', 0)),
+                        'date': ic.get('date').isoformat() if ic.get('date') else '',
+                        'payment_account': ic.get('payment_account', ''),
+                    })
+
+            # Get tax info from purchase invoice
+            tax_amount = 0.0
+            if pi_id:
+                pi = app_tables.purchase_invoices.get(id=pi_id)
+                if pi:
+                    tax_amount = _round2(pi.get('tax_amount', 0))
+
             results.append({
                 'machine_code': item.get('machine_code', ''),
+                'description': item.get('description', ''),
                 'contract_number': item.get('contract_number', ''),
+                'status': item.get('status', ''),
                 'purchase_cost': purchase_cost,
                 'import_costs': import_total,
-                'total_cost': total_cost,
+                'import_breakdown': import_breakdown,
+                'tax_amount': tax_amount,
+                'total_landed_cost': total_cost,
                 'selling_price': selling_price,
                 'gross_profit': gross_profit,
                 'margin_pct': margin,
             })
             grand_cost += total_cost
             grand_revenue += selling_price
+            grand_import += import_total
 
         grand_profit = _round2(grand_revenue - grand_cost)
         grand_margin = _round2((grand_profit / grand_revenue * 100) if grand_revenue else 0)
@@ -1512,7 +1968,9 @@ def get_contract_profitability(contract_number=None, token_or_email=None):
             'success': True,
             'contracts': results,
             'summary': {
-                'total_cost': _round2(grand_cost),
+                'total_purchase_cost': _round2(grand_cost - grand_import),
+                'total_import_costs': _round2(grand_import),
+                'total_landed_cost': _round2(grand_cost),
                 'total_revenue': _round2(grand_revenue),
                 'total_profit': grand_profit,
                 'overall_margin_pct': grand_margin,
@@ -1547,7 +2005,7 @@ def delete_expense(expense_id, token_or_email=None):
 
 @anvil.server.callable
 def delete_inventory_item(item_id, token_or_email=None):
-    """Delete an inventory item (only if in_stock)."""
+    """Delete an inventory item (only if not sold)."""
     is_valid, user_email, error = _require_permission(token_or_email, 'delete')
     if not is_valid:
         return error
@@ -1562,6 +2020,52 @@ def delete_inventory_item(item_id, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("delete_inventory_item error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_landed_cost(purchase_invoice_id=None, contract_number=None, token_or_email=None):
+    """
+    Calculate landed cost for a specific purchase invoice or contract.
+    Landed Cost = FOB + Cylinders + All Import Expenses
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        # Find the purchase invoice
+        pi = None
+        if purchase_invoice_id:
+            pi = app_tables.purchase_invoices.get(id=purchase_invoice_id)
+        elif contract_number:
+            pi = app_tables.purchase_invoices.get(contract_number=contract_number)
+
+        if not pi:
+            return {'success': False, 'message': 'Purchase invoice not found'}
+
+        pi_id = pi.get('id')
+        subtotal = _round2(pi.get('subtotal', 0))
+
+        # Sum all import costs
+        import_costs = list(app_tables.import_costs.search(purchase_invoice_id=pi_id))
+        import_total = _round2(sum(_round2(ic.get('amount', 0)) for ic in import_costs))
+
+        landed_cost = _round2(subtotal + import_total)
+
+        breakdown = {
+            'purchase_cost': subtotal,
+            'import_costs': {},
+            'import_total': import_total,
+            'landed_cost': landed_cost,
+        }
+        for ic in import_costs:
+            ct = ic.get('cost_type', 'other')
+            breakdown['import_costs'].setdefault(ct, 0.0)
+            breakdown['import_costs'][ct] = _round2(breakdown['import_costs'][ct] + _round2(ic.get('amount', 0)))
+
+        return {'success': True, **breakdown}
+    except Exception as e:
+        logger.exception("get_landed_cost error")
         return {'success': False, 'message': str(e)}
 
 

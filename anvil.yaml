@@ -254,6 +254,21 @@ db_schema:
     - admin_ui: {width: 120}
       name: payment_12_value
       type: string
+    - admin_ui: {width: 120}
+      name: fob_cost
+      type: number
+    - admin_ui: {width: 120}
+      name: cylinder_cost
+      type: number
+    - admin_ui: {width: 200}
+      name: supplier_id
+      type: string
+    - admin_ui: {width: 200}
+      name: purchase_invoice_id
+      type: string
+    - admin_ui: {width: 120}
+      name: currency
+      type: string
     server: full
     title: CONTRACTS
   counters:
@@ -349,6 +364,12 @@ db_schema:
     - admin_ui: {width: 200}
       name: created_at
       type: datetime
+    - admin_ui: {width: 200}
+      name: contract_number
+      type: string
+    - admin_ui: {width: 120}
+      name: payment_account
+      type: string
     server: full
     title: IMPORT_COSTS
   inventory:

@@ -643,7 +643,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
             'num_payments': len(self.payment_data),
             'payments': self.payment_data,
             'delivery_date': delivery_date,
-            'language': self.current_lang
+            'language': self.current_lang,
+            # NOTE: FOB cost, cylinder cost, supplier_id are NOT stored here.
+            # Procurement is handled separately via create_contract_purchase()
+            # from the Accounting/Purchase module — not from the contract form.
         }
         
         try:

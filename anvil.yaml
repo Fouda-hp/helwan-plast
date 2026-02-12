@@ -545,6 +545,26 @@ db_schema:
       type: string
     server: full
     title: MACHINE_SPECS
+  opening_balances:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: name
+      type: string
+    - admin_ui: {width: 120}
+      name: type
+      type: string
+    - admin_ui: {width: 150}
+      name: opening_balance
+      type: number
+    - admin_ui: {width: 200}
+      name: updated_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: updated_by
+      type: string
+    server: full
+    title: OPENING_BALANCES
   notifications:
     client: none
     columns:

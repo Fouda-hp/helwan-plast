@@ -64,7 +64,14 @@ class AccountantForm(AccountantFormTemplate):
         anvil.js.window.pyOpenSuppliers = self.open_suppliers
         anvil.js.window.pyOpenInventory = self.open_inventory
         anvil.js.window.pyOpenPurchaseInvoices = self.open_purchase_invoices
+        anvil.js.window.pyOpenCustomerSummary = self.open_customer_summary
+        anvil.js.window.pyOpenSupplierSummary = self.open_supplier_summary
         anvil.js.window.pyGoBack = self.go_back
+
+        # JS Bridges - Treasury & Opening Balances
+        anvil.js.window.pyGetTreasurySummary = self.get_treasury_summary
+        anvil.js.window.pyGetOpeningBalances = self.get_opening_balances
+        anvil.js.window.pySetOpeningBalance = self.set_opening_balance
 
         register_notif_bridges()
 
@@ -138,6 +145,16 @@ class AccountantForm(AccountantFormTemplate):
     def delete_exchange_rate(self, currency_code):
         return anvil.server.call('delete_exchange_rate', currency_code, self._auth())
 
+    # --- Treasury & Opening Balances ---
+    def get_treasury_summary(self):
+        return anvil.server.call('get_treasury_summary', self._auth())
+
+    def get_opening_balances(self, entity_type=''):
+        return anvil.server.call('get_opening_balances', entity_type, self._auth())
+
+    def set_opening_balance(self, name, entity_type, amount):
+        return anvil.server.call('set_opening_balance', name, entity_type, amount, self._auth())
+
     # --- Navigation ---
     def open_suppliers(self):
         open_form('SuppliersForm')
@@ -147,6 +164,12 @@ class AccountantForm(AccountantFormTemplate):
 
     def open_purchase_invoices(self):
         open_form('PurchaseInvoicesForm')
+
+    def open_customer_summary(self):
+        open_form('CustomerSummaryForm')
+
+    def open_supplier_summary(self):
+        open_form('SupplierSummaryForm')
 
     def go_back(self):
         open_form('AdminPanel')

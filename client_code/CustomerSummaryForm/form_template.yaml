@@ -1,0 +1,309 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+        body { background: #f0f2f5; }
+        .cs-wrapper { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .cs-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .cs-header h1 { font-size: 24px; color: #1a1a2e; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn-back { background: #f0f2f5; color: #333; border: 1px solid #ddd; }
+        .btn-collect { background: linear-gradient(135deg, #4caf50, #43a047); color: #fff; padding: 6px 14px; font-size: 12px; border-radius: 6px; }
+        .btn-save { background: #4caf50; color: #fff; }
+        .btn-cancel { background: #9e9e9e; color: #fff; }
+
+        /* Summary Cards */
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .summary-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); text-align: center; }
+        .summary-card .sc-label { font-size: 13px; color: #666; margin-bottom: 6px; }
+        .summary-card .sc-value { font-size: 24px; font-weight: 700; }
+        .sc-sales { color: #2196f3; }
+        .sc-collections { color: #4caf50; }
+        .sc-balance { color: #f44336; }
+        .sc-opening { color: #ff9800; }
+
+        /* Table */
+        .table-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 12px 10px; text-align: left; position: sticky; top: 0; z-index: 2; white-space: nowrap; }
+        tbody td { padding: 10px; border-bottom: 1px solid #f0f0f0; }
+        tbody tr:hover { background: #f8f9ff; }
+        .empty-msg { text-align: center; padding: 40px; color: #999; }
+        .amount-positive { color: #f44336; font-weight: 600; }
+        .amount-zero { color: #4caf50; font-weight: 600; }
+        .num-cell { text-align: right; font-family: 'Courier New', monospace; font-size: 13px; }
+
+        /* Modal */
+        .hp-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; }
+        .hp-modal-overlay.show { display: flex !important; }
+        .hp-modal { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); margin: auto; }
+        .hp-modal h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 20px; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 13px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; }
+        .hp-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .balance-info { background: #e3f2fd; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+        .balance-info strong { color: #1565c0; }
+
+        @media (max-width: 768px) {
+          .cs-header { flex-direction: column; align-items: flex-start; }
+          .summary-cards { grid-template-columns: repeat(2, 1fr); }
+        }
+      </style>
+
+      <div class="cs-wrapper">
+        <div class="cs-header">
+          <h1 id="pageTitle">Customer Accounts</h1>
+          <button class="btn btn-back" onclick="goBack()" id="btnBack">Back</button>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+          <div class="summary-card">
+            <div class="sc-label" id="lblTotalSales">Total Sales</div>
+            <div class="sc-value sc-sales" id="valTotalSales">0.00</div>
+          </div>
+          <div class="summary-card">
+            <div class="sc-label" id="lblTotalCollections">Total Collections</div>
+            <div class="sc-value sc-collections" id="valTotalCollections">0.00</div>
+          </div>
+          <div class="summary-card">
+            <div class="sc-label" id="lblTotalBalance">Total Outstanding</div>
+            <div class="sc-value sc-balance" id="valTotalBalance">0.00</div>
+          </div>
+          <div class="summary-card">
+            <div class="sc-label" id="lblTotalOpening">Opening Balances</div>
+            <div class="sc-value sc-opening" id="valTotalOpening">0.00</div>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th id="thName">Customer Name</th>
+                  <th id="thContracts">Contracts</th>
+                  <th id="thOpening">Opening Balance</th>
+                  <th id="thSales">Total Sales</th>
+                  <th id="thCollections">Total Collections</th>
+                  <th id="thBalance">Current Balance</th>
+                  <th id="thActions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="customersBody">
+                <tr><td colspan="7" class="empty-msg">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collection Modal -->
+      <div class="hp-modal-overlay" id="collectModal">
+        <div class="hp-modal">
+          <h2 id="modalTitle">Record Collection</h2>
+          <div class="balance-info" id="balanceInfo"></div>
+          <input type="hidden" id="collectContract" value="">
+          <input type="hidden" id="collectClient" value="">
+          <div class="form-group">
+            <label id="lblAmount">Amount *</label>
+            <input type="number" id="fAmount" step="0.01" min="0.01" required>
+          </div>
+          <div class="form-group">
+            <label id="lblMethod">Payment Method *</label>
+            <select id="fMethod">
+              <option value="cash">Cash - 1000</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label id="lblDate">Date</label>
+            <input type="date" id="fDate">
+          </div>
+          <div class="form-group">
+            <label id="lblNotes">Notes</label>
+            <textarea id="fNotes" rows="2"></textarea>
+          </div>
+          <div class="hp-modal-actions">
+            <button class="btn btn-cancel" onclick="closeModal()" id="btnCancel">Cancel</button>
+            <button class="btn btn-save" onclick="saveCollection()" id="btnSave">Collect</button>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        (function() {
+          var lang = localStorage.getItem('hp_language') || 'en';
+          var isAr = lang === 'ar';
+          var allData = [];
+          var bankAccounts = [];
+
+          function t(en, ar) { return isAr ? ar : en; }
+          function fmt(n) { return Number(n || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+
+          function applyI18n() {
+            document.getElementById('pageTitle').textContent = t('Customer Accounts', '\u062d\u0633\u0627\u0628\u0627\u062a \u0627\u0644\u0639\u0645\u0644\u0627\u0621');
+            document.getElementById('btnBack').textContent = t('Back', '\u0631\u062c\u0648\u0639');
+            document.getElementById('lblTotalSales').textContent = t('Total Sales', '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0628\u064a\u0639\u0627\u062a');
+            document.getElementById('lblTotalCollections').textContent = t('Total Collections', '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062a\u062d\u0635\u064a\u0644\u0627\u062a');
+            document.getElementById('lblTotalBalance').textContent = t('Total Outstanding', '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u062a\u0628\u0642\u064a');
+            document.getElementById('lblTotalOpening').textContent = t('Opening Balances', '\u0623\u0631\u0635\u062f\u0629 \u0623\u0648\u0644 \u0627\u0644\u0645\u062f\u0629');
+            document.getElementById('thName').textContent = t('Customer Name', '\u0627\u0633\u0645 \u0627\u0644\u0639\u0645\u064a\u0644');
+            document.getElementById('thContracts').textContent = t('Contracts', '\u0627\u0644\u0639\u0642\u0648\u062f');
+            document.getElementById('thOpening').textContent = t('Opening Balance', '\u0631\u0635\u064a\u062f \u0623\u0648\u0644 \u0627\u0644\u0645\u062f\u0629');
+            document.getElementById('thSales').textContent = t('Total Sales', '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0628\u064a\u0639\u0627\u062a');
+            document.getElementById('thCollections').textContent = t('Total Collections', '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062a\u062d\u0635\u064a\u0644\u0627\u062a');
+            document.getElementById('thBalance').textContent = t('Current Balance', '\u0627\u0644\u0631\u0635\u064a\u062f \u0627\u0644\u062d\u0627\u0644\u064a');
+            document.getElementById('thActions').textContent = t('Actions', '\u0625\u062c\u0631\u0627\u0621\u0627\u062a');
+            document.getElementById('modalTitle').textContent = t('Record Collection', '\u062a\u0633\u062c\u064a\u0644 \u062a\u062d\u0635\u064a\u0644');
+            document.getElementById('lblAmount').textContent = t('Amount *', '* \u0627\u0644\u0645\u0628\u0644\u063a');
+            document.getElementById('lblMethod').textContent = t('Payment Method *', '* \u0637\u0631\u064a\u0642\u0629 \u0627\u0644\u062f\u0641\u0639');
+            document.getElementById('lblDate').textContent = t('Date', '\u0627\u0644\u062a\u0627\u0631\u064a\u062e');
+            document.getElementById('lblNotes').textContent = t('Notes', '\u0645\u0644\u0627\u062d\u0638\u0627\u062a');
+            document.getElementById('btnCancel').textContent = t('Cancel', '\u0625\u0644\u063a\u0627\u0621');
+            document.getElementById('btnSave').textContent = t('Collect', '\u062a\u062d\u0635\u064a\u0644');
+            if (isAr) document.querySelector('.cs-wrapper').style.direction = 'rtl';
+          }
+
+          async function loadBankAccounts() {
+            try {
+              var res = await window.pyGetBankAccounts();
+              if (res && res.success && res.accounts) {
+                bankAccounts = res.accounts;
+                var sel = document.getElementById('fMethod');
+                sel.innerHTML = '';
+                bankAccounts.forEach(function(a) {
+                  var label = isAr ? (a.name_ar || a.name_en) : (a.name_en || a.name_ar);
+                  var opt = document.createElement('option');
+                  opt.value = a.code;
+                  opt.textContent = label + ' - ' + a.code;
+                  sel.appendChild(opt);
+                });
+              }
+            } catch (err) {
+              console.error('loadBankAccounts error:', err);
+            }
+          }
+
+          async function loadData() {
+            var tbody = document.getElementById('customersBody');
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + t('Loading...', '\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u062d\u0645\u064a\u0644...') + '</td></tr>';
+            try {
+              var res = await window.pyGetCustomerSummary();
+              if (res && res.success) {
+                allData = res.data || [];
+                renderTable(allData);
+                // Update summary cards
+                var totals = res.totals || {};
+                document.getElementById('valTotalSales').textContent = fmt(totals.sales);
+                document.getElementById('valTotalCollections').textContent = fmt(totals.collections);
+                document.getElementById('valTotalBalance').textContent = fmt(totals.balance);
+                document.getElementById('valTotalOpening').textContent = fmt(totals.opening);
+              } else {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + (res ? res.message : t('Error', '\u062e\u0637\u0623')) + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + t('Error: ', '\u062e\u0637\u0623: ') + err + '</td></tr>';
+            }
+          }
+
+          function renderTable(data) {
+            var tbody = document.getElementById('customersBody');
+            if (!data || data.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + t('No customers found', '\u0644\u0627 \u064a\u0648\u062c\u062f \u0639\u0645\u0644\u0627\u0621') + '</td></tr>';
+              return;
+            }
+            var html = '';
+            data.forEach(function(c) {
+              var balClass = c.current_balance > 0.005 ? 'amount-positive' : 'amount-zero';
+              var contracts = (c.contracts || []).join(', ');
+              html += '<tr>';
+              html += '<td><strong>' + (c.client_name || '') + '</strong></td>';
+              html += '<td style="font-size:12px;">' + contracts + ' <span style="color:#999;">(' + c.contract_count + ')</span></td>';
+              html += '<td class="num-cell">' + fmt(c.opening_balance) + '</td>';
+              html += '<td class="num-cell">' + fmt(c.total_sales) + '</td>';
+              html += '<td class="num-cell">' + fmt(c.total_collections) + '</td>';
+              html += '<td class="num-cell ' + balClass + '">' + fmt(c.current_balance) + '</td>';
+              html += '<td>';
+              if (c.current_balance > 0.005) {
+                // Show collect button for each contract with balance
+                (c.contracts || []).forEach(function(cn) {
+                  html += '<button class="btn btn-collect" onclick="openCollect(\'' + cn + '\', \'' + (c.client_name || '').replace(/'/g, "\\'") + '\', ' + c.current_balance + ')">' + t('Collect', '\u062a\u062d\u0635\u064a\u0644') + '</button> ';
+                });
+              } else {
+                html += '<span style="color:#4caf50;font-size:12px;">' + t('Paid', '\u0645\u062f\u0641\u0648\u0639') + '</span>';
+              }
+              html += '</td></tr>';
+            });
+            tbody.innerHTML = html;
+          }
+
+          window.openCollect = function(contractNumber, clientName, balance) {
+            document.getElementById('collectContract').value = contractNumber;
+            document.getElementById('collectClient').value = clientName;
+            document.getElementById('balanceInfo').innerHTML =
+              '<strong>' + clientName + '</strong> \u2014 ' + t('Contract', '\u0639\u0642\u062f') + ': ' + contractNumber +
+              '<br>' + t('Outstanding Balance', '\u0627\u0644\u0631\u0635\u064a\u062f \u0627\u0644\u0645\u062a\u0628\u0642\u064a') + ': <strong>' + fmt(balance) + '</strong>';
+            document.getElementById('fAmount').value = '';
+            document.getElementById('fAmount').max = balance;
+            document.getElementById('fDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('fNotes').value = '';
+            document.getElementById('collectModal').classList.add('show');
+          };
+
+          window.closeModal = function() {
+            document.getElementById('collectModal').classList.remove('show');
+          };
+
+          window.saveCollection = async function() {
+            var contract = document.getElementById('collectContract').value;
+            var amount = parseFloat(document.getElementById('fAmount').value);
+            var method = document.getElementById('fMethod').value;
+            var dateVal = document.getElementById('fDate').value;
+            var notes = document.getElementById('fNotes').value.trim();
+
+            if (!amount || amount <= 0) {
+              if (window.showNotification) window.showNotification('error', '', t('Enter a valid amount', '\u0623\u062f\u062e\u0644 \u0645\u0628\u0644\u063a \u0635\u062d\u064a\u062d'));
+              return;
+            }
+
+            try {
+              var res = await window.pyRecordCollection(contract, amount, method, dateVal, notes);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '',
+                  t('Collection recorded successfully', '\u062a\u0645 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062a\u062d\u0635\u064a\u0644 \u0628\u0646\u062c\u0627\u062d') +
+                  ' \u2014 ' + t('New balance', '\u0627\u0644\u0631\u0635\u064a\u062f \u0627\u0644\u062c\u062f\u064a\u062f') + ': ' + fmt(res.new_balance));
+                closeModal();
+                loadData();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : t('Error', '\u062e\u0637\u0623'));
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.goBack = function() {
+            if (window.pyGoBack) window.pyGoBack();
+          };
+
+          function waitForBridge() {
+            if (window.pyGetCustomerSummary) {
+              applyI18n();
+              loadBankAccounts();
+              loadData();
+            } else {
+              setTimeout(waitForBridge, 200);
+            }
+          }
+          setTimeout(waitForBridge, 300);
+        })();
+      </script>
+  type: HtmlTemplate
+is_package: true

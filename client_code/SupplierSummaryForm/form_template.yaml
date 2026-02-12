@@ -1,0 +1,173 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+        body { background: #f0f2f5; }
+        .ss-wrapper { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .ss-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .ss-header h1 { font-size: 24px; color: #1a1a2e; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn-back { background: #f0f2f5; color: #333; border: 1px solid #ddd; }
+
+        /* Summary Cards */
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .summary-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); text-align: center; }
+        .summary-card .sc-label { font-size: 13px; color: #666; margin-bottom: 6px; }
+        .summary-card .sc-value { font-size: 24px; font-weight: 700; }
+        .sc-purchases { color: #2196f3; }
+        .sc-payments { color: #4caf50; }
+        .sc-balance { color: #f44336; }
+        .sc-opening { color: #ff9800; }
+
+        /* Table */
+        .table-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 12px 10px; text-align: left; position: sticky; top: 0; z-index: 2; white-space: nowrap; }
+        tbody td { padding: 10px; border-bottom: 1px solid #f0f0f0; }
+        tbody tr:hover { background: #f8f9ff; }
+        .empty-msg { text-align: center; padding: 40px; color: #999; }
+        .amount-positive { color: #f44336; font-weight: 600; }
+        .amount-zero { color: #4caf50; font-weight: 600; }
+        .num-cell { text-align: right; font-family: 'Courier New', monospace; font-size: 13px; }
+
+        @media (max-width: 768px) {
+          .ss-header { flex-direction: column; align-items: flex-start; }
+          .summary-cards { grid-template-columns: repeat(2, 1fr); }
+        }
+      </style>
+
+      <div class="ss-wrapper">
+        <div class="ss-header">
+          <h1 id="pageTitle">Supplier Accounts</h1>
+          <button class="btn btn-back" onclick="goBack()" id="btnBack">Back</button>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+          <div class="summary-card">
+            <div class="sc-label" id="lblTotalPurchases">Total Purchases</div>
+            <div class="sc-value sc-purchases" id="valTotalPurchases">0.00</div>
+          </div>
+          <div class="summary-card">
+            <div class="sc-label" id="lblTotalPayments">Total Payments</div>
+            <div class="sc-value sc-payments" id="valTotalPayments">0.00</div>
+          </div>
+          <div class="summary-card">
+            <div class="sc-label" id="lblTotalBalance">Total Outstanding</div>
+            <div class="sc-value sc-balance" id="valTotalBalance">0.00</div>
+          </div>
+          <div class="summary-card">
+            <div class="sc-label" id="lblTotalOpening">Opening Balances</div>
+            <div class="sc-value sc-opening" id="valTotalOpening">0.00</div>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th id="thName">Supplier Name</th>
+                  <th id="thInvoices">Invoices</th>
+                  <th id="thOpening">Opening Balance</th>
+                  <th id="thPurchases">Total Purchases</th>
+                  <th id="thPayments">Total Payments</th>
+                  <th id="thBalance">Current Balance</th>
+                </tr>
+              </thead>
+              <tbody id="suppliersBody">
+                <tr><td colspan="6" class="empty-msg">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        (function() {
+          var lang = localStorage.getItem('hp_language') || 'en';
+          var isAr = lang === 'ar';
+
+          function t(en, ar) { return isAr ? ar : en; }
+          function fmt(n) { return Number(n || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+
+          function applyI18n() {
+            document.getElementById('pageTitle').textContent = t('Supplier Accounts', '\u062d\u0633\u0627\u0628\u0627\u062a \u0627\u0644\u0645\u0648\u0631\u062f\u064a\u0646');
+            document.getElementById('btnBack').textContent = t('Back', '\u0631\u062c\u0648\u0639');
+            document.getElementById('lblTotalPurchases').textContent = t('Total Purchases', '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0634\u062a\u0631\u064a\u0627\u062a');
+            document.getElementById('lblTotalPayments').textContent = t('Total Payments', '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u062f\u0641\u0648\u0639\u0627\u062a');
+            document.getElementById('lblTotalBalance').textContent = t('Total Outstanding', '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u062a\u0628\u0642\u064a');
+            document.getElementById('lblTotalOpening').textContent = t('Opening Balances', '\u0623\u0631\u0635\u062f\u0629 \u0623\u0648\u0644 \u0627\u0644\u0645\u062f\u0629');
+            document.getElementById('thName').textContent = t('Supplier Name', '\u0627\u0633\u0645 \u0627\u0644\u0645\u0648\u0631\u062f');
+            document.getElementById('thInvoices').textContent = t('Invoices', '\u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631');
+            document.getElementById('thOpening').textContent = t('Opening Balance', '\u0631\u0635\u064a\u062f \u0623\u0648\u0644 \u0627\u0644\u0645\u062f\u0629');
+            document.getElementById('thPurchases').textContent = t('Total Purchases', '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0634\u062a\u0631\u064a\u0627\u062a');
+            document.getElementById('thPayments').textContent = t('Total Payments', '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u062f\u0641\u0648\u0639\u0627\u062a');
+            document.getElementById('thBalance').textContent = t('Current Balance', '\u0627\u0644\u0631\u0635\u064a\u062f \u0627\u0644\u062d\u0627\u0644\u064a');
+            if (isAr) document.querySelector('.ss-wrapper').style.direction = 'rtl';
+          }
+
+          async function loadData() {
+            var tbody = document.getElementById('suppliersBody');
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + t('Loading...', '\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u062d\u0645\u064a\u0644...') + '</td></tr>';
+            try {
+              var res = await window.pyGetSupplierSummary();
+              if (res && res.success) {
+                var data = res.data || [];
+                renderTable(data);
+                var totals = res.totals || {};
+                document.getElementById('valTotalPurchases').textContent = fmt(totals.purchases);
+                document.getElementById('valTotalPayments').textContent = fmt(totals.payments);
+                document.getElementById('valTotalBalance').textContent = fmt(totals.balance);
+                document.getElementById('valTotalOpening').textContent = fmt(totals.opening);
+              } else {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + (res ? res.message : t('Error', '\u062e\u0637\u0623')) + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + t('Error: ', '\u062e\u0637\u0623: ') + err + '</td></tr>';
+            }
+          }
+
+          function renderTable(data) {
+            var tbody = document.getElementById('suppliersBody');
+            if (!data || data.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + t('No suppliers found', '\u0644\u0627 \u064a\u0648\u062c\u062f \u0645\u0648\u0631\u062f\u064a\u0646') + '</td></tr>';
+              return;
+            }
+            var html = '';
+            data.forEach(function(s) {
+              var balClass = s.current_balance > 0.005 ? 'amount-positive' : 'amount-zero';
+              html += '<tr>';
+              html += '<td><strong>' + (s.supplier_name || '') + '</strong></td>';
+              html += '<td class="num-cell">' + (s.invoice_count || 0) + '</td>';
+              html += '<td class="num-cell">' + fmt(s.opening_balance) + '</td>';
+              html += '<td class="num-cell">' + fmt(s.total_purchases) + '</td>';
+              html += '<td class="num-cell">' + fmt(s.total_payments) + '</td>';
+              html += '<td class="num-cell ' + balClass + '">' + fmt(s.current_balance) + '</td>';
+              html += '</tr>';
+            });
+            tbody.innerHTML = html;
+          }
+
+          window.goBack = function() {
+            if (window.pyGoBack) window.pyGoBack();
+          };
+
+          function waitForBridge() {
+            if (window.pyGetSupplierSummary) {
+              applyI18n();
+              loadData();
+            } else {
+              setTimeout(waitForBridge, 200);
+            }
+          }
+          setTimeout(waitForBridge, 300);
+        })();
+      </script>
+  type: HtmlTemplate
+is_package: true

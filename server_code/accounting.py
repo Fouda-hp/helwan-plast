@@ -287,7 +287,8 @@ def post_journal_entry(entry_date, entries, description, ref_type, ref_id, user_
     description : str
         Narrative for the transaction.
     ref_type : str
-        One of: sales_invoice, purchase_invoice, expense, payment, journal.
+        One of: sales_invoice, purchase_invoice, expense, payment, journal,
+        import_cost, import_cost_migration, customer_collection.
     ref_id : str
         The ID of the source document.
     user_email : str
@@ -3146,4 +3147,503 @@ def get_supplier_statement_pdf_data(supplier_id, date_from=None, date_to=None, t
         return {'success': True, 'data': data}
     except Exception as e:
         logger.exception("get_supplier_statement_pdf_data error")
+        return {'success': False, 'message': str(e)}
+
+
+# ===========================================================================
+# 12. CUSTOMER COLLECTIONS (تحصيل العملاء)
+# ===========================================================================
+
+def _get_customer_ar_balance(contract_number):
+    """
+    Calculate Accounts Receivable balance for a customer (contract) from the ledger ONLY.
+    AR Balance = total debit (sales) - total credit (collections) for account 1100.
+
+    Sales: ref_type='sales_invoice', ref_id = inventory item IDs linked to this contract.
+    Collections: ref_type='customer_collection', ref_id = contract_number.
+    """
+    # 1. Find all inventory items linked to this contract
+    item_ids = []
+    try:
+        for item in app_tables.inventory.search(contract_number=contract_number):
+            item_ids.append(item.get('id'))
+    except Exception:
+        pass
+
+    # 2. Sum debits for account 1100 where ref_type='sales_invoice' and ref_id in item_ids
+    total_sales = 0.0
+    if item_ids:
+        for entry in app_tables.ledger.search(account_code='1100', reference_type='sales_invoice'):
+            if entry.get('reference_id') in item_ids:
+                total_sales += float(entry.get('debit', 0) or 0)
+
+    # 3. Sum credits for account 1100 where ref_type='customer_collection' and ref_id=contract_number
+    total_collections = 0.0
+    for entry in app_tables.ledger.search(account_code='1100', reference_type='customer_collection'):
+        if entry.get('reference_id') == contract_number:
+            total_collections += float(entry.get('credit', 0) or 0)
+
+    return _round2(total_sales - total_collections)
+
+
+@anvil.server.callable
+def record_customer_collection(contract_number, amount, payment_method,
+                                collection_date=None, notes='', token_or_email=None):
+    """
+    Record cash collection from a customer.
+    DR Cash/Bank (1000/101x)   — money in
+    CR Accounts Receivable (1100) — reduce customer debt
+
+    Uses contract_number as the link to the customer.
+    Prevents over-collection (amount > outstanding AR balance).
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+
+    amount = _round2(amount)
+    if amount <= 0:
+        return {'success': False, 'message': 'Collection amount must be greater than zero'}
+    if not contract_number:
+        return {'success': False, 'message': 'Contract number is required'}
+
+    try:
+        # Verify contract exists
+        contract = app_tables.contracts.get(contract_number=contract_number)
+        if not contract:
+            return {'success': False, 'message': f'Contract {contract_number} not found'}
+
+        # Calculate outstanding AR balance
+        ar_balance = _get_customer_ar_balance(contract_number)
+        if amount > ar_balance + 0.005:
+            return {
+                'success': False,
+                'message': f'Collection of {amount:.2f} exceeds outstanding balance of {ar_balance:.2f}'
+            }
+
+        # Resolve payment account
+        cash_account = _resolve_payment_account(payment_method)
+        parsed_date = _safe_date(collection_date) or date.today()
+        client_name = contract.get('client_name', contract_number)
+
+        # Journal Entry: DR Cash/Bank, CR Accounts Receivable
+        entries = [
+            {'account_code': cash_account, 'debit': amount, 'credit': 0},
+            {'account_code': '1100', 'debit': 0, 'credit': amount},
+        ]
+        description = f"Customer collection from {client_name} — contract {contract_number}"
+        if notes:
+            description += f" ({notes})"
+
+        result = post_journal_entry(
+            parsed_date, entries, description,
+            'customer_collection', contract_number, user_email,
+        )
+        if not result.get('success'):
+            return result
+
+        # Audit log
+        try:
+            AuthManager.log_audit(
+                user_email, 'customer_collection',
+                'ledger', result.get('transaction_id', ''),
+                None, {'contract': contract_number, 'amount': amount, 'method': payment_method}
+            )
+        except Exception:
+            pass
+
+        new_balance = _round2(ar_balance - amount)
+        logger.info("Customer collection %.2f for contract %s (%s) by %s",
+                     amount, contract_number, payment_method, user_email)
+        return {
+            'success': True,
+            'transaction_id': result.get('transaction_id'),
+            'new_balance': new_balance,
+            'client_name': client_name,
+        }
+    except Exception as e:
+        logger.exception("record_customer_collection error")
+        return {'success': False, 'message': str(e)}
+
+
+# ===========================================================================
+# 13. CUSTOMER / SUPPLIER / TREASURY SUMMARIES
+# ===========================================================================
+
+@anvil.server.callable
+def get_customer_summary(token_or_email=None):
+    """
+    Get summary of all customers (grouped by client_name from contracts).
+    For each customer:
+      - opening_balance (from opening_balances table)
+      - total_sales (DR on account 1100, ref_type='sales_invoice')
+      - total_collections (CR on account 1100, ref_type='customer_collection')
+      - current_balance = opening_balance + total_sales - total_collections
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+
+    try:
+        # 1. Build map: client_name -> [contract_numbers]
+        client_contracts = {}
+        for c in app_tables.contracts.search():
+            cname = c.get('client_name', '').strip()
+            cnum = c.get('contract_number', '')
+            if not cname or not cnum:
+                continue
+            if cname not in client_contracts:
+                client_contracts[cname] = []
+            client_contracts[cname].append(cnum)
+
+        # 2. Build map: contract_number -> [inventory item_ids]
+        contract_items = {}
+        for item in app_tables.inventory.search():
+            cn = item.get('contract_number', '')
+            if cn:
+                if cn not in contract_items:
+                    contract_items[cn] = []
+                contract_items[cn].append(item.get('id'))
+
+        # 3. Load all AR ledger entries (account 1100) at once for efficiency
+        ar_sales = {}      # item_id -> debit total (sales)
+        ar_collections = {} # contract_number -> credit total (collections)
+
+        for entry in app_tables.ledger.search(account_code='1100'):
+            ref_type = entry.get('reference_type', '')
+            ref_id = entry.get('reference_id', '')
+            if ref_type == 'sales_invoice':
+                ar_sales[ref_id] = ar_sales.get(ref_id, 0) + float(entry.get('debit', 0) or 0)
+            elif ref_type == 'customer_collection':
+                ar_collections[ref_id] = ar_collections.get(ref_id, 0) + float(entry.get('credit', 0) or 0)
+
+        # 4. Load opening balances
+        opening_map = {}
+        try:
+            for ob in app_tables.opening_balances.search(type='customer'):
+                opening_map[ob.get('name', '')] = float(ob.get('opening_balance', 0) or 0)
+        except Exception:
+            pass  # Table may not exist yet
+
+        # 5. Build summary per customer
+        result = []
+        grand_sales = 0
+        grand_collections = 0
+        grand_opening = 0
+
+        for client_name, contracts_list in sorted(client_contracts.items()):
+            opening = opening_map.get(client_name, 0)
+
+            # Total sales: sum debits for all inventory items across all contracts
+            total_sales = 0
+            for cn in contracts_list:
+                for item_id in contract_items.get(cn, []):
+                    total_sales += ar_sales.get(item_id, 0)
+
+            # Total collections: sum credits for all contract numbers
+            total_collections = 0
+            for cn in contracts_list:
+                total_collections += ar_collections.get(cn, 0)
+
+            current_balance = _round2(opening + total_sales - total_collections)
+
+            result.append({
+                'client_name': client_name,
+                'contracts': contracts_list,
+                'contract_count': len(contracts_list),
+                'opening_balance': _round2(opening),
+                'total_sales': _round2(total_sales),
+                'total_collections': _round2(total_collections),
+                'current_balance': current_balance,
+            })
+
+            grand_sales += total_sales
+            grand_collections += total_collections
+            grand_opening += opening
+
+        return {
+            'success': True,
+            'data': result,
+            'totals': {
+                'opening': _round2(grand_opening),
+                'sales': _round2(grand_sales),
+                'collections': _round2(grand_collections),
+                'balance': _round2(grand_opening + grand_sales - grand_collections),
+            },
+            'count': len(result),
+        }
+    except Exception as e:
+        logger.exception("get_customer_summary error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_supplier_summary(token_or_email=None):
+    """
+    Get summary of all suppliers.
+    For each supplier:
+      - opening_balance (from opening_balances table)
+      - total_purchases (CR on account 2000, ref_type='purchase_invoice')
+      - total_payments (DR on account 2000, ref_type='payment')
+      - current_balance = opening_balance + total_purchases - total_payments
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+
+    try:
+        # 1. Build map: supplier_id -> supplier_name
+        suppliers = {}
+        for s in app_tables.suppliers.search():
+            sid = s.get('id', '')
+            sname = s.get('name', '')
+            if sid and sname:
+                suppliers[sid] = sname
+
+        # 2. Build map: supplier_id -> [invoice_ids]
+        supplier_invoices = {}
+        for inv in app_tables.purchase_invoices.search():
+            sid = inv.get('supplier_id', '')
+            iid = inv.get('id', '')
+            if sid and iid:
+                if sid not in supplier_invoices:
+                    supplier_invoices[sid] = []
+                supplier_invoices[sid].append(iid)
+
+        # 3. Load all AP ledger entries (account 2000) at once
+        ap_purchases = {}   # invoice_id -> credit total
+        ap_payments = {}    # invoice_id -> debit total
+
+        for entry in app_tables.ledger.search(account_code='2000'):
+            ref_type = entry.get('reference_type', '')
+            ref_id = entry.get('reference_id', '')
+            if ref_type == 'purchase_invoice':
+                ap_purchases[ref_id] = ap_purchases.get(ref_id, 0) + float(entry.get('credit', 0) or 0)
+            elif ref_type == 'payment':
+                ap_payments[ref_id] = ap_payments.get(ref_id, 0) + float(entry.get('debit', 0) or 0)
+
+        # 4. Load opening balances
+        opening_map = {}
+        try:
+            for ob in app_tables.opening_balances.search(type='supplier'):
+                opening_map[ob.get('name', '')] = float(ob.get('opening_balance', 0) or 0)
+        except Exception:
+            pass
+
+        # 5. Build summary per supplier
+        result = []
+        grand_purchases = 0
+        grand_payments = 0
+        grand_opening = 0
+
+        for sid, sname in sorted(suppliers.items(), key=lambda x: x[1]):
+            opening = opening_map.get(sname, 0)
+            invoice_ids = supplier_invoices.get(sid, [])
+
+            total_purchases = 0
+            total_payments = 0
+            for iid in invoice_ids:
+                total_purchases += ap_purchases.get(iid, 0)
+                total_payments += ap_payments.get(iid, 0)
+
+            current_balance = _round2(opening + total_purchases - total_payments)
+
+            result.append({
+                'supplier_id': sid,
+                'supplier_name': sname,
+                'invoice_count': len(invoice_ids),
+                'opening_balance': _round2(opening),
+                'total_purchases': _round2(total_purchases),
+                'total_payments': _round2(total_payments),
+                'current_balance': current_balance,
+            })
+
+            grand_purchases += total_purchases
+            grand_payments += total_payments
+            grand_opening += opening
+
+        return {
+            'success': True,
+            'data': result,
+            'totals': {
+                'opening': _round2(grand_opening),
+                'purchases': _round2(grand_purchases),
+                'payments': _round2(grand_payments),
+                'balance': _round2(grand_opening + grand_purchases - grand_payments),
+            },
+            'count': len(result),
+        }
+    except Exception as e:
+        logger.exception("get_supplier_summary error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_treasury_summary(token_or_email=None):
+    """
+    Get treasury/bank account balances from the ledger.
+    For each cash/bank account (1000, 1010-1013):
+      - opening_balance (from opening_balances table, type='bank')
+      - ledger_balance = sum(debit) - sum(credit)
+      - current_balance = opening_balance + ledger_balance
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+
+    try:
+        # 1. Get all cash/bank account codes
+        bank_codes = []
+        account_names = {}
+        for acct in app_tables.chart_of_accounts.search(is_active=True):
+            code = acct.get('code', '')
+            if code == '1000' or (code.startswith('101') and len(code) == 4):
+                bank_codes.append(code)
+                account_names[code] = {
+                    'name_en': acct.get('name_en', ''),
+                    'name_ar': acct.get('name_ar', ''),
+                }
+
+        # 2. Calculate balances from ledger
+        ledger_balances = {}
+        for code in bank_codes:
+            total_debit = 0
+            total_credit = 0
+            for entry in app_tables.ledger.search(account_code=code):
+                total_debit += float(entry.get('debit', 0) or 0)
+                total_credit += float(entry.get('credit', 0) or 0)
+            ledger_balances[code] = _round2(total_debit - total_credit)
+
+        # 3. Load opening balances
+        opening_map = {}
+        try:
+            for ob in app_tables.opening_balances.search(type='bank'):
+                opening_map[ob.get('name', '')] = float(ob.get('opening_balance', 0) or 0)
+        except Exception:
+            pass
+
+        # 4. Build result
+        result = []
+        grand_total = 0
+        for code in sorted(bank_codes):
+            opening = opening_map.get(code, 0)
+            ledger_bal = ledger_balances.get(code, 0)
+            current = _round2(opening + ledger_bal)
+            result.append({
+                'account_code': code,
+                'name_en': account_names.get(code, {}).get('name_en', ''),
+                'name_ar': account_names.get(code, {}).get('name_ar', ''),
+                'opening_balance': _round2(opening),
+                'ledger_balance': ledger_bal,
+                'current_balance': current,
+            })
+            grand_total += current
+
+        return {
+            'success': True,
+            'accounts': result,
+            'grand_total': _round2(grand_total),
+        }
+    except Exception as e:
+        logger.exception("get_treasury_summary error")
+        return {'success': False, 'message': str(e)}
+
+
+# ===========================================================================
+# 14. OPENING BALANCES (أرصدة أول المدة)
+# ===========================================================================
+
+@anvil.server.callable
+def get_opening_balances(entity_type='', token_or_email=None):
+    """
+    Get opening balances from the opening_balances table.
+    entity_type: 'customer', 'supplier', 'bank', or '' for all.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+
+    try:
+        result = []
+        try:
+            rows = app_tables.opening_balances.search()
+        except Exception:
+            return {'success': True, 'data': [], 'count': 0}
+
+        for r in rows:
+            rtype = r.get('type', '')
+            if entity_type and rtype != entity_type:
+                continue
+            result.append({
+                'name': r.get('name', ''),
+                'type': rtype,
+                'opening_balance': float(r.get('opening_balance', 0) or 0),
+                'updated_at': str(r.get('updated_at', '')),
+                'updated_by': r.get('updated_by', ''),
+            })
+
+        return {'success': True, 'data': result, 'count': len(result)}
+    except Exception as e:
+        logger.exception("get_opening_balances error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def set_opening_balance(name, entity_type, amount, token_or_email=None):
+    """
+    Set or update an opening balance. Does NOT create a journal entry.
+    Only affects the opening_balances table (used in dynamic balance calculations).
+    Requires 'edit' permission.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'edit')
+    if not is_valid:
+        return error
+
+    if not name or not entity_type:
+        return {'success': False, 'message': 'Name and type are required'}
+    if entity_type not in ('customer', 'supplier', 'bank'):
+        return {'success': False, 'message': 'Type must be customer, supplier, or bank'}
+
+    try:
+        amount = _round2(float(amount or 0))
+
+        # Try to find existing row
+        existing = None
+        try:
+            for r in app_tables.opening_balances.search(name=name, type=entity_type):
+                existing = r
+                break
+        except Exception:
+            pass
+
+        now = get_utc_now()
+        if existing:
+            existing.update(
+                opening_balance=amount,
+                updated_at=now,
+                updated_by=user_email,
+            )
+        else:
+            app_tables.opening_balances.add_row(
+                name=name,
+                type=entity_type,
+                opening_balance=amount,
+                updated_at=now,
+                updated_by=user_email,
+            )
+
+        # Audit log
+        try:
+            AuthManager.log_audit(
+                user_email, 'set_opening_balance',
+                'opening_balances', name,
+                None, {'type': entity_type, 'amount': amount}
+            )
+        except Exception:
+            pass
+
+        logger.info("Opening balance set: %s (%s) = %.2f by %s", name, entity_type, amount, user_email)
+        return {'success': True}
+    except Exception as e:
+        logger.exception("set_opening_balance error")
         return {'success': False, 'message': str(e)}

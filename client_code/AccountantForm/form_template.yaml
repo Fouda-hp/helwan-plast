@@ -101,6 +101,14 @@ container:
             <div class="nav-icon">&#128196;</div>
             <div class="nav-label" id="navInvoices">Purchase Invoices</div>
           </div>
+          <div class="quick-nav-card" onclick="openCustomerSummary()">
+            <div class="nav-icon">&#128101;</div>
+            <div class="nav-label" id="navCustomerAccounts">Customer Accounts</div>
+          </div>
+          <div class="quick-nav-card" onclick="openSupplierSummary()">
+            <div class="nav-icon">&#128176;</div>
+            <div class="nav-label" id="navSupplierAccounts">Supplier Accounts</div>
+          </div>
         </div>
 
         <!-- Sub-tabs -->
@@ -112,6 +120,8 @@ container:
           <button class="sub-tab" data-tab="expenses" onclick="switchTab(this)">Expenses</button>
           <button class="sub-tab" data-tab="ledger" onclick="switchTab(this)">General Ledger</button>
           <button class="sub-tab" data-tab="currency" onclick="switchTab(this)">Currency</button>
+          <button class="sub-tab" data-tab="treasury" onclick="switchTab(this)">Treasury</button>
+          <button class="sub-tab" data-tab="opening" onclick="switchTab(this)">Opening Balances</button>
         </div>
 
         <!-- Trial Balance Panel -->
@@ -284,6 +294,56 @@ container:
         </div>
       </div>
 
+      <!-- Treasury Panel -->
+      <div class="tab-panel" id="panel-treasury">
+        <div class="date-filter">
+          <button onclick="loadTreasury()" id="btnLoadTreasury">Load Treasury</button>
+        </div>
+        <div class="summary-row" id="treasurySummary"></div>
+        <div class="report-card">
+          <h3 id="treasuryTitle">Treasury - Bank &amp; Cash Balances</h3>
+          <div class="table-wrap">
+            <table><thead><tr><th id="trAcctName">Account</th><th id="trOpenBal" class="text-right">Opening Balance</th><th id="trLedgerBal" class="text-right">Ledger Balance</th><th id="trCurrBal" class="text-right">Current Balance</th></tr></thead><tbody id="treasuryBody"><tr><td colspan="4" class="empty-msg">Click Load to view treasury</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Opening Balances Panel -->
+      <div class="tab-panel" id="panel-opening">
+        <div class="expense-form">
+          <h3 id="openingFormTitle">Set Opening Balance</h3>
+          <div class="expense-grid">
+            <div class="form-group">
+              <label id="lblObName">Name</label>
+              <input type="text" id="obName" placeholder="Account name...">
+            </div>
+            <div class="form-group">
+              <label id="lblObType">Type</label>
+              <select id="obType">
+                <option value="customer">Customer</option>
+                <option value="supplier">Supplier</option>
+                <option value="bank">Bank</option>
+                <option value="cash">Cash</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label id="lblObAmount">Opening Balance</label>
+              <input type="number" id="obAmount" step="0.01" value="0">
+            </div>
+          </div>
+          <button class="btn btn-save" onclick="setOpeningBalance()" style="margin-top:10px;" id="btnSetOb">Set Balance</button>
+        </div>
+        <div class="date-filter">
+          <button onclick="loadOpeningBalances()" id="btnLoadOb">Load Balances</button>
+        </div>
+        <div class="report-card">
+          <h3 id="openingTitle">Opening Balances</h3>
+          <div class="table-wrap">
+            <table><thead><tr><th id="obThName">Name</th><th id="obThType">Type</th><th id="obThAmount" class="text-right">Opening Balance</th><th>Actions</th></tr></thead><tbody id="openingBody"><tr><td colspan="4" class="empty-msg">Click Load to view opening balances</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+      
       <script src="_/theme/i18n.js"></script>
       <script>
         (function() {
@@ -299,19 +359,41 @@ container:
             document.getElementById('navSuppliers').textContent = t('Suppliers', 'الموردين');
             document.getElementById('navInventory').textContent = t('Inventory', 'المخازن');
             document.getElementById('navInvoices').textContent = t('Purchase Invoices', 'فواتير الشراء');
+            document.getElementById('navCustomerAccounts').textContent = t('Customer Accounts', 'حسابات العملاء');
+            document.getElementById('navSupplierAccounts').textContent = t('Supplier Accounts', 'حسابات الموردين');
             var tabLabels = {
               trial: t('Trial Balance', 'ميزان المراجعة'),
               income: t('Income Statement', 'قائمة الدخل'),
               balance: t('Balance Sheet', 'الميزانية العمومية'),
               profitability: t('Contract Profitability', 'ربحية العقود'),
               expenses: t('Expenses', 'المصروفات'),
-              ledger: t('General Ledger', 'دفتر الاستاذ')
+              ledger: t('General Ledger', 'دفتر الاستاذ'),
+              treasury: t('Treasury', 'الخزينة'),
+              opening: t('Opening Balances', 'ارصدة افتتاحية')
             };
             document.querySelectorAll('.sub-tab').forEach(function(tab) {
               var key = tab.getAttribute('data-tab');
               if (tabLabels[key]) tab.textContent = tabLabels[key];
             });
             if (isAr) document.querySelector('.acc-wrapper').style.direction = 'rtl';
+            /* Treasury & Opening Balances i18n */
+            var el;
+            el = document.getElementById('btnLoadTreasury'); if (el) el.textContent = t('Load Treasury', 'تحميل الخزينة');
+            el = document.getElementById('treasuryTitle'); if (el) el.textContent = t('Treasury - Bank & Cash Balances', 'الخزينة - ارصدة البنوك والنقدية');
+            el = document.getElementById('trAcctName'); if (el) el.textContent = t('Account', 'الحساب');
+            el = document.getElementById('trOpenBal'); if (el) el.textContent = t('Opening Balance', 'الرصيد الافتتاحي');
+            el = document.getElementById('trLedgerBal'); if (el) el.textContent = t('Ledger Balance', 'رصيد الدفتر');
+            el = document.getElementById('trCurrBal'); if (el) el.textContent = t('Current Balance', 'الرصيد الحالي');
+            el = document.getElementById('openingFormTitle'); if (el) el.textContent = t('Set Opening Balance', 'تعيين الرصيد الافتتاحي');
+            el = document.getElementById('lblObName'); if (el) el.textContent = t('Name', 'الاسم');
+            el = document.getElementById('lblObType'); if (el) el.textContent = t('Type', 'النوع');
+            el = document.getElementById('lblObAmount'); if (el) el.textContent = t('Opening Balance', 'الرصيد الافتتاحي');
+            el = document.getElementById('btnSetOb'); if (el) el.textContent = t('Set Balance', 'تعيين الرصيد');
+            el = document.getElementById('btnLoadOb'); if (el) el.textContent = t('Load Balances', 'تحميل الارصدة');
+            el = document.getElementById('openingTitle'); if (el) el.textContent = t('Opening Balances', 'ارصدة افتتاحية');
+            el = document.getElementById('obThName'); if (el) el.textContent = t('Name', 'الاسم');
+            el = document.getElementById('obThType'); if (el) el.textContent = t('Type', 'النوع');
+            el = document.getElementById('obThAmount'); if (el) el.textContent = t('Opening Balance', 'الرصيد الافتتاحي');
           }
 
           window.switchTab = function(el) {
@@ -326,6 +408,13 @@ container:
             if (page === 'suppliers' && window.pyOpenSuppliers) window.pyOpenSuppliers();
             else if (page === 'inventory' && window.pyOpenInventory) window.pyOpenInventory();
             else if (page === 'invoices' && window.pyOpenPurchaseInvoices) window.pyOpenPurchaseInvoices();
+          };
+
+          window.openCustomerSummary = function() {
+            if (window.pyOpenCustomerSummary) window.pyOpenCustomerSummary();
+          };
+          window.openSupplierSummary = function() {
+            if (window.pyOpenSupplierSummary) window.pyOpenSupplierSummary();
           };
 
           window.goBack = function() {
@@ -689,11 +778,115 @@ container:
             }
           };
 
+
+          /* === Treasury === */
+          window.loadTreasury = async function() {
+            var tbody = document.getElementById('treasuryBody');
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetTreasurySummary();
+              if (res && res.success) {
+                var data = res.data || [];
+                if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + t('No treasury accounts found', 'لا توجد حسابات خزينة') + '</td></tr>'; return; }
+                var html = '';
+                var totalOpen = 0, totalLedger = 0, totalCurr = 0;
+                data.forEach(function(row) {
+                  var ob = parseFloat(row.opening_balance || 0);
+                  var lb = parseFloat(row.ledger_balance || 0);
+                  var cb = parseFloat(row.current_balance || 0);
+                  totalOpen += ob; totalLedger += lb; totalCurr += cb;
+                  html += '<tr><td>' + (row.account_name || '') + '</td>';
+                  html += '<td class="text-right">' + fmt(ob) + '</td>';
+                  html += '<td class="text-right">' + fmt(lb) + '</td>';
+                  html += '<td class="text-right" style="font-weight:600;color:' + (cb >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(cb) + '</td></tr>';
+                });
+                html += '<tr class="total-row"><td><strong>' + t('Total', 'الاجمالي') + '</strong></td><td class="text-right"><strong>' + fmt(totalOpen) + '</strong></td><td class="text-right"><strong>' + fmt(totalLedger) + '</strong></td><td class="text-right"><strong>' + fmt(totalCurr) + '</strong></td></tr>';
+                tbody.innerHTML = html;
+                var summaryHtml = '';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Opening', 'اجمالي الافتتاحي') + '</div><div class="value">' + fmt(totalOpen) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Ledger', 'اجمالي الدفتر') + '</div><div class="value">' + fmt(totalLedger) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Current', 'اجمالي الحالي') + '</div><div class="value" style="color:' + (totalCurr >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(totalCurr) + '</div></div>';
+                document.getElementById('treasurySummary').innerHTML = summaryHtml;
+              } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + err + '</td></tr>';
+            }
+          };
+
+          /* === Opening Balances === */
+          window.setOpeningBalance = async function() {
+            var name = document.getElementById('obName').value.trim();
+            var type = document.getElementById('obType').value;
+            var amount = parseFloat(document.getElementById('obAmount').value) || 0;
+            if (!name) {
+              if (window.showNotification) window.showNotification('error', '', t('Name is required', 'الاسم مطلوب'));
+              return;
+            }
+            try {
+              var res = await window.pySetOpeningBalance(name, type, amount);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Opening balance set', 'تم تعيين الرصيد الافتتاحي'));
+                document.getElementById('obName').value = '';
+                document.getElementById('obAmount').value = '0';
+                loadOpeningBalances();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.loadOpeningBalances = async function() {
+            var tbody = document.getElementById('openingBody');
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetOpeningBalances();
+              if (res && res.success) {
+                var data = res.data || [];
+                if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + t('No opening balances set', 'لا توجد ارصدة افتتاحية') + '</td></tr>'; return; }
+                var html = '';
+                data.forEach(function(row) {
+                  var amt = parseFloat(row.amount || 0);
+                  html += '<tr><td>' + (row.name || '') + '</td>';
+                  html += '<td>' + (row.type || '') + '</td>';
+                  html += '<td class="text-right" style="font-weight:600;">' + fmt(amt) + '</td>';
+                  html += '<td><button class="btn-delete" data-n="' + (row.name || '') + '" data-t="' + (row.type || '') + '" onclick="delOpeningBalance(this.dataset.n, this.dataset.t)">' + t('Del', 'حذف') + '</button></td></tr>';
+                });
+                tbody.innerHTML = html;
+              } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + err + '</td></tr>';
+            }
+          };
+
+          window.delOpeningBalance = async function(name, type) {
+            var ok = await (window.showConfirm || function(m) { return Promise.resolve(confirm(m)); })(t('Delete opening balance for ' + name + '?', 'حذف الرصيد الافتتاحي لـ ' + name + '؟'));
+            if (!ok) return;
+            try {
+              var res = await window.pyDeleteOpeningBalance(name, type);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Deleted', 'تم الحذف'));
+                loadOpeningBalances();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
           function waitForBridge() {
             if (window.pyGetTrialBalance && window.pyGetLedgerEntries) {
               applyI18n();
               populateLedgerAccounts();
               if (window.pyGetExchangeRates) loadCurrencyRates();
+              if (window.pyGetTreasurySummary) loadTreasury();
+              if (window.pyGetOpeningBalances) loadOpeningBalances();
             } else {
               setTimeout(waitForBridge, 200);
             }

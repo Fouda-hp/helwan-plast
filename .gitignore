@@ -16,3 +16,7 @@ finish_merge.ps1
 .worktrees/
 .security-key
 logs/security/
+
+# Backup directories (image/js originals)
+theme/assets/originals_backup/
+theme/assets/js_originals_backup/

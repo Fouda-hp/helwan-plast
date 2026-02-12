@@ -948,6 +948,163 @@
   }
 }
 
+/* ===== ADDITIONAL MOBILE FIXES (LoginForm, Modals, Launcher, etc.) ===== */
+@media (max-width: 480px) {
+
+  /* --- LoginForm fixes --- */
+  .login-box {
+    padding: 30px 20px !important;
+    max-width: 100% !important;
+  }
+
+  .field input {
+    font-size: 16px !important;
+    height: 44px !important;
+  }
+
+  .auth-tabs {
+    flex-wrap: wrap !important;
+  }
+
+  /* --- ClientDetailForm fixes --- */
+  .cd-client-meta {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .cd-modal-box {
+    min-width: auto !important;
+    width: 90vw !important;
+  }
+
+  .tl-dot {
+    left: -25px !important;
+  }
+
+  body.rtl .tl-dot {
+    right: -25px !important;
+  }
+
+  /* --- FollowUpDashboard fixes --- */
+  .fu-modal-box {
+    max-width: 90vw !important;
+    width: 90vw !important;
+  }
+
+  .fu-filter-btn {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+  }
+
+  /* --- PaymentDashboard fixes --- */
+  .pd-header h1 {
+    flex: none !important;
+    min-width: auto !important;
+    font-size: 18px !important;
+  }
+
+  .pd-search {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .pd-modal-box {
+    max-width: 90vw !important;
+    width: 90vw !important;
+  }
+
+  .pd-table td {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+
+  /* --- DatabaseForm fixes --- */
+  .search-input {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .db-header h1 {
+    font-size: 18px !important;
+  }
+
+  .table-scroll {
+    max-height: calc(100vh - 300px) !important;
+  }
+
+  /* --- LauncherForm fixes --- */
+  .launcher-card {
+    padding: 30px 15px !important;
+    max-width: 100% !important;
+  }
+
+  .logos {
+    gap: 15px !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  .logos img {
+    height: 70px !important;
+    max-width: 150px !important;
+  }
+
+  .btn-group {
+    padding: 12px !important;
+  }
+
+  /* --- Generic modal fixes --- */
+  .cd-modal-box,
+  .fu-modal-box,
+  .pd-modal-box,
+  .modal-box {
+    width: 90vw !important;
+    max-width: 90vw !important;
+  }
+
+  /* --- Prevent iOS zoom on all inputs --- */
+  input[type="email"],
+  input[type="password"],
+  input[type="text"],
+  input[type="date"],
+  input[type="tel"],
+  input[type="number"] {
+    font-size: 16px !important;
+  }
+}
+
+/* ===== ULTRA-SMALL PHONES (max-width: 360px) ===== */
+@media (max-width: 360px) {
+  .launcher-card {
+    padding: 20px 10px !important;
+  }
+
+  .buttons {
+    gap: 8px !important;
+  }
+
+  .btn {
+    height: 40px !important;
+    font-size: 12px !important;
+  }
+
+  .login-box {
+    padding: 25px 15px !important;
+  }
+
+  .title,
+  .db-header h1,
+  .pd-title {
+    font-size: 16px !important;
+  }
+
+  .stat-value,
+  .pd-stat-value,
+  .fu-stat-value {
+    font-size: 18px !important;
+  }
+}
+
 /* ===== GLOBAL SCROLLBAR STYLING (for horizontal scroll tables) ===== */
 .table-scroll::-webkit-scrollbar,
 .table-container::-webkit-scrollbar,

@@ -202,7 +202,7 @@ container:
         </div>
 
         <div class="search-row">
-          <input type="text" class="search-input" id="searchInput" placeholder="Search clients...">
+          <input type="search" class="search-input"
           <select class="tag-filter-select" id="tagFilter" onchange="filterByTag()">
             <option value="">All Tags</option>
           </select>

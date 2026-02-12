@@ -1372,6 +1372,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
                 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
 
+                // Force desktop rendering for PDF capture
+                element.classList.add('pdf-export-mode');
+                await new Promise(r => setTimeout(r, 100));
+
                 const {{ jsPDF }} = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const pages = element.querySelectorAll('.template-page');
@@ -1387,8 +1391,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
                 }}
 
+                element.classList.remove('pdf-export-mode');
                 pdf.save('{filename}');
             }} catch (error) {{
+                element.classList.remove('pdf-export-mode');
                 if (window.showNotification) window.showNotification('error', '', 'Error: ' + error.message);
             }}
         }})();

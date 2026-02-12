@@ -584,6 +584,228 @@
     width: 100% !important;
     max-width: 100% !important;
   }
+
+  /* --- DatabaseForm responsive --- */
+  .db-wrapper {
+    padding: 15px 10px !important;
+  }
+
+  .db-header h1 {
+    font-size: 22px !important;
+  }
+
+  .db-toolbar {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .db-toolbar .tab-btn {
+    width: 100% !important;
+  }
+
+  .db-wrapper .search-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .db-wrapper .search-input {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .db-wrapper .action-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  .db-wrapper .table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .db-wrapper .data-table {
+    min-width: 700px;
+  }
+
+  .db-wrapper .pagination {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .db-wrapper .pagination button {
+    min-height: 44px !important;
+  }
+
+  /* Follow-up modal in DatabaseForm */
+  #dbSetFuModal > div {
+    width: 90% !important;
+    max-width: 90% !important;
+  }
+
+  /* --- ClientListForm responsive --- */
+  .cl-wrapper {
+    padding: 15px 10px !important;
+  }
+
+  .cl-wrapper .cl-header h1 {
+    font-size: 22px !important;
+  }
+
+  .cl-wrapper .search-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .cl-wrapper .search-input {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .tag-filter-select {
+    width: 100% !important;
+    min-height: 44px !important;
+  }
+
+  .cl-wrapper .action-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  .cl-wrapper .table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cl-wrapper .data-table {
+    min-width: 700px;
+  }
+
+  .cl-wrapper .pagination {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .cl-wrapper .pagination button {
+    min-height: 44px !important;
+  }
+
+  /* --- PurchaseInvoicesForm responsive --- */
+  .pi-wrapper {
+    padding: 15px 10px !important;
+  }
+
+  .pi-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .pi-wrapper .summary-cards {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .pi-wrapper .filter-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .pi-wrapper .filter-row input,
+  .pi-wrapper .filter-row select {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .pi-wrapper .filter-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  .pi-wrapper .table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pi-wrapper .table-card table {
+    min-width: 700px;
+  }
+
+  .pi-wrapper .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* PI modals */
+  .pi-wrapper .modal-overlay .modal {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin: 10px auto !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  .pi-wrapper .line-items-table {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pi-wrapper .line-items-table table {
+    min-width: 500px;
+  }
+
+  .pi-wrapper .totals-section {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .pi-wrapper .import-costs-section {
+    overflow-x: auto !important;
+  }
+
+  .pi-wrapper .modal-actions {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .pi-wrapper .modal-actions .btn {
+    width: 100% !important;
+    min-height: 44px !important;
+  }
+
+  /* --- AdminPanel additional responsive --- */
+  .admin-container .toolbar {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .admin-container .search-box {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .admin-container .panel-body {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-container .modal-box {
+    width: 95% !important;
+    max-width: 95% !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  .admin-container .modal-body .form-group {
+    width: 100% !important;
+  }
+
+  .admin-container .pagination {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
 }
 
 /* ===== SMALL PHONE (max-width: 480px) ===== */
@@ -855,6 +1077,92 @@
   .preview-table td {
     padding: 6px 4px !important;
   }
+
+  /* --- DatabaseForm small phone --- */
+  .db-wrapper {
+    padding: 10px 8px !important;
+  }
+
+  .db-header h1 {
+    font-size: 18px !important;
+  }
+
+  .db-wrapper .data-table {
+    min-width: 600px;
+    font-size: 11px !important;
+  }
+
+  .db-wrapper .pagination button {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* --- ClientListForm small phone --- */
+  .cl-wrapper {
+    padding: 10px 8px !important;
+  }
+
+  .cl-wrapper .cl-header h1 {
+    font-size: 18px !important;
+  }
+
+  .cl-wrapper .data-table {
+    min-width: 600px;
+    font-size: 11px !important;
+  }
+
+  .tag-badge {
+    font-size: 10px !important;
+    padding: 1px 6px !important;
+  }
+
+  .cl-wrapper .pagination button {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* --- PurchaseInvoicesForm small phone --- */
+  .pi-wrapper {
+    padding: 10px 8px !important;
+  }
+
+  .pi-header h1 {
+    font-size: 20px !important;
+  }
+
+  .pi-wrapper .summary-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  .pi-wrapper .summary-card {
+    padding: 12px !important;
+  }
+
+  .pi-wrapper .table-card table {
+    min-width: 600px;
+    font-size: 11px !important;
+  }
+
+  .pi-wrapper .btn-sm {
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+  }
+
+  /* --- AdminPanel small phone --- */
+  .admin-container .stats-grid {
+    gap: 10px !important;
+  }
+
+  .admin-container .data-table {
+    min-width: 500px;
+    font-size: 11px !important;
+  }
+
+  .admin-container .action-btn,
+  .admin-container .filter-btn {
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+  }
 }
 
 /* ===== LANDSCAPE PHONE ===== */
@@ -899,7 +1207,8 @@
   .pd-pagination button,
   .cl-pagination button,
   .fu-pagination button,
-  .tl-pagination button {
+  .tl-pagination button,
+  .pagination button {
     min-height: 40px;
     min-width: 40px;
   }
@@ -925,7 +1234,10 @@
 
   .btn-edit,
   .btn-link,
-  .btn-delete {
+  .btn-delete,
+  .btn-pay,
+  .btn-view,
+  .btn-sm {
     min-height: 36px;
     min-width: 36px;
   }
@@ -1150,4 +1462,72 @@
 .report-card .table-wrap::-webkit-scrollbar-track,
 .preview-section > div::-webkit-scrollbar-track {
   background: #f0f0f0;
+}
+
+/* ===== PDF EXPORT MODE =====
+   When .pdf-export-mode is on the template container, force desktop
+   rendering so html2canvas captures the same layout as desktop.
+   This class is toggled by JS before/after capture. */
+.pdf-export-mode .template-page {
+  min-width: auto !important;
+  width: 800px !important;
+  padding: 20px 30px !important;
+}
+
+.pdf-export-mode .header {
+  flex-direction: row !important;
+  gap: 0 !important;
+}
+
+.pdf-export-mode .header-left,
+.pdf-export-mode .header-right {
+  text-align: unset !important;
+}
+
+.pdf-export-mode .info-grid {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 12px !important;
+}
+
+.pdf-export-mode .section-title {
+  font-size: 14px !important;
+}
+
+.pdf-export-mode .quotation-number,
+.pdf-export-mode .client-info {
+  font-size: 14px !important;
+}
+
+.pdf-export-mode .total-price {
+  font-size: 24px !important;
+}
+
+.pdf-export-mode .details-table th,
+.pdf-export-mode .details-table td,
+.pdf-export-mode .tech-table th,
+.pdf-export-mode .tech-table td,
+.pdf-export-mode .payment-table th,
+.pdf-export-mode .payment-table td,
+.pdf-export-mode .payment-schedule-table th,
+.pdf-export-mode .payment-schedule-table td {
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+}
+
+.pdf-export-mode .cylinders-table th,
+.pdf-export-mode .cylinders-table td {
+  font-size: 11px !important;
+  padding: 4px 10px !important;
+}
+
+.pdf-export-mode .financial-box {
+  padding: 15px !important;
+}
+
+.pdf-export-mode .info-box h4 {
+  font-size: 12px !important;
+}
+
+.pdf-export-mode .info-box p {
+  font-size: 11px !important;
 }

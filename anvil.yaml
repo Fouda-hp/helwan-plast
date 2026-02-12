@@ -267,6 +267,26 @@ db_schema:
       type: number
     server: full
     title: COUNTERS
+  currency_exchange_rates:
+    client: none
+    columns:
+    - admin_ui: {width: 120}
+      name: currency_code
+      type: string
+    - admin_ui: {width: 120}
+      name: rate_to_egp
+      type: number
+    - admin_ui: {width: 200}
+      name: effective_date
+      type: datetime
+    - admin_ui: {width: 200}
+      name: created_by
+      type: string
+    - admin_ui: {width: 80}
+      name: is_active
+      type: bool
+    server: full
+    title: CURRENCY_EXCHANGE_RATES
   expenses:
     client: none
     columns:

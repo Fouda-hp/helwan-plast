@@ -223,8 +223,7 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
     # ===== فحص Rate Limit =====
     try:
         ip = get_client_ip()
-        rl = check_rate_limit(ip, 'save_quotation')
-        if rl and not rl.get('allowed', True):
+        if not check_rate_limit(ip, 'save_quotation'):
             return {'success': False, 'message': 'Too many requests. Please wait before saving again.'}
     except Exception:
         pass  # لا نوقف الحفظ إذا فشل فحص Rate Limit
@@ -2601,7 +2600,8 @@ def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
                 'num_payments': r.get('num_payments'),
                 'delivery_date': r.get('delivery_date'),
                 'created_at': r.get('created_at').isoformat() if r.get('created_at') and hasattr(r.get('created_at'), 'isoformat') else '',
-                'payments': payments_display
+                'payments': payments_display,
+                'lifecycle_status': (r.get('lifecycle_status') or 'draft').strip().lower()
             })
             collected += 1
 
@@ -3389,3 +3389,98 @@ def restore_backup_from_drive(token_or_email, filename):
     except Exception as e:
         logger.exception("restore_backup_from_drive: %s", e)
         return {'success': False, 'message': str(e)}
+
+
+# ===========================================================================
+# Feature 7: Contract Lifecycle — States + Timeline
+# ===========================================================================
+CONTRACT_LIFECYCLE_STATES = ['draft', 'negotiation', 'signed', 'in_progress', 'delivered', 'closed', 'cancelled']
+CONTRACT_VALID_TRANSITIONS = {
+    'draft': ['negotiation', 'signed', 'cancelled'],
+    'negotiation': ['draft', 'signed', 'cancelled'],
+    'signed': ['in_progress', 'cancelled'],
+    'in_progress': ['delivered', 'cancelled'],
+    'delivered': ['closed'],
+    'closed': [],
+    'cancelled': ['draft'],
+}
+
+
+@anvil.server.callable
+def update_contract_status(quotation_number, new_status, notes='', token_or_email=None):
+    """
+    Update contract lifecycle status with validation of allowed transitions.
+    Appends to status_history_json for timeline tracking.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'edit')
+    if not is_valid:
+        return {'success': False, 'message': error or 'Permission denied'}
+    try:
+        new_status = (new_status or '').strip().lower()
+        if new_status not in CONTRACT_LIFECYCLE_STATES:
+            return {'success': False, 'message': f'Invalid status: {new_status}'}
+
+        contract = app_tables.contracts.get(contract_number=quotation_number)
+        if not contract:
+            return {'success': False, 'message': 'Contract not found'}
+
+        current_status = (contract.get('lifecycle_status') or 'draft').strip().lower()
+        allowed = CONTRACT_VALID_TRANSITIONS.get(current_status, [])
+        if new_status not in allowed:
+            return {'success': False,
+                    'message': f'Cannot transition from "{current_status}" to "{new_status}". Allowed: {", ".join(allowed)}'}
+
+        # Build timeline entry
+        history_raw = contract.get('status_history_json') or '[]'
+        try:
+            history = json.loads(history_raw) if isinstance(history_raw, str) else (history_raw or [])
+        except Exception:
+            history = []
+
+        history.append({
+            'from': current_status,
+            'to': new_status,
+            'date': datetime.now().isoformat(),
+            'user': user_email,
+            'notes': notes or ''
+        })
+
+        # Update contract
+        contract['lifecycle_status'] = new_status
+        contract['status_history_json'] = json.dumps(history)
+
+        # Audit
+        AuthManager.log_audit('update_contract_lifecycle', 'contracts', quotation_number,
+                              {'lifecycle_status': current_status},
+                              {'lifecycle_status': new_status, 'notes': notes},
+                              user_email)
+
+        return {'success': True, 'message': f'Contract status updated to {new_status}',
+                'new_status': new_status}
+    except Exception as e:
+        logger.exception("update_contract_status error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_contract_timeline(quotation_number, token_or_email=None):
+    """Get the status change timeline for a contract."""
+    is_valid, _, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        return {'success': False, 'data': [], 'message': error or 'Permission denied'}
+    try:
+        contract = app_tables.contracts.get(contract_number=quotation_number)
+        if not contract:
+            return {'success': False, 'data': [], 'message': 'Contract not found'}
+        history_raw = contract.get('status_history_json') or '[]'
+        try:
+            history = json.loads(history_raw) if isinstance(history_raw, str) else (history_raw or [])
+        except Exception:
+            history = []
+        current = (contract.get('lifecycle_status') or 'draft').strip().lower()
+        return {'success': True, 'data': history, 'current_status': current,
+                'all_states': CONTRACT_LIFECYCLE_STATES,
+                'valid_transitions': CONTRACT_VALID_TRANSITIONS.get(current, [])}
+    except Exception as e:
+        logger.exception("get_contract_timeline error")
+        return {'success': False, 'data': [], 'message': str(e)}

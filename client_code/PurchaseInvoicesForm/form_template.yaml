@@ -490,13 +490,16 @@ container:
               html += '<td><span class="status-badge status-' + statusKey + '">' + (statusLabels[statusKey] || statusKey) + '</span></td>';
               html += '<td style="white-space:nowrap;">';
               html += '<button class="btn-sm btn-view" onclick="viewInvoice(\'' + inv.id + '\')">' + t('View', 'عرض') + '</button> ';
-              if (statusKey === 'draft') {
+              if (statusKey === 'draft' && userPerms.can_edit) {
                 html += '<button class="btn-sm" style="background:#ff9800;color:#fff;" onclick="editInvoice(\'' + inv.id + '\')">' + t('Edit', 'تعديل') + '</button> ';
               }
-              if (statusKey !== 'paid') {
+              if (statusKey !== 'paid' && userPerms.can_edit) {
                 html += '<button class="btn-sm btn-pay" onclick="openPaymentModal(\'' + inv.id + '\', ' + balance + ')">' + t('Pay', 'دفع') + '</button> ';
               }
-              html += '<button class="btn-sm btn-delete" onclick="deleteInvoice(\'' + inv.id + '\')">' + t('Del', 'حذف') + '</button>';
+              html += '<button class="btn-sm" style="background:#9c27b0;color:#fff;" onclick="printInvoicePDF(\'' + inv.id + '\')">' + t('PDF', 'PDF') + '</button> ';
+              if (userPerms.can_delete) {
+                html += '<button class="btn-sm btn-delete" onclick="deleteInvoice(\'' + inv.id + '\')">' + t('Del', 'حذف') + '</button>';
+              }
               html += '</td></tr>';
             });
             tbody.innerHTML = html;
@@ -955,6 +958,37 @@ container:
             }
           };
 
+          window.printInvoicePDF = async function(id) {
+            try {
+              if (!window.pyGetPurchaseInvoicePdfData) { alert('PDF not available'); return; }
+              var res = await window.pyGetPurchaseInvoicePdfData(id);
+              if (!res || !res.success) { alert(res ? res.message : 'Error'); return; }
+              var d = res.data;
+              var w = window.open('', '_blank');
+              w.document.write('<html><head><title>Invoice ' + d.invoice_number + '</title>');
+              w.document.write('<style>body{font-family:Segoe UI,sans-serif;padding:40px;color:#333}h1{color:#667eea;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid #ddd;text-align:left;font-size:13px}th{background:#f5f5f5;font-weight:600}.total-row{font-weight:700;background:#f0f4ff}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}.logo-area{font-size:24px;font-weight:700;color:#667eea}@media print{body{padding:20px}}</style></head><body>');
+              w.document.write('<div class="header"><div class="logo-area">HELWAN PLAST<br><span style="font-size:12px;color:#666;">Purchase Invoice</span></div><div style="text-align:right;font-size:13px;">Invoice #: <strong>' + d.invoice_number + '</strong><br>Date: ' + d.date + '<br>Due: ' + d.due_date + '<br>Status: <strong>' + d.status + '</strong></div></div>');
+              w.document.write('<table><tr><th colspan="2">Supplier Information</th></tr><tr><td>Name</td><td>' + d.supplier.name + '</td></tr><tr><td>Contact</td><td>' + d.supplier.contact + '</td></tr><tr><td>Email</td><td>' + d.supplier.email + '</td></tr><tr><td>Country</td><td>' + d.supplier.country + '</td></tr></table>');
+              w.document.write('<table><tr><th>Description</th><th style="text-align:right">Amount</th></tr>');
+              w.document.write('<tr><td>Subtotal (FOB + Cylinders)</td><td style="text-align:right">' + d.subtotal + '</td></tr>');
+              w.document.write('<tr><td>Tax</td><td style="text-align:right">' + d.tax + '</td></tr>');
+              w.document.write('<tr class="total-row"><td>Invoice Total</td><td style="text-align:right">' + d.total + '</td></tr>');
+              if (d.import_costs && d.import_costs.length > 0) {
+                d.import_costs.forEach(function(c) { w.document.write('<tr><td>Import: ' + c.type + (c.description ? ' (' + c.description + ')' : '') + '</td><td style="text-align:right">' + c.amount + '</td></tr>'); });
+                w.document.write('<tr class="total-row"><td>Import Costs Total</td><td style="text-align:right">' + d.import_total + '</td></tr>');
+              }
+              w.document.write('<tr class="total-row" style="background:#e8f5e9;"><td>Landed Cost</td><td style="text-align:right;font-size:16px;">' + d.landed_cost + '</td></tr>');
+              w.document.write('<tr><td>Paid</td><td style="text-align:right;color:#2e7d32;">' + d.paid + '</td></tr>');
+              w.document.write('<tr><td>Remaining</td><td style="text-align:right;color:#c62828;font-weight:700;">' + d.remaining + '</td></tr>');
+              w.document.write('</table>');
+              if (d.notes) w.document.write('<p style="margin-top:16px;font-size:12px;color:#666;">Notes: ' + d.notes + '</p>');
+              w.document.write('<p style="margin-top:24px;font-size:11px;color:#999;text-align:center;">Printed: ' + d.print_date + ' | Helwan Plast ERP</p>');
+              w.document.write('</body></html>');
+              w.document.close();
+              setTimeout(function() { w.print(); }, 500);
+            } catch(e) { alert('PDF error: ' + e); }
+          };
+
           window.goBack = function() {
             if (window.pyGoBack) window.pyGoBack();
             else window.location.hash = '#admin';
@@ -1127,9 +1161,25 @@ container:
             } catch (err) { /* settings not available, use defaults */ }
           }
 
+          // RBAC permissions
+          var userPerms = {can_view:true, can_create:true, can_edit:true, can_delete:true, can_export:true, is_admin:true};
+
+          async function applyPermissions() {
+            try {
+              if (window.pyGetPermissions) {
+                var p = await window.pyGetPermissions();
+                if (p && p.success) userPerms = p;
+              }
+            } catch(e) { console.log('Permissions load error:', e); }
+            // Hide buttons based on permissions
+            var btnCreate = document.getElementById('btnCreate');
+            if (btnCreate && !userPerms.can_create) btnCreate.style.display = 'none';
+          }
+
           function waitForBridge() {
             if (window.pyGetPurchaseInvoices) {
               applyI18n();
+              applyPermissions();
               loadInvoices();
             } else {
               setTimeout(waitForBridge, 200);

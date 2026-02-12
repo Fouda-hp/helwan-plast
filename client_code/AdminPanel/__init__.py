@@ -107,6 +107,7 @@ class AdminPanel(AdminPanelTemplate):
 
         # Dashboard
         anvil.js.window.getDashboardStats = self.get_dashboard_stats
+        anvil.js.window.getAccountingDashboardStats = self.get_accounting_dashboard_stats
 
         # User Management
         anvil.js.window.getPendingUsers = self.get_pending_users
@@ -126,6 +127,20 @@ class AdminPanel(AdminPanelTemplate):
 
         # Audit Logs
         anvil.js.window.getAuditLogs = self.get_audit_logs
+        anvil.js.window.exportAuditLogs = self.export_audit_logs
+
+        # Contract Lifecycle
+        anvil.js.window.updateContractLifecycle = self.update_contract_lifecycle
+        anvil.js.window.getContractTimeline = self.get_contract_timeline
+
+        # Smart Notifications
+        anvil.js.window.runDailyNotificationCheck = self.run_daily_notification_check
+
+        # Multi-Currency
+        anvil.js.window.fetchExchangeRates = self.fetch_exchange_rates
+
+        # RBAC Permissions
+        anvil.js.window.getUserPermissions = self.get_user_permissions
         # Clients & Quotations & Contracts
         anvil.js.window.getAllClients = self.get_all_clients
         anvil.js.window.getAllQuotations = self.get_all_quotations
@@ -139,6 +154,8 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.exportClientsData = self.export_clients_data
         anvil.js.window.exportQuotationsData = self.export_quotations_data
         anvil.js.window.exportContractsData = self.export_contracts_data
+        anvil.js.window.exportInventoryData = self.export_inventory_data
+        anvil.js.window.exportPurchaseInvoicesData = self.export_purchase_invoices_data
         anvil.js.window.deleteContractAdmin = self.delete_contract_admin
         anvil.js.window.createBackup = self.create_backup
         anvil.js.window.listScheduledBackups = self.list_scheduled_backups
@@ -2153,6 +2170,24 @@ class AdminPanel(AdminPanelTemplate):
     def get_dashboard_stats(self):
         return anvil.server.call('get_dashboard_stats', self.get_auth())
 
+    def get_accounting_dashboard_stats(self):
+        """Get enhanced dashboard stats: inventory, purchase invoices, profitability, top suppliers."""
+        try:
+            return anvil.server.call('get_accounting_dashboard_stats', self.get_auth())
+        except Exception as e:
+            logger.warning("Could not load accounting dashboard stats: %s", e)
+            return {'success': False, 'message': str(e)}
+
+    def get_user_permissions(self):
+        """Get RBAC permissions for the current user."""
+        try:
+            return anvil.server.call('get_user_permissions', self.get_auth())
+        except Exception as e:
+            logger.warning("Could not load permissions: %s", e)
+            return {'success': False, 'can_view': True, 'can_create': False,
+                    'can_edit': False, 'can_delete': False, 'can_export': False,
+                    'is_admin': False, 'role': 'viewer'}
+
     # =========================================================
     # User Management
     # =========================================================
@@ -2256,6 +2291,72 @@ class AdminPanel(AdminPanelTemplate):
 
     def export_quotations_data(self, include_deleted):
         return anvil.server.call('export_quotations_data', include_deleted, self.get_auth())
+
+    def export_inventory_data(self):
+        """Export all inventory items for Excel download."""
+        try:
+            return anvil.server.call('export_inventory_data', self.get_auth())
+        except Exception as e:
+            logger.warning("Export inventory error: %s", e)
+            return {'success': False, 'message': str(e), 'data': []}
+
+    def export_purchase_invoices_data(self):
+        """Export all purchase invoices for Excel download."""
+        try:
+            return anvil.server.call('export_purchase_invoices_data', self.get_auth())
+        except Exception as e:
+            logger.warning("Export purchase invoices error: %s", e)
+            return {'success': False, 'message': str(e), 'data': []}
+
+    def export_audit_logs(self, filters=None):
+        """Export audit logs for CSV download."""
+        try:
+            return anvil.server.call('export_audit_log', self.get_auth(), filters or {})
+        except Exception as e:
+            logger.warning("Export audit logs error: %s", e)
+            return {'success': False, 'message': str(e), 'data': []}
+
+    # =========================================================
+    # Contract Lifecycle
+    # =========================================================
+    def update_contract_lifecycle(self, quotation_number, new_status, notes=''):
+        """Update contract lifecycle status with validation."""
+        try:
+            return anvil.server.call('update_contract_status', quotation_number,
+                                     new_status, notes, self.get_auth())
+        except Exception as e:
+            logger.warning("Update contract lifecycle error: %s", e)
+            return {'success': False, 'message': str(e)}
+
+    def get_contract_timeline(self, quotation_number):
+        """Get contract status change timeline."""
+        try:
+            return anvil.server.call('get_contract_timeline', quotation_number, self.get_auth())
+        except Exception as e:
+            logger.warning("Get contract timeline error: %s", e)
+            return {'success': False, 'message': str(e), 'data': []}
+
+    # =========================================================
+    # Smart Notifications
+    # =========================================================
+    def run_daily_notification_check(self):
+        """Manually trigger the daily notification check for due invoices."""
+        try:
+            return anvil.server.call('run_daily_notification_check', self.get_auth())
+        except Exception as e:
+            logger.warning("Daily notification check error: %s", e)
+            return {'success': False, 'message': str(e)}
+
+    # =========================================================
+    # Multi-Currency
+    # =========================================================
+    def fetch_exchange_rates(self):
+        """Auto-fetch exchange rates from API."""
+        try:
+            return anvil.server.call('fetch_exchange_rates_from_api', self.get_auth())
+        except Exception as e:
+            logger.warning("Fetch exchange rates error: %s", e)
+            return {'success': False, 'message': str(e)}
 
     def create_backup(self):
         """إنشاء وتحميل نسخة احتياطية (عملاء، عروض، عقود، إعدادات، مواصفات). للأدمن فقط."""

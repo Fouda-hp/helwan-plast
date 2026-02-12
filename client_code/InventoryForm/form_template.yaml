@@ -389,11 +389,15 @@ container:
               html += '<td class="' + profitClass + '">' + (sellingPrice > 0 ? fmt(profit) : '-') + '</td>';
               html += '<td><span class="status-badge status-' + statusKey + '">' + statusLabel + '</span></td>';
               html += '<td style="white-space:nowrap;">';
-              html += '<button class="btn btn-edit" onclick="editItem(\'' + item.id + '\')">' + t('Edit', 'تعديل') + '</button> ';
-              if (statusKey === 'in_stock') {
+              if (userPerms.can_edit) {
+                html += '<button class="btn btn-edit" onclick="editItem(\'' + item.id + '\')">' + t('Edit', 'تعديل') + '</button> ';
+              }
+              if (statusKey === 'in_stock' && userPerms.can_edit) {
                 html += '<button class="btn btn-link" onclick="openLinkModal(\'' + item.id + '\')">' + t('Link', 'ربط') + '</button> ';
               }
-              html += '<button class="btn btn-delete" onclick="deleteItem(\'' + item.id + '\')">' + t('Delete', 'حذف') + '</button>';
+              if (userPerms.can_delete) {
+                html += '<button class="btn btn-delete" onclick="deleteItem(\'' + item.id + '\')">' + t('Delete', 'حذف') + '</button>';
+              }
               html += '</td></tr>';
             });
             tbody.innerHTML = html;
@@ -789,9 +793,24 @@ container:
             } catch (err) { /* use defaults */ }
           }
 
+          // RBAC permissions
+          var userPerms = {can_view:true, can_create:true, can_edit:true, can_delete:true, can_export:true, is_admin:true};
+
+          async function applyPermissions() {
+            try {
+              if (window.pyGetPermissions) {
+                var p = await window.pyGetPermissions();
+                if (p && p.success) userPerms = p;
+              }
+            } catch(e) { console.log('Permissions load error:', e); }
+            var btnAdd = document.getElementById('btnAdd');
+            if (btnAdd && !userPerms.can_create) btnAdd.style.display = 'none';
+          }
+
           function waitForBridge() {
             if (window.pyGetInventory) {
               applyI18n();
+              applyPermissions();
               loadInventory();
             } else {
               setTimeout(waitForBridge, 200);

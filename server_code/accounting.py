@@ -29,6 +29,11 @@ try:
 except ImportError:
     from auth_utils import get_utc_now
 
+try:
+    from . import pdf_reports
+except ImportError:
+    import pdf_reports
+
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
@@ -2705,4 +2710,440 @@ def delete_exchange_rate(currency_code, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("delete_exchange_rate error")
+        return {'success': False, 'message': str(e)}
+
+
+# ---------------------------------------------------------------------------
+# RBAC — User permissions query
+# ---------------------------------------------------------------------------
+@anvil.server.callable
+def get_user_permissions(token_or_email=None):
+    """Return dict of allowed actions for the current user."""
+    is_valid, user_email, error = _require_authenticated(token_or_email)
+    if not is_valid:
+        return {'success': False, 'can_view': False, 'can_create': False, 'can_edit': False,
+                'can_delete': False, 'can_export': False, 'is_admin': False, 'role': 'none'}
+    try:
+        is_admin = AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(token_or_email)
+        user_row = app_tables.users.get(email=user_email)
+        role = (user_row.get('role') or 'viewer').strip().lower() if user_row else 'viewer'
+        return {
+            'success': True,
+            'can_view': is_admin or AuthManager.check_permission(token_or_email, 'view'),
+            'can_create': is_admin or AuthManager.check_permission(token_or_email, 'create'),
+            'can_edit': is_admin or AuthManager.check_permission(token_or_email, 'edit'),
+            'can_delete': is_admin or AuthManager.check_permission(token_or_email, 'delete'),
+            'can_export': is_admin or AuthManager.check_permission(token_or_email, 'export'),
+            'is_admin': is_admin,
+            'role': role,
+        }
+    except Exception as e:
+        logger.exception("get_user_permissions error")
+        return {'success': False, 'can_view': True, 'can_create': False, 'can_edit': False,
+                'can_delete': False, 'can_export': False, 'is_admin': False, 'role': 'viewer'}
+
+
+# ---------------------------------------------------------------------------
+# Enhanced Dashboard Stats (Accounting module)
+# ---------------------------------------------------------------------------
+@anvil.server.callable
+def get_accounting_dashboard_stats(token_or_email=None):
+    """Return inventory, purchase invoice, and P&L stats for the dashboard."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        now = date.today()
+        year = now.year
+
+        # Inventory stats
+        inv_count = 0; inv_value = 0.0; inv_in_stock = 0; inv_in_transit = 0; inv_sold = 0
+        for item in app_tables.inventory.search():
+            inv_count += 1
+            status = (item.get('status') or '').strip().lower()
+            cost = _round2(item.get('total_cost', 0))
+            if status == 'in_stock':
+                inv_in_stock += 1; inv_value += cost
+            elif status == 'in_transit':
+                inv_in_transit += 1; inv_value += cost
+            elif status == 'sold':
+                inv_sold += 1
+
+        # Purchase invoice stats
+        pi_count = 0; pi_total_value = 0.0; pi_total_paid = 0.0; pi_draft = 0; pi_posted = 0
+        for pi in app_tables.purchase_invoices.search():
+            pi_count += 1
+            pi_total_value += _round2(pi.get('total', 0))
+            pi_total_paid += _round2(pi.get('paid_amount', 0))
+            st = (pi.get('status') or '').strip().lower()
+            if st == 'draft': pi_draft += 1
+            elif st == 'posted': pi_posted += 1
+
+        # Top 5 suppliers by purchase value
+        supplier_totals = {}
+        for pi in app_tables.purchase_invoices.search():
+            sid = pi.get('supplier_id', '')
+            supplier_totals[sid] = supplier_totals.get(sid, 0) + _round2(pi.get('total', 0))
+        top_suppliers_raw = sorted(supplier_totals.items(), key=lambda x: x[1], reverse=True)[:5]
+        top_suppliers = []
+        for sid, total in top_suppliers_raw:
+            name = sid
+            try:
+                s = app_tables.suppliers.get(id=sid)
+                if s: name = s.get('name', sid)
+            except:
+                pass
+            top_suppliers.append({'name': name, 'total': _round2(total)})
+
+        # Monthly purchase totals (12 months current year)
+        monthly_purchases = [0.0] * 12
+        monthly_sales = [0.0] * 12
+        for entry in app_tables.ledger.search():
+            d = entry.get('date')
+            if not d or not hasattr(d, 'year') or d.year != year:
+                continue
+            m = d.month - 1
+            code = entry.get('account_code', '')
+            if code == '1200':  # Inventory (purchases)
+                monthly_purchases[m] += _round2(entry.get('debit', 0))
+            elif code.startswith('4'):  # Revenue (sales)
+                monthly_sales[m] += _round2(entry.get('credit', 0)) - _round2(entry.get('debit', 0))
+
+        # COGS and gross profit (current year)
+        total_cogs = 0.0; total_revenue = 0.0
+        for entry in app_tables.ledger.search():
+            d = entry.get('date')
+            if not d or not hasattr(d, 'year') or d.year != year:
+                continue
+            code = entry.get('account_code', '')
+            if code.startswith('5'):
+                total_cogs += _round2(entry.get('debit', 0)) - _round2(entry.get('credit', 0))
+            elif code.startswith('4'):
+                total_revenue += _round2(entry.get('credit', 0)) - _round2(entry.get('debit', 0))
+
+        return {
+            'success': True,
+            'inventory': {
+                'total_count': inv_count, 'total_value': _round2(inv_value),
+                'in_stock': inv_in_stock, 'in_transit': inv_in_transit, 'sold': inv_sold,
+            },
+            'purchase_invoices': {
+                'total_count': pi_count, 'total_value': _round2(pi_total_value),
+                'total_paid': _round2(pi_total_paid),
+                'outstanding': _round2(pi_total_value - pi_total_paid),
+                'draft_count': pi_draft, 'posted_count': pi_posted,
+            },
+            'profitability': {
+                'total_revenue': _round2(total_revenue),
+                'total_cogs': _round2(total_cogs),
+                'gross_profit': _round2(total_revenue - total_cogs),
+            },
+            'top_suppliers': top_suppliers,
+            'monthly_purchases': monthly_purchases,
+            'monthly_sales': monthly_sales,
+        }
+    except Exception as e:
+        logger.exception("get_accounting_dashboard_stats error")
+        return {'success': False, 'message': str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Data Export — Inventory & Purchase Invoices
+# ---------------------------------------------------------------------------
+@anvil.server.callable
+def export_inventory_data(token_or_email=None):
+    """Export all inventory items for Excel/CSV."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'export')
+    if not is_valid:
+        return []
+    try:
+        data = []
+        for r in app_tables.inventory.search():
+            data.append({
+                'Machine Code': r.get('machine_code', ''),
+                'Description': r.get('description', ''),
+                'Status': r.get('status', ''),
+                'Purchase Cost': _round2(r.get('purchase_cost', 0)),
+                'Import Costs': _round2(r.get('import_costs_total', 0)),
+                'Total Cost (Landed)': _round2(r.get('total_cost', 0)),
+                'Selling Price': _round2(r.get('selling_price', 0)),
+                'Location': r.get('location', ''),
+                'Contract': r.get('contract_number', ''),
+                'Notes': r.get('notes', ''),
+            })
+        return data
+    except Exception as e:
+        logger.exception("export_inventory_data error")
+        return []
+
+
+@anvil.server.callable
+def export_purchase_invoices_data(token_or_email=None):
+    """Export all purchase invoices for Excel/CSV."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'export')
+    if not is_valid:
+        return []
+    try:
+        data = []
+        for r in app_tables.purchase_invoices.search():
+            supplier_name = ''
+            try:
+                s = app_tables.suppliers.get(id=r.get('supplier_id'))
+                if s: supplier_name = s.get('name', '')
+            except:
+                pass
+            data.append({
+                'Invoice Number': r.get('invoice_number', ''),
+                'Supplier': supplier_name,
+                'Date': str(r.get('date', '')),
+                'Due Date': str(r.get('due_date', '')),
+                'Machine Code': r.get('machine_code', ''),
+                'Subtotal': _round2(r.get('subtotal', 0)),
+                'Tax': _round2(r.get('tax_amount', 0)),
+                'Total': _round2(r.get('total', 0)),
+                'Paid': _round2(r.get('paid_amount', 0)),
+                'Status': r.get('status', ''),
+                'Contract': r.get('contract_number', ''),
+                'Notes': r.get('notes', ''),
+            })
+        return data
+    except Exception as e:
+        logger.exception("export_purchase_invoices_data error")
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Feature 6: Multi-Currency — Auto-fetch exchange rates from API
+# ---------------------------------------------------------------------------
+@anvil.server.callable
+def fetch_exchange_rates_from_api(token_or_email=None):
+    """Auto-fetch exchange rates from open.er-api.com and update the table."""
+    is_valid, user_email, error = _require_authenticated(token_or_email)
+    if not is_valid:
+        return {'success': False, 'message': error}
+    try:
+        import anvil.http
+        resp = anvil.http.request('https://open.er-api.com/v6/latest/USD', json=True)
+        if not resp or resp.get('result') != 'success':
+            return {'success': False, 'message': 'API returned error'}
+        rates = resp.get('rates', {})
+        updated_count = 0
+        target_currencies = ['EGP', 'EUR', 'GBP', 'SAR', 'AED', 'CNY']
+        now = datetime.now()
+        for code in target_currencies:
+            rate_val = rates.get(code)
+            if rate_val is None:
+                continue
+            try:
+                existing = app_tables.currency_exchange_rates.get(currency_code=code)
+                if existing:
+                    existing['rate_to_usd'] = float(rate_val)
+                    existing['updated_at'] = now
+                    existing['source'] = 'open.er-api.com'
+                else:
+                    app_tables.currency_exchange_rates.add_row(
+                        currency_code=code,
+                        rate_to_usd=float(rate_val),
+                        updated_at=now,
+                        source='open.er-api.com'
+                    )
+                updated_count += 1
+            except Exception as inner_e:
+                logger.warning("Failed to update rate for %s: %s", code, inner_e)
+        AuthManager.log_audit('fetch_exchange_rates', 'currency_exchange_rates', 'auto',
+                              None, {'currencies_updated': updated_count, 'source': 'open.er-api.com'},
+                              user_email)
+        return {'success': True, 'message': f'{updated_count} currencies updated',
+                'updated_count': updated_count, 'last_updated': now.isoformat()}
+    except Exception as e:
+        logger.exception("fetch_exchange_rates_from_api error")
+        return {'success': False, 'message': str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Feature 5: Export Audit Log (CSV-ready)
+# ---------------------------------------------------------------------------
+@anvil.server.callable
+def export_audit_log(token_or_email=None, filters=None):
+    """Export audit logs as list of dicts for CSV/Excel."""
+    result = AuthManager.get_audit_logs(token_or_email, limit=5000, offset=0, filters=filters)
+    if not result or not result.get('success'):
+        return []
+    data = []
+    for log in result.get('logs', []):
+        # Compute diff if old_data and new_data exist
+        diff_text = ''
+        try:
+            old_d = log.get('old_data')
+            new_d = log.get('new_data')
+            if old_d and new_d:
+                if isinstance(old_d, str):
+                    old_d = json.loads(old_d)
+                if isinstance(new_d, str):
+                    new_d = json.loads(new_d)
+                if isinstance(old_d, dict) and isinstance(new_d, dict):
+                    changes = []
+                    all_keys = set(list(old_d.keys()) + list(new_d.keys()))
+                    for k in sorted(all_keys):
+                        ov = old_d.get(k, '—')
+                        nv = new_d.get(k, '—')
+                        if str(ov) != str(nv):
+                            changes.append(f'{k}: {ov} → {nv}')
+                    diff_text = '; '.join(changes)
+        except Exception:
+            pass
+        data.append({
+            'Timestamp': log.get('timestamp', ''),
+            'User': log.get('user_name', ''),
+            'Email': log.get('user_email', ''),
+            'Action': log.get('action', ''),
+            'Table': log.get('table_name', ''),
+            'Record ID': log.get('record_id', ''),
+            'Description': log.get('action_description', ''),
+            'Changes': diff_text,
+        })
+    return data
+
+
+# ---------------------------------------------------------------------------
+# Feature 3: Smart Notifications — Daily check for due invoices
+# ---------------------------------------------------------------------------
+@anvil.server.callable
+def run_daily_notification_check(token_or_email=None):
+    """Check for due/overdue purchase invoices and create notifications."""
+    is_valid, user_email, error = _require_authenticated(token_or_email)
+    if not is_valid:
+        return {'success': False, 'message': error}
+    try:
+        now = datetime.now()
+        seven_days = now + timedelta(days=7)
+        count_due = 0
+        count_overdue = 0
+
+        for inv in app_tables.purchase_invoices.search():
+            status = (inv.get('status') or '').lower()
+            if status in ('paid', 'cancelled'):
+                continue
+            due_date = inv.get('due_date')
+            if not due_date:
+                continue
+            if isinstance(due_date, str):
+                try:
+                    due_date = datetime.strptime(due_date, '%Y-%m-%d')
+                except Exception:
+                    continue
+
+            inv_num = inv.get('invoice_number', '?')
+            total_val = _round2(inv.get('total', 0))
+            paid_val = _round2(inv.get('paid_amount', 0))
+            remaining = _round2(total_val - paid_val)
+
+            if due_date < now:
+                # Overdue
+                _create_notification_for_admins(
+                    'invoice_overdue',
+                    f'Invoice {inv_num} is OVERDUE (due {due_date.strftime("%Y-%m-%d")}). Remaining: ${remaining}',
+                    {'invoice_number': inv_num, 'due_date': str(due_date.date()),
+                     'remaining': remaining}
+                )
+                count_overdue += 1
+            elif due_date <= seven_days:
+                # Due soon
+                _create_notification_for_admins(
+                    'invoice_due_soon',
+                    f'Invoice {inv_num} due on {due_date.strftime("%Y-%m-%d")}. Remaining: ${remaining}',
+                    {'invoice_number': inv_num, 'due_date': str(due_date.date()),
+                     'remaining': remaining}
+                )
+                count_due += 1
+
+        return {'success': True, 'message': f'Check complete: {count_overdue} overdue, {count_due} due soon',
+                'overdue': count_overdue, 'due_soon': count_due}
+    except Exception as e:
+        logger.exception("run_daily_notification_check error")
+        return {'success': False, 'message': str(e)}
+
+
+def _create_notification_for_admins(notification_type, message, data=None):
+    """Create a notification for all admin users."""
+    try:
+        for user in app_tables.users.search():
+            role = (user.get('role') or '').strip().lower()
+            if role in ('admin', 'manager'):
+                app_tables.notifications.add_row(
+                    user_email=user.get('email', ''),
+                    type=notification_type,
+                    message=message,
+                    data=json.dumps(data) if data else '',
+                    is_read=False,
+                    created_at=datetime.now()
+                )
+    except Exception as e:
+        logger.warning("_create_notification_for_admins error: %s", e)
+
+
+# ---------------------------------------------------------------------------
+# Feature 2: PDF Reports — Purchase Invoice, P&L, Supplier Statement
+# ---------------------------------------------------------------------------
+@anvil.server.callable
+def get_purchase_invoice_pdf_data(invoice_id, token_or_email=None):
+    """Get PDF-ready data for a purchase invoice."""
+    is_valid, user_email, error = _require_authenticated(token_or_email)
+    if not is_valid:
+        return {'success': False, 'message': error}
+    try:
+        inv = app_tables.purchase_invoices.get(id=invoice_id)
+        if not inv:
+            return {'success': False, 'message': 'Invoice not found'}
+        supplier = None
+        try:
+            supplier = app_tables.suppliers.get(id=inv.get('supplier_id'))
+        except Exception:
+            pass
+        import_costs = []
+        try:
+            for c in app_tables.import_costs.search(purchase_invoice_id=invoice_id):
+                import_costs.append(dict(c))
+        except Exception:
+            pass
+        data = pdf_reports.build_purchase_invoice_pdf_data(
+            dict(inv), dict(supplier) if supplier else {}, import_costs
+        )
+        return {'success': True, 'data': data}
+    except Exception as e:
+        logger.exception("get_purchase_invoice_pdf_data error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_pnl_report_pdf_data(date_from=None, date_to=None, token_or_email=None):
+    """Get P&L report PDF data."""
+    is_valid, user_email, error = _require_authenticated(token_or_email)
+    if not is_valid:
+        return {'success': False, 'message': error}
+    try:
+        items = [dict(r) for r in app_tables.inventory.search()]
+        invoices = [dict(r) for r in app_tables.purchase_invoices.search()]
+        data = pdf_reports.build_pnl_report_data(items, invoices, date_from, date_to)
+        return {'success': True, 'data': data}
+    except Exception as e:
+        logger.exception("get_pnl_report_pdf_data error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_supplier_statement_pdf_data(supplier_id, date_from=None, date_to=None, token_or_email=None):
+    """Get supplier account statement PDF data."""
+    is_valid, user_email, error = _require_authenticated(token_or_email)
+    if not is_valid:
+        return {'success': False, 'message': error}
+    try:
+        supplier = app_tables.suppliers.get(id=supplier_id)
+        if not supplier:
+            return {'success': False, 'message': 'Supplier not found'}
+        invoices = [dict(r) for r in app_tables.purchase_invoices.search(supplier_id=supplier_id)]
+        data = pdf_reports.build_supplier_statement_data(dict(supplier), invoices, [], date_from, date_to)
+        return {'success': True, 'data': data}
+    except Exception as e:
+        logger.exception("get_supplier_statement_pdf_data error")
         return {'success': False, 'message': str(e)}

@@ -48,6 +48,9 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
         # JS Bridges — Calculator settings for machine config
         anvil.js.window.pyGetCalculatorSettings = self.get_calculator_settings
 
+        # JS Bridge — RBAC permissions
+        anvil.js.window.pyGetPermissions = self.get_permissions
+
         # JS Bridges — new (multiple banks, posting, payable status, contract purchase)
         anvil.js.window.pyPostPurchaseInvoice = self.post_purchase_invoice
         anvil.js.window.pyRecordSupplierPayment = self.record_supplier_payment
@@ -57,6 +60,9 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
         anvil.js.window.pyGetLandedCost = self.get_landed_cost
         anvil.js.window.pyCreateContractPurchase = self.create_contract_purchase
         anvil.js.window.pyGetContractsList = self.get_contracts_list
+
+        # JS Bridge — PDF Reports
+        anvil.js.window.pyGetPurchaseInvoicePdfData = self.get_purchase_invoice_pdf_data
 
         register_notif_bridges()
 
@@ -144,6 +150,23 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
             return anvil.server.call('get_calculator_settings', self._auth())
         except Exception as e:
             logger.warning("Could not load calculator settings: %s", e)
+            return {'success': False, 'message': str(e)}
+
+    def get_permissions(self):
+        """Get RBAC permissions for the current user."""
+        try:
+            return anvil.server.call('get_user_permissions', self._auth())
+        except Exception as e:
+            logger.warning("Could not load permissions: %s", e)
+            return {'success': False, 'can_view': True, 'can_create': False,
+                    'can_edit': False, 'can_delete': False, 'is_admin': False, 'role': 'viewer'}
+
+    def get_purchase_invoice_pdf_data(self, invoice_id):
+        """Get PDF-ready data for a purchase invoice."""
+        try:
+            return anvil.server.call('get_purchase_invoice_pdf_data', invoice_id, self._auth())
+        except Exception as e:
+            logger.warning("PDF data error: %s", e)
             return {'success': False, 'message': str(e)}
 
     def go_back(self):

@@ -45,6 +45,9 @@ class InventoryForm(InventoryFormTemplate):
         # JS Bridge — Calculator settings for machine config
         anvil.js.window.pyGetCalculatorSettings = self.get_calculator_settings
 
+        # JS Bridge — RBAC permissions
+        anvil.js.window.pyGetPermissions = self.get_permissions
+
         # JS Bridges — new (receive, sell, landed cost, profitability)
         anvil.js.window.pyReceiveInventory = self.receive_inventory
         anvil.js.window.pySellInventory = self.sell_inventory
@@ -104,6 +107,15 @@ class InventoryForm(InventoryFormTemplate):
         except Exception as e:
             logger.warning("Could not load calculator settings: %s", e)
             return {'success': False, 'message': str(e)}
+
+    def get_permissions(self):
+        """Get RBAC permissions for the current user."""
+        try:
+            return anvil.server.call('get_user_permissions', self._auth())
+        except Exception as e:
+            logger.warning("Could not load permissions: %s", e)
+            return {'success': False, 'can_view': True, 'can_create': False,
+                    'can_edit': False, 'can_delete': False, 'is_admin': False, 'role': 'viewer'}
 
     def go_back(self):
         open_form('AdminPanel')

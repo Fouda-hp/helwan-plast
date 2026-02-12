@@ -1682,8 +1682,8 @@ container:
         html += '<td>' + (u.phone || '-') + '</td>';
         html += '<td>' + u.created_at.split('T')[0] + '</td>';
         html += '<td class="actions">';
-        html += '<button class="btn-sm approve" onclick="showApprovalModal(\'' + u.user_id + '\')" style="background:#e8f5e9;color:#2e7d32;">✓ Approve</button>';
-        html += '<button class="btn-sm reject" onclick="rejectUserAction(\'' + u.user_id + '\')">✕ Reject</button>';
+        html += '<button class="btn-sm approve" onclick="showApprovalModal('' + u.user_id + '')" style="background:#e8f5e9;color:#2e7d32;">✓ Approve</button>';
+        html += '<button class="btn-sm reject" onclick="rejectUserAction('' + u.user_id + '')">✕ Reject</button>';
         html += '</td></tr>';
         });
         html += '</tbody></table>';
@@ -1749,8 +1749,7 @@ container:
         window.rejectUserAction = async function(userId) {
         var user = pendingUsersData[userId];
         var userName = user ? user.full_name : 'this user';
-        if (!confirm('Are you sure you want to reject ' + userName + '?\\
-      This action cannot be undone.')) return;
+        if (!confirm('Are you sure you want to reject ' + userName + '?\nThis action cannot be undone.')) return;
 
         showNotification('info', 'Processing', 'Rejecting user...');
         try {
@@ -1804,12 +1803,12 @@ container:
         html += '<option value="authenticator"' + (om === 'authenticator' ? ' selected' : '') + '>Authenticator</option>';
         html += '</select></td>';
         html += '<td class="actions">';
-        html += '<button class="btn-sm edit" onclick="showRoleModal(\'' + u.user_id + '\', \'' + u.role + '\')">Role</button>';
-        html += '<button class="btn-sm edit" onclick="showPasswordModal(\'' + u.user_id + '\')">Password</button>';
+        html += '<button class="btn-sm edit" onclick="showRoleModal('' + u.user_id + '', '' + u.role + '')">Role</button>';
+        html += '<button class="btn-sm edit" onclick="showPasswordModal('' + u.user_id + '')">Password</button>';
         if (u.is_approved) {
-        html += '<button class="btn-sm ' + (u.is_active ? 'reject' : 'approve') + '" onclick="toggleActive(\'' + u.user_id + '\')">' + (u.is_active ? 'Disable' : 'Enable') + '</button>';
+        html += '<button class="btn-sm ' + (u.is_active ? 'reject' : 'approve') + '" onclick="toggleActive('' + u.user_id + '')">' + (u.is_active ? 'Disable' : 'Enable') + '</button>';
         }
-        html += '<button class="btn-sm reject" onclick="confirmDeleteUser(\'' + u.user_id + '\', \'' + u.full_name + '\')">Delete</button>';
+        html += '<button class="btn-sm reject" onclick="confirmDeleteUser('' + u.user_id + '', '' + u.full_name + '')">Delete</button>';
         html += '</td></tr>';
         });
         html += '</tbody></table>';
@@ -1883,9 +1882,7 @@ container:
         };
 
         window.confirmDeleteUser = function(userId, userName) {
-        if (confirm('⚠️ Are you sure you want to DELETE user "' + userName + '"?\\
-      \\
-      This will permanently remove the user and all their data. This action cannot be undone!')) {
+        if (confirm('Are you sure you want to DELETE user "' + userName + '"?\nThis will permanently remove the user and all their data. This action cannot be undone!')) {
         deleteUserPermanently(userId);
         }
         };
@@ -1945,9 +1942,9 @@ container:
         html += '<td><span class="status ' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
         html += '<td class="actions">';
         if (c.is_deleted) {
-        html += '<button class="btn-sm restore" onclick="restoreClient(\'' + c['Client Code'] + '\')">Restore</button>';
+        html += '<button class="btn-sm restore" onclick="restoreClient('' + c['Client Code'] + '')">Restore</button>';
         } else {
-        html += '<button class="btn-sm delete" onclick="deleteClient(\'' + c['Client Code'] + '\')">Delete</button>';
+        html += '<button class="btn-sm delete" onclick="deleteClient('' + c['Client Code'] + '')">Delete</button>';
         }
         html += '</td></tr>';
         });
@@ -2237,7 +2234,7 @@ container:
         html += '<label>USD to EGP Rate</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="number" step="0.01" id="setting_exchange_rate" value="' + (settings.exchange_rate || 47.5) + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSetting(\'exchange_rate\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSetting('exchange_rate')">Save</button>';
         html += '</div></div></div>';
 
         // Shipping & Expenses Section
@@ -2248,35 +2245,35 @@ container:
         html += '<label>Sea Shipping Cost</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="number" step="1" id="setting_shipping_sea" value="' + (settings.shipping_sea || 3200) + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSetting(\'shipping_sea\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSetting('shipping_sea')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>THS Cost</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="number" step="1" id="setting_ths_cost" value="' + (settings.ths_cost || 1000) + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSetting(\'ths_cost\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSetting('ths_cost')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Clearance Expenses</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="number" step="1" id="setting_clearance_expenses" value="' + (settings.clearance_expenses || 1400) + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSetting(\'clearance_expenses\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSetting('clearance_expenses')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Tax Rate (%)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="number" step="0.01" id="setting_tax_rate" value="' + ((settings.tax_rate || 0.15) * 100) + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSetting(\'tax_rate\', true)">Save</button>';
+        html += '<button class="action-btn" onclick="saveSetting('tax_rate', true)">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group" style="margin-bottom:0;">';
         html += '<label>Bank Commission (%)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="number" step="0.001" id="setting_bank_commission" value="' + ((settings.bank_commission || 0.0132) * 100) + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSetting(\'bank_commission\', true)">Save</button>';
+        html += '<button class="action-btn" onclick="saveSetting('bank_commission', true)">Save</button>';
         html += '</div></div>';
 
         html += '</div>';
@@ -2297,42 +2294,42 @@ container:
         html += '<label>Company Name (Arabic)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_company_name_ar" value="' + (settings.company_name_ar || 'شركة حلوان بلاست ذ.م.م') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'company_name_ar\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('company_name_ar')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Company Name (English)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_company_name_en" value="' + (settings.company_name_en || 'Helwan Plast LLC') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'company_name_en\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('company_name_en')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Company Address (Arabic)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_company_address_ar" value="' + (settings.company_address_ar || 'المنطقة الصناعية الثانية - قطعة ٢٠') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'company_address_ar\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('company_address_ar')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Company Address (English)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_company_address_en" value="' + (settings.company_address_en || 'Second Industrial Zone – Plot 20') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'company_address_en\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('company_address_en')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Company Email</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="email" id="setting_company_email" value="' + (settings.company_email || 'sales@helwanplast.com') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'company_email\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('company_email')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group" style="margin-bottom:0;">';
         html += '<label>Company Website</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_company_website" value="' + (settings.company_website || 'www.helwanplast.com') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'company_website\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('company_website')">Save</button>';
         html += '</div></div>';
 
         html += '</div>'; // End Company Info
@@ -2345,28 +2342,28 @@ container:
         html += '<label>Quotation Location (Arabic)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_quotation_location_ar" value="' + (settings.quotation_location_ar || 'القاهرة') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'quotation_location_ar\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('quotation_location_ar')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Quotation Location (English)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_quotation_location_en" value="' + (settings.quotation_location_en || 'Cairo') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'quotation_location_en\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('quotation_location_en')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Warranty Period (months)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="number" id="setting_warranty_months" value="' + (settings.warranty_months || 12) + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSetting(\'warranty_months\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSetting('warranty_months')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group" style="margin-bottom:0;">';
         html += '<label>Quotation Validity (days)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="number" id="setting_validity_days" value="' + (settings.validity_days || 15) + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSetting(\'validity_days\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSetting('validity_days')">Save</button>';
         html += '</div></div>';
 
         html += '</div>'; // End Quotation Defaults
@@ -2379,21 +2376,21 @@ container:
         html += '<label>Down Payment %</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="number" id="setting_down_payment_percent" value="' + (settings.down_payment_percent || 40) + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSetting(\'down_payment_percent\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSetting('down_payment_percent')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Before Shipping %</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="number" id="setting_before_shipping_percent" value="' + (settings.before_shipping_percent || 30) + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSetting(\'before_shipping_percent\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSetting('before_shipping_percent')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group" style="margin-bottom:0;">';
         html += '<label>Before Delivery %</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="number" id="setting_before_delivery_percent" value="' + (settings.before_delivery_percent || 30) + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSetting(\'before_delivery_percent\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSetting('before_delivery_percent')">Save</button>';
         html += '</div></div>';
 
         html += '</div>'; // End Payment Terms
@@ -2406,42 +2403,42 @@ container:
         html += '<label>Country of Origin (Arabic)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_country_origin_ar" value="' + (settings.country_origin_ar || 'الصين') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'country_origin_ar\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('country_origin_ar')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Country of Origin (English)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_country_origin_en" value="' + (settings.country_origin_en || 'China') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'country_origin_en\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('country_origin_en')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Anilox Type (Arabic)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_anilox_type_ar" value="' + (settings.anilox_type_ar || 'انيلوكس سيراميك') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'anilox_type_ar\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('anilox_type_ar')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Anilox Type (English)</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_anilox_type_en" value="' + (settings.anilox_type_en || 'Ceramic anilox') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'anilox_type_en\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('anilox_type_en')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group">';
         html += '<label>Brake Power - Single Winder</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_single_winder_brake_power" value="' + (settings.single_winder_brake_power || '1 pc (10kg) + 1 pc (5kg)') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'single_winder_brake_power\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('single_winder_brake_power')">Save</button>';
         html += '</div></div>';
 
         html += '<div class="form-group" style="margin-bottom:0;">';
         html += '<label>Brake Power - Double Winder</label>';
         html += '<div style="display:flex;gap:10px;align-items:center;">';
         html += '<input type="text" id="setting_double_winder_brake_power" value="' + (settings.double_winder_brake_power || '2 pc (10kg) + 2 pc (5kg)') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
-        html += '<button class="action-btn" onclick="saveSettingText(\'double_winder_brake_power\')">Save</button>';
+        html += '<button class="action-btn" onclick="saveSettingText('double_winder_brake_power')">Save</button>';
         html += '</div></div>';
 
       html += '</div>'; // End Machine Defaults
@@ -2758,7 +2755,7 @@ container:
           if (transitions.length > 0) {
             html += '<div style="margin-top:16px;"><strong>Change status to:</strong><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">';
             transitions.forEach(function(t) {
-              html += '<button style="padding:6px 14px;border:none;border-radius:6px;cursor:pointer;background:' + (stateColors[t]||'#667eea') + ';color:#fff;font-size:12px;" onclick="changeContractStatus(\'' + contractNum + '\',\'' + t + '\')">' + t + '</button>';
+              html += '<button style="padding:6px 14px;border:none;border-radius:6px;cursor:pointer;background:' + (stateColors[t]||'#667eea') + ';color:#fff;font-size:12px;" onclick="changeContractStatus('' + contractNum + '','' + t + '')">' + t + '</button>';
             });
             html += '</div></div>';
           }

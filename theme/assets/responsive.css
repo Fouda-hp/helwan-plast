@@ -152,6 +152,89 @@
   body.rtl .cl-header {
     text-align: right;
   }
+
+  /* --- CalculatorForm responsive --- */
+  .main {
+    grid-template-columns: 1fr !important;
+  }
+
+  .left,
+  .right {
+    padding: 12px !important;
+  }
+
+  .row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .row input,
+  .row select,
+  .row textarea,
+  .row .ui-select {
+    width: 100% !important;
+  }
+
+  /* Custom selects touch-friendly */
+  .ui-select-trigger {
+    min-height: 44px !important;
+    height: 44px !important;
+  }
+
+  .ui-option {
+    min-height: 44px !important;
+    padding: 12px !important;
+  }
+
+  /* Machine grid → single column */
+  .machine-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Top buttons → 2 columns */
+  .top-buttons {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .top-buttons button {
+    min-height: 44px !important;
+    height: 44px !important;
+    font-size: 13px !important;
+  }
+
+  /* Save button */
+  .save button {
+    min-height: 44px !important;
+    height: 44px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Optional rows */
+  .optional-row {
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+  }
+
+  .optional-row input[type="checkbox"] {
+    min-width: 24px !important;
+    min-height: 24px !important;
+  }
+
+  /* Cylinders table */
+  .cylinders {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cylinders table {
+    min-width: 400px;
+  }
+
+  .cylinders input {
+    min-height: 40px !important;
+  }
 }
 
 /* ===== SMALL PHONE (max-width: 480px) ===== */
@@ -235,6 +318,23 @@
   .cd-back-btn {
     font-size: 13px !important;
     padding: 6px 12px !important;
+  }
+
+  /* --- CalculatorForm small phone --- */
+  .top-buttons {
+    grid-template-columns: 1fr !important;
+  }
+
+  .header-title {
+    font-size: 14px !important;
+  }
+
+  .label {
+    font-size: 13px !important;
+  }
+
+  .optional-block {
+    padding-left: 0 !important;
   }
 }
 

@@ -168,21 +168,29 @@ def _setup_mocks():
     sys.modules['auth_utils'] = mock_auth_utils
 
 
-_setup_mocks()
+# Guard: only run test setup when executed locally, NOT when Anvil imports this module.
+# In Anvil's runtime, 'anvil' is already in sys.modules as a real module before this file loads.
+# Locally, 'anvil' won't exist until _setup_mocks() creates it.
+_RUNNING_IN_ANVIL = 'anvil' in sys.modules and not isinstance(sys.modules.get('anvil'), MagicMock)
 
-from server_code import accounting
+accounting = None  # module-level reference
 
-# Patch to use our in-memory tables
-accounting.app_tables = _AppTablesProxy()
+if not _RUNNING_IN_ANVIL:
+    _setup_mocks()
 
-# Patch AuthManager
-_mock_auth_mgr = MagicMock()
-_mock_auth_mgr.validate_token = MagicMock(return_value={'valid': True, 'user': {'email': 'test@helwan.com'}})
-_mock_auth_mgr.is_admin = MagicMock(return_value=True)
-_mock_auth_mgr.is_admin_by_email = MagicMock(return_value=True)
-_mock_auth_mgr.check_permission = MagicMock(return_value=True)
-accounting.AuthManager = _mock_auth_mgr
-accounting.get_utc_now = lambda: datetime.utcnow()
+    from server_code import accounting
+
+    # Patch to use our in-memory tables
+    accounting.app_tables = _AppTablesProxy()
+
+    # Patch AuthManager
+    _mock_auth_mgr = MagicMock()
+    _mock_auth_mgr.validate_token = MagicMock(return_value={'valid': True, 'user': {'email': 'test@helwan.com'}})
+    _mock_auth_mgr.is_admin = MagicMock(return_value=True)
+    _mock_auth_mgr.is_admin_by_email = MagicMock(return_value=True)
+    _mock_auth_mgr.check_permission = MagicMock(return_value=True)
+    accounting.AuthManager = _mock_auth_mgr
+    accounting.get_utc_now = lambda: datetime.utcnow()
 
 
 class TestFullScenario(unittest.TestCase):

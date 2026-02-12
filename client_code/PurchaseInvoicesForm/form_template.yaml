@@ -287,6 +287,9 @@ container:
                 <div class="form-group" style="margin-bottom:0;">
                   <input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()">
                 </div>
+                <div style="display:flex;align-items:center;">
+                  <button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button>
+                </div>
               </div>
             </div>
             <button class="btn-add-row" onclick="addImportCostRow()" style="font-size:12px;padding:6px 12px;">+ Add Cost</button>
@@ -388,6 +391,34 @@ container:
             document.getElementById('lblFobStd').textContent = t('Standard Machine FOB ($)', 'سعر FOB القياسي ($)');
             document.getElementById('lblFobCyl').textContent = t('FOB With Cylinders ($)', 'FOB مع السلندرات ($)');
             document.getElementById('lblMachineCode').textContent = t('Machine Code (auto)', 'كود الماكينة (تلقائي)');
+            // Cylinder i18n
+            document.getElementById('lblPiCylinders').textContent = t('🔧 Cylinders', '🔧 السلندرات');
+            document.getElementById('piCylThSize').textContent = t('Size (CM)', 'المقاس (سم)');
+            document.getElementById('piCylThCount').textContent = t('Count', 'العدد');
+            document.getElementById('piCylThCost').textContent = t('Cost ($)', 'التكلفة ($)');
+            document.getElementById('lblPiCylTotal').textContent = t('Total', 'الاجمالي');
+            // Form labels i18n
+            document.getElementById('lblSupplier').textContent = t('Supplier *', '* المورد');
+            document.getElementById('lblDate').textContent = t('Date *', '* التاريخ');
+            document.getElementById('lblContractNo').textContent = t('Contract Number', 'رقم العقد');
+            document.getElementById('lblLineItems').textContent = t('Additional Items / Spare Parts', 'اصناف اضافية / قطع غيار');
+            document.getElementById('liDesc').textContent = t('Description', 'الوصف');
+            document.getElementById('liQty').textContent = t('Qty', 'الكمية');
+            document.getElementById('liPrice').textContent = t('Unit Price', 'سعر الوحدة');
+            document.getElementById('liTotal').textContent = t('Total', 'الاجمالي');
+            document.getElementById('btnAddRow').textContent = t('+ Add Row', '+ اضافة سطر');
+            document.getElementById('lblImportCosts').textContent = t('Import Costs', 'تكاليف الاستيراد');
+            document.getElementById('lblFobLine').textContent = t('FOB With Cylinders:', 'FOB مع السلندرات:');
+            document.getElementById('lblAddItems').textContent = t('Additional Items:', 'الاصناف الاضافية:');
+            document.getElementById('lblImportTotal').textContent = t('Import Costs:', 'تكاليف الاستيراد:');
+            document.getElementById('lblGrandTotal').textContent = t('Grand Total:', 'الاجمالي الكلي:');
+            document.getElementById('lblInvNotes').textContent = t('Notes', 'ملاحظات');
+            // Payment modal i18n
+            document.getElementById('payModalTitle').textContent = t('Record Payment', 'تسجيل دفعة');
+            document.getElementById('lblPayAmount').textContent = t('Amount *', '* المبلغ');
+            document.getElementById('lblPayMethod').textContent = t('Method', 'طريقة الدفع');
+            document.getElementById('lblPayNotes').textContent = t('Notes', 'ملاحظات');
+            document.getElementById('detailsTitle').textContent = t('Invoice Details', 'تفاصيل الفاتورة');
             if (isAr) document.querySelector('.pi-wrapper').style.direction = 'rtl';
           }
 
@@ -459,6 +490,9 @@ container:
               html += '<td><span class="status-badge status-' + statusKey + '">' + (statusLabels[statusKey] || statusKey) + '</span></td>';
               html += '<td style="white-space:nowrap;">';
               html += '<button class="btn-sm btn-view" onclick="viewInvoice(\'' + inv.id + '\')">' + t('View', 'عرض') + '</button> ';
+              if (statusKey === 'draft') {
+                html += '<button class="btn-sm" style="background:#ff9800;color:#fff;" onclick="editInvoice(\'' + inv.id + '\')">' + t('Edit', 'تعديل') + '</button> ';
+              }
               if (statusKey !== 'paid') {
                 html += '<button class="btn-sm btn-pay" onclick="openPaymentModal(\'' + inv.id + '\', ' + balance + ')">' + t('Pay', 'دفع') + '</button> ';
               }
@@ -570,7 +604,7 @@ container:
             var div = document.createElement('div');
             div.className = 'form-row import-cost-row';
             div.style.marginBottom = '8px';
-            div.innerHTML = '<div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">' + t('Shipping', 'شحن') + '</option><option value="customs">' + t('Customs', 'جمارك') + '</option><option value="insurance">' + t('Insurance', 'تامين') + '</option><option value="clearance">' + t('Clearance', 'تخليص') + '</option><option value="other">' + t('Other', 'اخرى') + '</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div>';
+            div.innerHTML = '<div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">' + t('Shipping', 'شحن') + '</option><option value="customs">' + t('Customs', 'جمارك') + '</option><option value="insurance">' + t('Insurance', 'تامين') + '</option><option value="clearance">' + t('Clearance', 'تخليص') + '</option><option value="other">' + t('Other', 'اخرى') + '</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div><div style="display:flex;align-items:center;"><button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button></div>';
             container.appendChild(div);
           };
 
@@ -616,7 +650,7 @@ container:
             piInitCylTable('');
             // Reset line items
             document.getElementById('lineItemsBody').innerHTML = '<tr class="line-row"><td><input type="text" class="li-desc"></td><td><input type="number" class="li-qty" value="1" min="1" oninput="calcInvoiceTotals()"></td><td><input type="number" class="li-price" value="0" step="0.01" oninput="calcInvoiceTotals()"></td><td class="li-total" style="text-align:right;font-weight:600;">0.00</td><td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td></tr>';
-            document.getElementById('importCostRows').innerHTML = '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="other">Other</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div></div>';
+            document.getElementById('importCostRows').innerHTML = '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="other">Other</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div><div style="display:flex;align-items:center;"><button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button></div></div>';
             document.getElementById('valFobLine').textContent = '0.00';
             document.getElementById('valAddItems').textContent = '0.00';
             document.getElementById('valImportTotal').textContent = '0.00';
@@ -624,6 +658,94 @@ container:
             loadSuppliers();
             loadCalcSettings();
             document.getElementById('invoiceModal').classList.add('show');
+          };
+
+          window.editInvoice = async function(id) {
+            // Load invoice details from server
+            try {
+              var res = await window.pyGetInvoiceDetails(id);
+              if (!res || !res.success) {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+                return;
+              }
+              var inv = res.data;
+              document.getElementById('invoiceModalTitle').textContent = t('Edit Purchase Invoice', 'تعديل فاتورة شراء');
+              document.getElementById('editInvoiceId').value = inv.id;
+              await loadSuppliers();
+              await loadCalcSettings();
+              document.getElementById('fSupplier').value = inv.supplier_id || '';
+              document.getElementById('fDate').value = (inv.date || '').substring(0, 10);
+              document.getElementById('fContractNo').value = inv.contract_number || '';
+              document.getElementById('fMachineCode').value = inv.machine_code || '';
+              document.getElementById('fInvNotes').value = inv.notes || '';
+              // Restore machine config
+              var mc = inv.machine_config || {};
+              document.getElementById('fCondition').value = mc.condition || '';
+              document.getElementById('fMachineType').value = mc.machine_type || '';
+              document.getElementById('fColors').value = mc.colors || '';
+              document.getElementById('fWidth').value = mc.machine_width || '';
+              document.getElementById('fMaterial').value = mc.material || '';
+              document.getElementById('fWinder').value = mc.winder || '';
+              // Restore optionals
+              var opts = mc.optionals || [];
+              document.getElementById('optVideo').checked = opts.indexOf('Video inspection') >= 0;
+              document.getElementById('optPLC').checked = opts.indexOf('PLC') >= 0;
+              document.getElementById('optSlitter').checked = opts.indexOf('Slitter') >= 0;
+              document.getElementById('optPneuUnwind').checked = opts.indexOf('Pneumatic Unwind') >= 0;
+              document.getElementById('optHydUnwind').checked = opts.indexOf('Hydraulic Station Unwind') >= 0;
+              document.getElementById('optPneuRewind').checked = opts.indexOf('Pneumatic Rewind') >= 0;
+              document.getElementById('optSurfRewind').checked = opts.indexOf('Surface Rewind') >= 0;
+              // Restore FOB values
+              document.getElementById('fFobStd').value = mc.fob_standard || '';
+              document.getElementById('fFobCyl').value = mc.fob_with_cylinders || '';
+              // Restore cylinders
+              var savedCyls = mc.cylinders || [];
+              piInitCylTable(mc.colors || '');
+              if (savedCyls.length > 0) {
+                for (var ci = 0; ci < savedCyls.length && ci < PI_CYL_ROWS; ci++) {
+                  var sEl = document.getElementById('piCylSize' + (ci + 1));
+                  var cEl = document.getElementById('piCylCount' + (ci + 1));
+                  if (sEl) sEl.value = savedCyls[ci].size || '';
+                  if (cEl) cEl.value = savedCyls[ci].count || '';
+                }
+                piCalcCylinders();
+              }
+              // Restore line items
+              var items = inv.line_items || inv.items || [];
+              var liBody = document.getElementById('lineItemsBody');
+              if (items.length > 0) {
+                var liHtml = '';
+                items.forEach(function(li) {
+                  liHtml += '<tr class="line-row"><td><input type="text" class="li-desc" value="' + (li.description || '').replace(/"/g, '&quot;') + '"></td><td><input type="number" class="li-qty" value="' + (li.quantity || 1) + '" min="1" oninput="calcInvoiceTotals()"></td><td><input type="number" class="li-price" value="' + (li.unit_price || 0) + '" step="0.01" oninput="calcInvoiceTotals()"></td><td class="li-total" style="text-align:right;font-weight:600;">' + fmt(li.total || 0) + '</td><td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td></tr>';
+                });
+                liBody.innerHTML = liHtml;
+              } else {
+                liBody.innerHTML = '<tr class="line-row"><td><input type="text" class="li-desc"></td><td><input type="number" class="li-qty" value="1" min="1" oninput="calcInvoiceTotals()"></td><td><input type="number" class="li-price" value="0" step="0.01" oninput="calcInvoiceTotals()"></td><td class="li-total" style="text-align:right;font-weight:600;">0.00</td><td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td></tr>';
+              }
+              // Restore import costs
+              var icosts = inv.import_costs || [];
+              var icContainer = document.getElementById('importCostRows');
+              if (icosts.length > 0) {
+                var icHtml = '';
+                icosts.forEach(function(ic) {
+                  icHtml += '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping"' + (ic.cost_type === 'shipping' ? ' selected' : '') + '>' + t('Shipping', 'شحن') + '</option><option value="customs"' + (ic.cost_type === 'customs' ? ' selected' : '') + '>' + t('Customs', 'جمارك') + '</option><option value="insurance"' + (ic.cost_type === 'insurance' ? ' selected' : '') + '>' + t('Insurance', 'تامين') + '</option><option value="clearance"' + (ic.cost_type === 'clearance' ? ' selected' : '') + '>' + t('Clearance', 'تخليص') + '</option><option value="other"' + (ic.cost_type === 'other' ? ' selected' : '') + '>' + t('Other', 'اخرى') + '</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="' + (ic.amount || 0) + '" oninput="calcInvoiceTotals()"></div><div style="display:flex;align-items:center;"><button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button></div></div>';
+                });
+                icContainer.innerHTML = icHtml;
+              } else {
+                icContainer.innerHTML = '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="other">Other</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div></div>';
+              }
+              calcInvoiceTotals();
+              document.getElementById('invoiceModal').classList.add('show');
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.removeImportCostRow = function(btn) {
+            var rows = document.querySelectorAll('#importCostRows .import-cost-row');
+            if (rows.length <= 1) return;
+            btn.closest('.import-cost-row').remove();
+            calcInvoiceTotals();
           };
 
           window.closeInvoiceModal = function() {
@@ -940,8 +1062,10 @@ container:
             var fobWithCyl = stdFob + cylCost;
 
             document.getElementById("fFobStd").value = stdFob;
-            // Init cylinder table and calculate
-            piInitCylTable(cols);
+            // Only reinitialize cylinders if creating new (not editing)
+            if (!document.getElementById('editInvoiceId').value) {
+              piInitCylTable(cols);
+            }
             piCalcCylinders(); // this also sets fFobCyl and calls calcInvoiceTotals
           };
 

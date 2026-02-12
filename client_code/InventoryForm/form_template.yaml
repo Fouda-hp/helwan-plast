@@ -296,6 +296,22 @@ container:
             document.getElementById('lblPurchaseCost').textContent = t('Purchase Cost', 'سعر الشراء');
             document.getElementById('lblLocation').textContent = t('Location', 'الموقع');
             document.getElementById('lblItemNotes').textContent = t('Notes', 'ملاحظات');
+            // Machine config i18n
+            document.getElementById('lblMachConfig').textContent = t('⚙ Machine Configuration', '⚙ إعداد الماكينة');
+            document.getElementById('lblInvCondition').textContent = t('Condition', 'الحالة');
+            document.getElementById('lblInvMachType').textContent = t('Machine Type', 'نوع الماكينة');
+            document.getElementById('lblInvColors').textContent = t('Colors', 'الألوان');
+            document.getElementById('lblInvWidth').textContent = t('Width (cm)', 'العرض (سم)');
+            document.getElementById('lblInvMaterial').textContent = t('Material', 'الخامة');
+            document.getElementById('lblInvWinder').textContent = t('Winder', 'اللفاف');
+            document.getElementById('lblInvOptionals').textContent = t('Optional Features', 'اضافات اختيارية');
+            document.getElementById('lblInvFobStd').textContent = t('Standard Machine FOB ($)', 'سعر FOB القياسي ($)');
+            document.getElementById('lblInvFobCyl').textContent = t('FOB With Cylinders ($)', 'FOB مع السلندرات ($)');
+            document.getElementById('lblInvCylinders').textContent = t('🔧 Cylinders', '🔧 السلندرات');
+            document.getElementById('cylThSize').textContent = t('Size (CM)', 'المقاس (سم)');
+            document.getElementById('cylThCount').textContent = t('Count', 'العدد');
+            document.getElementById('cylThCost').textContent = t('Cost ($)', 'التكلفة ($)');
+            document.getElementById('lblCylTotal').textContent = t('Total', 'الاجمالي');
             if (isAr) document.querySelector('.inv-wrapper').style.direction = 'rtl';
           }
 
@@ -422,6 +438,40 @@ container:
             document.getElementById('fPurchaseCost').value = item.purchase_cost || 0;
             document.getElementById('fLocation').value = item.location || '';
             document.getElementById('fItemNotes').value = item.notes || '';
+            // Restore machine config from saved data
+            var mc = item.machine_config || {};
+            invLoadCalcSettings().then(function() {
+              document.getElementById('invCondition').value = mc.condition || '';
+              document.getElementById('invMachType').value = mc.machine_type || '';
+              document.getElementById('invColors').value = mc.colors || '';
+              document.getElementById('invWidth').value = mc.machine_width || '';
+              document.getElementById('invMaterial').value = mc.material || '';
+              document.getElementById('invWinder').value = mc.winder || '';
+              // Restore optionals checkboxes
+              var opts = mc.optionals || [];
+              document.getElementById('invOptVideo').checked = opts.indexOf('Video inspection') >= 0;
+              document.getElementById('invOptPLC').checked = opts.indexOf('PLC') >= 0;
+              document.getElementById('invOptSlitter').checked = opts.indexOf('Slitter') >= 0;
+              document.getElementById('invOptPneuUnwind').checked = opts.indexOf('Pneumatic Unwind') >= 0;
+              document.getElementById('invOptHydUnwind').checked = opts.indexOf('Hydraulic Station Unwind') >= 0;
+              document.getElementById('invOptPneuRewind').checked = opts.indexOf('Pneumatic Rewind') >= 0;
+              document.getElementById('invOptSurfRewind').checked = opts.indexOf('Surface Rewind') >= 0;
+              // Restore FOB values
+              document.getElementById('invFobStd').value = mc.fob_standard || '';
+              document.getElementById('invFobCyl').value = mc.fob_with_cylinders || '';
+              // Restore cylinders table from saved data
+              var savedCyls = mc.cylinders || [];
+              invInitCylTable(mc.colors || '');
+              if (savedCyls.length > 0) {
+                for (var ci = 0; ci < savedCyls.length && ci < INV_CYL_ROWS; ci++) {
+                  var sEl = document.getElementById('invCylSize' + (ci + 1));
+                  var cEl = document.getElementById('invCylCount' + (ci + 1));
+                  if (sEl) sEl.value = savedCyls[ci].size || '';
+                  if (cEl) cEl.value = savedCyls[ci].count || '';
+                }
+                invCalcCylinders();
+              }
+            });
             document.getElementById('itemModal').classList.add('show');
           };
 
@@ -666,9 +716,6 @@ container:
             var mat = document.getElementById("invMaterial").value;
             var wind = document.getElementById("invWinder").value;
             if (!cond || !mType || !cols || !wid || !mat || !wind) {
-              document.getElementById("fCode").value = "";
-              document.getElementById("invFobStd").value = "";
-              document.getElementById("invFobCyl").value = "";
               return;
             }
             // Code
@@ -695,8 +742,10 @@ container:
             if (document.getElementById("invOptSurfRewind").checked) optAdj += (INV_OPT_ADJ["Surface Rewind"] || 0);
             var stdFob = base + matAdj + windAdj + optAdj;
             document.getElementById("invFobStd").value = stdFob;
-            // Initialize cylinders with defaults
-            invInitCylTable(cols);
+            // Only reinitialize cylinders if user is actively building (not during edit restore)
+            if (!document.getElementById('editItemId').value) {
+              invInitCylTable(cols);
+            }
             invCalcCylinders();
           };
 

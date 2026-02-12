@@ -623,6 +623,11 @@ def get_purchase_invoices(status=None, search='', token_or_email=None):
                 d['supplier_name'] = _safe_str(supplier.get('name', '')) if supplier else ''
             except Exception:
                 d['supplier_name'] = ''
+            # Parse machine_config_json into dict for frontend
+            try:
+                d['machine_config'] = json.loads(d.get('machine_config_json') or '{}')
+            except (json.JSONDecodeError, TypeError):
+                d['machine_config'] = {}
             # Alias paid_amount -> paid for frontend consistency
             d['paid'] = d.get('paid_amount', 0)
             results.append(d)
@@ -651,8 +656,6 @@ def create_purchase_invoice(data, token_or_email=None):
 
     # Accept both 'items' and 'line_items' keys from frontend
     items = data.get('items') or data.get('line_items', [])
-    if not items:
-        return {'success': False, 'message': 'At least one line item is required'}
 
     # Calculate totals from line items
     subtotal = 0.0
@@ -666,7 +669,10 @@ def create_purchase_invoice(data, token_or_email=None):
         subtotal += line_total
 
     tax_amount = _round2(data.get('tax_amount', 0))
-    total = _round2(subtotal + tax_amount)
+    # Grand Total = FOB With Cylinders + Additional Items (subtotal) + Import Costs
+    fob_with_cyl = _round2(data.get('fob_with_cylinders', 0))
+    import_costs_total = sum(_round2(ic.get('amount', 0)) for ic in data.get('import_costs', []))
+    total = _round2(fob_with_cyl + subtotal + import_costs_total + tax_amount)
     inv_id = _uuid()
     inv_number = _generate_invoice_number()
     now = get_utc_now()
@@ -2299,7 +2305,10 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
             updates['items_json'] = json.dumps(items, ensure_ascii=False, default=str)
             updates['subtotal'] = _round2(subtotal)
             updates['tax_amount'] = tax_amount
-            updates['total'] = _round2(subtotal + tax_amount)
+            # Grand Total = FOB With Cylinders + Additional Items + Import Costs
+            fob_with_cyl = _round2(data.get('fob_with_cylinders', 0))
+            import_costs_total = sum(_round2(ic.get('amount', 0)) for ic in data.get('import_costs', []))
+            updates['total'] = _round2(fob_with_cyl + subtotal + import_costs_total + tax_amount)
 
         updates['updated_at'] = get_utc_now()
         try:
@@ -2312,6 +2321,34 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
                 logger.info("machine_config_json column not found - updated invoice without it")
             else:
                 raise
+
+        # Update import costs if provided - delete old ones and re-add
+        if 'import_costs' in data:
+            try:
+                old_ics = app_tables.import_costs.search(purchase_invoice_id=invoice_id)
+                for old_ic in old_ics:
+                    old_ic.delete()
+            except Exception:
+                pass  # Table may not exist or no old costs
+            now = get_utc_now()
+            for ic in data.get('import_costs', []):
+                ic_amount = _round2(ic.get('amount', 0))
+                if ic_amount > 0:
+                    try:
+                        app_tables.import_costs.add_row(
+                            id=_uuid(),
+                            purchase_invoice_id=invoice_id,
+                            cost_type=_safe_str(ic.get('cost_type', 'other')),
+                            amount=ic_amount,
+                            description=_safe_str(ic.get('description', '')),
+                            date=_safe_date(data.get('date')) or date.today(),
+                            payment_method=_safe_str(ic.get('payment_method', 'cash')),
+                            payment_account=_resolve_payment_account(ic.get('payment_method', 'cash')),
+                            created_at=now,
+                        )
+                    except Exception as ic_err:
+                        logger.warning("Could not save import cost on update: %s", ic_err)
+
         logger.info("Purchase invoice %s updated by %s", invoice_id, user_email)
         return {'success': True}
     except Exception as e:

@@ -690,12 +690,12 @@ container:
                 costEl.style.fontWeight = "600";
               } else if (size === 40 && count > colorsVal) {
                 var excess = count - colorsVal;
-                var cost40 = Math.floor(size * excess * pricePerCM + 0.5);
+                var cost40 = Math.round(size * excess * pricePerCM);
                 costEl.value = cost40.toFixed(2);
                 costEl.style.color = ""; costEl.style.fontWeight = "";
                 totalCost += cost40;
               } else {
-                var rowCost = Math.floor(size * count * pricePerCM + 0.5);
+                var rowCost = Math.round(size * count * pricePerCM);
                 costEl.value = rowCost.toFixed(2);
                 costEl.style.color = ""; costEl.style.fontWeight = "";
                 totalCost += rowCost;

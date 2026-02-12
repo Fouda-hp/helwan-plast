@@ -739,7 +739,7 @@
   }
 
   /* PI modals */
-  .pi-wrapper .modal-overlay .modal {
+  .pi-wrapper .hp-modal-overlay .hp-modal {
     width: 95% !important;
     max-width: 95% !important;
     margin: 10px auto !important;

@@ -659,6 +659,10 @@ def verify_registration_otp(email, otp):
     """
     التحقق من OTP وإتمام التسجيل
     """
+    ip_address = get_client_ip()
+    if not check_rate_limit(ip_address, 'verify_otp'):
+        return {'success': False, 'message': 'Too many verification attempts. Please wait a few minutes.'}
+
     email = str(email or '').strip().lower()
 
     # التحقق من OTP
@@ -836,31 +840,26 @@ def verify_login_otp(email, otp):
     if not user:
         return {'success': False, 'message': 'User not found'}
 
+    # Rate limit on OTP verification attempts
+    if not check_rate_limit(ip_address, 'verify_otp'):
+        return {'success': False, 'message': 'Too many verification attempts. Please wait a few minutes.'}
+
     # إذا المستخدم مفعّل عنده تطبيق المصادقة (TOTP) نتحقق من الكود من التطبيق
     if user.get('totp_secret'):
         if verify_totp_for_user(email, otp):
             return complete_login(user, ip_address)
-        # فشل أول محاولة: إرسال كود جديد على الإيميل والمحاولة التالية تكون بالإيميل
-        otp_new = generate_otp()
-        store_otp(email, otp_new, '2fa')
-        send_otp_email(email, user['full_name'], otp_new, '2fa')
+        # TOTP فشل - لا نسقط للإيميل لأن ذلك يبطل حماية TOTP
         return {
             'success': False,
-            'fallback_to_email': True,
-            'message': 'Invalid or expired code. A new code was sent to your email. Please check your email and try again.'
+            'message': 'Invalid or expired authenticator code. Please try again.'
         }
 
     # التحقق من OTP المرسل (إيميل/SMS)
     is_valid, message = verify_otp(email, otp, '2fa')
     if not is_valid:
-        # فشل أول محاولة: إرسال كود جديد على الإيميل والمحاولة التالية تكون بالإيميل
-        otp_new = generate_otp()
-        store_otp(email, otp_new, '2fa')
-        send_otp_email(email, user['full_name'], otp_new, '2fa')
         return {
             'success': False,
-            'fallback_to_email': True,
-            'message': 'Invalid or expired code. A new code was sent to your email. Please check your email and try again.'
+            'message': message or 'Invalid or expired code. Please try again.'
         }
 
     return complete_login(user, ip_address)
@@ -1432,6 +1431,10 @@ def verify_password_change_otp(email, otp):
     """
     التحقق من OTP وإتمام تغيير كلمة المرور
     """
+    ip_address = get_client_ip()
+    if not check_rate_limit(ip_address, 'verify_otp'):
+        return {'success': False, 'message': 'Too many verification attempts. Please wait a few minutes.'}
+
     email = str(email or '').strip().lower()
 
     # التحقق من OTP
@@ -1546,7 +1549,11 @@ def verify_password_reset_otp(email, otp):
     """
     التحقق من OTP لإعادة تعيين كلمة المرور
     """
+    ip_address = get_client_ip()
     email = str(email or '').strip().lower()
+
+    if not check_rate_limit(ip_address, 'verify_otp'):
+        return {'success': False, 'message': 'Too many verification attempts. Please wait a few minutes.'}
 
     # التحقق من OTP
     is_valid, message = verify_otp(email, otp, 'password_reset')
@@ -2130,10 +2137,6 @@ def get_calculator_settings(token_or_email=None):
     user_email = None
     if session and session.get('email'):
         user_email = session['email']
-    elif token_or_email and '@' in str(token_or_email):
-        u = app_tables.users.get(email=str(token_or_email).strip().lower())
-        if u and u.get('is_active') and u.get('is_approved'):
-            user_email = u['email']
     if not user_email:
         return {'success': False, 'message': 'جلسة غير صالحة أو منتهية. يرجى تسجيل الدخول مرة أخرى.'}
     user_row = app_tables.users.get(email=user_email)
@@ -2550,10 +2553,6 @@ def get_my_audit_logs(token_or_email, limit=50):
     user_email = None
     if session and session.get('email'):
         user_email = session['email']
-    elif token_or_email and '@' in str(token_or_email):
-        u = app_tables.users.get(email=str(token_or_email).strip().lower())
-        if u and u.get('is_active') and u.get('is_approved'):
-            user_email = u['email']
     if not user_email:
         return {'success': False, 'notifications': []}
     try:

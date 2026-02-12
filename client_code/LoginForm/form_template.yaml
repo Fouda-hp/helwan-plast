@@ -790,6 +790,7 @@ container:
               lblLoginEmail: 'Email Address',
               lblLoginPassword: 'Password',
               btnLoginText: 'LOGIN',
+              forgotPasswordLink: 'Forgot Password?',
               setupAdminLink: 'First time? Setup Admin Account',
               lblRegName: 'Full Name',
               lblRegEmail: 'Email Address',
@@ -809,8 +810,87 @@ container:
               errorFillAllFields: 'Please fill all required fields',
               errorPasswordMatch: 'Passwords do not match',
               errorPasswordMin: 'Password must be at least 8 characters',
+              errorPasswordMin6: 'Password must be at least 6 characters',
               successLogin: 'Login successful! Redirecting...',
-              footer: 'Design And Developed By Helwan Plast'
+              footer: 'Design And Developed By Helwan Plast',
+              otpLoginTitle: 'Two-Factor Authentication',
+              otpLoginSubtitle: 'Enter the verification code sent to your email',
+              otpLoginSubtitleAuth: 'Enter the 6-digit code from your authenticator app',
+              otpLoginSubtitleFallback: 'A new code was sent to your email. Enter it below.',
+              lblOtpLoginCode: 'Verification Code',
+              btnVerifyOtpLogin: 'VERIFY & LOGIN',
+              resendOtpLogin: "Didn't receive code? Resend",
+              backFromOtpLogin: '\u2190 Back to Login',
+              otpRegTitle: 'Verify Your Email',
+              otpRegSubtitle: 'Enter the verification code sent to your email',
+              lblOtpRegCode: 'Verification Code',
+              btnVerifyOtpReg: 'VERIFY EMAIL',
+              resendOtpReg: "Didn't receive code? Resend",
+              backFromOtpReg: '\u2190 Back to Registration',
+              forgotTitle: 'Reset Password',
+              forgotSubtitle: 'Enter your email to receive a verification code',
+              lblForgotEmail: 'Email Address',
+              btnSendResetCode: 'SEND VERIFICATION CODE',
+              backFromForgot: '\u2190 Back to Login',
+              forgotOtpTitle: 'Enter Verification Code',
+              forgotOtpSubtitle: 'Enter the code sent to your email',
+              lblForgotOtp: 'Verification Code',
+              btnVerifyForgotOtp: 'VERIFY CODE',
+              resendForgotOtp: "Didn't receive code? Resend",
+              backFromForgotOtp: '\u2190 Back',
+              newPasswordTitle: 'Set New Password',
+              newPasswordSubtitle: 'Enter your new password',
+              lblNewPassword: 'New Password',
+              lblConfirmNewPassword: 'Confirm New Password',
+              btnSetNewPassword: 'SET NEW PASSWORD',
+              backFromNewPassword: '\u2190 Back to Login',
+              newPasswordPlaceholder: 'Min 8 characters',
+              confirmNewPasswordPlaceholder: 'Confirm your password',
+              forgotEmailPlaceholder: 'Enter your email',
+              setupAdminName: 'Admin Full Name',
+              setupAdminEmail: 'Admin Email',
+              setupAdminPhone: 'Admin Phone (Optional)',
+              setupAdminPassword: 'Admin Password',
+              setupAdminNamePlaceholder: 'Administrator name',
+              setupAdminEmailPlaceholder: 'admin@company.com',
+              setupAdminPhonePlaceholder: 'Admin phone number',
+              setupAdminPasswordPlaceholder: 'Strong password (min 6 chars)',
+              btnSetupAdmin: 'CREATE ADMIN ACCOUNT',
+              backToLogin: 'Back to Login',
+              emergencyWarning: 'This is for emergency admin password reset only. You need the secret key.',
+              resetAdminEmail: 'Admin Email',
+              resetNewPassword: 'New Password',
+              resetSecretKey: 'Secret Key',
+              resetAdminEmailPlaceholder: 'admin@company.com',
+              resetNewPasswordPlaceholder: 'New password (min 6 chars)',
+              resetSecretKeyPlaceholder: 'Enter emergency secret key',
+              btnResetPassword: 'RESET PASSWORD',
+              backFromReset: 'Back to Login',
+              errorEnterCode: 'Please enter the 6-digit code',
+              errorEnterEmail: 'Please enter your email address',
+              loadingSignIn: 'Signing in...',
+              loadingVerifying: 'Verifying...',
+              loadingVerified: 'Verified! Redirecting...',
+              loadingCreating: 'Creating account...',
+              loadingSetup: 'Setting up...',
+              loadingSending: 'Sending code...',
+              loadingSaving: 'Saving password...',
+              loadingResetting: 'Resetting...',
+              loadingDefault: 'Loading...',
+              successEmailVerified: 'Email verified! Please wait for admin approval.',
+              successCodeVerified: 'Code verified! Enter your new password.',
+              successPasswordReset: 'Password reset successfully! Please login.',
+              errorVerifyFailed: 'Verification failed',
+              errorResendFailed: 'Failed to resend code',
+              errorConnection: 'Connection error',
+              errorRegFailed: 'Registration failed',
+              errorRegNoResponse: 'Registration failed - no response from server',
+              errorSystemLoading: 'System is loading, please wait and try again...',
+              clearingRateLimit: 'Clearing rate limit...',
+              rateLimitCleared: 'Rate limit cleared! Please try again.',
+              rateLimitFailed: 'Could not clear rate limit. Please wait 15 minutes.',
+              rateLimitRefresh: 'System is loading, please refresh the page.',
+              rateLimitError: 'Error clearing rate limit.'
             },
             ar: {
               logoTitle: 'حلوان بلاست',
@@ -820,6 +900,7 @@ container:
               lblLoginEmail: 'البريد الإلكتروني',
               lblLoginPassword: 'كلمة المرور',
               btnLoginText: 'دخول',
+              forgotPasswordLink: 'نسيت كلمة المرور؟',
               setupAdminLink: 'أول مرة؟ إنشاء حساب المسؤول',
               lblRegName: 'الاسم بالكامل',
               lblRegEmail: 'البريد الإلكتروني',
@@ -839,8 +920,87 @@ container:
               errorFillAllFields: 'الرجاء ملء جميع الحقول المطلوبة',
               errorPasswordMatch: 'كلمتا المرور غير متطابقتين',
               errorPasswordMin: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+              errorPasswordMin6: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
               successLogin: 'تم تسجيل الدخول بنجاح! جاري التحويل...',
-              footer: 'تصميم وتطوير حلوان بلاست'
+              footer: 'تصميم وتطوير حلوان بلاست',
+              otpLoginTitle: 'التحقق بخطوتين',
+              otpLoginSubtitle: 'أدخل رمز التحقق المُرسل إلى بريدك الإلكتروني',
+              otpLoginSubtitleAuth: 'أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة',
+              otpLoginSubtitleFallback: 'تم إرسال رمز جديد إلى بريدك الإلكتروني. أدخله أدناه.',
+              lblOtpLoginCode: 'رمز التحقق',
+              btnVerifyOtpLogin: 'تحقق وادخل',
+              resendOtpLogin: 'لم تستلم الرمز؟ أعد الإرسال',
+              backFromOtpLogin: '\u2190 العودة لتسجيل الدخول',
+              otpRegTitle: 'تأكيد بريدك الإلكتروني',
+              otpRegSubtitle: 'أدخل رمز التحقق المُرسل إلى بريدك الإلكتروني',
+              lblOtpRegCode: 'رمز التحقق',
+              btnVerifyOtpReg: 'تأكيد البريد',
+              resendOtpReg: 'لم تستلم الرمز؟ أعد الإرسال',
+              backFromOtpReg: '\u2190 العودة للتسجيل',
+              forgotTitle: 'إعادة تعيين كلمة المرور',
+              forgotSubtitle: 'أدخل بريدك الإلكتروني لتلقي رمز التحقق',
+              lblForgotEmail: 'البريد الإلكتروني',
+              btnSendResetCode: 'إرسال رمز التحقق',
+              backFromForgot: '\u2190 العودة لتسجيل الدخول',
+              forgotOtpTitle: 'أدخل رمز التحقق',
+              forgotOtpSubtitle: 'أدخل الرمز المُرسل إلى بريدك الإلكتروني',
+              lblForgotOtp: 'رمز التحقق',
+              btnVerifyForgotOtp: 'تحقق من الرمز',
+              resendForgotOtp: 'لم تستلم الرمز؟ أعد الإرسال',
+              backFromForgotOtp: '\u2190 رجوع',
+              newPasswordTitle: 'تعيين كلمة مرور جديدة',
+              newPasswordSubtitle: 'أدخل كلمة المرور الجديدة',
+              lblNewPassword: 'كلمة المرور الجديدة',
+              lblConfirmNewPassword: 'تأكيد كلمة المرور الجديدة',
+              btnSetNewPassword: 'تعيين كلمة المرور',
+              backFromNewPassword: '\u2190 العودة لتسجيل الدخول',
+              newPasswordPlaceholder: '8 أحرف على الأقل',
+              confirmNewPasswordPlaceholder: 'أعد كتابة كلمة المرور',
+              forgotEmailPlaceholder: 'أدخل بريدك الإلكتروني',
+              setupAdminName: 'اسم المسؤول بالكامل',
+              setupAdminEmail: 'بريد المسؤول',
+              setupAdminPhone: 'هاتف المسؤول (اختياري)',
+              setupAdminPassword: 'كلمة مرور المسؤول',
+              setupAdminNamePlaceholder: 'اسم المسؤول',
+              setupAdminEmailPlaceholder: 'admin@company.com',
+              setupAdminPhonePlaceholder: 'رقم هاتف المسؤول',
+              setupAdminPasswordPlaceholder: 'كلمة مرور قوية (6 أحرف على الأقل)',
+              btnSetupAdmin: 'إنشاء حساب المسؤول',
+              backToLogin: 'العودة لتسجيل الدخول',
+              emergencyWarning: 'هذا لإعادة تعيين كلمة مرور المسؤول في حالات الطوارئ فقط. تحتاج المفتاح السري.',
+              resetAdminEmail: 'بريد المسؤول',
+              resetNewPassword: 'كلمة المرور الجديدة',
+              resetSecretKey: 'المفتاح السري',
+              resetAdminEmailPlaceholder: 'admin@company.com',
+              resetNewPasswordPlaceholder: 'كلمة مرور جديدة (6 أحرف على الأقل)',
+              resetSecretKeyPlaceholder: 'أدخل المفتاح السري للطوارئ',
+              btnResetPassword: 'إعادة تعيين كلمة المرور',
+              backFromReset: 'العودة لتسجيل الدخول',
+              errorEnterCode: 'الرجاء إدخال الرمز المكوّن من 6 أرقام',
+              errorEnterEmail: 'الرجاء إدخال بريدك الإلكتروني',
+              loadingSignIn: 'جاري تسجيل الدخول...',
+              loadingVerifying: 'جاري التحقق...',
+              loadingVerified: 'تم التحقق! جاري الدخول...',
+              loadingCreating: 'جاري إنشاء الحساب...',
+              loadingSetup: 'جاري الإعداد...',
+              loadingSending: 'جاري الإرسال...',
+              loadingSaving: 'جاري حفظ كلمة المرور...',
+              loadingResetting: 'جاري إعادة التعيين...',
+              loadingDefault: 'جاري التحميل...',
+              successEmailVerified: 'تم تأكيد البريد الإلكتروني! يرجى انتظار موافقة المسؤول.',
+              successCodeVerified: 'تم التحقق من الرمز! أدخل كلمة المرور الجديدة.',
+              successPasswordReset: 'تمت إعادة تعيين كلمة المرور بنجاح! سجّل دخولك.',
+              errorVerifyFailed: 'فشل التحقق',
+              errorResendFailed: 'فشل إعادة إرسال الرمز',
+              errorConnection: 'خطأ في الاتصال',
+              errorRegFailed: 'فشل التسجيل',
+              errorRegNoResponse: 'فشل التسجيل - لا استجابة من الخادم',
+              errorSystemLoading: 'النظام قيد التحميل، يرجى الانتظار والمحاولة مرة أخرى...',
+              clearingRateLimit: 'جاري إعادة تعيين الحد...',
+              rateLimitCleared: 'تم إعادة تعيين الحد! حاول مرة أخرى.',
+              rateLimitFailed: 'تعذر إعادة تعيين الحد. يرجى الانتظار 15 دقيقة.',
+              rateLimitRefresh: 'النظام قيد التحميل، يرجى تحديث الصفحة.',
+              rateLimitError: 'خطأ في إعادة تعيين الحد.'
             }
           };
 
@@ -860,9 +1020,21 @@ container:
 
             // Update text elements
             var elements = ['logoTitle', 'logoSubtitle', 'tabLogin', 'tabRegister',
-              'lblLoginEmail', 'lblLoginPassword', 'btnLoginText', 'setupAdminLink',
+              'lblLoginEmail', 'lblLoginPassword', 'btnLoginText', 'forgotPasswordLink',
+              'setupAdminLink',
               'lblRegName', 'lblRegEmail', 'lblRegPhone', 'lblRegPassword',
-              'lblRegConfirm', 'btnRegisterText', 'langBtnText'];
+              'lblRegConfirm', 'btnRegisterText', 'langBtnText',
+              'otpLoginTitle', 'otpLoginSubtitle', 'lblOtpLoginCode', 'btnVerifyOtpLogin',
+              'resendOtpLogin', 'backFromOtpLogin',
+              'otpRegTitle', 'otpRegSubtitle', 'lblOtpRegCode', 'btnVerifyOtpReg',
+              'resendOtpReg', 'backFromOtpReg',
+              'forgotTitle', 'forgotSubtitle', 'lblForgotEmail', 'btnSendResetCode',
+              'backFromForgot',
+              'forgotOtpTitle', 'forgotOtpSubtitle', 'lblForgotOtp', 'btnVerifyForgotOtp',
+              'resendForgotOtp', 'backFromForgotOtp',
+              'newPasswordTitle', 'newPasswordSubtitle', 'lblNewPassword',
+              'lblConfirmNewPassword', 'btnSetNewPassword', 'backFromNewPassword',
+              'backToLogin', 'backFromReset'];
 
             elements.forEach(function(id) {
               var el = document.getElementById(id);
@@ -870,21 +1042,63 @@ container:
             });
 
             // Update placeholders
-            var loginEmail = document.getElementById('loginEmail');
-            var loginPassword = document.getElementById('loginPassword');
-            var regName = document.getElementById('regName');
-            var regEmail = document.getElementById('regEmail');
-            var regPhone = document.getElementById('regPhone');
-            var regPassword = document.getElementById('regPassword');
-            var regConfirm = document.getElementById('regConfirm');
+            var placeholders = {
+              loginEmail: 'loginEmailPlaceholder',
+              loginPassword: 'loginPasswordPlaceholder',
+              regName: 'regNamePlaceholder',
+              regEmail: 'regEmailPlaceholder',
+              regPhone: 'regPhonePlaceholder',
+              regPassword: 'regPasswordPlaceholder',
+              regConfirm: 'regConfirmPlaceholder',
+              newPassword: 'newPasswordPlaceholder',
+              confirmNewPassword: 'confirmNewPasswordPlaceholder',
+              forgotEmail: 'forgotEmailPlaceholder',
+              adminName: 'setupAdminNamePlaceholder',
+              adminEmail: 'setupAdminEmailPlaceholder',
+              adminPhone: 'setupAdminPhonePlaceholder',
+              adminPassword: 'setupAdminPasswordPlaceholder',
+              resetEmail: 'resetAdminEmailPlaceholder',
+              resetNewPassword: 'resetNewPasswordPlaceholder',
+              resetSecretKey: 'resetSecretKeyPlaceholder'
+            };
+            Object.keys(placeholders).forEach(function(id) {
+              var el = document.getElementById(id);
+              if (el) el.placeholder = t(placeholders[id]);
+            });
 
-            if (loginEmail) loginEmail.placeholder = t('loginEmailPlaceholder');
-            if (loginPassword) loginPassword.placeholder = t('loginPasswordPlaceholder');
-            if (regName) regName.placeholder = t('regNamePlaceholder');
-            if (regEmail) regEmail.placeholder = t('regEmailPlaceholder');
-            if (regPhone) regPhone.placeholder = t('regPhonePlaceholder');
-            if (regPassword) regPassword.placeholder = t('regPasswordPlaceholder');
-            if (regConfirm) regConfirm.placeholder = t('regConfirmPlaceholder');
+            // Update setup admin form labels
+            var setupLabels = document.querySelectorAll('#setupForm .field label');
+            var setupKeys = ['setupAdminName', 'setupAdminEmail', 'setupAdminPhone', 'setupAdminPassword'];
+            setupLabels.forEach(function(lbl, i) {
+              if (setupKeys[i]) lbl.textContent = t(setupKeys[i]);
+            });
+
+            // Update setup admin button
+            var setupBtnText = document.querySelector('#setupBtn .btn-text');
+            if (setupBtnText) setupBtnText.textContent = t('btnSetupAdmin');
+
+            // Update emergency reset form labels
+            var resetLabels = document.querySelectorAll('#resetForm .field label');
+            var resetKeys = ['resetAdminEmail', 'resetNewPassword', 'resetSecretKey'];
+            resetLabels.forEach(function(lbl, i) {
+              if (resetKeys[i]) lbl.textContent = t(resetKeys[i]);
+            });
+
+            // Update emergency reset button
+            var resetBtnText = document.querySelector('#resetBtn .btn-text');
+            if (resetBtnText) resetBtnText.textContent = t('btnResetPassword');
+
+            // Update emergency warning
+            var warningDiv = document.querySelector('#resetForm div[style*="fff3cd"]');
+            if (warningDiv) warningDiv.innerHTML = '\u26a0\ufe0f ' + t('emergencyWarning');
+
+            // Update footer
+            var footer = document.querySelector('.footer');
+            if (footer) footer.textContent = t('footer');
+
+            // Update lang flag
+            var flag = document.getElementById('loginLangFlag');
+            if (flag) flag.textContent = currentLang === 'ar' ? '\ud83c\uddec\ud83c\udde7' : '\ud83c\uddf8\ud83c\udde6';
           }
 
           window.toggleLanguage = function() {
@@ -997,7 +1211,7 @@ container:
           function setLoading(btn, loading, text) {
             if (loading) {
               btn.disabled = true;
-              if (_loadingText) _loadingText.textContent = text || (currentLang === 'ar' ? 'جاري التحميل...' : 'Loading...');
+              if (_loadingText) _loadingText.textContent = text || t('loadingDefault');
               if (_overlay) _overlay.classList.add('show');
             } else {
               btn.disabled = false;
@@ -1040,11 +1254,11 @@ container:
             var password = loginPassword.value;
 
             if (!email || !password) {
-              showMessage('loginMessage', 'error', currentLang === 'ar' ? 'الرجاء إدخال البريد وكلمة المرور' : 'Please enter email and password');
+              showMessage('loginMessage', 'error', t('errorFillFields'));
               return;
             }
 
-            setLoading(loginBtn, true, currentLang === 'ar' ? 'جاري تسجيل الدخول...' : 'Signing in...');
+            setLoading(loginBtn, true, t('loadingSignIn'));
 
             try {
               var result = await window.loginUser(email, password);
@@ -1057,10 +1271,10 @@ container:
                   var sub = document.getElementById('otpLoginSubtitle');
                   var resendLink = document.getElementById('resendOtpLogin');
                   if (result.use_authenticator) {
-                    if (sub) sub.textContent = 'Enter the 6-digit code from your authenticator app';
+                    if (sub) sub.textContent = t('otpLoginSubtitleAuth');
                     if (resendLink) resendLink.style.display = 'none';
                   } else {
-                    if (sub) sub.textContent = 'Enter the verification code sent to your email';
+                    if (sub) sub.textContent = t('otpLoginSubtitle');
                     if (resendLink) resendLink.style.display = '';
                   }
                   loginForm.classList.remove('active');
@@ -1084,7 +1298,7 @@ container:
 
             } catch (e) {
               console.error('Login error:', e);
-              var errorMsg = e.message || e.toString() || 'Connection error';
+              var errorMsg = e.message || e.toString() || t('errorConnection');
               showMessage('loginMessage', 'error', 'Error: ' + errorMsg);
               setLoading(loginBtn, false);
             }
@@ -1092,20 +1306,20 @@ container:
 
           // Clear rate limit and retry login
           window.clearRateLimitAndRetry = async function() {
-            showMessage('loginMessage', 'info', 'Clearing rate limit...');
+            showMessage('loginMessage', 'info', t('clearingRateLimit'));
             try {
               if (window.clearRateLimit) {
                 var result = await window.clearRateLimit();
                 if (result && result.success) {
-                  showMessage('loginMessage', 'success', 'Rate limit cleared! Please try again.');
+                  showMessage('loginMessage', 'success', t('rateLimitCleared'));
                 } else {
-                  showMessage('loginMessage', 'error', 'Could not clear rate limit. Please wait 15 minutes.');
+                  showMessage('loginMessage', 'error', t('rateLimitFailed'));
                 }
               } else {
-                showMessage('loginMessage', 'error', 'System is loading, please refresh the page.');
+                showMessage('loginMessage', 'error', t('rateLimitRefresh'));
               }
             } catch (e) {
-              showMessage('loginMessage', 'error', 'Error clearing rate limit.');
+              showMessage('loginMessage', 'error', t('rateLimitError'));
             }
           };
 
@@ -1149,32 +1363,32 @@ container:
             var otp = otpLoginCode.value.trim();
 
             if (!otp || otp.length !== 6) {
-              showMessage('otpLoginMessage', 'error', 'Please enter the 6-digit code');
+              showMessage('otpLoginMessage', 'error', t('errorEnterCode'));
               return;
             }
 
             _otpLoginBusy = true;
-            setLoading(verifyOtpLoginBtn, true, currentLang === 'ar' ? 'جاري التحقق...' : 'Verifying...');
+            setLoading(verifyOtpLoginBtn, true, t('loadingVerifying'));
 
             try {
               var result = await window.verifyLoginOtp(pendingLoginEmail, otp);
 
               if (result.success) {
-                setLoading(verifyOtpLoginBtn, true, currentLang === 'ar' ? 'تم التحقق! جاري الدخول...' : 'Verified! Redirecting...');
+                setLoading(verifyOtpLoginBtn, true, t('loadingVerified'));
                 completeLogin(result);
                 return; // Keep overlay visible during redirect
               } else {
                 showMessage('otpLoginMessage', result.fallback_to_email ? 'info' : 'error', result.message);
                 if (result.fallback_to_email) {
                   var sub = document.getElementById('otpLoginSubtitle');
-                  if (sub) sub.textContent = 'A new code was sent to your email. Enter it below.';
+                  if (sub) sub.textContent = t('otpLoginSubtitleFallback');
                   if (otpLoginCode) otpLoginCode.value = '';
                 }
               }
 
             } catch (e) {
               console.error('OTP verify error:', e);
-              showMessage('otpLoginMessage', 'error', 'Verification failed');
+              showMessage('otpLoginMessage', 'error', t('errorVerifyFailed'));
             }
 
             _otpLoginBusy = false;
@@ -1202,7 +1416,7 @@ container:
               var result = await window.resendLoginOtp(pendingLoginEmail);
               showMessage('otpLoginMessage', result.success ? 'success' : 'error', result.message);
             } catch (e) {
-              showMessage('otpLoginMessage', 'error', 'Failed to resend code');
+              showMessage('otpLoginMessage', 'error', t('errorResendFailed'));
             }
           };
 
@@ -1236,26 +1450,26 @@ container:
             var confirm = regConfirm.value;
 
             if (!name || !email || !password || !confirm) {
-              showMessage('registerMessage', 'error', 'Please fill all required fields');
+              showMessage('registerMessage', 'error', t('errorFillAllFields'));
               return;
             }
 
             if (password !== confirm) {
-              showMessage('registerMessage', 'error', 'Passwords do not match');
+              showMessage('registerMessage', 'error', t('errorPasswordMatch'));
               return;
             }
 
             if (password.length < 8) {
-              showMessage('registerMessage', 'error', 'Password must be at least 8 characters');
+              showMessage('registerMessage', 'error', t('errorPasswordMin'));
               return;
             }
 
-            setLoading(registerBtn, true, currentLang === 'ar' ? 'جاري إنشاء الحساب...' : 'Creating account...');
+            setLoading(registerBtn, true, t('loadingCreating'));
 
             try {
               // Check if bridge function is ready
               if (!window.registerUser) {
-                showMessage('registerMessage', 'error', 'System is loading, please wait and try again...');
+                showMessage('registerMessage', 'error', t('errorSystemLoading'));
                 setLoading(registerBtn, false);
                 return;
               }
@@ -1282,14 +1496,14 @@ container:
                   strengthBar.className = 'password-strength-bar';
                 }
               } else if (result) {
-                showMessage('registerMessage', 'error', result.message || 'Registration failed');
+                showMessage('registerMessage', 'error', result.message || t('errorRegFailed'));
               } else {
-                showMessage('registerMessage', 'error', 'Registration failed - no response from server');
+                showMessage('registerMessage', 'error', t('errorRegNoResponse'));
               }
 
             } catch (e) {
               console.error('Register error:', e);
-              var errorMsg = e.message || e.toString() || 'Connection error';
+              var errorMsg = e.message || e.toString() || t('errorConnection');
               showMessage('registerMessage', 'error', 'Error: ' + errorMsg);
             }
 
@@ -1309,12 +1523,12 @@ container:
             var otp = otpRegCode.value.trim();
 
             if (!otp || otp.length !== 6) {
-              showMessage('otpRegMessage', 'error', 'Please enter the 6-digit code');
+              showMessage('otpRegMessage', 'error', t('errorEnterCode'));
               return;
             }
 
             _otpRegBusy = true;
-            setLoading(verifyOtpRegBtn, true, currentLang === 'ar' ? 'جاري التحقق...' : 'Verifying...');
+            setLoading(verifyOtpRegBtn, true, t('loadingVerifying'));
 
             try {
               var result = await window.verifyRegistrationOtp(pendingRegEmail, otp);
@@ -1336,7 +1550,7 @@ container:
                   regPassword.value = '';
                   regConfirm.value = '';
                   strengthBar.className = 'password-strength-bar';
-                  showMessage('loginMessage', 'success', 'Email verified! Please wait for admin approval.');
+                  showMessage('loginMessage', 'success', t('successEmailVerified'));
                 }, 2000);
               } else {
                 showMessage('otpRegMessage', 'error', result.message);
@@ -1344,7 +1558,7 @@ container:
 
             } catch (e) {
               console.error('OTP verify error:', e);
-              showMessage('otpRegMessage', 'error', 'Verification failed');
+              showMessage('otpRegMessage', 'error', t('errorVerifyFailed'));
             }
 
             _otpRegBusy = false;
@@ -1371,7 +1585,7 @@ container:
               var result = await window.resendVerificationOtp(pendingRegEmail);
               showMessage('otpRegMessage', result.success ? 'success' : 'error', result.message);
             } catch (e) {
-              showMessage('otpRegMessage', 'error', 'Failed to resend code');
+              showMessage('otpRegMessage', 'error', t('errorResendFailed'));
             }
           };
 
@@ -1402,16 +1616,16 @@ container:
             var password = adminPassword.value;
 
             if (!name || !email || !password) {
-              showMessage('setupMessage', 'error', 'Please fill all required fields');
+              showMessage('setupMessage', 'error', t('errorFillAllFields'));
               return;
             }
 
             if (password.length < 6) {
-              showMessage('setupMessage', 'error', 'Password must be at least 6 characters');
+              showMessage('setupMessage', 'error', t('errorPasswordMin6'));
               return;
             }
 
-            setLoading(setupBtn, true, currentLang === 'ar' ? 'جاري الإعداد...' : 'Setting up...');
+            setLoading(setupBtn, true, t('loadingSetup'));
 
             try {
               var result = await window.setupAdmin(email, password, name, phone || null);
@@ -1433,7 +1647,7 @@ container:
 
             } catch (e) {
               console.error('Setup admin error:', e);
-              var errorMsg = e.message || e.toString() || 'Connection error';
+              var errorMsg = e.message || e.toString() || t('errorConnection');
               showMessage('setupMessage', 'error', 'Error: ' + errorMsg);
             }
 
@@ -1478,11 +1692,11 @@ container:
             var email = forgotEmailInput.value.trim();
 
             if (!email) {
-              showMessage('forgotMessage', 'error', 'Please enter your email address');
+              showMessage('forgotMessage', 'error', t('errorEnterEmail'));
               return;
             }
 
-            setLoading(sendResetCodeBtn, true, currentLang === 'ar' ? 'جاري الإرسال...' : 'Sending code...');
+            setLoading(sendResetCodeBtn, true, t('loadingSending'));
 
             try {
               var result = await window.requestPasswordReset(email);
@@ -1499,7 +1713,7 @@ container:
 
             } catch (e) {
               console.error('Password reset error:', e);
-              showMessage('forgotMessage', 'error', 'Error: ' + (e.message || 'Connection error'));
+              showMessage('forgotMessage', 'error', 'Error: ' + (e.message || t('errorConnection')));
             }
 
             setLoading(sendResetCodeBtn, false);
@@ -1519,11 +1733,11 @@ container:
             var otp = forgotOtpCode.value.trim();
 
             if (!otp || otp.length !== 6) {
-              showMessage('forgotOtpMessage', 'error', 'Please enter the 6-digit code');
+              showMessage('forgotOtpMessage', 'error', t('errorEnterCode'));
               return;
             }
 
-            setLoading(verifyForgotOtpBtn, true, currentLang === 'ar' ? 'جاري التحقق...' : 'Verifying...');
+            setLoading(verifyForgotOtpBtn, true, t('loadingVerifying'));
 
             try {
               var result = await window.verifyPasswordResetOtp(pendingResetEmail, otp);
@@ -1531,7 +1745,7 @@ container:
               if (result.success) {
                 forgotOtpForm.classList.remove('active');
                 newPasswordForm.classList.add('active');
-                showMessage('newPasswordMessage', 'success', 'Code verified! Enter your new password.');
+                showMessage('newPasswordMessage', 'success', t('successCodeVerified'));
                 document.getElementById('newPassword').focus();
               } else {
                 showMessage('forgotOtpMessage', 'error', result.message);
@@ -1539,7 +1753,7 @@ container:
 
             } catch (e) {
               console.error('OTP verify error:', e);
-              showMessage('forgotOtpMessage', 'error', 'Verification failed');
+              showMessage('forgotOtpMessage', 'error', t('errorVerifyFailed'));
             }
 
             setLoading(verifyForgotOtpBtn, false);
@@ -1565,7 +1779,7 @@ container:
               var result = await window.requestPasswordReset(pendingResetEmail);
               showMessage('forgotOtpMessage', result.success ? 'success' : 'error', result.message);
             } catch (e) {
-              showMessage('forgotOtpMessage', 'error', 'Failed to resend code');
+              showMessage('forgotOtpMessage', 'error', t('errorResendFailed'));
             }
           };
 
@@ -1603,16 +1817,16 @@ container:
             var confirmPass = confirmNewPasswordInput.value;
 
             if (!newPass || newPass.length < 8) {
-              showMessage('newPasswordMessage', 'error', 'Password must be at least 8 characters');
+              showMessage('newPasswordMessage', 'error', t('errorPasswordMin'));
               return;
             }
 
             if (newPass !== confirmPass) {
-              showMessage('newPasswordMessage', 'error', 'Passwords do not match');
+              showMessage('newPasswordMessage', 'error', t('errorPasswordMatch'));
               return;
             }
 
-            setLoading(setNewPasswordBtn, true, currentLang === 'ar' ? 'جاري حفظ كلمة المرور...' : 'Saving password...');
+            setLoading(setNewPasswordBtn, true, t('loadingSaving'));
 
             try {
               var result = await window.completePasswordReset(pendingResetEmail, newPass);
@@ -1630,7 +1844,7 @@ container:
                   forgotOtpCode.value = '';
                   forgotEmailInput.value = '';
                   newPasswordStrengthBar.className = 'password-strength-bar';
-                  showMessage('loginMessage', 'success', 'Password reset successfully! Please login.');
+                  showMessage('loginMessage', 'success', t('successPasswordReset'));
                 }, 2000);
               } else {
                 showMessage('newPasswordMessage', 'error', result.message);
@@ -1638,7 +1852,7 @@ container:
 
             } catch (e) {
               console.error('Password reset error:', e);
-              showMessage('newPasswordMessage', 'error', 'Error: ' + (e.message || 'Connection error'));
+              showMessage('newPasswordMessage', 'error', 'Error: ' + (e.message || t('errorConnection')));
             }
 
             setLoading(setNewPasswordBtn, false);
@@ -1701,16 +1915,16 @@ container:
               var secretKey = resetSecretKey.value;
 
               if (!email || !newPassword || !secretKey) {
-                showMessage('resetMessage', 'error', 'Please fill all fields');
+                showMessage('resetMessage', 'error', t('errorFillAllFields'));
                 return;
               }
 
               if (newPassword.length < 6) {
-                showMessage('resetMessage', 'error', 'Password must be at least 6 characters');
+                showMessage('resetMessage', 'error', t('errorPasswordMin6'));
                 return;
               }
 
-              setLoading(resetBtn, true, currentLang === 'ar' ? 'جاري إعادة التعيين...' : 'Resetting...');
+              setLoading(resetBtn, true, t('loadingResetting'));
 
               try {
                 var result = await window.resetAdminPassword(email, newPassword, secretKey);
@@ -1731,7 +1945,7 @@ container:
 
               } catch (e) {
                 console.error('Reset password error:', e);
-                var errorMsg = e.message || e.toString() || 'Connection error';
+                var errorMsg = e.message || e.toString() || t('errorConnection');
                 showMessage('resetMessage', 'error', 'Error: ' + errorMsg);
               }
 

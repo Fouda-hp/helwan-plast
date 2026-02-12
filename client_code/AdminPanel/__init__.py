@@ -1704,8 +1704,17 @@ class AdminPanel(AdminPanelTemplate):
             var name = nameEl.value.trim();
             var val = parseFloat(valEl.value) || 0;
             var tr = document.createElement('tr');
-            tr.innerHTML = '<td style="padding:8px;border:1px solid #ddd;font-weight:600;">' + name + '</td>' +
-              '<td style="padding:8px;border:1px solid #ddd;text-align:center;"><input type="number" class="mat-adj-input" data-mat="' + name + '" value="' + val + '" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:4px;text-align:center;"></td>';
+            var td1 = document.createElement('td');
+            td1.style.cssText = 'padding:8px;border:1px solid #ddd;font-weight:600;';
+            td1.textContent = name;
+            var td2 = document.createElement('td');
+            td2.style.cssText = 'padding:8px;border:1px solid #ddd;text-align:center;';
+            var inp = document.createElement('input');
+            inp.type = 'number'; inp.className = 'mat-adj-input';
+            inp.setAttribute('data-mat', name); inp.value = val;
+            inp.style.cssText = 'width:120px;padding:6px;border:1px solid #ddd;border-radius:4px;text-align:center;';
+            td2.appendChild(inp);
+            tr.appendChild(td1); tr.appendChild(td2);
             tbody.appendChild(tr);
             nameEl.value = '';
             valEl.value = '0';
@@ -2066,24 +2075,16 @@ class AdminPanel(AdminPanelTemplate):
 
     def check_route(self):
         try:
-            # استعادة آخر صفحة من localStorage عند الـ refresh فقط (نفس التاب). لو التاب اتقفل واتفتح من جديد فلا نستعيد
-            restored = anvil.js.window.eval("""
-                (function(){
-                    var h = (window.location && window.location.hash) || '';
-                    if (!h || h === '#') {
-                        var hasSession = (window.sessionStorage && window.sessionStorage.getItem('auth_token'));
-                        if (hasSession) {
-                            var saved = (window.localStorage && window.localStorage.getItem('hp_last_page')) || '';
-                            if (saved && saved.indexOf('#') === 0 && saved !== '#admin' && window.location) {
-                                window.location.hash = saved;
-                                return saved;
-                            }
-                        }
-                    }
-                    return h || '';
-                })();
-            """)
-            hash_val = (restored or "") if restored else ""
+            # استعادة آخر صفحة من localStorage عند الـ refresh فقط (نفس التاب)
+            h = str(anvil.js.window.location.hash or '')
+            if not h or h == '#':
+                has_session = anvil.js.window.sessionStorage.getItem('auth_token')
+                if has_session:
+                    saved = str(anvil.js.window.localStorage.getItem('hp_last_page') or '')
+                    if saved and saved.startswith('#') and saved != '#admin':
+                        anvil.js.window.location.hash = saved
+                        h = saved
+            hash_val = h or ""
         except Exception:
             hash_val = ""
         if not hash_val or hash_val == "#":

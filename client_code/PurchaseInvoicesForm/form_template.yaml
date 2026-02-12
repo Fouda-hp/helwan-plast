@@ -540,12 +540,12 @@ container:
                 costEl.style.color = "#2e7d32"; costEl.style.fontWeight = "600";
               } else if (size === 40 && count > colorsVal) {
                 var excess = count - colorsVal;
-                var c40 = Math.floor(size * excess * pricePerCM + 0.5);
+                var c40 = Math.round(size * excess * pricePerCM);
                 costEl.value = c40.toFixed(2);
                 costEl.style.color = ""; costEl.style.fontWeight = "";
                 totalCost += c40;
               } else {
-                var rc = Math.floor(size * count * pricePerCM + 0.5);
+                var rc = Math.round(size * count * pricePerCM);
                 costEl.value = rc.toFixed(2);
                 costEl.style.color = ""; costEl.style.fontWeight = "";
                 totalCost += rc;
@@ -1012,7 +1012,7 @@ container:
                 // with default: count == colorsVal so all FREE
                 return;
               }
-              total += Math.floor(size * count * pricePerCM + 0.5);
+              total += Math.round(size * count * pricePerCM);
             });
             return total;
           }

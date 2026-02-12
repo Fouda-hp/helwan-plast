@@ -783,7 +783,7 @@ def post_purchase_invoice(invoice_id, token_or_email=None):
 
         # Debit: Tax Payable if there is tax (input VAT / recoverable tax)
         if tax_amount > 0:
-            entries.append({'account_code': '2100', 'debit': tax_amount, 'credit': 0})
+            entries.append({'account_code': '1300', 'debit': tax_amount, 'credit': 0})
 
         # Credit: Accounts Payable for the full total
         entries.append({'account_code': '2000', 'debit': 0, 'credit': total})
@@ -1661,11 +1661,12 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
         sale_day = _safe_date(sale_date) or date.today()
 
         # Entry 1: Record cost of goods sold (COGS = Landed Cost)
+        # Always post COGS entry even if total_cost is 0, to record inventory removal
+        cogs_entries = [
+            {'account_code': '5000', 'debit': total_cost, 'credit': 0},
+            {'account_code': '1200', 'debit': 0, 'credit': total_cost},
+        ]
         if total_cost > 0:
-            cogs_entries = [
-                {'account_code': '5000', 'debit': total_cost, 'credit': 0},
-                {'account_code': '1200', 'debit': 0, 'credit': total_cost},
-            ]
             cogs_result = post_journal_entry(
                 sale_day, cogs_entries,
                 f"COGS for {row.get('machine_code', item_id)} — contract {contract_number}",

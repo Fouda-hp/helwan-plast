@@ -1608,12 +1608,15 @@ def link_inventory_to_contract(item_id, contract_number, selling_price, token_or
 # 8. FINANCIAL REPORTS
 # ===========================================================================
 
-def _get_all_balances(as_of_date=None):
+def _get_all_balances(as_of_date=None, date_from=None):
     """
-    Internal helper: compute balances for all accounts up to as_of_date.
+    Internal helper: compute balances for all accounts.
+    If date_from is given, only entries between date_from and as_of_date are included.
+    If only as_of_date is given, all entries up to as_of_date are included.
     Returns dict: {account_code: {'debit': ..., 'credit': ..., 'balance': ..., 'type': ...}}
     """
     cutoff = _safe_date(as_of_date)
+    start = _safe_date(date_from)
     accounts = {}
 
     # Load chart of accounts
@@ -1640,6 +1643,8 @@ def _get_all_balances(as_of_date=None):
                 row_date = row_date.date()
             if cutoff and row_date and row_date > cutoff:
                 continue
+            if start and row_date and row_date < start:
+                continue
             accounts[code]['total_debit'] += _round2(entry.get('debit', 0))
             accounts[code]['total_credit'] += _round2(entry.get('credit', 0))
     except Exception as e:
@@ -1660,16 +1665,17 @@ def _get_all_balances(as_of_date=None):
 
 
 @anvil.server.callable
-def get_trial_balance(as_of_date=None, token_or_email=None):
+def get_trial_balance(date_from=None, date_to=None, token_or_email=None):
     """
-    Generate trial balance as of a given date.
+    Generate trial balance for a date range (or up to a given date).
+    Client sends (date_from, date_to, auth_token).
     Returns list of accounts with debit/credit columns that should balance.
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'read')
     if not is_valid:
         return error
     try:
-        accounts = _get_all_balances(as_of_date)
+        accounts = _get_all_balances(as_of_date=date_to, date_from=date_from)
         rows = []
         total_debit = 0.0
         total_credit = 0.0
@@ -1704,7 +1710,8 @@ def get_trial_balance(as_of_date=None, token_or_email=None):
             'total_debit': _round2(total_debit),
             'total_credit': _round2(total_credit),
             'is_balanced': abs(total_debit - total_credit) < 0.01,
-            'as_of_date': as_of_date,
+            'date_from': date_from,
+            'date_to': date_to,
         }
     except Exception as e:
         logger.exception("get_trial_balance error")

@@ -15,12 +15,14 @@ import json
 import uuid
 import io
 
-# Force UTF-8 output (only when running locally, skip in Anvil's DummyStdout)
-try:
-    if hasattr(sys.stdout, 'buffer'):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-except Exception:
-    pass
+# Force UTF-8 output — only when running as a standalone script,
+# never under pytest (which manages its own capture) or Anvil (DummyStdout).
+if 'pytest' not in sys.modules:
+    try:
+        if hasattr(sys.stdout, 'buffer'):
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 # Setup path
 try:

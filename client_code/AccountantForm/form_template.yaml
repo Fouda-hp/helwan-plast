@@ -594,8 +594,15 @@ container:
           document.getElementById('ledgerFrom').value = yearStart;
           document.getElementById('ledgerTo').value = today;
 
-          applyI18n();
-          populateLedgerAccounts();
+          function waitForBridge() {
+            if (window.pyGetTrialBalance && window.pyGetLedgerEntries) {
+              applyI18n();
+              populateLedgerAccounts();
+            } else {
+              setTimeout(waitForBridge, 200);
+            }
+          }
+          setTimeout(waitForBridge, 300);
         })();
       </script>
   type: HtmlTemplate

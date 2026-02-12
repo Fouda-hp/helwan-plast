@@ -2642,6 +2642,7 @@ def _invalidate_payment_cache():
     _payment_dashboard_cache['data'] = None
     _payment_dashboard_cache['timestamp'] = 0
 
+@anvil.server.callable
 def get_payment_dashboard_data(token_or_email=None):
     """
     Aggregated payment tracking data for the dashboard.

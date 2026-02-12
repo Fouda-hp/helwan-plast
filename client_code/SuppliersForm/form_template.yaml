@@ -291,8 +291,15 @@ container:
             else window.location.hash = '#admin';
           };
 
-          applyI18n();
-          loadSuppliers();
+          function waitForBridge() {
+            if (window.pyGetSuppliers) {
+              applyI18n();
+              loadSuppliers();
+            } else {
+              setTimeout(waitForBridge, 200);
+            }
+          }
+          setTimeout(waitForBridge, 300);
         })();
       </script>
   type: HtmlTemplate

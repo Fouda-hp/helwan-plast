@@ -579,8 +579,15 @@ container:
             else window.location.hash = '#admin';
           };
 
-          applyI18n();
-          loadInvoices();
+          function waitForBridge() {
+            if (window.pyGetPurchaseInvoices) {
+              applyI18n();
+              loadInvoices();
+            } else {
+              setTimeout(waitForBridge, 200);
+            }
+          }
+          setTimeout(waitForBridge, 300);
         })();
       </script>
   type: HtmlTemplate

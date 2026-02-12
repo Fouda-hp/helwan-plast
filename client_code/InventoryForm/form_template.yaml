@@ -403,8 +403,15 @@ container:
             else window.location.hash = '#admin';
           };
 
-          applyI18n();
-          loadInventory();
+          function waitForBridge() {
+            if (window.pyGetInventory) {
+              applyI18n();
+              loadInventory();
+            } else {
+              setTimeout(waitForBridge, 200);
+            }
+          }
+          setTimeout(waitForBridge, 300);
         })();
       </script>
   type: HtmlTemplate

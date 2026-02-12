@@ -42,6 +42,9 @@ class InventoryForm(InventoryFormTemplate):
         anvil.js.window.pyGetContractsList = self.get_contracts_list
         anvil.js.window.pyGoBack = self.go_back
 
+        # JS Bridge — Calculator settings for machine config
+        anvil.js.window.pyGetCalculatorSettings = self.get_calculator_settings
+
         # JS Bridges — new (receive, sell, landed cost, profitability)
         anvil.js.window.pyReceiveInventory = self.receive_inventory
         anvil.js.window.pySellInventory = self.sell_inventory
@@ -93,6 +96,14 @@ class InventoryForm(InventoryFormTemplate):
     # --- Lookups ---
     def get_contracts_list(self):
         return anvil.server.call('get_contracts_list_simple', self._auth())
+
+    def get_calculator_settings(self):
+        """Fetch calculator settings for machine config pricing."""
+        try:
+            return anvil.server.call('get_calculator_settings', self._auth())
+        except Exception as e:
+            logger.warning("Could not load calculator settings: %s", e)
+            return {'success': False, 'message': str(e)}
 
     def go_back(self):
         open_form('AdminPanel')

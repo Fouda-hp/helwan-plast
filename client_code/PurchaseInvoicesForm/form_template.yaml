@@ -46,10 +46,12 @@ container:
         .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
         .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #667eea; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .line-items-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
-        .line-items-table th { background: #f5f5f5; padding: 8px; text-align: left; border: 1px solid #ddd; color: #333; font-weight: 600; }
-        .line-items-table td { padding: 6px; border: 1px solid #ddd; }
-        .line-items-table input { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+        .cyl-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+        .cyl-table th { background: #f5f5f5; padding: 6px 8px; text-align: center; border: 1px solid #ddd; color: #333; font-weight: 600; }
+        .cyl-table td { padding: 4px; border: 1px solid #ddd; text-align: center; }
+        .cyl-table input { width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; text-align: center; }
+        .cyl-table input.cyl-cost { background: #f9f9f9; }
+        .cyl-total-row { font-weight: 700; background: #f0f4ff; }
         .totals-section { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px; }
         .totals-section .total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
         .totals-section .total-row.grand { font-size: 16px; font-weight: 700; border-top: 2px solid #333; padding-top: 8px; margin-top: 4px; }
@@ -222,8 +224,32 @@ container:
             </div>
           </div>
 
-          <h4 style="margin:15px 0 8px;color:#333;" id="lblLineItems">Line Items</h4>
-          <table class="line-items-table">
+          <!-- Cylinders Table -->
+          <div id="piCylSection" style="background:#fff8e1;border:1px solid #ffd54f;border-radius:10px;padding:16px;margin:12px 0;">
+            <h4 style="margin:0 0 10px;color:#f57f17;" id="lblPiCylinders">🔧 Cylinders</h4>
+            <table class="cyl-table">
+              <thead>
+                <tr>
+                  <th style="width:10%;">#</th>
+                  <th style="width:30%;" id="piCylThSize">Size (CM)</th>
+                  <th style="width:25%;" id="piCylThCount">Count</th>
+                  <th style="width:35%;" id="piCylThCost">Cost ($)</th>
+                </tr>
+              </thead>
+              <tbody id="piCylBody"></tbody>
+              <tfoot>
+                <tr class="cyl-total-row">
+                  <td></td>
+                  <td id="lblPiCylTotal">Total</td>
+                  <td id="piCylTotalCount">0</td>
+                  <td id="piCylTotalCost">$0</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <h4 style="margin:15px 0 8px;color:#333;" id="lblLineItems">Additional Items / Spare Parts</h4>
+          <table class="cyl-table">
             <thead>
               <tr>
                 <th style="width:40%;" id="liDesc">Description</th>
@@ -236,8 +262,8 @@ container:
             <tbody id="lineItemsBody">
               <tr class="line-row">
                 <td><input type="text" class="li-desc"></td>
-                <td><input type="number" class="li-qty" value="1" min="1" oninput="calcLineTotals()"></td>
-                <td><input type="number" class="li-price" value="0" step="0.01" oninput="calcLineTotals()"></td>
+                <td><input type="number" class="li-qty" value="1" min="1" oninput="calcInvoiceTotals()"></td>
+                <td><input type="number" class="li-price" value="0" step="0.01" oninput="calcInvoiceTotals()"></td>
                 <td class="li-total" style="text-align:right;font-weight:600;">0.00</td>
                 <td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td>
               </tr>
@@ -259,7 +285,7 @@ container:
                   </select>
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
-                  <input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcLineTotals()">
+                  <input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()">
                 </div>
               </div>
             </div>
@@ -267,7 +293,8 @@ container:
           </div>
 
           <div class="totals-section" id="totalsSection">
-            <div class="total-row"><span id="lblSubtotal">Subtotal:</span><span id="valSubtotal">0.00</span></div>
+            <div class="total-row"><span id="lblFobLine">FOB With Cylinders:</span><span id="valFobLine">0.00</span></div>
+            <div class="total-row"><span id="lblAddItems">Additional Items:</span><span id="valAddItems">0.00</span></div>
             <div class="total-row"><span id="lblImportTotal">Import Costs:</span><span id="valImportTotal">0.00</span></div>
             <div class="total-row grand"><span id="lblGrandTotal">Grand Total:</span><span id="valGrandTotal">0.00</span></div>
           </div>
@@ -441,29 +468,93 @@ container:
             tbody.innerHTML = html;
           }
 
-          window.calcLineTotals = function() {
-            var subtotal = 0;
+          var PI_CYL_ROWS = 12;
+
+          // Initialize cylinder table in invoice modal
+          function piInitCylTable(colorsVal) {
+            var tbody = document.getElementById("piCylBody");
+            var defaultSizes = [25,30,35,40,45,50,60];
+            var html = "";
+            for (var i = 1; i <= PI_CYL_ROWS; i++) {
+              var defSize = (i <= defaultSizes.length) ? defaultSizes[i-1] : "";
+              var defCount = (i <= defaultSizes.length && colorsVal) ? colorsVal : "";
+              html += '<tr><td>' + i + '</td>';
+              html += '<td><input type="number" id="piCylSize' + i + '" value="' + defSize + '" oninput="piCalcCylinders()"></td>';
+              html += '<td><input type="number" id="piCylCount' + i + '" value="' + defCount + '" oninput="piCalcCylinders()"></td>';
+              html += '<td><input type="text" id="piCylCost' + i + '" class="cyl-cost" readonly></td></tr>';
+            }
+            tbody.innerHTML = html;
+          }
+
+          // Calculate cylinder costs in invoice
+          window.piCalcCylinders = function() {
+            var widthVal = parseInt(document.getElementById("fWidth").value) || 0;
+            var colorsVal = parseInt(document.getElementById("fColors").value) || 0;
+            var pricePerCM = INV_CYL_PRICES[widthVal] || 0;
+            var totalCost = 0, totalCount = 0;
+            for (var i = 1; i <= PI_CYL_ROWS; i++) {
+              var sizeEl = document.getElementById("piCylSize" + i);
+              var countEl = document.getElementById("piCylCount" + i);
+              var costEl = document.getElementById("piCylCost" + i);
+              if (!sizeEl || !countEl || !costEl) continue;
+              var size = parseFloat(sizeEl.value) || 0;
+              var count = parseInt(countEl.value) || 0;
+              if (!size || !count) { costEl.value = ""; continue; }
+              totalCount += count;
+              if (size === 40 && count <= colorsVal) {
+                costEl.value = "FREE";
+                costEl.style.color = "#2e7d32"; costEl.style.fontWeight = "600";
+              } else if (size === 40 && count > colorsVal) {
+                var excess = count - colorsVal;
+                var c40 = Math.floor(size * excess * pricePerCM + 0.5);
+                costEl.value = c40.toFixed(2);
+                costEl.style.color = ""; costEl.style.fontWeight = "";
+                totalCost += c40;
+              } else {
+                var rc = Math.floor(size * count * pricePerCM + 0.5);
+                costEl.value = rc.toFixed(2);
+                costEl.style.color = ""; costEl.style.fontWeight = "";
+                totalCost += rc;
+              }
+            }
+            document.getElementById("piCylTotalCount").textContent = totalCount || "0";
+            document.getElementById("piCylTotalCost").textContent = "$" + totalCost.toLocaleString("en-US");
+            // Update FOB With Cylinders from Standard FOB + cylinder cost
+            var stdFob = parseFloat(document.getElementById("fFobStd").value) || 0;
+            document.getElementById("fFobCyl").value = stdFob + totalCost;
+            // Recalc totals
+            calcInvoiceTotals();
+          };
+
+          // Grand totals: FOB With Cylinders + Additional Items + Import Costs
+          window.calcInvoiceTotals = function() {
+            // FOB With Cylinders
+            var fobCyl = parseFloat(document.getElementById('fFobCyl').value) || 0;
+            // Additional Line Items
+            var addItems = 0;
             document.querySelectorAll('#lineItemsBody .line-row').forEach(function(row) {
               var qty = parseFloat(row.querySelector('.li-qty').value) || 0;
               var price = parseFloat(row.querySelector('.li-price').value) || 0;
               var lineTotal = qty * price;
               row.querySelector('.li-total').textContent = fmt(lineTotal);
-              subtotal += lineTotal;
+              addItems += lineTotal;
             });
+            // Import Costs
             var importTotal = 0;
             document.querySelectorAll('.import-cost-row .ic-amount').forEach(function(inp) {
               importTotal += parseFloat(inp.value) || 0;
             });
-            document.getElementById('valSubtotal').textContent = fmt(subtotal);
+            document.getElementById('valFobLine').textContent = fmt(fobCyl);
+            document.getElementById('valAddItems').textContent = fmt(addItems);
             document.getElementById('valImportTotal').textContent = fmt(importTotal);
-            document.getElementById('valGrandTotal').textContent = fmt(subtotal + importTotal);
+            document.getElementById('valGrandTotal').textContent = fmt(fobCyl + addItems + importTotal);
           };
 
           window.addLineRow = function() {
             var tbody = document.getElementById('lineItemsBody');
             var tr = document.createElement('tr');
             tr.className = 'line-row';
-            tr.innerHTML = '<td><input type="text" class="li-desc"></td><td><input type="number" class="li-qty" value="1" min="1" oninput="calcLineTotals()"></td><td><input type="number" class="li-price" value="0" step="0.01" oninput="calcLineTotals()"></td><td class="li-total" style="text-align:right;font-weight:600;">0.00</td><td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td>';
+            tr.innerHTML = '<td><input type="text" class="li-desc"></td><td><input type="number" class="li-qty" value="1" min="1" oninput="calcInvoiceTotals()"></td><td><input type="number" class="li-price" value="0" step="0.01" oninput="calcInvoiceTotals()"></td><td class="li-total" style="text-align:right;font-weight:600;">0.00</td><td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td>';
             tbody.appendChild(tr);
           };
 
@@ -471,7 +562,7 @@ container:
             var rows = document.querySelectorAll('#lineItemsBody .line-row');
             if (rows.length <= 1) return;
             btn.closest('tr').remove();
-            calcLineTotals();
+            calcInvoiceTotals();
           };
 
           window.addImportCostRow = function() {
@@ -479,7 +570,7 @@ container:
             var div = document.createElement('div');
             div.className = 'form-row import-cost-row';
             div.style.marginBottom = '8px';
-            div.innerHTML = '<div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">' + t('Shipping', 'شحن') + '</option><option value="customs">' + t('Customs', 'جمارك') + '</option><option value="insurance">' + t('Insurance', 'تامين') + '</option><option value="clearance">' + t('Clearance', 'تخليص') + '</option><option value="other">' + t('Other', 'اخرى') + '</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcLineTotals()"></div>';
+            div.innerHTML = '<div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">' + t('Shipping', 'شحن') + '</option><option value="customs">' + t('Customs', 'جمارك') + '</option><option value="insurance">' + t('Insurance', 'تامين') + '</option><option value="clearance">' + t('Clearance', 'تخليص') + '</option><option value="other">' + t('Other', 'اخرى') + '</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div>';
             container.appendChild(div);
           };
 
@@ -521,9 +612,13 @@ container:
             document.getElementById('optSurfRewind').checked = false;
             document.getElementById('fFobStd').value = '';
             document.getElementById('fFobCyl').value = '';
-            document.getElementById('lineItemsBody').innerHTML = '<tr class="line-row"><td><input type="text" class="li-desc"></td><td><input type="number" class="li-qty" value="1" min="1" oninput="calcLineTotals()"></td><td><input type="number" class="li-price" value="0" step="0.01" oninput="calcLineTotals()"></td><td class="li-total" style="text-align:right;font-weight:600;">0.00</td><td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td></tr>';
-            document.getElementById('importCostRows').innerHTML = '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="other">Other</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcLineTotals()"></div></div>';
-            document.getElementById('valSubtotal').textContent = '0.00';
+            // Init cylinders (empty)
+            piInitCylTable('');
+            // Reset line items
+            document.getElementById('lineItemsBody').innerHTML = '<tr class="line-row"><td><input type="text" class="li-desc"></td><td><input type="number" class="li-qty" value="1" min="1" oninput="calcInvoiceTotals()"></td><td><input type="number" class="li-price" value="0" step="0.01" oninput="calcInvoiceTotals()"></td><td class="li-total" style="text-align:right;font-weight:600;">0.00</td><td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td></tr>';
+            document.getElementById('importCostRows').innerHTML = '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="other">Other</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div></div>';
+            document.getElementById('valFobLine').textContent = '0.00';
+            document.getElementById('valAddItems').textContent = '0.00';
             document.getElementById('valImportTotal').textContent = '0.00';
             document.getElementById('valGrandTotal').textContent = '0.00';
             loadSuppliers();
@@ -568,6 +663,16 @@ container:
             if (document.getElementById('optHydUnwind').checked) optionalsList.push('Hydraulic Station Unwind');
             if (document.getElementById('optPneuRewind').checked) optionalsList.push('Pneumatic Rewind');
             if (document.getElementById('optSurfRewind').checked) optionalsList.push('Surface Rewind');
+            // Collect cylinders
+            var cylinders = [];
+            for (var ci = 1; ci <= PI_CYL_ROWS; ci++) {
+              var cs = document.getElementById('piCylSize' + ci);
+              var cc = document.getElementById('piCylCount' + ci);
+              var co = document.getElementById('piCylCost' + ci);
+              if (cs && cc && cs.value && cc.value) {
+                cylinders.push({ size: parseFloat(cs.value), count: parseInt(cc.value), cost: co ? co.value : '' });
+              }
+            }
             // FOB values (numeric inputs)
             var fobStdVal = document.getElementById('fFobStd').value;
             var fobCylVal = document.getElementById('fFobCyl').value;
@@ -583,6 +688,7 @@ container:
               material: document.getElementById('fMaterial').value,
               winder: document.getElementById('fWinder').value,
               optionals: optionalsList,
+              cylinders: cylinders,
               fob_standard: parseFloat(fobStdVal) || 0,
               fob_with_cylinders: parseFloat(fobCylVal) || 0,
               line_items: lineItems,
@@ -834,20 +940,20 @@ container:
             var fobWithCyl = stdFob + cylCost;
 
             document.getElementById("fFobStd").value = stdFob;
-            document.getElementById("fFobCyl").value = fobWithCyl;
+            // Init cylinder table and calculate
+            piInitCylTable(cols);
+            piCalcCylinders(); // this also sets fFobCyl and calls calcInvoiceTotals
           };
 
-          // When user manually edits Standard FOB, recalculate FOB with Cylinders
+          // When user manually edits Standard FOB, recalculate via cylinders
           window.onFobManualEdit = function() {
-            var stdVal = parseFloat(document.getElementById("fFobStd").value) || 0;
-            var wid = parseInt(document.getElementById("fWidth").value) || 0;
-            var cols = parseInt(document.getElementById("fColors").value) || 0;
-            var cylCost = invCalcCylinderCost(wid, cols);
-            document.getElementById("fFobCyl").value = stdVal + cylCost;
+            piCalcCylinders(); // recalcs FOB with Cyl from fFobStd + cylinder costs
           };
 
-          // FOB With Cylinders can also be edited directly - no auto recalc needed
-          window.onFobCylManualEdit = function() { /* user override - do nothing */ };
+          // FOB With Cylinders edited directly - just recalc totals
+          window.onFobCylManualEdit = function() {
+            calcInvoiceTotals();
+          };
 
           // Load dynamic pricing from server settings (if available)
           async function loadCalcSettings() {

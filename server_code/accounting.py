@@ -674,7 +674,8 @@ def create_purchase_invoice(data, token_or_email=None):
     # Build machine config JSON from new Calculator-style fields
     machine_config = {}
     for cfg_key in ('condition', 'machine_type', 'colors', 'machine_width',
-                     'material', 'winder', 'optionals', 'fob_standard', 'fob_with_cylinders'):
+                     'material', 'winder', 'optionals', 'cylinders',
+                     'fob_standard', 'fob_with_cylinders'):
         val = data.get(cfg_key)
         if val is not None and val != '' and val != []:
             machine_config[cfg_key] = val
@@ -1333,7 +1334,7 @@ def add_expense(data, token_or_email=None):
 INVENTORY_COLS = [
     'id', 'machine_code', 'description', 'purchase_invoice_id', 'contract_number',
     'purchase_cost', 'import_costs_total', 'total_cost', 'selling_price',
-    'status', 'location', 'notes', 'created_at', 'updated_at',
+    'status', 'location', 'notes', 'machine_config_json', 'created_at', 'updated_at',
 ]
 
 
@@ -1486,7 +1487,13 @@ def get_inventory(status=None, search='', token_or_email=None):
                 ]).lower()
                 if search_lower not in searchable:
                     continue
-            results.append(_row_to_dict(r, INVENTORY_COLS))
+            d = _row_to_dict(r, INVENTORY_COLS)
+            # Parse machine_config_json into dict for frontend
+            try:
+                d['machine_config'] = json.loads(d.get('machine_config_json') or '{}')
+            except (json.JSONDecodeError, TypeError):
+                d['machine_config'] = {}
+            results.append(d)
         results.sort(key=lambda x: x.get('machine_code', ''))
         return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
@@ -1510,8 +1517,18 @@ def add_inventory_item(data, token_or_email=None):
     item_id = _uuid()
     now = get_utc_now()
 
+    # Build machine config JSON from Calculator-style fields
+    machine_config = {}
+    for cfg_key in ('condition', 'machine_type', 'colors', 'machine_width',
+                     'material', 'winder', 'optionals', 'cylinders',
+                     'fob_standard', 'fob_with_cylinders'):
+        val = data.get(cfg_key)
+        if val is not None and val != '' and val != []:
+            machine_config[cfg_key] = val
+    machine_config_str = json.dumps(machine_config, ensure_ascii=False) if machine_config else None
+
     try:
-        app_tables.inventory.add_row(
+        row_data = dict(
             id=item_id,
             machine_code=machine_code,
             description=_safe_str(data.get('description')),
@@ -1527,6 +1544,20 @@ def add_inventory_item(data, token_or_email=None):
             created_at=now,
             updated_at=now,
         )
+        # Try adding machine_config_json column (may not exist yet)
+        if machine_config_str:
+            row_data['machine_config_json'] = machine_config_str
+        try:
+            app_tables.inventory.add_row(**row_data)
+        except Exception as col_err:
+            # If machine_config_json column doesn't exist, retry without it
+            if 'machine_config_json' in str(col_err):
+                row_data.pop('machine_config_json', None)
+                app_tables.inventory.add_row(**row_data)
+                logger.info("machine_config_json column not found in inventory - saved item without it")
+            else:
+                raise
+
         logger.info("Inventory item %s (%s) created by %s", item_id, machine_code, user_email)
         return {'success': True, 'id': item_id}
     except Exception as e:
@@ -1553,13 +1584,34 @@ def update_inventory_item(item_id, data, token_or_email=None):
             if field in data:
                 updates[field] = _round2(data[field])
 
+        # Build machine config JSON from Calculator-style fields
+        machine_config = {}
+        for cfg_key in ('condition', 'machine_type', 'colors', 'machine_width',
+                         'material', 'winder', 'optionals', 'cylinders',
+                         'fob_standard', 'fob_with_cylinders'):
+            val = data.get(cfg_key)
+            if val is not None and val != '' and val != []:
+                machine_config[cfg_key] = val
+        if machine_config:
+            updates['machine_config_json'] = json.dumps(machine_config, ensure_ascii=False)
+
         # Recalculate total_cost if cost fields changed
         pc = updates.get('purchase_cost', _round2(row.get('purchase_cost', 0)))
         ic = updates.get('import_costs_total', _round2(row.get('import_costs_total', 0)))
         updates['total_cost'] = _round2(pc + ic)
         updates['updated_at'] = get_utc_now()
 
-        row.update(**updates)
+        try:
+            row.update(**updates)
+        except Exception as col_err:
+            # If machine_config_json column doesn't exist, retry without it
+            if 'machine_config_json' in str(col_err):
+                updates.pop('machine_config_json', None)
+                row.update(**updates)
+                logger.info("machine_config_json column not found in inventory - updated item without it")
+            else:
+                raise
+
         logger.info("Inventory item %s updated by %s", item_id, user_email)
         return {'success': True}
     except Exception as e:
@@ -2225,7 +2277,8 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
         # Update machine config JSON
         machine_config = {}
         for cfg_key in ('condition', 'machine_type', 'colors', 'machine_width',
-                         'material', 'winder', 'optionals', 'fob_standard', 'fob_with_cylinders'):
+                         'material', 'winder', 'optionals', 'cylinders',
+                         'fob_standard', 'fob_with_cylinders'):
             val = data.get(cfg_key)
             if val is not None and val != '' and val != []:
                 machine_config[cfg_key] = val

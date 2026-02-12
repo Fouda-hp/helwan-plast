@@ -37,7 +37,15 @@ container:
         .empty-msg { text-align: center; padding: 40px; color: #999; }
         .hp-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; }
         .hp-modal-overlay.show { display: flex !important; justify-content: center !important; align-items: center !important; }
-        .hp-modal { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); margin: auto; }
+        .hp-modal { background: #fff; border-radius: 12px; padding: 24px; width: 95%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); margin: auto; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .cyl-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+        .cyl-table th { background: #f5f5f5; padding: 6px 8px; text-align: center; border: 1px solid #ddd; color: #333; font-weight: 600; }
+        .cyl-table td { padding: 4px; border: 1px solid #ddd; text-align: center; }
+        .cyl-table input { width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; text-align: center; }
+        .cyl-table input.cyl-cost { background: #f9f9f9; }
+        .cyl-table .cyl-free { color: #2e7d32; font-weight: 600; }
+        .cyl-total-row { font-weight: 700; background: #f0f4ff; }
         .hp-modal h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 20px; }
         .form-group { margin-bottom: 14px; }
         .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 13px; }
@@ -102,25 +110,129 @@ container:
         <div class="hp-modal">
           <h2 id="itemModalTitle">Add Inventory Item</h2>
           <input type="hidden" id="editItemId" value="">
-          <div class="form-group">
-            <label id="lblCode">Machine Code *</label>
-            <input type="text" id="fCode" required>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label id="lblCode">Machine Code (auto)</label>
+              <input type="text" id="fCode" readonly style="background:#f0f0f0;font-weight:700;font-size:15px;cursor:not-allowed;">
+            </div>
+            <div class="form-group">
+              <label id="lblDesc">Description</label>
+              <input type="text" id="fDesc">
+            </div>
           </div>
-          <div class="form-group">
-            <label id="lblDesc">Description</label>
-            <input type="text" id="fDesc">
+
+          <!-- Machine Configuration Section -->
+          <div id="invMachineConfig" style="background:#f0f4ff;border:1px solid #c5cae9;border-radius:10px;padding:16px;margin:12px 0;">
+            <h4 style="margin:0 0 12px;color:#3949ab;" id="lblMachConfig">⚙ Machine Configuration</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label id="lblInvCondition">Condition</label>
+                <select id="invCondition" onchange="invBuildCode()">
+                  <option value="">-- Select --</option>
+                  <option value="new">New (S)</option>
+                  <option value="used">Used (U)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label id="lblInvMachType">Machine Type</label>
+                <select id="invMachType" onchange="invBuildCode()">
+                  <option value="">-- Select --</option>
+                  <option value="Metal anilox">Metal anilox</option>
+                  <option value="Ceramic anilox Single Doctor Blade">Ceramic Single</option>
+                  <option value="Ceramic anilox Chamber Doctor Blade">Ceramic Chamber</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+              <div class="form-group">
+                <label id="lblInvColors">Colors</label>
+                <select id="invColors" onchange="invBuildCode()">
+                  <option value="">--</option><option value="4">4</option><option value="6">6</option><option value="8">8</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label id="lblInvWidth">Width (cm)</label>
+                <select id="invWidth" onchange="invBuildCode()">
+                  <option value="">--</option><option value="80">80</option><option value="100">100</option><option value="120">120</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label id="lblInvMaterial">Material</label>
+                <select id="invMaterial" onchange="invBuildCode()">
+                  <option value="">--</option>
+                  <option value="PE">PE</option><option value="PP">PP</option><option value="Nonwoven">Nonwoven</option>
+                  <option value="Paper to 100g">Paper 100g</option><option value="Paper to 200g">Paper 200g</option><option value="Paper to 300g">Paper 300g</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label id="lblInvWinder">Winder</label>
+                <select id="invWinder" onchange="invBuildCode()">
+                  <option value="">--</option><option value="Single">Single</option><option value="Double">Double</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin:8px 0;">
+              <label style="font-weight:600;color:#333;font-size:13px;display:block;margin-bottom:6px;" id="lblInvOptionals">Optional Features</label>
+              <div style="display:flex;flex-wrap:wrap;gap:12px;">
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="invOptVideo" onchange="invBuildCode()"> Video inspection</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="invOptPLC" onchange="invBuildCode()"> PLC</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="invOptSlitter" onchange="invBuildCode()"> Slitter</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="invOptPneuUnwind" onchange="invBuildCode()"> Pneumatic Unwind</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="invOptHydUnwind" onchange="invBuildCode()"> Hydraulic Station Unwind</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="invOptPneuRewind" onchange="invBuildCode()"> Pneumatic Rewind</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="invOptSurfRewind" onchange="invBuildCode()"> Surface Rewind</label>
+              </div>
+            </div>
+            <div class="form-row" style="margin-top:10px;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label id="lblInvFobStd">Standard Machine FOB ($)</label>
+                <input type="number" id="invFobStd" step="0.01" style="background:#e8f5e9;font-weight:700;font-size:15px;color:#2e7d32;" oninput="invOnFobEdit()">
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label id="lblInvFobCyl">FOB With Cylinders ($)</label>
+                <input type="number" id="invFobCyl" step="0.01" style="background:#e8f5e9;font-weight:700;font-size:15px;color:#1565c0;">
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label id="lblPurchaseCost">Purchase Cost</label>
-            <input type="number" id="fPurchaseCost" step="0.01" value="0">
+
+          <!-- Cylinders Table -->
+          <div id="invCylSection" style="background:#fff8e1;border:1px solid #ffd54f;border-radius:10px;padding:16px;margin:12px 0;">
+            <h4 style="margin:0 0 10px;color:#f57f17;" id="lblInvCylinders">🔧 Cylinders</h4>
+            <table class="cyl-table">
+              <thead>
+                <tr>
+                  <th style="width:10%;">#</th>
+                  <th style="width:30%;" id="cylThSize">Size (CM)</th>
+                  <th style="width:25%;" id="cylThCount">Count</th>
+                  <th style="width:35%;" id="cylThCost">Cost ($)</th>
+                </tr>
+              </thead>
+              <tbody id="invCylBody"></tbody>
+              <tfoot>
+                <tr class="cyl-total-row">
+                  <td></td>
+                  <td id="lblCylTotal">Total</td>
+                  <td id="invCylTotalCount">0</td>
+                  <td id="invCylTotalCost">0</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
-          <div class="form-group">
-            <label id="lblLocation">Location</label>
-            <input type="text" id="fLocation">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label id="lblPurchaseCost">Purchase Cost</label>
+              <input type="number" id="fPurchaseCost" step="0.01" value="0">
+            </div>
+            <div class="form-group">
+              <label id="lblLocation">Location</label>
+              <input type="text" id="fLocation">
+            </div>
           </div>
           <div class="form-group">
             <label id="lblItemNotes">Notes</label>
-            <textarea id="fItemNotes" rows="3"></textarea>
+            <textarea id="fItemNotes" rows="2"></textarea>
           </div>
           <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closeItemModal()">Cancel</button>
@@ -279,6 +391,24 @@ container:
             document.getElementById('fPurchaseCost').value = '0';
             document.getElementById('fLocation').value = '';
             document.getElementById('fItemNotes').value = '';
+            // Reset machine config
+            document.getElementById('invCondition').value = '';
+            document.getElementById('invMachType').value = '';
+            document.getElementById('invColors').value = '';
+            document.getElementById('invWidth').value = '';
+            document.getElementById('invMaterial').value = '';
+            document.getElementById('invWinder').value = '';
+            document.getElementById('invOptVideo').checked = false;
+            document.getElementById('invOptPLC').checked = false;
+            document.getElementById('invOptSlitter').checked = false;
+            document.getElementById('invOptPneuUnwind').checked = false;
+            document.getElementById('invOptHydUnwind').checked = false;
+            document.getElementById('invOptPneuRewind').checked = false;
+            document.getElementById('invOptSurfRewind').checked = false;
+            document.getElementById('invFobStd').value = '';
+            document.getElementById('invFobCyl').value = '';
+            invInitCylTable('');
+            invLoadCalcSettings();
             document.getElementById('itemModal').classList.add('show');
           };
 
@@ -305,12 +435,41 @@ container:
               if (window.showNotification) window.showNotification('error', '', t('Machine code is required', 'كود الماكينة مطلوب'));
               return;
             }
+            // Collect optionals
+            var optList = [];
+            if (document.getElementById('invOptVideo').checked) optList.push('Video inspection');
+            if (document.getElementById('invOptPLC').checked) optList.push('PLC');
+            if (document.getElementById('invOptSlitter').checked) optList.push('Slitter');
+            if (document.getElementById('invOptPneuUnwind').checked) optList.push('Pneumatic Unwind');
+            if (document.getElementById('invOptHydUnwind').checked) optList.push('Hydraulic Station Unwind');
+            if (document.getElementById('invOptPneuRewind').checked) optList.push('Pneumatic Rewind');
+            if (document.getElementById('invOptSurfRewind').checked) optList.push('Surface Rewind');
+            // Collect cylinders
+            var cyls = [];
+            for (var ci = 1; ci <= INV_CYL_ROWS; ci++) {
+              var cs = document.getElementById('invCylSize' + ci);
+              var cc = document.getElementById('invCylCount' + ci);
+              var co = document.getElementById('invCylCost' + ci);
+              if (cs && cc && cs.value && cc.value) {
+                cyls.push({ size: parseFloat(cs.value), count: parseInt(cc.value), cost: co ? co.value : '' });
+              }
+            }
             var data = {
               machine_code: code,
               description: document.getElementById('fDesc').value.trim(),
               purchase_cost: parseFloat(document.getElementById('fPurchaseCost').value) || 0,
               location: document.getElementById('fLocation').value.trim(),
-              notes: document.getElementById('fItemNotes').value.trim()
+              notes: document.getElementById('fItemNotes').value.trim(),
+              condition: document.getElementById('invCondition').value,
+              machine_type: document.getElementById('invMachType').value,
+              colors: document.getElementById('invColors').value,
+              machine_width: document.getElementById('invWidth').value,
+              material: document.getElementById('invMaterial').value,
+              winder: document.getElementById('invWinder').value,
+              optionals: optList,
+              cylinders: cyls,
+              fob_standard: parseFloat(document.getElementById('invFobStd').value) || 0,
+              fob_with_cylinders: parseFloat(document.getElementById('invFobCyl').value) || 0
             };
             var editId = document.getElementById('editItemId').value;
             try {
@@ -402,6 +561,184 @@ container:
             if (window.pyGoBack) window.pyGoBack();
             else window.location.hash = '#admin';
           };
+
+          /* ============================================================
+             Machine Configuration + Cylinders (same logic as Calculator)
+             ============================================================ */
+          var INV_PRICES = {
+            "Metal anilox":{"4":{"80":15000,"100":16000,"120":17500},"6":{"80":25000,"100":26000,"120":29000},"8":{"80":29000,"100":32000,"120":33000}},
+            "Ceramic anilox Single Doctor Blade":{"4":{"80":18000,"100":19000,"120":20500},"6":{"80":28000,"100":29000,"120":32000},"8":{"80":32000,"100":35000,"120":36000}},
+            "Ceramic anilox Chamber Doctor Blade":{"4":{"80":21168,"100":22960,"120":25252},"6":{"80":32752,"100":34940,"120":39128},"8":{"80":38336,"100":42920,"120":45504}}
+          };
+          var INV_MAT_ADJ = {"PP":9000,"Nonwoven":4000,"Paper to 100g":1500,"Paper to 200g":4750,"Paper to 300g":11050};
+          var INV_WIND_ADJ = {"Single":-4000};
+          var INV_OPT_ADJ = {"Video inspection":4000,"PLC":1800,"Slitter":800,"Pneumatic Unwind":750,"Hydraulic Station Unwind":1500,"Pneumatic Rewind":750,"Surface Rewind":3250};
+          var INV_CYL_PRICES = {80:3.49,100:3.59,120:4.05,130:4.50,140:5.026,160:5.40};
+          var INV_DEFAULT_CYL_SIZES = [25,30,35,40,45,50,60];
+          var INV_CYL_ROWS = 12;
+
+          function invAniloxCode(type) {
+            if (type === "Metal anilox") return "M";
+            if (type === "Ceramic anilox Single Doctor Blade") return "C";
+            if (type === "Ceramic anilox Chamber Doctor Blade") return "CC";
+            return "";
+          }
+          function invMatWindCode(mat, wind) {
+            if (mat === "PE" && wind === "Single") return "S";
+            if (mat === "PE" && wind === "Double") return "D";
+            if (mat === "PP" && wind === "Single") return "PS";
+            if (mat === "Nonwoven" && wind === "Single") return "PS";
+            if (mat === "Paper to 100g") return "PP";
+            if (mat === "Paper to 200g") return "HS";
+            if (mat === "Paper to 300g") return "SS";
+            return "";
+          }
+          function invUnwindRewindCode() {
+            var u = "", r = "";
+            if (document.getElementById("invOptPneuUnwind").checked) u = "P";
+            if (document.getElementById("invOptHydUnwind").checked) u = "H";
+            if (document.getElementById("invOptPneuRewind").checked) r = "P";
+            if (document.getElementById("invOptSurfRewind").checked) r = "S";
+            return u + r;
+          }
+
+          // Initialize cylinder table rows
+          function invInitCylTable(colorsVal) {
+            var tbody = document.getElementById("invCylBody");
+            var html = "";
+            for (var i = 1; i <= INV_CYL_ROWS; i++) {
+              var defSize = (i <= INV_DEFAULT_CYL_SIZES.length) ? INV_DEFAULT_CYL_SIZES[i-1] : "";
+              var defCount = (i <= INV_DEFAULT_CYL_SIZES.length && colorsVal) ? colorsVal : "";
+              html += '<tr>';
+              html += '<td>' + i + '</td>';
+              html += '<td><input type="number" id="invCylSize' + i + '" value="' + defSize + '" oninput="invCalcCylinders()"></td>';
+              html += '<td><input type="number" id="invCylCount' + i + '" value="' + defCount + '" oninput="invCalcCylinders()"></td>';
+              html += '<td><input type="text" id="invCylCost' + i + '" class="cyl-cost" readonly></td>';
+              html += '</tr>';
+            }
+            tbody.innerHTML = html;
+          }
+
+          // Calculate cylinder costs
+          function invCalcCylinders() {
+            var widthVal = parseInt(document.getElementById("invWidth").value) || 0;
+            var colorsVal = parseInt(document.getElementById("invColors").value) || 0;
+            var pricePerCM = INV_CYL_PRICES[widthVal] || 0;
+            var totalCost = 0, totalCount = 0;
+            for (var i = 1; i <= INV_CYL_ROWS; i++) {
+              var sizeEl = document.getElementById("invCylSize" + i);
+              var countEl = document.getElementById("invCylCount" + i);
+              var costEl = document.getElementById("invCylCost" + i);
+              if (!sizeEl || !countEl || !costEl) continue;
+              var size = parseFloat(sizeEl.value) || 0;
+              var count = parseInt(countEl.value) || 0;
+              if (!size || !count) { costEl.value = ""; continue; }
+              totalCount += count;
+              if (size === 40 && count <= colorsVal) {
+                costEl.value = "FREE";
+                costEl.style.color = "#2e7d32";
+                costEl.style.fontWeight = "600";
+              } else if (size === 40 && count > colorsVal) {
+                var excess = count - colorsVal;
+                var cost40 = Math.floor(size * excess * pricePerCM + 0.5);
+                costEl.value = cost40.toFixed(2);
+                costEl.style.color = ""; costEl.style.fontWeight = "";
+                totalCost += cost40;
+              } else {
+                var rowCost = Math.floor(size * count * pricePerCM + 0.5);
+                costEl.value = rowCost.toFixed(2);
+                costEl.style.color = ""; costEl.style.fontWeight = "";
+                totalCost += rowCost;
+              }
+            }
+            document.getElementById("invCylTotalCount").textContent = totalCount || "0";
+            document.getElementById("invCylTotalCost").textContent = "$" + totalCost.toLocaleString("en-US");
+            // Update FOB With Cylinders
+            var stdFob = parseFloat(document.getElementById("invFobStd").value) || 0;
+            document.getElementById("invFobCyl").value = stdFob + totalCost;
+          }
+
+          window.invBuildCode = function() {
+            var cond = document.getElementById("invCondition").value;
+            var mType = document.getElementById("invMachType").value;
+            var cols = document.getElementById("invColors").value;
+            var wid = document.getElementById("invWidth").value;
+            var mat = document.getElementById("invMaterial").value;
+            var wind = document.getElementById("invWinder").value;
+            if (!cond || !mType || !cols || !wid || !mat || !wind) {
+              document.getElementById("fCode").value = "";
+              document.getElementById("invFobStd").value = "";
+              document.getElementById("invFobCyl").value = "";
+              return;
+            }
+            // Code
+            var prefix = cond === "used" ? "U" : "S";
+            var an = invAniloxCode(mType);
+            var mw = invMatWindCode(mat, wind);
+            var ex = invUnwindRewindCode();
+            var suffix = ex.length === 2 ? ex : mw + ex;
+            document.getElementById("fCode").value = prefix + "H" + cols + "-" + (parseInt(wid) * 10) + an + "/" + suffix;
+            // FOB
+            var base = 0;
+            if (INV_PRICES[mType] && INV_PRICES[mType][cols] && INV_PRICES[mType][cols][wid] !== undefined) {
+              base = parseFloat(INV_PRICES[mType][cols][wid]);
+            }
+            var matAdj = INV_MAT_ADJ[mat] || 0;
+            var windAdj = INV_WIND_ADJ[wind] || 0;
+            var optAdj = 0;
+            if (document.getElementById("invOptVideo").checked) optAdj += (INV_OPT_ADJ["Video inspection"] || 0);
+            if (document.getElementById("invOptPLC").checked) optAdj += (INV_OPT_ADJ["PLC"] || 0);
+            if (document.getElementById("invOptSlitter").checked) optAdj += (INV_OPT_ADJ["Slitter"] || 0);
+            if (document.getElementById("invOptPneuUnwind").checked) optAdj += (INV_OPT_ADJ["Pneumatic Unwind"] || 0);
+            if (document.getElementById("invOptHydUnwind").checked) optAdj += (INV_OPT_ADJ["Hydraulic Station Unwind"] || 0);
+            if (document.getElementById("invOptPneuRewind").checked) optAdj += (INV_OPT_ADJ["Pneumatic Rewind"] || 0);
+            if (document.getElementById("invOptSurfRewind").checked) optAdj += (INV_OPT_ADJ["Surface Rewind"] || 0);
+            var stdFob = base + matAdj + windAdj + optAdj;
+            document.getElementById("invFobStd").value = stdFob;
+            // Initialize cylinders with defaults
+            invInitCylTable(cols);
+            invCalcCylinders();
+          };
+
+          window.invOnFobEdit = function() {
+            invCalcCylinders(); // recalc FOB with Cyl
+          };
+
+          // Load settings from server
+          async function invLoadCalcSettings() {
+            try {
+              if (!window.pyGetCalculatorSettings) return;
+              var res = await window.pyGetCalculatorSettings();
+              if (res && res.success && res.data) {
+                var d = res.data;
+                if (d.machinePrices) INV_PRICES = d.machinePrices;
+                if (d.materialAdjustments) INV_MAT_ADJ = d.materialAdjustments;
+                if (d.winderAdjustment) INV_WIND_ADJ = d.winderAdjustment;
+                if (d.optionalAdjustments) INV_OPT_ADJ = d.optionalAdjustments;
+                if (d.cylinderPrices) {
+                  Object.keys(d.cylinderPrices).forEach(function(k) {
+                    var num = parseInt(k, 10);
+                    if (!isNaN(num) && d.cylinderPrices[k] != null) INV_CYL_PRICES[num] = parseFloat(d.cylinderPrices[k]);
+                  });
+                }
+                if (d.priceOptions && d.priceOptions.types && d.priceOptions.types.length) {
+                  var sel = document.getElementById("invMachType");
+                  var cur = sel.value;
+                  sel.innerHTML = '<option value="">-- Select --</option>';
+                  d.priceOptions.types.forEach(function(tp) {
+                    var opt = document.createElement("option");
+                    opt.value = tp;
+                    if (tp === "Metal anilox") opt.textContent = "Metal anilox";
+                    else if (tp === "Ceramic anilox Single Doctor Blade") opt.textContent = "Ceramic Single";
+                    else if (tp === "Ceramic anilox Chamber Doctor Blade") opt.textContent = "Ceramic Chamber";
+                    else opt.textContent = tp;
+                    sel.appendChild(opt);
+                  });
+                  if (cur) sel.value = cur;
+                }
+              }
+            } catch (err) { /* use defaults */ }
+          }
 
           function waitForBridge() {
             if (window.pyGetInventory) {

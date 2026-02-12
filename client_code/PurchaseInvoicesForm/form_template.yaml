@@ -37,10 +37,10 @@ container:
         .status-paid { background: #e8f5e9; color: #2e7d32; }
         .status-partial { background: #fff3e0; color: #ef6c00; }
         .empty-msg { text-align: center; padding: 40px; color: #999; }
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-overlay.show { display: flex; }
-        .modal { background: #fff; border-radius: 12px; padding: 24px; width: 95%; max-width: 800px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
-        .modal h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 20px; }
+        .hp-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .hp-modal-overlay.show { display: flex; }
+        .hp-modal { background: #fff; border-radius: 12px; padding: 24px; width: 95%; max-width: 800px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+        .hp-modal h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 20px; }
         .form-group { margin-bottom: 14px; }
         .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 13px; }
         .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
@@ -55,7 +55,7 @@ container:
         .totals-section .total-row.grand { font-size: 16px; font-weight: 700; border-top: 2px solid #333; padding-top: 8px; margin-top: 4px; }
         .import-costs-section { margin-top: 15px; padding: 15px; background: #fff8e1; border-radius: 8px; border: 1px solid #ffd54f; }
         .import-costs-section h4 { margin: 0 0 10px; color: #f57f17; }
-        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .hp-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
         .summary-card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; }
         .summary-card .num { font-size: 24px; font-weight: 700; }
@@ -111,8 +111,8 @@ container:
       </div>
 
       <!-- Create/Edit Invoice Modal -->
-      <div class="modal-overlay" id="invoiceModal">
-        <div class="modal">
+      <div class="hp-modal-overlay" id="invoiceModal">
+        <div class="hp-modal">
           <h2 id="invoiceModalTitle">New Purchase Invoice</h2>
           <input type="hidden" id="editInvoiceId" value="">
           <div class="form-row">
@@ -190,7 +190,7 @@ container:
             <label id="lblInvNotes">Notes</label>
             <textarea id="fInvNotes" rows="2"></textarea>
           </div>
-          <div class="modal-actions">
+          <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closeInvoiceModal()">Cancel</button>
             <button class="btn btn-save" onclick="saveInvoice()">Save</button>
           </div>
@@ -198,8 +198,8 @@ container:
       </div>
 
       <!-- Payment Modal -->
-      <div class="modal-overlay" id="paymentModal">
-        <div class="modal" style="max-width:450px;">
+      <div class="hp-modal-overlay" id="paymentModal">
+        <div class="hp-modal" style="max-width:450px;">
           <h2 id="payModalTitle">Record Payment</h2>
           <input type="hidden" id="payInvoiceId" value="">
           <div class="form-group">
@@ -219,7 +219,7 @@ container:
             <label id="lblPayNotes">Notes</label>
             <textarea id="fPayNotes" rows="2"></textarea>
           </div>
-          <div class="modal-actions">
+          <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closePaymentModal()">Cancel</button>
             <button class="btn btn-save" onclick="submitPayment()">Pay</button>
           </div>
@@ -227,11 +227,11 @@ container:
       </div>
 
       <!-- Invoice Details Modal -->
-      <div class="modal-overlay" id="detailsModal">
-        <div class="modal" style="max-width:700px;">
+      <div class="hp-modal-overlay" id="detailsModal">
+        <div class="hp-modal" style="max-width:700px;">
           <h2 id="detailsTitle">Invoice Details</h2>
           <div id="detailsContent" style="font-size:14px;"></div>
-          <div class="modal-actions">
+          <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closeDetailsModal()">Close</button>
           </div>
         </div>

@@ -26,15 +26,15 @@ container:
         tbody td { padding: 10px; border-bottom: 1px solid #f0f0f0; }
         tbody tr:hover { background: #f8f9ff; }
         .empty-msg { text-align: center; padding: 40px; color: #999; }
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-overlay.show { display: flex; }
-        .modal { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
-        .modal h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 20px; }
+        .hp-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .hp-modal-overlay.show { display: flex; }
+        .hp-modal { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+        .hp-modal h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 20px; }
         .form-group { margin-bottom: 14px; }
         .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 13px; }
         .form-group input, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
         .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #667eea; }
-        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .hp-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .loading-row td { text-align: center; padding: 20px; color: #999; }
         @media (max-width: 768px) {
           .suppliers-header { flex-direction: column; align-items: flex-start; }
@@ -77,8 +77,8 @@ container:
         </div>
       </div>
 
-      <div class="modal-overlay" id="supplierModal">
-        <div class="modal">
+      <div class="hp-modal-overlay" id="supplierModal">
+        <div class="hp-modal">
           <h2 id="modalTitle">Add Supplier</h2>
           <input type="hidden" id="editId" value="">
           <div class="form-group">
@@ -113,7 +113,7 @@ container:
             <label id="lblNotes">Notes</label>
             <textarea id="fNotes" rows="3"></textarea>
           </div>
-          <div class="modal-actions">
+          <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closeModal()" id="btnCancel">Cancel</button>
             <button class="btn btn-save" onclick="saveSupplier()" id="btnSave">Save</button>
           </div>

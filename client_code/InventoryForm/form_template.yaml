@@ -35,15 +35,15 @@ container:
         .profit-positive { color: #2e7d32; font-weight: 600; }
         .profit-negative { color: #c62828; font-weight: 600; }
         .empty-msg { text-align: center; padding: 40px; color: #999; }
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-overlay.show { display: flex; }
-        .modal { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
-        .modal h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 20px; }
+        .hp-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .hp-modal-overlay.show { display: flex; }
+        .hp-modal { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+        .hp-modal h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 20px; }
         .form-group { margin-bottom: 14px; }
         .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 13px; }
         .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
         .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #667eea; }
-        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .hp-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
         .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
         .summary-card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; }
         .summary-card .num { font-size: 28px; font-weight: 700; }
@@ -98,8 +98,8 @@ container:
       </div>
 
       <!-- Add/Edit Item Modal -->
-      <div class="modal-overlay" id="itemModal">
-        <div class="modal">
+      <div class="hp-modal-overlay" id="itemModal">
+        <div class="hp-modal">
           <h2 id="itemModalTitle">Add Inventory Item</h2>
           <input type="hidden" id="editItemId" value="">
           <div class="form-group">
@@ -122,7 +122,7 @@ container:
             <label id="lblItemNotes">Notes</label>
             <textarea id="fItemNotes" rows="3"></textarea>
           </div>
-          <div class="modal-actions">
+          <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closeItemModal()">Cancel</button>
             <button class="btn btn-save" onclick="saveItem()">Save</button>
           </div>
@@ -130,8 +130,8 @@ container:
       </div>
 
       <!-- Link to Contract Modal -->
-      <div class="modal-overlay" id="linkModal">
-        <div class="modal">
+      <div class="hp-modal-overlay" id="linkModal">
+        <div class="hp-modal">
           <h2 id="linkModalTitle">Link to Contract</h2>
           <input type="hidden" id="linkItemId" value="">
           <div class="form-group">
@@ -142,7 +142,7 @@ container:
             <label id="lblSellingPrice">Selling Price *</label>
             <input type="number" id="fSellingPrice" step="0.01" value="0">
           </div>
-          <div class="modal-actions">
+          <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closeLinkModal()">Cancel</button>
             <button class="btn btn-save" onclick="linkToContract()">Link</button>
           </div>

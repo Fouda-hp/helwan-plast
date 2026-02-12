@@ -1682,8 +1682,8 @@ container:
         html += '<td>' + (u.phone || '-') + '</td>';
         html += '<td>' + u.created_at.split('T')[0] + '</td>';
         html += '<td class="actions">';
-        html += '<button class="btn-sm approve" onclick="showApprovalModal('' + u.user_id + '')" style="background:#e8f5e9;color:#2e7d32;">✓ Approve</button>';
-        html += '<button class="btn-sm reject" onclick="rejectUserAction('' + u.user_id + '')">✕ Reject</button>';
+        html += '<button class="btn-sm approve" onclick="showApprovalModal(\'' + u.user_id + '\')" style="background:#e8f5e9;color:#2e7d32;">✓ Approve</button>';
+        html += '<button class="btn-sm reject" onclick="rejectUserAction(\'' + u.user_id + '\')">✕ Reject</button>';
         html += '</td></tr>';
         });
         html += '</tbody></table>';
@@ -1803,12 +1803,12 @@ container:
         html += '<option value="authenticator"' + (om === 'authenticator' ? ' selected' : '') + '>Authenticator</option>';
         html += '</select></td>';
         html += '<td class="actions">';
-        html += '<button class="btn-sm edit" onclick="showRoleModal('' + u.user_id + '', '' + u.role + '')">Role</button>';
-        html += '<button class="btn-sm edit" onclick="showPasswordModal('' + u.user_id + '')">Password</button>';
+        html += '<button class="btn-sm edit" onclick="showRoleModal(\'' + u.user_id + '\', \'' + u.role + '\')">Role</button>';
+        html += '<button class="btn-sm edit" onclick="showPasswordModal(\'' + u.user_id + '\')">Password</button>';
         if (u.is_approved) {
-        html += '<button class="btn-sm ' + (u.is_active ? 'reject' : 'approve') + '" onclick="toggleActive('' + u.user_id + '')">' + (u.is_active ? 'Disable' : 'Enable') + '</button>';
+        html += '<button class="btn-sm ' + (u.is_active ? 'reject' : 'approve') + '" onclick="toggleActive(\'' + u.user_id + '\')">' + (u.is_active ? 'Disable' : 'Enable') + '</button>';
         }
-        html += '<button class="btn-sm reject" onclick="confirmDeleteUser('' + u.user_id + '', '' + u.full_name + '')">Delete</button>';
+        html += '<button class="btn-sm reject" onclick="confirmDeleteUser(\'' + u.user_id + '\', \'' + u.full_name + '\')">Delete</button>';
         html += '</td></tr>';
         });
         html += '</tbody></table>';
@@ -1942,9 +1942,9 @@ container:
         html += '<td><span class="status ' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
         html += '<td class="actions">';
         if (c.is_deleted) {
-        html += '<button class="btn-sm restore" onclick="restoreClient('' + c['Client Code'] + '')">Restore</button>';
+        html += '<button class="btn-sm restore" onclick="restoreClient(\'' + c['Client Code'] + '\')">Restore</button>';
         } else {
-        html += '<button class="btn-sm delete" onclick="deleteClient('' + c['Client Code'] + '')">Delete</button>';
+        html += '<button class="btn-sm delete" onclick="deleteClient(\'' + c['Client Code'] + '\')">Delete</button>';
         }
         html += '</td></tr>';
         });
@@ -2125,7 +2125,7 @@ container:
         html += '<td style="max-width:320px;font-size:12px;">' + (c.payments ? formatPaymentsSchedule(c.payments) : '-') + '</td>';
         html += '<td>' + (c.delivery_date || '-') + '</td>';
         html += '<td>' + (c.created_at ? String(c.created_at).split('T')[0] : '-') + '</td></td><td><span style="padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;background:' + ({'draft':'#e3f2fd','negotiation':'#fff3e0','signed':'#e8f5e9','in_progress':'#e1f5fe','delivered':'#f3e5f5','closed':'#e0e0e0','cancelled':'#ffebee'}[c.lifecycle_status||'draft']||'#e3f2fd') + ';color:' + ({'draft':'#1565c0','negotiation':'#ef6c00','signed':'#2e7d32','in_progress':'#0277bd','delivered':'#7b1fa2','closed':'#616161','cancelled':'#c62828'}[c.lifecycle_status||'draft']||'#1565c0') + '">' + (c.lifecycle_status||'draft') + '</span>';
-        html += '<td class="actions"><button style="padding:4px 10px;border:none;border-radius:4px;cursor:pointer;background:#667eea;color:#fff;font-size:12px;margin-right:4px;" onclick="showContractTimeline('' + c.contract_number + '')">Timeline</button><button class="btn-sm delete" onclick="deleteContractRow(' + (c.quotation_number != null ? c.quotation_number : '') + ')">Delete</button></td>';
+        html += '<td class="actions"><button style="padding:4px 10px;border:none;border-radius:4px;cursor:pointer;background:#667eea;color:#fff;font-size:12px;margin-right:4px;" onclick="showContractTimeline(\'' + c.contract_number + '\')">Timeline</button><button class="btn-sm delete" onclick="deleteContractRow(' + (c.quotation_number != null ? c.quotation_number : '') + ')">Delete</button></td>';
         html += '</tr>';
         });
         html += '</tbody></table>';
@@ -2616,8 +2616,7 @@ container:
         }
 
         var headers = Object.keys(data[0]);
-        var csv = headers.join(',') + '\
-      ';
+        var csv = headers.join(',') + '\n';
 
         data.forEach(function(row) {
         var values = headers.map(function(h) {
@@ -2627,8 +2626,7 @@ container:
         }
         return val;
         });
-        csv += values.join(',') + '\
-      ';
+        csv += values.join(',') + '\n';
         });
 
         var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -2755,7 +2753,7 @@ container:
           if (transitions.length > 0) {
             html += '<div style="margin-top:16px;"><strong>Change status to:</strong><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">';
             transitions.forEach(function(t) {
-              html += '<button style="padding:6px 14px;border:none;border-radius:6px;cursor:pointer;background:' + (stateColors[t]||'#667eea') + ';color:#fff;font-size:12px;" onclick="changeContractStatus('' + contractNum + '','' + t + '')">' + t + '</button>';
+              html += '<button style="padding:6px 14px;border:none;border-radius:6px;cursor:pointer;background:' + (stateColors[t]||'#667eea') + ';color:#fff;font-size:12px;" onclick="changeContractStatus(\'' + contractNum + '\',\'' + t + '\')">' + t + '</button>';
             });
             html += '</div></div>';
           }

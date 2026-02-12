@@ -2249,10 +2249,60 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
             except Exception as _e:
                 logger.debug("Suppressed: %s", _e)
 
-            # NOTE: Purchase invoice creation is NOT triggered here.
-            # Procurement is handled separately via create_contract_purchase()
-            # from the accounting module — keeping sales and procurement layers separate.
-            return {'success': True, 'message': 'Contract saved', 'contract_number': contract_number}
+            # Auto-create purchase invoice if supplier_id is provided
+            purchase_result = None
+            supplier_id = contract_data.get('supplier_id')
+            if supplier_id:
+                try:
+                    try:
+                        from . import accounting as acct_module
+                    except ImportError:
+                        import accounting as acct_module
+
+                    # Get FOB cost from quotation (try multiple field names)
+                    q_row = None
+                    try:
+                        q_row = app_tables.quotations.get(**{'Quotation#': quotation_number})
+                    except Exception:
+                        pass
+
+                    fob_cost = 0.0
+                    cylinder_cost = 0.0
+                    if q_row:
+                        fob_raw = q_row.get('Standard Machine FOB cost') or q_row.get('FOB price for overseas clients') or q_row.get('Agreed Price') or 0
+                        fob_cost = acct_module._round2(acct_module._parse_cost_string(fob_raw))
+                        cyl_raw = q_row.get('Machine FOB cost With Cylinders') or 0
+                        cyl_total = acct_module._round2(acct_module._parse_cost_string(cyl_raw))
+                        if cyl_total > fob_cost:
+                            cylinder_cost = acct_module._round2(cyl_total - fob_cost)
+
+                    # Override with explicit values if provided
+                    if contract_data.get('fob_cost'):
+                        fob_cost = acct_module._round2(contract_data.get('fob_cost'))
+                    if contract_data.get('cylinder_cost'):
+                        cylinder_cost = acct_module._round2(contract_data.get('cylinder_cost'))
+
+                    currency = contract_data.get('currency', 'USD')
+
+                    if fob_cost > 0:
+                        purchase_result = acct_module.create_contract_purchase(
+                            contract_number, fob_cost, cylinder_cost,
+                            supplier_id, currency, auth_key
+                        )
+                        if purchase_result and purchase_result.get('success'):
+                            logger.info("Auto-created purchase invoice %s for contract %s",
+                                        purchase_result.get('invoice_number'), contract_number)
+                        else:
+                            logger.warning("Auto purchase invoice failed for %s: %s",
+                                           contract_number, purchase_result)
+                except Exception as acct_err:
+                    logger.warning("Auto purchase invoice error for %s: %s", contract_number, acct_err)
+
+            result = {'success': True, 'message': 'Contract saved', 'contract_number': contract_number}
+            if purchase_result and purchase_result.get('success'):
+                result['purchase_invoice_id'] = purchase_result.get('invoice_id')
+                result['purchase_invoice_number'] = purchase_result.get('invoice_number')
+            return result
             
         except Exception as e:
             error_msg = str(e)

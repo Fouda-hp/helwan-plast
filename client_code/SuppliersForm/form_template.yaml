@@ -46,7 +46,7 @@ container:
         <div class="suppliers-header">
           <h1 id="pageTitle">Suppliers</h1>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="openAddModal()" id="btnAdd">+ Add Supplier</button>
+            <button class="btn btn-primary" onclick="window.openAddModal()" id="btnAdd">+ Add Supplier</button>
             <button class="btn btn-back" onclick="goBack()" id="btnBack">Back</button>
           </div>
         </div>

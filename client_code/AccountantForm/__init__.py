@@ -55,6 +55,11 @@ class AccountantForm(AccountantFormTemplate):
         anvil.js.window.pyMigrateImportCosts = self.migrate_import_costs
         anvil.js.window.pyMigrateOldContracts = self.migrate_old_contracts
 
+        # JS Bridges - Currency / Exchange Rates
+        anvil.js.window.pyGetExchangeRates = self.get_exchange_rates
+        anvil.js.window.pySetExchangeRate = self.set_exchange_rate
+        anvil.js.window.pyDeleteExchangeRate = self.delete_exchange_rate
+
         # JS Bridges - Navigation
         anvil.js.window.pyOpenSuppliers = self.open_suppliers
         anvil.js.window.pyOpenInventory = self.open_inventory
@@ -122,6 +127,16 @@ class AccountantForm(AccountantFormTemplate):
     def migrate_old_contracts(self, supplier_id, currency='USD', dry_run=False):
         """ONE-TIME: import old contracts into accounting system."""
         return anvil.server.call('migrate_old_contracts', supplier_id, currency, dry_run, self._auth())
+
+    # --- Currency ---
+    def get_exchange_rates(self):
+        return anvil.server.call('get_exchange_rates', self._auth())
+
+    def set_exchange_rate(self, currency_code, rate_to_egp):
+        return anvil.server.call('set_exchange_rate', currency_code, rate_to_egp, self._auth())
+
+    def delete_exchange_rate(self, currency_code):
+        return anvil.server.call('delete_exchange_rate', currency_code, self._auth())
 
     # --- Navigation ---
     def open_suppliers(self):

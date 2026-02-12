@@ -65,6 +65,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.deleteContract = self.delete_contract
         anvil.js.window.validateNumPayments = self.validate_num_payments
 
+        # Supplier bridge for auto-invoice
+        anvil.js.window.pyGetSuppliersListForContract = self.get_suppliers_list
+
         # Notification bridges
         register_notif_bridges()
 
@@ -593,11 +596,19 @@ class ContractPrintForm(ContractPrintFormTemplate):
             err_msg = str(e) if e else ('خطأ غير متوقع' if is_ar else 'Unexpected error')
             return {'success': False, 'message': ('خطأ عند الحفظ: ' + err_msg) if is_ar else ('Error while saving: ' + err_msg)}
 
+    def get_suppliers_list(self):
+        """Get suppliers list for the supplier dropdown in contract form."""
+        try:
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or ''
+            return anvil.server.call('get_suppliers_list_simple', auth)
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
+
     def save_contract(self):
         if not self.current_data:
             self._show_msg('Please select a quotation first')
             return
-        
+
         if not self.payment_data:
             is_ar = self.current_lang == 'ar'
             self._show_msg('من فضلك أدخل بيانات الدفعات أولاً' if is_ar else 'Please enter payment data first')
@@ -609,7 +620,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
         delivery_date = str(delivery_input.value) if delivery_input else ''
-        
+
         # بيانات العرض من get_quotation_pdf_data تستخدم client_company, client_phone, client_address
         # وـ company في current_data قد تكون قاموس إعدادات وليست اسم الشركة
         company_val = self.current_data.get('client_company') or ''
@@ -624,6 +635,19 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 q_num = int(q_num)
             except (TypeError, ValueError):
                 pass
+
+        # Get supplier selection from the supplier dropdown (if user selected one)
+        supplier_id = ''
+        currency = 'USD'
+        try:
+            supplier_el = anvil.js.window.document.getElementById('contractSupplierSelect')
+            if supplier_el:
+                supplier_id = str(supplier_el.value or '')
+            currency_el = anvil.js.window.document.getElementById('contractCurrencySelect')
+            if currency_el:
+                currency = str(currency_el.value or 'USD')
+        except Exception:
+            pass
 
         contract_data = {
             'quotation_number': q_num,
@@ -644,9 +668,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
             'payments': self.payment_data,
             'delivery_date': delivery_date,
             'language': self.current_lang,
-            # NOTE: FOB cost, cylinder cost, supplier_id are NOT stored here.
-            # Procurement is handled separately via create_contract_purchase()
-            # from the Accounting/Purchase module — not from the contract form.
+            # Supplier for auto purchase invoice (optional)
+            'supplier_id': supplier_id if supplier_id else None,
+            'currency': currency,
         }
         
         try:

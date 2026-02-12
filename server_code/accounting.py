@@ -388,7 +388,7 @@ def get_ledger_entries(account_code=None, date_from=None, date_to=None, ref_type
             results.append(_row_to_dict(r, LEDGER_COLS))
 
         results.sort(key=lambda x: (x.get('date', ''), x.get('created_at', '')))
-        return {'success': True, 'entries': results, 'count': len(results)}
+        return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
         logger.exception("get_ledger_entries error")
         return {'success': False, 'message': str(e)}
@@ -473,7 +473,7 @@ def get_suppliers(search='', token_or_email=None):
                     continue
             results.append(_row_to_dict(r, SUPPLIER_COLS))
         results.sort(key=lambda s: s.get('name', ''))
-        return {'success': True, 'suppliers': results, 'count': len(results)}
+        return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
         logger.exception("get_suppliers error")
         return {'success': False, 'message': str(e)}
@@ -613,9 +613,17 @@ def get_purchase_invoices(status=None, search='', token_or_email=None):
                 d['items'] = json.loads(d.get('items_json') or '[]')
             except (json.JSONDecodeError, TypeError):
                 d['items'] = []
+            # Add supplier_name for display
+            try:
+                supplier = app_tables.suppliers.get(id=d.get('supplier_id'))
+                d['supplier_name'] = _safe_str(supplier.get('name', '')) if supplier else ''
+            except Exception:
+                d['supplier_name'] = ''
+            # Alias paid_amount -> paid for frontend consistency
+            d['paid'] = d.get('paid_amount', 0)
             results.append(d)
         results.sort(key=lambda x: x.get('date', ''), reverse=True)
-        return {'success': True, 'invoices': results, 'count': len(results)}
+        return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
         logger.exception("get_purchase_invoices error")
         return {'success': False, 'message': str(e)}
@@ -637,7 +645,8 @@ def create_purchase_invoice(data, token_or_email=None):
     if not supplier_id:
         return {'success': False, 'message': 'Supplier is required'}
 
-    items = data.get('items', [])
+    # Accept both 'items' and 'line_items' keys from frontend
+    items = data.get('items') or data.get('line_items', [])
     if not items:
         return {'success': False, 'message': 'At least one line item is required'}
 
@@ -678,6 +687,27 @@ def create_purchase_invoice(data, token_or_email=None):
             created_at=now,
             updated_at=now,
         )
+
+        # Save import costs if provided
+        import_costs = data.get('import_costs', [])
+        for ic in import_costs:
+            ic_amount = _round2(ic.get('amount', 0))
+            if ic_amount > 0:
+                try:
+                    app_tables.import_costs.add_row(
+                        id=_uuid(),
+                        purchase_invoice_id=inv_id,
+                        cost_type=_safe_str(ic.get('cost_type', 'other')),
+                        amount=ic_amount,
+                        description=_safe_str(ic.get('description', '')),
+                        date=_safe_date(data.get('date')) or date.today(),
+                        payment_method=_safe_str(ic.get('payment_method', 'cash')),
+                        payment_account=_resolve_payment_account(ic.get('payment_method', 'cash')),
+                        created_at=now,
+                    )
+                except Exception as ic_err:
+                    logger.warning("Could not save import cost: %s", ic_err)
+
         logger.info("Purchase invoice %s created by %s", inv_number, user_email)
         return {'success': True, 'id': inv_id, 'invoice_number': inv_number}
     except Exception as e:
@@ -942,7 +972,7 @@ def get_contract_payable_status(contract_number=None, token_or_email=None):
                 'payment_history': payment_history,
             })
 
-        return {'success': True, 'contracts': results, 'count': len(results)}
+        return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
         logger.exception("get_contract_payable_status error")
         return {'success': False, 'message': str(e)}
@@ -1195,7 +1225,7 @@ def get_expenses(date_from=None, date_to=None, category=None, token_or_email=Non
 
         results.sort(key=lambda x: x.get('date', ''), reverse=True)
         total_amount = _round2(sum(_round2(x.get('amount', 0)) for x in results))
-        return {'success': True, 'expenses': results, 'count': len(results), 'total_amount': total_amount}
+        return {'success': True, 'data': results, 'count': len(results), 'total_amount': total_amount}
     except Exception as e:
         logger.exception("get_expenses error")
         return {'success': False, 'message': str(e)}
@@ -1431,7 +1461,7 @@ def get_inventory(status=None, search='', token_or_email=None):
                     continue
             results.append(_row_to_dict(r, INVENTORY_COLS))
         results.sort(key=lambda x: x.get('machine_code', ''))
-        return {'success': True, 'items': results, 'count': len(results)}
+        return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
         logger.exception("get_inventory error")
         return {'success': False, 'message': str(e)}
@@ -1704,8 +1734,18 @@ def get_trial_balance(date_from=None, date_to=None, token_or_email=None):
             total_debit += tb_debit
             total_credit += tb_credit
 
+        # Map rows to match frontend expectations (account_name, account_id, debit, credit)
+        data_rows = []
+        for r in rows:
+            data_rows.append({
+                'account_id': r.get('code', ''),
+                'account_name': r.get('name_en', '') + (' / ' + r.get('name_ar', '') if r.get('name_ar') else ''),
+                'debit': r.get('debit', 0),
+                'credit': r.get('credit', 0),
+            })
         return {
             'success': True,
+            'data': data_rows,
             'rows': rows,
             'total_debit': _round2(total_debit),
             'total_credit': _round2(total_credit),
@@ -1800,8 +1840,17 @@ def get_income_statement(date_from, date_to, token_or_email=None):
         gross_profit = _round2(total_revenue - total_cogs)
         net_profit = _round2(gross_profit - total_expenses)
 
+        # Build 'data' structure matching frontend expectations
+        data_obj = {
+            'revenues': [{'account_name': i.get('name_en',''), 'amount': i.get('amount',0)} for i in revenue_items],
+            'expenses': [{'account_name': i.get('name_en',''), 'amount': i.get('amount',0)} for i in (cogs_items + expense_items)],
+            'total_revenue': _round2(total_revenue),
+            'total_expenses': _round2(total_cogs + total_expenses),
+            'net_income': net_profit,
+        }
         return {
             'success': True,
+            'data': data_obj,
             'date_from': str(d_from),
             'date_to': str(d_to),
             'revenue': {'items': revenue_items, 'total': _round2(total_revenue)},
@@ -1879,8 +1928,18 @@ def get_balance_sheet(as_of_date, token_or_email=None):
 
         total_liabilities_equity = _round2(total_liabilities + total_equity)
 
+        # Build 'data' structure matching frontend expectations
+        data_obj = {
+            'assets': [{'account_name': i.get('name_en',''), 'amount': i.get('balance',0)} for i in asset_items],
+            'liabilities': [{'account_name': i.get('name_en',''), 'amount': i.get('balance',0)} for i in liability_items],
+            'equity': [{'account_name': i.get('name_en',''), 'amount': i.get('balance',0)} for i in equity_items],
+            'total_assets': _round2(total_assets),
+            'total_liabilities': _round2(total_liabilities),
+            'total_equity': _round2(total_equity),
+        }
         return {
             'success': True,
+            'data': data_obj,
             'as_of_date': str(_safe_date(as_of_date)),
             'assets': {'items': asset_items, 'total': _round2(total_assets)},
             'liabilities': {'items': liability_items, 'total': _round2(total_liabilities)},
@@ -1971,8 +2030,20 @@ def get_contract_profitability(contract_number=None, token_or_email=None):
         grand_profit = _round2(grand_revenue - grand_cost)
         grand_margin = _round2((grand_profit / grand_revenue * 100) if grand_revenue else 0)
 
+        # Build 'data' matching frontend: [{contract_number, client_name, revenue, costs, profit, margin}]
+        data_list = []
+        for r in results:
+            data_list.append({
+                'contract_number': r.get('contract_number', r.get('machine_code', '')),
+                'client_name': r.get('description', ''),
+                'revenue': r.get('selling_price', 0),
+                'costs': r.get('total_landed_cost', 0),
+                'profit': r.get('gross_profit', 0),
+                'margin': r.get('margin_pct', 0),
+            })
         return {
             'success': True,
+            'data': data_list,
             'contracts': results,
             'summary': {
                 'total_purchase_cost': _round2(grand_cost - grand_import),
@@ -2089,11 +2160,12 @@ def get_contracts_list_simple(token_or_email=None):
             if not contract_num:
                 continue
             contracts.append({
+                'id': str(contract_num),
                 'contract_number': str(contract_num),
                 'client_name': _safe_str(r.get('Client Name', '')),
                 'quotation_number': str(r.get('Quotation#', '')),
             })
-        return {'success': True, 'contracts': contracts}
+        return {'success': True, 'data': contracts}
     except Exception as e:
         logger.exception("get_contracts_list_simple error")
         return {'success': False, 'message': str(e)}
@@ -2123,8 +2195,8 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
             updates['notes'] = _safe_str(data['notes'])
         if 'machine_code' in data:
             updates['machine_code'] = _safe_str(data['machine_code'])
-        if 'items' in data:
-            items = data['items']
+        if 'items' in data or 'line_items' in data:
+            items = data.get('items') or data.get('line_items', [])
             subtotal = 0.0
             for item in items:
                 line_total = _round2(item.get('total', 0))
@@ -2190,7 +2262,7 @@ def get_suppliers_list_simple(token_or_email=None):
                 'name': _safe_str(r.get('name', '')),
                 'company': _safe_str(r.get('company', '')),
             })
-        return {'success': True, 'suppliers': suppliers}
+        return {'success': True, 'data': suppliers}
     except Exception as e:
         logger.exception("get_suppliers_list_simple error")
         return {'success': False, 'message': str(e)}
@@ -2212,6 +2284,8 @@ def get_invoice_details(invoice_id, token_or_email=None):
             d['items'] = json.loads(d.get('items_json') or '[]')
         except (json.JSONDecodeError, TypeError):
             d['items'] = []
+        # Alias for frontend: line_items
+        d['line_items'] = d['items']
 
         # Get import costs
         import_costs = []
@@ -2229,7 +2303,10 @@ def get_invoice_details(invoice_id, token_or_email=None):
         except Exception:
             d['supplier_name'] = ''
 
-        return {'success': True, 'invoice': d}
+        # Alias paid_amount -> paid for frontend consistency
+        d['paid'] = d.get('paid_amount', 0)
+
+        return {'success': True, 'data': d}
     except Exception as e:
         logger.exception("get_invoice_details error")
         return {'success': False, 'message': str(e)}
@@ -2414,4 +2491,76 @@ def migrate_old_contracts(supplier_id, currency='USD', dry_run=False, token_or_e
 
     except Exception as e:
         logger.exception("migrate_old_contracts error")
+        return {'success': False, 'message': str(e)}
+
+
+# ===========================================================================
+# 11. CURRENCY / EXCHANGE RATES
+# ===========================================================================
+
+@anvil.server.callable
+def get_exchange_rates(token_or_email=None):
+    """Return all exchange rates."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        rates = []
+        for r in app_tables.currency_exchange_rates.search():
+            rates.append({
+                'id': r.get('id', ''),
+                'currency_code': r.get('currency_code', ''),
+                'rate_to_egp': _round2(r.get('rate_to_egp', 0)),
+                'updated_at': r.get('updated_at').isoformat() if r.get('updated_at') else '',
+            })
+        rates.sort(key=lambda x: x.get('currency_code', ''))
+        return {'success': True, 'data': rates}
+    except Exception as e:
+        logger.exception("get_exchange_rates error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def set_exchange_rate(currency_code, rate_to_egp, token_or_email=None):
+    """Set or update an exchange rate."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+    currency_code = _safe_str(currency_code).upper()
+    rate_to_egp = _round2(rate_to_egp)
+    if not currency_code or rate_to_egp <= 0:
+        return {'success': False, 'message': 'Currency code and valid rate are required'}
+    try:
+        existing = app_tables.currency_exchange_rates.get(currency_code=currency_code)
+        now = get_utc_now()
+        if existing:
+            existing.update(rate_to_egp=rate_to_egp, updated_at=now)
+        else:
+            app_tables.currency_exchange_rates.add_row(
+                id=_uuid(),
+                currency_code=currency_code,
+                rate_to_egp=rate_to_egp,
+                updated_at=now,
+            )
+        logger.info("Exchange rate %s = %s EGP set by %s", currency_code, rate_to_egp, user_email)
+        return {'success': True}
+    except Exception as e:
+        logger.exception("set_exchange_rate error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def delete_exchange_rate(currency_code, token_or_email=None):
+    """Delete an exchange rate."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'delete')
+    if not is_valid:
+        return error
+    try:
+        existing = app_tables.currency_exchange_rates.get(currency_code=_safe_str(currency_code).upper())
+        if not existing:
+            return {'success': False, 'message': 'Rate not found'}
+        existing.delete()
+        return {'success': True}
+    except Exception as e:
+        logger.exception("delete_exchange_rate error")
         return {'success': False, 'message': str(e)}

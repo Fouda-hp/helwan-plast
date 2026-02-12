@@ -111,6 +111,7 @@ container:
           <button class="sub-tab" data-tab="profitability" onclick="switchTab(this)">Contract Profitability</button>
           <button class="sub-tab" data-tab="expenses" onclick="switchTab(this)">Expenses</button>
           <button class="sub-tab" data-tab="ledger" onclick="switchTab(this)">General Ledger</button>
+          <button class="sub-tab" data-tab="currency" onclick="switchTab(this)">Currency</button>
         </div>
 
         <!-- Trial Balance Panel -->
@@ -227,6 +228,38 @@ container:
             <h3 id="expTitle">Expenses</h3>
             <div class="table-wrap">
               <table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th class="text-right">Amount</th><th>Actions</th></tr></thead><tbody id="expBody"><tr><td colspan="5" class="empty-msg">Click Load to view expenses</td></tr></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Currency / Exchange Rates Panel -->
+        <div class="tab-panel" id="panel-currency">
+          <div class="expense-form">
+            <h3 id="currFormTitle">Set Exchange Rate</h3>
+            <div class="expense-grid">
+              <div class="form-group">
+                <label>Currency Code</label>
+                <select id="currCode" style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+                  <option value="USD">USD - US Dollar</option>
+                  <option value="EUR">EUR - Euro</option>
+                  <option value="GBP">GBP - British Pound</option>
+                  <option value="CNY">CNY - Chinese Yuan</option>
+                  <option value="SAR">SAR - Saudi Riyal</option>
+                  <option value="AED">AED - UAE Dirham</option>
+                  <option value="TRY">TRY - Turkish Lira</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Rate to EGP</label>
+                <input type="number" id="currRate" step="0.01" value="0" placeholder="e.g. 50.25">
+              </div>
+            </div>
+            <button class="btn btn-save" onclick="saveCurrRate()" style="margin-top:10px;">Save Rate</button>
+          </div>
+          <div class="report-card">
+            <h3>Exchange Rates</h3>
+            <div class="table-wrap">
+              <table><thead><tr><th>Currency</th><th class="text-right">Rate to EGP</th><th>Last Updated</th><th>Actions</th></tr></thead><tbody id="currBody"><tr><td colspan="4" class="empty-msg">Loading...</td></tr></tbody></table>
             </div>
           </div>
         </div>
@@ -594,10 +627,73 @@ container:
           document.getElementById('ledgerFrom').value = yearStart;
           document.getElementById('ledgerTo').value = today;
 
+          /* === Currency / Exchange Rates === */
+          window.saveCurrRate = async function() {
+            var code = document.getElementById('currCode').value;
+            var rate = parseFloat(document.getElementById('currRate').value) || 0;
+            if (!code || rate <= 0) {
+              if (window.showNotification) window.showNotification('error', '', t('Currency and valid rate are required', 'العملة وسعر صرف صحيح مطلوبين'));
+              return;
+            }
+            try {
+              var res = await window.pySetExchangeRate(code, rate);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Rate saved', 'تم حفظ سعر الصرف'));
+                document.getElementById('currRate').value = '0';
+                loadCurrencyRates();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.loadCurrencyRates = async function() {
+            var tbody = document.getElementById('currBody');
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetExchangeRates();
+              if (res && res.success) {
+                var data = res.data || [];
+                if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + t('No rates set', 'لا توجد اسعار صرف') + '</td></tr>'; return; }
+                var html = '';
+                data.forEach(function(r) {
+                  html += '<tr><td><strong>' + r.currency_code + '</strong></td>';
+                  html += '<td class="text-right">' + fmt(r.rate_to_egp) + '</td>';
+                  html += '<td>' + (r.updated_at || '').substring(0, 10) + '</td>';
+                  html += '<td><button class="btn-delete" onclick="delCurrRate(\'' + r.currency_code + '\')">' + t('Del', 'حذف') + '</button></td></tr>';
+                });
+                tbody.innerHTML = html;
+              } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + err + '</td></tr>';
+            }
+          };
+
+          window.delCurrRate = async function(code) {
+            var ok = await (window.showConfirm || function(m) { return Promise.resolve(confirm(m)); })(t('Delete rate for ' + code + '?', 'حذف سعر ' + code + '؟'));
+            if (!ok) return;
+            try {
+              var res = await window.pyDeleteExchangeRate(code);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Rate deleted', 'تم حذف سعر الصرف'));
+                loadCurrencyRates();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
           function waitForBridge() {
             if (window.pyGetTrialBalance && window.pyGetLedgerEntries) {
               applyI18n();
               populateLedgerAccounts();
+              if (window.pyGetExchangeRates) loadCurrencyRates();
             } else {
               setTimeout(waitForBridge, 200);
             }

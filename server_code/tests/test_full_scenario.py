@@ -15,8 +15,12 @@ import json
 import uuid
 import io
 
-# Force UTF-8 output
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+# Force UTF-8 output (only when running locally, skip in Anvil's DummyStdout)
+try:
+    if hasattr(sys.stdout, 'buffer'):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+except Exception:
+    pass
 
 # Setup path
 try:

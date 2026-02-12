@@ -144,6 +144,163 @@
     width: 100% !important;
     padding: 10px !important;
     overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Print form controls bar */
+  .controls-bar {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 15px !important;
+  }
+
+  .controls-row,
+  .buttons-row {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 10px !important;
+  }
+
+  /* Search sections in print forms */
+  .search-section {
+    flex-direction: column !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .search-section select,
+  .search-section input {
+    width: 100% !important;
+    min-width: 100% !important;
+    font-size: 16px !important;
+  }
+
+  /* Delivery date input */
+  .delivery-date-section {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 6px !important;
+  }
+
+  #deliveryDateInput {
+    width: 100% !important;
+    font-size: 16px !important;
+  }
+
+  /* Language toggle buttons */
+  .lang-toggle {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .lang-btn {
+    flex: 1 !important;
+    min-height: 44px !important;
+    font-size: 14px !important;
+  }
+
+  /* Action buttons in print forms */
+  .action-buttons {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+
+  .action-buttons .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 44px !important;
+  }
+
+  /* Template preview area */
+  .template-preview {
+    max-height: calc(100vh - 400px) !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .template-page {
+    padding: 15px !important;
+    min-width: 600px;
+  }
+
+  /* Print form tables */
+  .details-table,
+  .tech-table,
+  .cylinders-table,
+  .payment-table,
+  .payment-schedule-table,
+  .payment-table-simple {
+    font-size: 12px !important;
+  }
+
+  .details-table th,
+  .details-table td,
+  .tech-table th,
+  .tech-table td,
+  .payment-table th,
+  .payment-table td,
+  .payment-schedule-table th,
+  .payment-schedule-table td {
+    padding: 8px 6px !important;
+    font-size: 12px !important;
+  }
+
+  /* Header in print forms */
+  .header {
+    flex-direction: column !important;
+    gap: 15px !important;
+  }
+
+  .header-left,
+  .header-right {
+    text-align: center !important;
+  }
+
+  /* Info grid → single column */
+  .info-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Financial box */
+  .financial-box {
+    padding: 12px !important;
+  }
+
+  .total-price {
+    font-size: 20px !important;
+    padding: 10px !important;
+  }
+
+  /* Payment modal */
+  .payment-modal {
+    width: 95% !important;
+    max-width: 95% !important;
+  }
+
+  .payment-config {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .payment-method {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .payments-table {
+    font-size: 11px !important;
+  }
+
+  .payments-table th,
+  .payments-table td {
+    padding: 8px 4px !important;
+    font-size: 11px !important;
+  }
+
+  .payments-table input {
+    font-size: 14px !important;
   }
 
   /* --- RTL adjustments for mobile --- */
@@ -151,6 +308,281 @@
   body.rtl .fu-header,
   body.rtl .cl-header {
     text-align: right;
+  }
+
+  /* --- CalculatorForm responsive --- */
+  .main {
+    grid-template-columns: 1fr !important;
+  }
+
+  .left,
+  .right {
+    padding: 12px !important;
+  }
+
+  .row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .row input,
+  .row select,
+  .row textarea,
+  .row .ui-select {
+    width: 100% !important;
+  }
+
+  /* Custom selects touch-friendly */
+  .ui-select-trigger {
+    min-height: 44px !important;
+    height: 44px !important;
+  }
+
+  .ui-option {
+    min-height: 44px !important;
+    padding: 12px !important;
+  }
+
+  /* Machine grid → single column */
+  .machine-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Top buttons → 2 columns */
+  .top-buttons {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .top-buttons button {
+    min-height: 44px !important;
+    height: 44px !important;
+    font-size: 13px !important;
+  }
+
+  /* Save button */
+  .save button {
+    min-height: 44px !important;
+    height: 44px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Optional rows */
+  .optional-row {
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+  }
+
+  .optional-row input[type="checkbox"] {
+    min-width: 24px !important;
+    min-height: 24px !important;
+  }
+
+  /* Cylinders table */
+  .cylinders {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cylinders table {
+    min-width: 400px;
+  }
+
+  .cylinders input {
+    min-height: 40px !important;
+  }
+
+  /* --- InventoryForm responsive --- */
+  .inv-wrapper {
+    padding: 15px 10px !important;
+  }
+
+  .inv-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .filter-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .filter-row input {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .table-card .table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-card table {
+    min-width: 700px;
+  }
+
+  /* --- SuppliersForm responsive --- */
+  .suppliers-wrapper {
+    padding: 15px 10px !important;
+  }
+
+  .suppliers-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .search-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .search-row input {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  /* --- AccountantForm responsive --- */
+  .acc-wrapper {
+    padding: 15px 10px !important;
+  }
+
+  .acc-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .quick-nav {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .sub-tabs {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .sub-tab {
+    font-size: 12px !important;
+    padding: 8px 14px !important;
+    min-height: 40px;
+  }
+
+  .date-filter {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  .date-filter input,
+  .date-filter select,
+  .date-filter button {
+    width: 100% !important;
+  }
+
+  .date-filter button {
+    min-height: 44px !important;
+  }
+
+  .report-card .table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .report-card table {
+    min-width: 600px;
+  }
+
+  .expense-form {
+    padding: 15px !important;
+  }
+
+  .expense-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .summary-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* --- DataImportForm responsive --- */
+  .import-wrapper {
+    padding: 20px 10px !important;
+  }
+
+  .import-header h1 {
+    font-size: 22px !important;
+  }
+
+  .type-selector {
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: stretch !important;
+  }
+
+  .tab-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  .template-info {
+    padding: 15px !important;
+  }
+
+  .template-info code {
+    font-size: 10px !important;
+    padding: 10px !important;
+  }
+
+  .upload-section {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .file-label,
+  .action-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  .preview-section {
+    padding: 15px !important;
+  }
+
+  .preview-section > div {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .preview-table {
+    min-width: 500px;
+    font-size: 11px !important;
+  }
+
+  .preview-table th,
+  .preview-table td {
+    padding: 8px 6px !important;
+  }
+
+  .result-section {
+    padding: 15px !important;
+  }
+
+  .import-btn-wrapper button {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
 
@@ -236,6 +668,193 @@
     font-size: 13px !important;
     padding: 6px 12px !important;
   }
+
+  /* --- CalculatorForm small phone --- */
+  .top-buttons {
+    grid-template-columns: 1fr !important;
+  }
+
+  .header-title {
+    font-size: 14px !important;
+  }
+
+  .label {
+    font-size: 13px !important;
+  }
+
+  .optional-block {
+    padding-left: 0 !important;
+  }
+
+  /* --- Print forms small phone --- */
+  .print-container,
+  .contract-container {
+    padding: 8px !important;
+  }
+
+  .controls-bar {
+    padding: 10px !important;
+    gap: 10px !important;
+  }
+
+  .controls-row,
+  .buttons-row {
+    gap: 8px !important;
+  }
+
+  .btn {
+    font-size: 13px !important;
+    padding: 10px 16px !important;
+  }
+
+  .lang-btn {
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+  }
+
+  .template-page {
+    padding: 10px !important;
+    min-width: 500px;
+  }
+
+  .header {
+    margin-bottom: 12px !important;
+  }
+
+  .section-title {
+    font-size: 13px !important;
+  }
+
+  .quotation-number,
+  .client-info {
+    font-size: 13px !important;
+  }
+
+  .total-price {
+    font-size: 18px !important;
+  }
+
+  .payment-modal-header h2 {
+    font-size: 16px !important;
+  }
+
+  .payments-table th,
+  .payments-table td {
+    font-size: 10px !important;
+    padding: 6px 2px !important;
+  }
+
+  /* --- InventoryForm small phone --- */
+  .inv-wrapper {
+    padding: 10px 8px !important;
+  }
+
+  .inv-header h1 {
+    font-size: 20px !important;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  .filter-btn {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+  }
+
+  .table-card table {
+    min-width: 600px;
+    font-size: 11px !important;
+  }
+
+  /* --- SuppliersForm small phone --- */
+  .suppliers-wrapper {
+    padding: 10px 8px !important;
+  }
+
+  .suppliers-header h1 {
+    font-size: 20px !important;
+  }
+
+  /* --- AccountantForm small phone --- */
+  .acc-wrapper {
+    padding: 10px 8px !important;
+  }
+
+  .acc-header h1 {
+    font-size: 20px !important;
+  }
+
+  .quick-nav-card {
+    padding: 15px !important;
+  }
+
+  .quick-nav-card .nav-icon {
+    font-size: 24px !important;
+  }
+
+  .quick-nav-card .nav-label {
+    font-size: 12px !important;
+  }
+
+  .sub-tab {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+  }
+
+  .report-card table {
+    min-width: 500px;
+    font-size: 11px !important;
+  }
+
+  .report-card h3 {
+    font-size: 14px !important;
+    padding: 12px 15px !important;
+  }
+
+  .summary-box {
+    padding: 12px !important;
+  }
+
+  .summary-box .value {
+    font-size: 18px !important;
+  }
+
+  .expense-form h3 {
+    font-size: 14px !important;
+  }
+
+  /* --- DataImportForm small phone --- */
+  .import-wrapper {
+    padding: 15px 8px !important;
+  }
+
+  .import-header h1 {
+    font-size: 18px !important;
+  }
+
+  .tab-btn {
+    font-size: 12px !important;
+    padding: 10px 16px !important;
+  }
+
+  .template-info h4 {
+    font-size: 14px !important;
+  }
+
+  .template-info p {
+    font-size: 12px !important;
+  }
+
+  .preview-table {
+    min-width: 400px;
+    font-size: 10px !important;
+  }
+
+  .preview-table th,
+  .preview-table td {
+    padding: 6px 4px !important;
+  }
 }
 
 /* ===== LANDSCAPE PHONE ===== */
@@ -284,6 +903,49 @@
     min-height: 40px;
     min-width: 40px;
   }
+
+  /* Print form buttons */
+  .controls-bar .btn,
+  .action-buttons .btn,
+  .lang-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Payment modal buttons */
+  .payment-modal-footer .btn {
+    min-height: 44px;
+  }
+
+  /* Inventory form buttons */
+  .filter-btn {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  .btn-edit,
+  .btn-link,
+  .btn-delete {
+    min-height: 36px;
+    min-width: 36px;
+  }
+
+  /* Accountant form */
+  .sub-tab {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .quick-nav-card {
+    min-height: 80px;
+  }
+
+  /* Data import form */
+  .tab-btn,
+  .file-label,
+  .action-btn {
+    min-height: 44px;
+  }
 }
 
 /* ===== GLOBAL SCROLLBAR STYLING (for horizontal scroll tables) ===== */
@@ -291,7 +953,14 @@
 .table-container::-webkit-scrollbar,
 .pd-table-wrap::-webkit-scrollbar,
 .fu-table-wrap::-webkit-scrollbar,
-.cl-table-wrap::-webkit-scrollbar {
+.cl-table-wrap::-webkit-scrollbar,
+.db-table-wrap::-webkit-scrollbar,
+.print-container::-webkit-scrollbar,
+.template-preview::-webkit-scrollbar,
+.table-wrap::-webkit-scrollbar,
+.table-card .table-wrap::-webkit-scrollbar,
+.report-card .table-wrap::-webkit-scrollbar,
+.preview-section > div::-webkit-scrollbar {
   height: 6px;
 }
 
@@ -299,7 +968,14 @@
 .table-container::-webkit-scrollbar-thumb,
 .pd-table-wrap::-webkit-scrollbar-thumb,
 .fu-table-wrap::-webkit-scrollbar-thumb,
-.cl-table-wrap::-webkit-scrollbar-thumb {
+.cl-table-wrap::-webkit-scrollbar-thumb,
+.db-table-wrap::-webkit-scrollbar-thumb,
+.print-container::-webkit-scrollbar-thumb,
+.template-preview::-webkit-scrollbar-thumb,
+.table-wrap::-webkit-scrollbar-thumb,
+.table-card .table-wrap::-webkit-scrollbar-thumb,
+.report-card .table-wrap::-webkit-scrollbar-thumb,
+.preview-section > div::-webkit-scrollbar-thumb {
   background: #ccc;
   border-radius: 3px;
 }
@@ -308,6 +984,13 @@
 .table-container::-webkit-scrollbar-track,
 .pd-table-wrap::-webkit-scrollbar-track,
 .fu-table-wrap::-webkit-scrollbar-track,
-.cl-table-wrap::-webkit-scrollbar-track {
+.cl-table-wrap::-webkit-scrollbar-track,
+.db-table-wrap::-webkit-scrollbar-track,
+.print-container::-webkit-scrollbar-track,
+.template-preview::-webkit-scrollbar-track,
+.table-wrap::-webkit-scrollbar-track,
+.table-card .table-wrap::-webkit-scrollbar-track,
+.report-card .table-wrap::-webkit-scrollbar-track,
+.preview-section > div::-webkit-scrollbar-track {
   background: #f0f0f0;
 }

@@ -101,7 +101,10 @@ def _row_to_dict(row, columns):
     """Convert an Anvil table row to a plain dict with the given column names."""
     d = {}
     for col in columns:
-        val = row.get(col)
+        try:
+            val = row.get(col)
+        except Exception:
+            val = None  # Column may not exist yet
         if isinstance(val, (datetime, date)):
             d[col] = val.isoformat()
         else:
@@ -559,7 +562,8 @@ def delete_supplier(supplier_id, token_or_email=None):
 PURCHASE_INVOICE_COLS = [
     'id', 'invoice_number', 'supplier_id', 'date', 'due_date', 'items_json',
     'subtotal', 'tax_amount', 'total', 'paid_amount', 'status', 'notes',
-    'machine_code', 'contract_number', 'created_by', 'created_at', 'updated_at',
+    'machine_code', 'contract_number', 'machine_config_json',
+    'created_by', 'created_at', 'updated_at',
 ]
 
 
@@ -667,8 +671,18 @@ def create_purchase_invoice(data, token_or_email=None):
     inv_number = _generate_invoice_number()
     now = get_utc_now()
 
+    # Build machine config JSON from new Calculator-style fields
+    machine_config = {}
+    for cfg_key in ('condition', 'machine_type', 'colors', 'machine_width',
+                     'material', 'winder', 'optionals', 'fob_standard', 'fob_with_cylinders'):
+        val = data.get(cfg_key)
+        if val is not None and val != '' and val != []:
+            machine_config[cfg_key] = val
+    machine_config_str = json.dumps(machine_config, ensure_ascii=False) if machine_config else None
+
     try:
-        app_tables.purchase_invoices.add_row(
+        # Base row data
+        row_data = dict(
             id=inv_id,
             invoice_number=inv_number,
             supplier_id=supplier_id,
@@ -687,6 +701,19 @@ def create_purchase_invoice(data, token_or_email=None):
             created_at=now,
             updated_at=now,
         )
+        # Try adding machine_config_json column (may not exist yet)
+        if machine_config_str:
+            row_data['machine_config_json'] = machine_config_str
+        try:
+            app_tables.purchase_invoices.add_row(**row_data)
+        except Exception as col_err:
+            # If machine_config_json column doesn't exist, retry without it
+            if 'machine_config_json' in str(col_err):
+                row_data.pop('machine_config_json', None)
+                app_tables.purchase_invoices.add_row(**row_data)
+                logger.info("machine_config_json column not found - saved invoice without it")
+            else:
+                raise
 
         # Save import costs if provided
         import_costs = data.get('import_costs', [])
@@ -2195,6 +2222,15 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
             updates['notes'] = _safe_str(data['notes'])
         if 'machine_code' in data:
             updates['machine_code'] = _safe_str(data['machine_code'])
+        # Update machine config JSON
+        machine_config = {}
+        for cfg_key in ('condition', 'machine_type', 'colors', 'machine_width',
+                         'material', 'winder', 'optionals', 'fob_standard', 'fob_with_cylinders'):
+            val = data.get(cfg_key)
+            if val is not None and val != '' and val != []:
+                machine_config[cfg_key] = val
+        if machine_config:
+            updates['machine_config_json'] = json.dumps(machine_config, ensure_ascii=False)
         if 'items' in data or 'line_items' in data:
             items = data.get('items') or data.get('line_items', [])
             subtotal = 0.0
@@ -2213,7 +2249,16 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
             updates['total'] = _round2(subtotal + tax_amount)
 
         updates['updated_at'] = get_utc_now()
-        row.update(**updates)
+        try:
+            row.update(**updates)
+        except Exception as col_err:
+            # If machine_config_json column doesn't exist, retry without it
+            if 'machine_config_json' in str(col_err):
+                updates.pop('machine_config_json', None)
+                row.update(**updates)
+                logger.info("machine_config_json column not found - updated invoice without it")
+            else:
+                raise
         logger.info("Purchase invoice %s updated by %s", invoice_id, user_email)
         return {'success': True}
     except Exception as e:
@@ -2286,6 +2331,12 @@ def get_invoice_details(invoice_id, token_or_email=None):
             d['items'] = []
         # Alias for frontend: line_items
         d['line_items'] = d['items']
+
+        # Parse machine config
+        try:
+            d['machine_config'] = json.loads(d.get('machine_config_json') or '{}')
+        except (json.JSONDecodeError, TypeError):
+            d['machine_config'] = {}
 
         # Get import costs
         import_costs = []

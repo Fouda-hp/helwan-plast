@@ -37,9 +37,9 @@ container:
         .status-paid { background: #e8f5e9; color: #2e7d32; }
         .status-partial { background: #fff3e0; color: #ef6c00; }
         .empty-msg { text-align: center; padding: 40px; color: #999; }
-        .hp-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .hp-modal-overlay.show { display: flex; }
-        .hp-modal { background: #fff; border-radius: 12px; padding: 24px; width: 95%; max-width: 800px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+        .hp-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; }
+        .hp-modal-overlay.show { display: flex !important; justify-content: center !important; align-items: center !important; }
+        .hp-modal { background: #fff; border-radius: 12px; padding: 24px; width: 95%; max-width: 800px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); margin: auto; }
         .hp-modal h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 20px; }
         .form-group { margin-bottom: 14px; }
         .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 13px; }
@@ -47,7 +47,7 @@ container:
         .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #667eea; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .line-items-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
-        .line-items-table th { background: #f5f5f5; padding: 8px; text-align: left; border: 1px solid #ddd; }
+        .line-items-table th { background: #f5f5f5; padding: 8px; text-align: left; border: 1px solid #ddd; color: #333; font-weight: 600; }
         .line-items-table td { padding: 6px; border: 1px solid #ddd; }
         .line-items-table input { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
         .totals-section { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px; }
@@ -127,12 +127,98 @@ container:
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label id="lblMachineCode">Machine Code</label>
-              <input type="text" id="fMachineCode">
-            </div>
-            <div class="form-group">
               <label id="lblContractNo">Contract Number</label>
               <input type="text" id="fContractNo">
+            </div>
+            <div class="form-group">
+              <label id="lblMachineCode">Machine Code (auto)</label>
+              <input type="text" id="fMachineCode" readonly style="background:#f0f0f0;font-weight:700;font-size:15px;cursor:not-allowed;">
+            </div>
+          </div>
+
+          <!-- Machine Configuration Section -->
+          <div id="machineConfigSection" style="background:#f0f4ff;border:1px solid #c5cae9;border-radius:10px;padding:16px;margin:12px 0;">
+            <h4 style="margin:0 0 12px;color:#3949ab;" id="lblMachineConfig">⚙ Machine Configuration</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label id="lblCondition">Condition</label>
+                <select id="fCondition" onchange="buildInvoiceModelCode()">
+                  <option value="">-- Select --</option>
+                  <option value="new">New (S)</option>
+                  <option value="used">Used (U)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label id="lblMachineType">Machine Type</label>
+                <select id="fMachineType" onchange="buildInvoiceModelCode()">
+                  <option value="">-- Select --</option>
+                  <option value="Metal anilox">Metal anilox</option>
+                  <option value="Ceramic anilox Single Doctor Blade">Ceramic Single</option>
+                  <option value="Ceramic anilox Chamber Doctor Blade">Ceramic Chamber</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+              <div class="form-group">
+                <label id="lblColors">Colors</label>
+                <select id="fColors" onchange="buildInvoiceModelCode()">
+                  <option value="">--</option>
+                  <option value="4">4</option>
+                  <option value="6">6</option>
+                  <option value="8">8</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label id="lblWidth">Width (cm)</label>
+                <select id="fWidth" onchange="buildInvoiceModelCode()">
+                  <option value="">--</option>
+                  <option value="80">80</option>
+                  <option value="100">100</option>
+                  <option value="120">120</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label id="lblMaterial">Material</label>
+                <select id="fMaterial" onchange="buildInvoiceModelCode()">
+                  <option value="">--</option>
+                  <option value="PE">PE</option>
+                  <option value="PP">PP</option>
+                  <option value="Nonwoven">Nonwoven</option>
+                  <option value="Paper to 100g">Paper 100g</option>
+                  <option value="Paper to 200g">Paper 200g</option>
+                  <option value="Paper to 300g">Paper 300g</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label id="lblWinder">Winder</label>
+                <select id="fWinder" onchange="buildInvoiceModelCode()">
+                  <option value="">--</option>
+                  <option value="Single">Single</option>
+                  <option value="Double">Double</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin:8px 0;">
+              <label style="font-weight:600;color:#333;font-size:13px;display:block;margin-bottom:6px;" id="lblOptionals">Optional Features</label>
+              <div style="display:flex;flex-wrap:wrap;gap:12px;">
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="optVideo" onchange="buildInvoiceModelCode()"> Video inspection</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="optPLC" onchange="buildInvoiceModelCode()"> PLC</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="optSlitter" onchange="buildInvoiceModelCode()"> Slitter</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="optPneuUnwind" onchange="buildInvoiceModelCode()"> Pneumatic Unwind</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="optHydUnwind" onchange="buildInvoiceModelCode()"> Hydraulic Station Unwind</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="optPneuRewind" onchange="buildInvoiceModelCode()"> Pneumatic Rewind</label>
+                <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="optSurfRewind" onchange="buildInvoiceModelCode()"> Surface Rewind</label>
+              </div>
+            </div>
+            <div class="form-row" style="margin-top:10px;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label id="lblFobStd">Standard Machine FOB ($)</label>
+                <input type="number" id="fFobStd" step="0.01" style="background:#e8f5e9;font-weight:700;font-size:15px;color:#2e7d32;" oninput="onFobManualEdit()">
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label id="lblFobCyl">FOB With Cylinders ($)</label>
+                <input type="number" id="fFobCyl" step="0.01" style="background:#e8f5e9;font-weight:700;font-size:15px;color:#1565c0;" oninput="onFobCylManualEdit()">
+              </div>
             </div>
           </div>
 
@@ -263,6 +349,18 @@ container:
             document.getElementById('thBalance').textContent = t('Balance', 'المتبقي');
             document.getElementById('thStatus').textContent = t('Status', 'الحالة');
             document.getElementById('thActions').textContent = t('Actions', 'اجراءات');
+            // Machine config i18n
+            document.getElementById('lblMachineConfig').textContent = t('⚙ Machine Configuration', '⚙ إعداد الماكينة');
+            document.getElementById('lblCondition').textContent = t('Condition', 'الحالة');
+            document.getElementById('lblMachineType').textContent = t('Machine Type', 'نوع الماكينة');
+            document.getElementById('lblColors').textContent = t('Colors', 'الألوان');
+            document.getElementById('lblWidth').textContent = t('Width (cm)', 'العرض (سم)');
+            document.getElementById('lblMaterial').textContent = t('Material', 'الخامة');
+            document.getElementById('lblWinder').textContent = t('Winder', 'اللفاف');
+            document.getElementById('lblOptionals').textContent = t('Optional Features', 'اضافات اختيارية');
+            document.getElementById('lblFobStd').textContent = t('Standard Machine FOB ($)', 'سعر FOB القياسي ($)');
+            document.getElementById('lblFobCyl').textContent = t('FOB With Cylinders ($)', 'FOB مع السلندرات ($)');
+            document.getElementById('lblMachineCode').textContent = t('Machine Code (auto)', 'كود الماكينة (تلقائي)');
             if (isAr) document.querySelector('.pi-wrapper').style.direction = 'rtl';
           }
 
@@ -407,12 +505,29 @@ container:
             document.getElementById('fMachineCode').value = '';
             document.getElementById('fContractNo').value = '';
             document.getElementById('fInvNotes').value = '';
+            // Reset machine config
+            document.getElementById('fCondition').value = '';
+            document.getElementById('fMachineType').value = '';
+            document.getElementById('fColors').value = '';
+            document.getElementById('fWidth').value = '';
+            document.getElementById('fMaterial').value = '';
+            document.getElementById('fWinder').value = '';
+            document.getElementById('optVideo').checked = false;
+            document.getElementById('optPLC').checked = false;
+            document.getElementById('optSlitter').checked = false;
+            document.getElementById('optPneuUnwind').checked = false;
+            document.getElementById('optHydUnwind').checked = false;
+            document.getElementById('optPneuRewind').checked = false;
+            document.getElementById('optSurfRewind').checked = false;
+            document.getElementById('fFobStd').value = '';
+            document.getElementById('fFobCyl').value = '';
             document.getElementById('lineItemsBody').innerHTML = '<tr class="line-row"><td><input type="text" class="li-desc"></td><td><input type="number" class="li-qty" value="1" min="1" oninput="calcLineTotals()"></td><td><input type="number" class="li-price" value="0" step="0.01" oninput="calcLineTotals()"></td><td class="li-total" style="text-align:right;font-weight:600;">0.00</td><td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td></tr>';
             document.getElementById('importCostRows').innerHTML = '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="other">Other</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcLineTotals()"></div></div>';
             document.getElementById('valSubtotal').textContent = '0.00';
             document.getElementById('valImportTotal').textContent = '0.00';
             document.getElementById('valGrandTotal').textContent = '0.00';
             loadSuppliers();
+            loadCalcSettings();
             document.getElementById('invoiceModal').classList.add('show');
           };
 
@@ -444,11 +559,32 @@ container:
                 importCosts.push({ cost_type: type, amount: amount });
               }
             });
+            // Collect machine config optionals
+            var optionalsList = [];
+            if (document.getElementById('optVideo').checked) optionalsList.push('Video inspection');
+            if (document.getElementById('optPLC').checked) optionalsList.push('PLC');
+            if (document.getElementById('optSlitter').checked) optionalsList.push('Slitter');
+            if (document.getElementById('optPneuUnwind').checked) optionalsList.push('Pneumatic Unwind');
+            if (document.getElementById('optHydUnwind').checked) optionalsList.push('Hydraulic Station Unwind');
+            if (document.getElementById('optPneuRewind').checked) optionalsList.push('Pneumatic Rewind');
+            if (document.getElementById('optSurfRewind').checked) optionalsList.push('Surface Rewind');
+            // FOB values (numeric inputs)
+            var fobStdVal = document.getElementById('fFobStd').value;
+            var fobCylVal = document.getElementById('fFobCyl').value;
             var data = {
               supplier_id: supplierId,
               date: date,
               machine_code: document.getElementById('fMachineCode').value.trim(),
               contract_number: document.getElementById('fContractNo').value.trim(),
+              condition: document.getElementById('fCondition').value,
+              machine_type: document.getElementById('fMachineType').value,
+              colors: document.getElementById('fColors').value,
+              machine_width: document.getElementById('fWidth').value,
+              material: document.getElementById('fMaterial').value,
+              winder: document.getElementById('fWinder').value,
+              optionals: optionalsList,
+              fob_standard: parseFloat(fobStdVal) || 0,
+              fob_with_cylinders: parseFloat(fobCylVal) || 0,
               line_items: lineItems,
               import_costs: importCosts,
               notes: document.getElementById('fInvNotes').value.trim()
@@ -523,6 +659,23 @@ container:
                 html += '<div><strong>' + t('Machine', 'الماكينة') + ':</strong> ' + (inv.machine_code || '-') + '</div>';
                 html += '<div><strong>' + t('Contract', 'العقد') + ':</strong> ' + (inv.contract_number || '-') + '</div>';
                 html += '</div>';
+                // Show machine config if available
+                var mc = inv.machine_config || {};
+                if (mc.condition || mc.machine_type) {
+                  html += '<div style="background:#f0f4ff;border:1px solid #c5cae9;border-radius:8px;padding:12px;margin-bottom:12px;">';
+                  html += '<h4 style="margin:0 0 8px;color:#3949ab;">' + t('⚙ Machine Config', '⚙ إعداد الماكينة') + '</h4>';
+                  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;">';
+                  if (mc.condition) html += '<div><strong>' + t('Condition', 'الحالة') + ':</strong> ' + (mc.condition === 'new' ? t('New', 'جديد') : t('Used', 'مستعمل')) + '</div>';
+                  if (mc.machine_type) html += '<div><strong>' + t('Type', 'النوع') + ':</strong> ' + mc.machine_type + '</div>';
+                  if (mc.colors) html += '<div><strong>' + t('Colors', 'الألوان') + ':</strong> ' + mc.colors + '</div>';
+                  if (mc.machine_width) html += '<div><strong>' + t('Width', 'العرض') + ':</strong> ' + mc.machine_width + ' cm</div>';
+                  if (mc.material) html += '<div><strong>' + t('Material', 'الخامة') + ':</strong> ' + mc.material + '</div>';
+                  if (mc.winder) html += '<div><strong>' + t('Winder', 'اللفاف') + ':</strong> ' + mc.winder + '</div>';
+                  if (mc.optionals && mc.optionals.length) html += '<div style="grid-column:1/3;"><strong>' + t('Options', 'الاضافات') + ':</strong> ' + mc.optionals.join(', ') + '</div>';
+                  if (mc.fob_standard) html += '<div><strong>FOB:</strong> $' + fmt(mc.fob_standard) + '</div>';
+                  if (mc.fob_with_cylinders) html += '<div><strong>FOB+Cyl:</strong> $' + fmt(mc.fob_with_cylinders) + '</div>';
+                  html += '</div></div>';
+                }
                 if (inv.line_items && inv.line_items.length > 0) {
                   html += '<h4 style="margin:10px 0 5px;">' + t('Line Items', 'البنود') + '</h4>';
                   html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f5f5f5;"><th style="padding:6px;border:1px solid #ddd;">' + t('Description', 'الوصف') + '</th><th style="padding:6px;border:1px solid #ddd;">' + t('Qty', 'الكمية') + '</th><th style="padding:6px;border:1px solid #ddd;">' + t('Price', 'السعر') + '</th><th style="padding:6px;border:1px solid #ddd;">' + t('Total', 'الاجمالي') + '</th></tr></thead><tbody>';
@@ -578,6 +731,171 @@ container:
             if (window.pyGoBack) window.pyGoBack();
             else window.location.hash = '#admin';
           };
+
+          /* ============================================================
+             Machine Configuration — Calculator-style code + FOB pricing
+             ============================================================ */
+          var INV_MACHINE_PRICES = {
+            "Metal anilox": {"4":{"80":15000,"100":16000,"120":17500},"6":{"80":25000,"100":26000,"120":29000},"8":{"80":29000,"100":32000,"120":33000}},
+            "Ceramic anilox Single Doctor Blade": {"4":{"80":18000,"100":19000,"120":20500},"6":{"80":28000,"100":29000,"120":32000},"8":{"80":32000,"100":35000,"120":36000}},
+            "Ceramic anilox Chamber Doctor Blade": {"4":{"80":21168,"100":22960,"120":25252},"6":{"80":32752,"100":34940,"120":39128},"8":{"80":38336,"100":42920,"120":45504}}
+          };
+          var INV_MATERIAL_ADJ = {"PP":9000,"Nonwoven":4000,"Paper to 100g":1500,"Paper to 200g":4750,"Paper to 300g":11050};
+          var INV_WINDER_ADJ = {"Single":-4000};
+          var INV_OPTIONAL_ADJ = {"Video inspection":4000,"PLC":1800,"Slitter":800,"Pneumatic Unwind":750,"Hydraulic Station Unwind":1500,"Pneumatic Rewind":750,"Surface Rewind":3250};
+          var INV_CYL_PRICES = {80:3.49, 100:3.59, 120:4.05, 130:4.50, 140:5.026, 160:5.40};
+          var INV_DEFAULT_CYL_SIZES = [25,30,35,40,45,50,60];
+
+          function invGetAniloxCode(type) {
+            if (type === "Metal anilox") return "M";
+            if (type === "Ceramic anilox Single Doctor Blade") return "C";
+            if (type === "Ceramic anilox Chamber Doctor Blade") return "CC";
+            return "";
+          }
+
+          function invGetMaterialWinderCode(mat, wind) {
+            if (mat === "PE" && wind === "Single") return "S";
+            if (mat === "PE" && wind === "Double") return "D";
+            if (mat === "PP" && wind === "Single") return "PS";
+            if (mat === "Nonwoven" && wind === "Single") return "PS";
+            if (mat === "Paper to 100g") return "PP";
+            if (mat === "Paper to 200g") return "HS";
+            if (mat === "Paper to 300g") return "SS";
+            return "";
+          }
+
+          function invGetUnwindRewindCode() {
+            var u = "", r = "";
+            if (document.getElementById("optPneuUnwind").checked) u = "P";
+            if (document.getElementById("optHydUnwind").checked) u = "H";
+            if (document.getElementById("optPneuRewind").checked) r = "P";
+            if (document.getElementById("optSurfRewind").checked) r = "S";
+            return u + r;
+          }
+
+          function invCalcCylinderCost(widthVal, colorsVal) {
+            var pricePerCM = INV_CYL_PRICES[widthVal] || 0;
+            if (!pricePerCM || !colorsVal) return 0;
+            var total = 0;
+            INV_DEFAULT_CYL_SIZES.forEach(function(size) {
+              var count = colorsVal; // each size gets {colors} cylinders
+              if (size === 40) {
+                // 40cm cylinders FREE up to color count
+                // with default: count == colorsVal so all FREE
+                return;
+              }
+              total += Math.floor(size * count * pricePerCM + 0.5);
+            });
+            return total;
+          }
+
+          window.buildInvoiceModelCode = function() {
+            var condition = document.getElementById("fCondition").value;
+            var mType = document.getElementById("fMachineType").value;
+            var cols = document.getElementById("fColors").value;
+            var wid = document.getElementById("fWidth").value;
+            var mat = document.getElementById("fMaterial").value;
+            var wind = document.getElementById("fWinder").value;
+
+            if (!condition || !mType || !cols || !wid || !mat || !wind) {
+              document.getElementById("fMachineCode").value = "";
+              document.getElementById("fFobStd").value = "";
+              document.getElementById("fFobCyl").value = "";
+              return;
+            }
+
+            // Build code
+            var prefix = condition === "used" ? "U" : "S";
+            var an = invGetAniloxCode(mType);
+            var mw = invGetMaterialWinderCode(mat, wind);
+            var ex = invGetUnwindRewindCode();
+            var suffix = ex.length === 2 ? ex : mw + ex;
+            document.getElementById("fMachineCode").value = prefix + "H" + cols + "-" + (parseInt(wid) * 10) + an + "/" + suffix;
+
+            // Calculate FOB
+            var basePrice = 0;
+            var byType = INV_MACHINE_PRICES[mType];
+            if (byType && byType[cols] && byType[cols][wid] !== undefined) {
+              basePrice = parseFloat(byType[cols][wid]);
+            }
+            var matAdj = INV_MATERIAL_ADJ[mat] || 0;
+            var windAdj = INV_WINDER_ADJ[wind] || 0;
+            var optAdj = 0;
+            if (document.getElementById("optVideo").checked) optAdj += (INV_OPTIONAL_ADJ["Video inspection"] || 0);
+            if (document.getElementById("optPLC").checked) optAdj += (INV_OPTIONAL_ADJ["PLC"] || 0);
+            if (document.getElementById("optSlitter").checked) optAdj += (INV_OPTIONAL_ADJ["Slitter"] || 0);
+            if (document.getElementById("optPneuUnwind").checked) optAdj += (INV_OPTIONAL_ADJ["Pneumatic Unwind"] || 0);
+            if (document.getElementById("optHydUnwind").checked) optAdj += (INV_OPTIONAL_ADJ["Hydraulic Station Unwind"] || 0);
+            if (document.getElementById("optPneuRewind").checked) optAdj += (INV_OPTIONAL_ADJ["Pneumatic Rewind"] || 0);
+            if (document.getElementById("optSurfRewind").checked) optAdj += (INV_OPTIONAL_ADJ["Surface Rewind"] || 0);
+
+            var stdFob = basePrice + matAdj + windAdj + optAdj;
+            var cylCost = invCalcCylinderCost(parseInt(wid), parseInt(cols));
+            var fobWithCyl = stdFob + cylCost;
+
+            document.getElementById("fFobStd").value = stdFob;
+            document.getElementById("fFobCyl").value = fobWithCyl;
+          };
+
+          // When user manually edits Standard FOB, recalculate FOB with Cylinders
+          window.onFobManualEdit = function() {
+            var stdVal = parseFloat(document.getElementById("fFobStd").value) || 0;
+            var wid = parseInt(document.getElementById("fWidth").value) || 0;
+            var cols = parseInt(document.getElementById("fColors").value) || 0;
+            var cylCost = invCalcCylinderCost(wid, cols);
+            document.getElementById("fFobCyl").value = stdVal + cylCost;
+          };
+
+          // FOB With Cylinders can also be edited directly - no auto recalc needed
+          window.onFobCylManualEdit = function() { /* user override - do nothing */ };
+
+          // Load dynamic pricing from server settings (if available)
+          async function loadCalcSettings() {
+            try {
+              if (!window.pyGetCalculatorSettings) return;
+              var res = await window.pyGetCalculatorSettings();
+              if (res && res.success && res.data) {
+                var d = res.data;
+                if (d.machinePrices && typeof d.machinePrices === 'object') {
+                  INV_MACHINE_PRICES = d.machinePrices;
+                }
+                if (d.materialAdjustments && typeof d.materialAdjustments === 'object') {
+                  INV_MATERIAL_ADJ = d.materialAdjustments;
+                }
+                if (d.winderAdjustment && typeof d.winderAdjustment === 'object') {
+                  INV_WINDER_ADJ = d.winderAdjustment;
+                }
+                if (d.optionalAdjustments && typeof d.optionalAdjustments === 'object') {
+                  INV_OPTIONAL_ADJ = d.optionalAdjustments;
+                }
+                if (d.cylinderPrices && typeof d.cylinderPrices === 'object') {
+                  Object.keys(d.cylinderPrices).forEach(function(k) {
+                    var num = parseInt(k, 10);
+                    if (!isNaN(num) && d.cylinderPrices[k] != null) {
+                      INV_CYL_PRICES[num] = parseFloat(d.cylinderPrices[k]);
+                    }
+                  });
+                }
+                // Update dropdowns from dynamic price options
+                if (d.priceOptions && d.priceOptions.types && d.priceOptions.types.length) {
+                  var typeSelect = document.getElementById("fMachineType");
+                  var current = typeSelect.value;
+                  typeSelect.innerHTML = '<option value="">-- Select --</option>';
+                  d.priceOptions.types.forEach(function(tp) {
+                    var opt = document.createElement("option");
+                    opt.value = tp;
+                    // Friendly display names
+                    if (tp === "Metal anilox") opt.textContent = "Metal anilox";
+                    else if (tp === "Ceramic anilox Single Doctor Blade") opt.textContent = "Ceramic Single";
+                    else if (tp === "Ceramic anilox Chamber Doctor Blade") opt.textContent = "Ceramic Chamber";
+                    else opt.textContent = tp;
+                    typeSelect.appendChild(opt);
+                  });
+                  if (current) typeSelect.value = current;
+                }
+              }
+            } catch (err) { /* settings not available, use defaults */ }
+          }
 
           function waitForBridge() {
             if (window.pyGetPurchaseInvoices) {

@@ -45,6 +45,9 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
         anvil.js.window.pyGetInvoiceDetails = self.get_invoice_details
         anvil.js.window.pyGoBack = self.go_back
 
+        # JS Bridges — Calculator settings for machine config
+        anvil.js.window.pyGetCalculatorSettings = self.get_calculator_settings
+
         # JS Bridges — new (multiple banks, posting, payable status, contract purchase)
         anvil.js.window.pyPostPurchaseInvoice = self.post_purchase_invoice
         anvil.js.window.pyRecordSupplierPayment = self.record_supplier_payment
@@ -134,6 +137,14 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
 
     def get_invoice_details(self, invoice_id):
         return anvil.server.call('get_invoice_details', invoice_id, self._auth())
+
+    def get_calculator_settings(self):
+        """Fetch calculator settings (machine prices, adjustments, cylinder prices) from server."""
+        try:
+            return anvil.server.call('get_calculator_settings', self._auth())
+        except Exception as e:
+            logger.warning("Could not load calculator settings: %s", e)
+            return {'success': False, 'message': str(e)}
 
     def go_back(self):
         open_form('AdminPanel')

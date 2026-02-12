@@ -53,6 +53,7 @@ class AccountantForm(AccountantFormTemplate):
         anvil.js.window.pyGetChartOfAccounts = self.get_chart_of_accounts
         anvil.js.window.pyGetAccountBalance = self.get_account_balance
         anvil.js.window.pyMigrateImportCosts = self.migrate_import_costs
+        anvil.js.window.pyMigrateOldContracts = self.migrate_old_contracts
 
         # JS Bridges - Navigation
         anvil.js.window.pyOpenSuppliers = self.open_suppliers
@@ -117,6 +118,10 @@ class AccountantForm(AccountantFormTemplate):
     def migrate_import_costs(self):
         """ONE-TIME: reclassify old import costs from 5100 to 1200 Inventory."""
         return anvil.server.call('migrate_import_costs_to_inventory', self._auth())
+
+    def migrate_old_contracts(self, supplier_id, currency='USD', dry_run=False):
+        """ONE-TIME: import old contracts into accounting system."""
+        return anvil.server.call('migrate_old_contracts', supplier_id, currency, dry_run, self._auth())
 
     # --- Navigation ---
     def open_suppliers(self):

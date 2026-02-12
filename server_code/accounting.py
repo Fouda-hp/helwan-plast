@@ -2233,3 +2233,185 @@ def get_invoice_details(invoice_id, token_or_email=None):
     except Exception as e:
         logger.exception("get_invoice_details error")
         return {'success': False, 'message': str(e)}
+
+
+# ========================================================================
+# MIGRATION: Bulk-import old contracts into the accounting system
+# ========================================================================
+
+def _parse_cost_string(val):
+    """Parse a cost string like '12,500.00' or '12500' into float. Returns 0.0 on failure."""
+    if val is None:
+        return 0.0
+    if isinstance(val, (int, float)):
+        return float(val)
+    try:
+        cleaned = str(val).replace(',', '').replace(' ', '').strip()
+        if not cleaned:
+            return 0.0
+        return float(cleaned)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+@anvil.server.callable
+def migrate_old_contracts(supplier_id, currency='USD', dry_run=False, token_or_email=None):
+    """
+    ONE-TIME MIGRATION: Import old contracts into the accounting system.
+
+    Finds all contracts where purchase_invoice_id is NULL (not yet processed),
+    looks up FOB + cylinder cost from the linked quotation, and calls
+    create_contract_purchase() for each one.
+
+    Args:
+        supplier_id: The default supplier ID for all old contracts
+        currency: Currency code (default 'USD')
+        dry_run: If True, only preview what would be migrated (no actual changes)
+        token_or_email: Auth token
+
+    Returns:
+        {success, migrated, skipped, errors, details: [{contract_number, status, ...}]}
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+
+    try:
+        # Validate supplier exists
+        supplier = app_tables.suppliers.get(id=supplier_id)
+        if not supplier:
+            return {'success': False, 'message': f'Supplier {supplier_id} not found'}
+
+        # Find all contracts without a purchase invoice
+        contracts = []
+        for c in app_tables.contracts.search():
+            pi_id = c.get('purchase_invoice_id')
+            if pi_id and _safe_str(pi_id):
+                continue  # Already has a purchase invoice
+            contracts.append(c)
+
+        if not contracts:
+            return {
+                'success': True, 'migrated': 0, 'skipped': 0, 'errors': 0,
+                'message': 'No unprocessed contracts found',
+                'details': []
+            }
+
+        migrated = 0
+        skipped = 0
+        errors = 0
+        details = []
+
+        for contract_row in contracts:
+            cn = _safe_str(contract_row.get('contract_number'))
+            qn = contract_row.get('quotation_number')
+
+            # Try to get cost data from the contract itself first
+            fob = _parse_cost_string(contract_row.get('fob_cost'))
+            cyl = _parse_cost_string(contract_row.get('cylinder_cost'))
+
+            # If not on contract, look up the quotation
+            if fob <= 0 and qn:
+                try:
+                    quotation = app_tables.quotations.get(**{'Quotation#': int(qn)})
+                    if quotation:
+                        fob_str = quotation.get('Standard Machine FOB cost', '')
+                        cyl_str = quotation.get('Machine FOB cost With Cylinders', '')
+                        fob_parsed = _parse_cost_string(fob_str)
+                        cyl_parsed = _parse_cost_string(cyl_str)
+                        # "Machine FOB cost With Cylinders" = FOB + cylinders total
+                        # So cylinder_cost = total_with_cyl - fob
+                        if fob_parsed > 0:
+                            fob = fob_parsed
+                            if cyl_parsed > fob_parsed:
+                                cyl = _round2(cyl_parsed - fob_parsed)
+                            else:
+                                cyl = 0.0
+                        elif cyl_parsed > 0:
+                            # Only "with cylinders" value exists, use it as total FOB
+                            fob = cyl_parsed
+                            cyl = 0.0
+                except Exception as e:
+                    logger.warning("migrate_old_contracts: quotation lookup for %s failed: %s", cn, e)
+
+            # Skip if no cost data at all
+            if fob <= 0:
+                details.append({
+                    'contract_number': cn,
+                    'quotation_number': qn,
+                    'status': 'skipped',
+                    'reason': 'No FOB cost found in contract or quotation',
+                })
+                skipped += 1
+                continue
+
+            if dry_run:
+                details.append({
+                    'contract_number': cn,
+                    'quotation_number': qn,
+                    'status': 'would_migrate',
+                    'fob_cost': fob,
+                    'cylinder_cost': cyl,
+                    'total': _round2(fob + cyl),
+                })
+                migrated += 1
+                continue
+
+            # Actually create the purchase invoice + journal + inventory
+            try:
+                result = create_contract_purchase(
+                    contract_number=cn,
+                    fob_cost=fob,
+                    cylinder_cost=cyl,
+                    supplier_id=supplier_id,
+                    currency=currency,
+                    token_or_email=user_email,
+                )
+                if result.get('success'):
+                    details.append({
+                        'contract_number': cn,
+                        'quotation_number': qn,
+                        'status': 'migrated',
+                        'fob_cost': fob,
+                        'cylinder_cost': cyl,
+                        'total': _round2(fob + cyl),
+                        'invoice_number': result.get('invoice_number', ''),
+                        'inventory_id': result.get('inventory_id', ''),
+                    })
+                    migrated += 1
+                else:
+                    details.append({
+                        'contract_number': cn,
+                        'quotation_number': qn,
+                        'status': 'error',
+                        'reason': result.get('message', 'Unknown error'),
+                    })
+                    errors += 1
+            except Exception as e:
+                details.append({
+                    'contract_number': cn,
+                    'quotation_number': qn,
+                    'status': 'error',
+                    'reason': str(e),
+                })
+                errors += 1
+
+        mode = 'DRY RUN' if dry_run else 'LIVE'
+        logger.info(
+            "migrate_old_contracts [%s]: %d migrated, %d skipped, %d errors (supplier=%s) by %s",
+            mode, migrated, skipped, errors, supplier_id, user_email
+        )
+
+        return {
+            'success': True,
+            'migrated': migrated,
+            'skipped': skipped,
+            'errors': errors,
+            'total_contracts': len(contracts),
+            'dry_run': dry_run,
+            'details': details,
+        }
+
+    except Exception as e:
+        logger.exception("migrate_old_contracts error")
+        return {'success': False, 'message': str(e)}

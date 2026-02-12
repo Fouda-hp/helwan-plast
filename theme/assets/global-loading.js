@@ -2,6 +2,7 @@
  * نظام التحميل الموحد - Helwan Plast
  * ====================================
  * يدعم 3 لودر: "hand" (اليد) و "spinner" (دوائر) و "code" (كود)
+ * يدعم اكتشاف الاتصال البطيء (3G) ويظهر اللودر بشكل استباقي
  *
  * التحكم:
  *   localStorage.setItem('hp_loader_type', 'hand')     ← لودر اليد (الافتراضي)
@@ -21,11 +22,108 @@
   var OVERLAY_ID = 'hp-global-loading-overlay';
   var MAX_SHOW_MS = 45000;
   var showTime = 0;
+  var pendingRequests = 0;
+  var slowConnection = false;
 
   // ===== Loader Type Config =====
   function getLoaderType() {
     try { return localStorage.getItem('hp_loader_type') || 'code'; }
     catch (e) { return 'code'; }
+  }
+
+  // ===== Slow Connection Detection =====
+  function checkSlowConnection() {
+    try {
+      if (navigator.connection || navigator.mozConnection || navigator.webkitConnection) {
+        var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        var type = conn.effectiveType;
+        // 'slow-2g', '2g', '3g' are considered slow
+        slowConnection = (type === 'slow-2g' || type === '2g' || type === '3g');
+        return slowConnection;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  // ===== Network Request Monitoring =====
+  function initNetworkMonitoring() {
+    try {
+      // Monitor XMLHttpRequest
+      var origOpen = XMLHttpRequest.prototype.open;
+      var origSend = XMLHttpRequest.prototype.send;
+
+      XMLHttpRequest.prototype.open = function() {
+        this._requestStart = false;
+        origOpen.apply(this, arguments);
+      };
+
+      XMLHttpRequest.prototype.send = function() {
+        var xhr = this;
+        if (!xhr._requestStart) {
+          xhr._requestStart = true;
+          pendingRequests++;
+          if (slowConnection || pendingRequests > 0) {
+            show();
+          }
+        }
+
+        var onComplete = function() {
+          if (xhr._requestStart) {
+            xhr._requestStart = false;
+            pendingRequests = Math.max(0, pendingRequests - 1);
+            if (pendingRequests === 0) {
+              setTimeout(function() {
+                if (pendingRequests === 0 && !hasSpinner()) {
+                  hide();
+                }
+              }, 300);
+            }
+          }
+        };
+
+        xhr.addEventListener('load', onComplete);
+        xhr.addEventListener('error', onComplete);
+        xhr.addEventListener('abort', onComplete);
+
+        origSend.apply(this, arguments);
+      };
+
+      // Monitor Fetch API
+      if (window.fetch) {
+        var origFetch = window.fetch;
+        window.fetch = function() {
+          pendingRequests++;
+          if (slowConnection || pendingRequests > 0) {
+            show();
+          }
+
+          return origFetch.apply(this, arguments).then(
+            function(response) {
+              pendingRequests = Math.max(0, pendingRequests - 1);
+              if (pendingRequests === 0) {
+                setTimeout(function() {
+                  if (pendingRequests === 0 && !hasSpinner()) {
+                    hide();
+                  }
+                }, 300);
+              }
+              return response;
+            },
+            function(error) {
+              pendingRequests = Math.max(0, pendingRequests - 1);
+              if (pendingRequests === 0) {
+                setTimeout(function() {
+                  if (pendingRequests === 0 && !hasSpinner()) {
+                    hide();
+                  }
+                }, 300);
+              }
+              throw error;
+            }
+          );
+        };
+      }
+    } catch (e) {}
   }
 
   // ===== HTML Templates =====
@@ -133,8 +231,12 @@
           return;
         }
       }
-      if (hasSpinner()) show();
-      else hide();
+      // Show loader if: spinner exists, or pending network requests, or slow connection with activity
+      if (hasSpinner() || pendingRequests > 0) {
+        show();
+      } else {
+        hide();
+      }
     } catch (err) {
       hide();
     }
@@ -146,15 +248,29 @@
 
   function debouncedTick() {
     if (_tickTimer) return;
+    // Faster debounce on slow connections for better responsiveness
+    var delay = slowConnection ? 50 : DEBOUNCE_MS;
     _tickTimer = setTimeout(function () {
       _tickTimer = 0;
       tick();
-    }, DEBOUNCE_MS);
+    }, delay);
   }
 
   function start() {
     try {
       if (!document.body) { setTimeout(start, 100); return; }
+
+      // Check for slow connection
+      checkSlowConnection();
+
+      // Monitor connection changes
+      if (navigator.connection || navigator.mozConnection || navigator.webkitConnection) {
+        var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        conn.addEventListener('change', checkSlowConnection);
+      }
+
+      // Initialize network request monitoring
+      initNetworkMonitoring();
 
       // Primary: MutationObserver on document.body
       if (typeof MutationObserver !== 'undefined') {
@@ -167,8 +283,9 @@
         });
       }
 
-      // Safety-net fallback at low frequency
-      setInterval(tick, 2000);
+      // Safety-net fallback - check more frequently on slow connections
+      var fallbackInterval = slowConnection ? 1000 : 2000;
+      setInterval(tick, fallbackInterval);
 
       // Initial check
       tick();
@@ -192,4 +309,10 @@
     if (el) el.removeAttribute('data-loader');
   };
   window.getLoaderType = getLoaderType;
+  window.isSlowConnection = function() {
+    return slowConnection;
+  };
+  window.getPendingRequests = function() {
+    return pendingRequests;
+  };
 })();

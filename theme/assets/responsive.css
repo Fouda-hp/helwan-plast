@@ -392,6 +392,198 @@
   .cylinders input {
     min-height: 40px !important;
   }
+
+  /* --- InventoryForm responsive --- */
+  .inv-wrapper {
+    padding: 15px 10px !important;
+  }
+
+  .inv-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .filter-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .filter-row input {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .table-card .table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-card table {
+    min-width: 700px;
+  }
+
+  /* --- SuppliersForm responsive --- */
+  .suppliers-wrapper {
+    padding: 15px 10px !important;
+  }
+
+  .suppliers-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .search-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .search-row input {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  /* --- AccountantForm responsive --- */
+  .acc-wrapper {
+    padding: 15px 10px !important;
+  }
+
+  .acc-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .quick-nav {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .sub-tabs {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .sub-tab {
+    font-size: 12px !important;
+    padding: 8px 14px !important;
+    min-height: 40px;
+  }
+
+  .date-filter {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  .date-filter input,
+  .date-filter select,
+  .date-filter button {
+    width: 100% !important;
+  }
+
+  .date-filter button {
+    min-height: 44px !important;
+  }
+
+  .report-card .table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .report-card table {
+    min-width: 600px;
+  }
+
+  .expense-form {
+    padding: 15px !important;
+  }
+
+  .expense-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .summary-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* --- DataImportForm responsive --- */
+  .import-wrapper {
+    padding: 20px 10px !important;
+  }
+
+  .import-header h1 {
+    font-size: 22px !important;
+  }
+
+  .type-selector {
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: stretch !important;
+  }
+
+  .tab-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  .template-info {
+    padding: 15px !important;
+  }
+
+  .template-info code {
+    font-size: 10px !important;
+    padding: 10px !important;
+  }
+
+  .upload-section {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .file-label,
+  .action-btn {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+
+  .preview-section {
+    padding: 15px !important;
+  }
+
+  .preview-section > div {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .preview-table {
+    min-width: 500px;
+    font-size: 11px !important;
+  }
+
+  .preview-table th,
+  .preview-table td {
+    padding: 8px 6px !important;
+  }
+
+  .result-section {
+    padding: 15px !important;
+  }
+
+  .import-btn-wrapper button {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 }
 
 /* ===== SMALL PHONE (max-width: 480px) ===== */
@@ -551,6 +743,118 @@
     font-size: 10px !important;
     padding: 6px 2px !important;
   }
+
+  /* --- InventoryForm small phone --- */
+  .inv-wrapper {
+    padding: 10px 8px !important;
+  }
+
+  .inv-header h1 {
+    font-size: 20px !important;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  .filter-btn {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+  }
+
+  .table-card table {
+    min-width: 600px;
+    font-size: 11px !important;
+  }
+
+  /* --- SuppliersForm small phone --- */
+  .suppliers-wrapper {
+    padding: 10px 8px !important;
+  }
+
+  .suppliers-header h1 {
+    font-size: 20px !important;
+  }
+
+  /* --- AccountantForm small phone --- */
+  .acc-wrapper {
+    padding: 10px 8px !important;
+  }
+
+  .acc-header h1 {
+    font-size: 20px !important;
+  }
+
+  .quick-nav-card {
+    padding: 15px !important;
+  }
+
+  .quick-nav-card .nav-icon {
+    font-size: 24px !important;
+  }
+
+  .quick-nav-card .nav-label {
+    font-size: 12px !important;
+  }
+
+  .sub-tab {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+  }
+
+  .report-card table {
+    min-width: 500px;
+    font-size: 11px !important;
+  }
+
+  .report-card h3 {
+    font-size: 14px !important;
+    padding: 12px 15px !important;
+  }
+
+  .summary-box {
+    padding: 12px !important;
+  }
+
+  .summary-box .value {
+    font-size: 18px !important;
+  }
+
+  .expense-form h3 {
+    font-size: 14px !important;
+  }
+
+  /* --- DataImportForm small phone --- */
+  .import-wrapper {
+    padding: 15px 8px !important;
+  }
+
+  .import-header h1 {
+    font-size: 18px !important;
+  }
+
+  .tab-btn {
+    font-size: 12px !important;
+    padding: 10px 16px !important;
+  }
+
+  .template-info h4 {
+    font-size: 14px !important;
+  }
+
+  .template-info p {
+    font-size: 12px !important;
+  }
+
+  .preview-table {
+    min-width: 400px;
+    font-size: 10px !important;
+  }
+
+  .preview-table th,
+  .preview-table td {
+    padding: 6px 4px !important;
+  }
 }
 
 /* ===== LANDSCAPE PHONE ===== */
@@ -612,6 +916,36 @@
   .payment-modal-footer .btn {
     min-height: 44px;
   }
+
+  /* Inventory form buttons */
+  .filter-btn {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  .btn-edit,
+  .btn-link,
+  .btn-delete {
+    min-height: 36px;
+    min-width: 36px;
+  }
+
+  /* Accountant form */
+  .sub-tab {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .quick-nav-card {
+    min-height: 80px;
+  }
+
+  /* Data import form */
+  .tab-btn,
+  .file-label,
+  .action-btn {
+    min-height: 44px;
+  }
 }
 
 /* ===== GLOBAL SCROLLBAR STYLING (for horizontal scroll tables) ===== */
@@ -620,8 +954,13 @@
 .pd-table-wrap::-webkit-scrollbar,
 .fu-table-wrap::-webkit-scrollbar,
 .cl-table-wrap::-webkit-scrollbar,
+.db-table-wrap::-webkit-scrollbar,
 .print-container::-webkit-scrollbar,
-.template-preview::-webkit-scrollbar {
+.template-preview::-webkit-scrollbar,
+.table-wrap::-webkit-scrollbar,
+.table-card .table-wrap::-webkit-scrollbar,
+.report-card .table-wrap::-webkit-scrollbar,
+.preview-section > div::-webkit-scrollbar {
   height: 6px;
 }
 
@@ -630,8 +969,13 @@
 .pd-table-wrap::-webkit-scrollbar-thumb,
 .fu-table-wrap::-webkit-scrollbar-thumb,
 .cl-table-wrap::-webkit-scrollbar-thumb,
+.db-table-wrap::-webkit-scrollbar-thumb,
 .print-container::-webkit-scrollbar-thumb,
-.template-preview::-webkit-scrollbar-thumb {
+.template-preview::-webkit-scrollbar-thumb,
+.table-wrap::-webkit-scrollbar-thumb,
+.table-card .table-wrap::-webkit-scrollbar-thumb,
+.report-card .table-wrap::-webkit-scrollbar-thumb,
+.preview-section > div::-webkit-scrollbar-thumb {
   background: #ccc;
   border-radius: 3px;
 }
@@ -641,7 +985,12 @@
 .pd-table-wrap::-webkit-scrollbar-track,
 .fu-table-wrap::-webkit-scrollbar-track,
 .cl-table-wrap::-webkit-scrollbar-track,
+.db-table-wrap::-webkit-scrollbar-track,
 .print-container::-webkit-scrollbar-track,
-.template-preview::-webkit-scrollbar-track {
+.template-preview::-webkit-scrollbar-track,
+.table-wrap::-webkit-scrollbar-track,
+.table-card .table-wrap::-webkit-scrollbar-track,
+.report-card .table-wrap::-webkit-scrollbar-track,
+.preview-section > div::-webkit-scrollbar-track {
   background: #f0f0f0;
 }

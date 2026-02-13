@@ -2530,13 +2530,19 @@ def get_invoice_details(invoice_id, token_or_email=None):
 # ========================================================================
 
 def _parse_cost_string(val):
-    """Parse a cost string like '12,500.00' or '12500' into float. Returns 0.0 on failure."""
+    """Parse a cost string like '$15,000.00' or '12500' into float. Returns 0.0 on failure.
+    Handles currency symbols ($, EUR, EGP, etc.), commas, and whitespace."""
     if val is None:
         return 0.0
     if isinstance(val, (int, float)):
         return float(val)
     try:
-        cleaned = str(val).replace(',', '').replace(' ', '').strip()
+        import re
+        cleaned = str(val).strip()
+        if not cleaned:
+            return 0.0
+        # Remove currency symbols and text: $, USD, EUR, EGP, CNY, etc.
+        cleaned = re.sub(r'[^\d.\-]', '', cleaned)
         if not cleaned:
             return 0.0
         return float(cleaned)

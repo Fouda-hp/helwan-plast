@@ -2248,59 +2248,141 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
             except Exception as _e:
                 logger.debug("Suppressed: %s", _e)
 
-            # Auto-create purchase invoice if supplier_id is provided
-            purchase_result = None
-            supplier_id = contract_data.get('supplier_id')
-            if supplier_id:
-                try:
-                    try:
-                        from . import accounting as acct_module
-                    except ImportError:
-                        import accounting as acct_module
+            # ===== ACCOUNTING ACTIONS based on pricing mode =====
+            try:
+                from . import accounting as acct_module
+            except ImportError:
+                import accounting as acct_module
 
-                    # Get FOB cost from quotation (try multiple field names)
-                    q_row = None
-                    try:
-                        q_row = app_tables.quotations.get(**{'Quotation#': quotation_number})
-                    except Exception:
-                        pass
-
-                    fob_cost = 0.0
-                    cylinder_cost = 0.0
-                    if q_row:
-                        fob_raw = q_row.get('Standard Machine FOB cost') or q_row.get('FOB price for overseas clients') or q_row.get('Agreed Price') or 0
-                        fob_cost = acct_module._round2(acct_module._parse_cost_string(fob_raw))
-                        cyl_raw = q_row.get('Machine FOB cost With Cylinders') or 0
-                        cyl_total = acct_module._round2(acct_module._parse_cost_string(cyl_raw))
-                        if cyl_total > fob_cost:
-                            cylinder_cost = acct_module._round2(cyl_total - fob_cost)
-
-                    # Override with explicit values if provided
-                    if contract_data.get('fob_cost'):
-                        fob_cost = acct_module._round2(contract_data.get('fob_cost'))
-                    if contract_data.get('cylinder_cost'):
-                        cylinder_cost = acct_module._round2(contract_data.get('cylinder_cost'))
-
-                    currency = contract_data.get('currency', 'USD')
-
-                    if fob_cost > 0:
-                        purchase_result = acct_module.create_contract_purchase(
-                            contract_number, fob_cost, cylinder_cost,
-                            supplier_id, currency, auth_key
-                        )
-                        if purchase_result and purchase_result.get('success'):
-                            logger.info("Auto-created purchase invoice %s for contract %s",
-                                        purchase_result.get('invoice_number'), contract_number)
-                        else:
-                            logger.warning("Auto purchase invoice failed for %s: %s",
-                                           contract_number, purchase_result)
-                except Exception as acct_err:
-                    logger.warning("Auto purchase invoice error for %s: %s", contract_number, acct_err)
-
+            price_mode = contract_data.get('price_mode', '')
             result = {'success': True, 'message': 'Contract saved', 'contract_number': contract_number}
-            if purchase_result and purchase_result.get('success'):
-                result['purchase_invoice_id'] = purchase_result.get('invoice_id')
-                result['purchase_invoice_number'] = purchase_result.get('invoice_number')
+
+            if price_mode == 'New Order':
+                # ── NEW ORDER: Create purchase invoice from quotation FOB costs ──
+                supplier_id = contract_data.get('supplier_id')
+                if not supplier_id:
+                    result['accounting_warning'] = (
+                        'تم حفظ العقد لكن لم يتم إنشاء فاتورة شراء لأن المورد غير محدد. '
+                        'Contract saved but no purchase invoice created — supplier not selected.'
+                    )
+                    return result
+
+                # Get FOB costs from quotation
+                q_row = None
+                try:
+                    q_row = app_tables.quotations.get(**{'Quotation#': quotation_number})
+                except Exception:
+                    pass
+
+                fob_cost_usd = 0.0
+                cylinder_cost_usd = 0.0
+                exchange_rate = 0.0
+
+                if q_row:
+                    fob_raw = q_row.get('Standard Machine FOB cost') or 0
+                    fob_cost_usd = acct_module._round2(acct_module._parse_cost_string(fob_raw))
+                    cyl_raw = q_row.get('Machine FOB cost With Cylinders') or 0
+                    cyl_total_usd = acct_module._round2(acct_module._parse_cost_string(cyl_raw))
+                    if cyl_total_usd > fob_cost_usd:
+                        cylinder_cost_usd = acct_module._round2(cyl_total_usd - fob_cost_usd)
+                    exchange_rate = float(q_row.get('Exchange Rate') or 0)
+
+                # Fallback to values from client if quotation fields are empty
+                if fob_cost_usd <= 0:
+                    fob_cost_usd = acct_module._round2(acct_module._parse_cost_string(
+                        contract_data.get('fob_cost_usd', 0)))
+                if cylinder_cost_usd <= 0:
+                    cyl_with = acct_module._parse_cost_string(contract_data.get('fob_with_cylinders_usd', 0))
+                    if cyl_with > fob_cost_usd:
+                        cylinder_cost_usd = acct_module._round2(cyl_with - fob_cost_usd)
+                if exchange_rate <= 0:
+                    exchange_rate = float(contract_data.get('exchange_rate', 0) or 0)
+
+                if fob_cost_usd <= 0:
+                    result['accounting_warning'] = (
+                        'تم حفظ العقد لكن لم يتم إنشاء فاتورة شراء: '
+                        'تكلفة FOB للماكينة = 0 في جدول عروض الأسعار. '
+                        'تأكد من حفظ الكوتيشن بأسعار صحيحة أولاً. '
+                        'Contract saved but no purchase invoice: Machine FOB cost is 0 in quotation.'
+                    )
+                    return result
+
+                if exchange_rate <= 0:
+                    result['accounting_warning'] = (
+                        'تم حفظ العقد لكن لم يتم إنشاء فاتورة شراء: '
+                        'سعر الصرف = 0 في جدول عروض الأسعار. '
+                        'تأكد من حفظ الكوتيشن بسعر صرف صحيح. '
+                        'Contract saved but no purchase invoice: Exchange rate is 0 in quotation.'
+                    )
+                    return result
+
+                currency = contract_data.get('currency', 'USD')
+
+                purchase_result = acct_module.create_contract_purchase(
+                    contract_number, fob_cost_usd, cylinder_cost_usd,
+                    supplier_id, currency, auth_key,
+                    exchange_rate=exchange_rate
+                )
+                if purchase_result and purchase_result.get('success'):
+                    logger.info("Auto-created purchase invoice %s for contract %s",
+                                purchase_result.get('invoice_number'), contract_number)
+                    result['purchase_invoice_id'] = purchase_result.get('invoice_id')
+                    result['purchase_invoice_number'] = purchase_result.get('invoice_number')
+                else:
+                    err = purchase_result.get('message', 'Unknown error') if purchase_result else 'No response'
+                    result['accounting_warning'] = (
+                        f'تم حفظ العقد لكن فشل إنشاء فاتورة الشراء: {err} | '
+                        f'Contract saved but purchase invoice failed: {err}'
+                    )
+
+            elif price_mode == 'In Stock':
+                # ── IN STOCK: Sell existing inventory item ──
+                inventory_item_id = contract_data.get('inventory_item_id')
+                if not inventory_item_id:
+                    result['accounting_warning'] = (
+                        'تم حفظ العقد لكن لم يتم ربط ماكينة من المخزون — لم تختر ماكينة. '
+                        'Contract saved but no inventory item linked — none selected.'
+                    )
+                    return result
+
+                # Get selling price (total_price in EGP)
+                selling_price_raw = contract_data.get('total_price', 0)
+                try:
+                    selling_price = float(str(selling_price_raw).replace(',', '').replace('،', '').strip() or 0)
+                except (ValueError, TypeError):
+                    selling_price = 0.0
+
+                if selling_price <= 0:
+                    result['accounting_warning'] = (
+                        'تم حفظ العقد لكن لم يتم تسجيل البيع: سعر البيع = 0. '
+                        'Contract saved but sale not recorded: selling price is 0.'
+                    )
+                    return result
+
+                sell_result = acct_module.sell_inventory(
+                    inventory_item_id, contract_number, selling_price,
+                    token_or_email=auth_key
+                )
+                if sell_result and sell_result.get('success'):
+                    logger.info("Auto-sold inventory %s for contract %s (profit: %.2f)",
+                                inventory_item_id, contract_number,
+                                sell_result.get('gross_profit', 0))
+                    result['inventory_sold'] = True
+                    result['gross_profit'] = sell_result.get('gross_profit', 0)
+                    result['landed_cost'] = sell_result.get('landed_cost', 0)
+                else:
+                    err = sell_result.get('message', 'Unknown error') if sell_result else 'No response'
+                    result['accounting_warning'] = (
+                        f'تم حفظ العقد لكن فشل ربط الماكينة من المخزون: {err} | '
+                        f'Contract saved but inventory sale failed: {err}'
+                    )
+            else:
+                # No pricing mode or unknown — just save the contract with a warning
+                result['accounting_warning'] = (
+                    'تم حفظ العقد لكن لم يتم تنفيذ أي إجراء محاسبي لأن نوع السعر (Pricing Mode) غير محدد في الكوتيشن. '
+                    'Contract saved but no accounting action — Pricing Mode not set in quotation.'
+                )
+
             return result
             
         except Exception as e:

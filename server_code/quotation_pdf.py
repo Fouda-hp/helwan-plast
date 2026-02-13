@@ -103,5 +103,10 @@ def build_pdf_data(q_data, user_info, sales_rep_info, company_settings, machine_
         'expected_delivery': q_data.get('Expected delivery time'),
         'expected_delivery_formatted': str(q_data.get('Expected delivery time') or ''),
         'tech_specs_settings': tech_specs_settings,
+        # FOB & cost data for contract accounting
+        'fob_cost_usd': q_data.get('Standard Machine FOB cost', ''),
+        'fob_with_cylinders_usd': q_data.get('Machine FOB cost With Cylinders', ''),
+        'exchange_rate': q_data.get('Exchange Rate', 0),
+        'country': q_data.get('Country', ''),
     }
     return pdf_data

@@ -813,14 +813,20 @@ def post_purchase_invoice(invoice_id, token_or_email=None):
 
 @anvil.server.callable
 def create_contract_purchase(contract_number, fob_cost, cylinder_cost, supplier_id,
-                             currency='USD', token_or_email=None):
+                             currency='USD', token_or_email=None, exchange_rate=0):
     """
-    PART 1: Contract → Purchase Invoice auto-generation.
-    When a contract is created, call this to:
-    1) Create a Purchase Invoice from FOB + Cylinder cost
-    2) Post journal: DR Inventory (1200), CR Accounts Payable (2000)
-    3) Create inventory item linked to the contract
-    4) Link purchase invoice back to the contract
+    PART 1: Contract → Purchase Invoice auto-generation (New Order flow).
+    When a contract is created with pricing mode "New Order", call this to:
+    1) Convert FOB costs (USD) to EGP using the quotation's exchange rate
+    2) Create a Purchase Invoice with separate Machine & Cylinder line items
+    3) Post journal: DR Inventory (1200), CR Accounts Payable (2000)  — in EGP
+    4) Create inventory item linked to the contract
+    5) Link purchase invoice back to the contract
+
+    Args:
+        fob_cost: Machine FOB cost in USD
+        cylinder_cost: Cylinder cost in USD
+        exchange_rate: Exchange rate from quotation (EGP per 1 USD)
 
     Returns: {success, invoice_id, invoice_number, inventory_id, transaction_id}
     """
@@ -830,31 +836,57 @@ def create_contract_purchase(contract_number, fob_cost, cylinder_cost, supplier_
 
     fob_cost = _round2(fob_cost)
     cylinder_cost = _round2(cylinder_cost)
+    exchange_rate = float(exchange_rate or 0)
+
     if fob_cost <= 0:
-        return {'success': False, 'message': 'FOB cost must be greater than zero'}
+        return {'success': False, 'message': 'تكلفة FOB للماكينة يجب أن تكون أكبر من صفر | FOB cost must be > 0'}
     if not supplier_id:
-        return {'success': False, 'message': 'Supplier is required'}
+        return {'success': False, 'message': 'المورد مطلوب | Supplier is required'}
     if not contract_number:
-        return {'success': False, 'message': 'Contract number is required'}
+        return {'success': False, 'message': 'رقم العقد مطلوب | Contract number is required'}
+    if exchange_rate <= 0:
+        return {'success': False, 'message': 'سعر الصرف يجب أن يكون أكبر من صفر | Exchange rate must be > 0'}
 
     try:
         # Verify supplier exists
         supplier = app_tables.suppliers.get(id=supplier_id)
         if not supplier:
-            return {'success': False, 'message': 'Supplier not found'}
+            return {'success': False, 'message': 'المورد غير موجود | Supplier not found'}
 
-        # Build line items
-        items = [{'description': 'FOB Cost (Machine)', 'quantity': 1, 'unit_price': fob_cost, 'total': fob_cost}]
+        # Convert USD to EGP
+        fob_cost_egp = _round2(fob_cost * exchange_rate)
+        cylinder_cost_egp = _round2(cylinder_cost * exchange_rate)
+
+        # Build line items with both USD and EGP details
+        items = [{
+            'description': f'Machine FOB Cost (${fob_cost:,.2f} x {exchange_rate:.2f})',
+            'quantity': 1,
+            'unit_price_usd': fob_cost,
+            'unit_price': fob_cost_egp,
+            'total': fob_cost_egp,
+        }]
         if cylinder_cost > 0:
-            items.append({'description': 'Cylinder Cost', 'quantity': 1, 'unit_price': cylinder_cost, 'total': cylinder_cost})
+            items.append({
+                'description': f'Cylinder Cost (${cylinder_cost:,.2f} x {exchange_rate:.2f})',
+                'quantity': 1,
+                'unit_price_usd': cylinder_cost,
+                'unit_price': cylinder_cost_egp,
+                'total': cylinder_cost_egp,
+            })
 
-        subtotal = _round2(fob_cost + cylinder_cost)
+        subtotal_egp = _round2(fob_cost_egp + cylinder_cost_egp)
 
         # Create purchase invoice in draft then post it
         inv_id = _uuid()
         inv_number = _generate_invoice_number()
         now = get_utc_now()
         today = date.today()
+
+        notes_text = (
+            f"Auto-generated from contract {contract_number} | "
+            f"Currency: {currency} | Exchange Rate: {exchange_rate:.2f} | "
+            f"Machine FOB: ${fob_cost:,.2f} | Cylinders: ${cylinder_cost:,.2f}"
+        )
 
         app_tables.purchase_invoices.add_row(
             id=inv_id,
@@ -863,12 +895,12 @@ def create_contract_purchase(contract_number, fob_cost, cylinder_cost, supplier_
             date=today,
             due_date=None,
             items_json=json.dumps(items, ensure_ascii=False, default=str),
-            subtotal=subtotal,
+            subtotal=subtotal_egp,
             tax_amount=0.0,
-            total=subtotal,
+            total=subtotal_egp,
             paid_amount=0.0,
             status='draft',
-            notes=f"Auto-generated from contract {contract_number} | Currency: {currency}",
+            notes=notes_text,
             machine_code=None,
             contract_number=contract_number,
             created_by=user_email,
@@ -876,14 +908,14 @@ def create_contract_purchase(contract_number, fob_cost, cylinder_cost, supplier_
             updated_at=now,
         )
 
-        # Post the invoice immediately (DR Inventory, CR AP)
+        # Post the invoice immediately (DR Inventory, CR AP) — in EGP
         entries = [
-            {'account_code': '1200', 'debit': subtotal, 'credit': 0},
-            {'account_code': '2000', 'debit': 0, 'credit': subtotal},
+            {'account_code': '1200', 'debit': subtotal_egp, 'credit': 0},
+            {'account_code': '2000', 'debit': 0, 'credit': subtotal_egp},
         ]
         je_result = post_journal_entry(
             today, entries,
-            f"Purchase from contract {contract_number} - {inv_number}",
+            f"Purchase from contract {contract_number} - {inv_number} (Rate: {exchange_rate:.2f})",
             'purchase_invoice', inv_id, user_email,
         )
         if not je_result.get('success'):
@@ -909,18 +941,18 @@ def create_contract_purchase(contract_number, fob_cost, cylinder_cost, supplier_
             description=f"Machine for contract {contract_number}",
             purchase_invoice_id=inv_id,
             contract_number=None,  # Not sold yet — will be set when sale is recorded
-            purchase_cost=subtotal,
+            purchase_cost=subtotal_egp,
             import_costs_total=0.0,
-            total_cost=subtotal,
+            total_cost=subtotal_egp,
             selling_price=0.0,
             status='in_transit',
             location='',
-            notes=f"FOB: {fob_cost}, Cylinders: {cylinder_cost}",
+            notes=f"FOB: ${fob_cost:,.2f} = {fob_cost_egp:,.2f} EGP | Cylinders: ${cylinder_cost:,.2f} = {cylinder_cost_egp:,.2f} EGP | Rate: {exchange_rate:.2f}",
             created_at=now,
             updated_at=now,
         )
 
-        # Update contract row with purchase_invoice_id
+        # Update contract row with purchase_invoice_id and cost data
         try:
             contract_row = app_tables.contracts.get(contract_number=contract_number)
             if contract_row:
@@ -935,14 +967,17 @@ def create_contract_purchase(contract_number, fob_cost, cylinder_cost, supplier_
         except Exception as e:
             logger.warning("Could not update contract with purchase info: %s", e)
 
-        logger.info("Contract purchase created: %s -> %s by %s", contract_number, inv_number, user_email)
+        logger.info("Contract purchase created: %s -> %s (EGP %.2f, rate %.2f) by %s",
+                     contract_number, inv_number, subtotal_egp, exchange_rate, user_email)
         return {
             'success': True,
             'invoice_id': inv_id,
             'invoice_number': inv_number,
             'inventory_id': inv_item_id,
             'transaction_id': je_result['transaction_id'],
-            'total': subtotal,
+            'total_usd': _round2(fob_cost + cylinder_cost),
+            'total_egp': subtotal_egp,
+            'exchange_rate': exchange_rate,
         }
     except Exception as e:
         logger.exception("create_contract_purchase error")
@@ -1510,6 +1545,36 @@ def get_inventory(status=None, search='', token_or_email=None):
         return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
         logger.exception("get_inventory error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_available_inventory_for_contract(token_or_email=None):
+    """
+    Return inventory items with status 'in_stock' that are NOT yet sold.
+    Used in the contract form In Stock flow to pick a machine from inventory.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        rows = app_tables.inventory.search(status='in_stock')
+        results = []
+        for r in rows:
+            results.append({
+                'id': r.get('id', ''),
+                'machine_code': _safe_str(r.get('machine_code')),
+                'description': _safe_str(r.get('description')),
+                'purchase_cost': _round2(r.get('purchase_cost', 0)),
+                'import_costs_total': _round2(r.get('import_costs_total', 0)),
+                'total_cost': _round2(r.get('total_cost', 0)),
+                'location': _safe_str(r.get('location')),
+                'notes': _safe_str(r.get('notes')),
+            })
+        results.sort(key=lambda x: x.get('machine_code', ''))
+        return {'success': True, 'data': results, 'count': len(results)}
+    except Exception as e:
+        logger.exception("get_available_inventory_for_contract error")
         return {'success': False, 'message': str(e)}
 
 
@@ -2536,26 +2601,29 @@ def migrate_old_contracts(supplier_id, currency='USD', dry_run=False, token_or_e
             cyl = _parse_cost_string(contract_row.get('cylinder_cost'))
 
             # If not on contract, look up the quotation
-            if fob <= 0 and qn:
+            ex_rate = 0.0
+            if qn:
                 try:
                     quotation = app_tables.quotations.get(**{'Quotation#': int(qn)})
                     if quotation:
-                        fob_str = quotation.get('Standard Machine FOB cost', '')
-                        cyl_str = quotation.get('Machine FOB cost With Cylinders', '')
-                        fob_parsed = _parse_cost_string(fob_str)
-                        cyl_parsed = _parse_cost_string(cyl_str)
-                        # "Machine FOB cost With Cylinders" = FOB + cylinders total
-                        # So cylinder_cost = total_with_cyl - fob
-                        if fob_parsed > 0:
-                            fob = fob_parsed
-                            if cyl_parsed > fob_parsed:
-                                cyl = _round2(cyl_parsed - fob_parsed)
-                            else:
+                        ex_rate = float(quotation.get('Exchange Rate') or 0)
+                        if fob <= 0:
+                            fob_str = quotation.get('Standard Machine FOB cost', '')
+                            cyl_str = quotation.get('Machine FOB cost With Cylinders', '')
+                            fob_parsed = _parse_cost_string(fob_str)
+                            cyl_parsed = _parse_cost_string(cyl_str)
+                            # "Machine FOB cost With Cylinders" = FOB + cylinders total
+                            # So cylinder_cost = total_with_cyl - fob
+                            if fob_parsed > 0:
+                                fob = fob_parsed
+                                if cyl_parsed > fob_parsed:
+                                    cyl = _round2(cyl_parsed - fob_parsed)
+                                else:
+                                    cyl = 0.0
+                            elif cyl_parsed > 0:
+                                # Only "with cylinders" value exists, use it as total FOB
+                                fob = cyl_parsed
                                 cyl = 0.0
-                        elif cyl_parsed > 0:
-                            # Only "with cylinders" value exists, use it as total FOB
-                            fob = cyl_parsed
-                            cyl = 0.0
                 except Exception as e:
                     logger.warning("migrate_old_contracts: quotation lookup for %s failed: %s", cn, e)
 
@@ -2577,7 +2645,9 @@ def migrate_old_contracts(supplier_id, currency='USD', dry_run=False, token_or_e
                     'status': 'would_migrate',
                     'fob_cost': fob,
                     'cylinder_cost': cyl,
-                    'total': _round2(fob + cyl),
+                    'total_usd': _round2(fob + cyl),
+                    'exchange_rate': ex_rate,
+                    'total_egp': _round2((fob + cyl) * ex_rate) if ex_rate > 0 else 0,
                 })
                 migrated += 1
                 continue
@@ -2591,6 +2661,7 @@ def migrate_old_contracts(supplier_id, currency='USD', dry_run=False, token_or_e
                     supplier_id=supplier_id,
                     currency=currency,
                     token_or_email=user_email,
+                    exchange_rate=ex_rate if ex_rate > 0 else 1.0,
                 )
                 if result.get('success'):
                     details.append({

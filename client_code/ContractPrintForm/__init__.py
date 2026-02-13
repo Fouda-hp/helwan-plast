@@ -67,6 +67,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         # Supplier bridge for auto-invoice
         anvil.js.window.pyGetSuppliersListForContract = self.get_suppliers_list
+        # Inventory bridge for in-stock flow
+        anvil.js.window.loadAvailableInventory = self.load_available_inventory
 
         # Notification bridges
         register_notif_bridges()
@@ -193,6 +195,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
             except Exception:
                 pass
             self.render_template()
+            # Update pricing mode UI based on quotation data
+            pricing_mode = self.current_data.get('pricing_mode', '') or ''
+            try:
+                anvil.js.window.updatePricingModeUI(pricing_mode)
+            except Exception:
+                pass
             # Update total in payment modal - remove commas from formatted price
             total_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
             try:
@@ -604,6 +612,26 @@ class ContractPrintForm(ContractPrintFormTemplate):
         except Exception as e:
             return {'success': False, 'message': str(e)}
 
+    def load_available_inventory(self):
+        """Load available (in_stock) inventory items for the inventory picker dropdown."""
+        try:
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or ''
+            result = anvil.server.call('get_available_inventory_for_contract', auth)
+            if result and result.get('success'):
+                sel = anvil.js.window.document.getElementById('contractInventorySelect')
+                if sel:
+                    opts = '<option value="">-- Select Machine --</option>'
+                    for item in (result.get('data') or []):
+                        item_id = _h(item.get('id', ''))
+                        desc = _h(item.get('description', ''))
+                        code = _h(item.get('machine_code', ''))
+                        cost = item.get('total_cost', 0) or 0
+                        label = f"{code} - {desc} (Cost: {cost:,.0f} EGP)"
+                        opts += f'<option value="{item_id}" data-cost="{cost}">{label}</option>'
+                    sel.innerHTML = opts
+        except Exception as e:
+            logger.debug("Error loading inventory: %s", e)
+
     def save_contract(self):
         if not self.current_data:
             self._show_msg('Please select a quotation first')
@@ -636,18 +664,47 @@ class ContractPrintForm(ContractPrintFormTemplate):
             except (TypeError, ValueError):
                 pass
 
-        # Get supplier selection from the supplier dropdown (if user selected one)
+        # Determine pricing mode and collect relevant data
+        pricing_mode = str(self.current_data.get('pricing_mode', '') or '')
+        is_ar = self.current_lang == 'ar'
+
         supplier_id = ''
         currency = 'USD'
-        try:
-            supplier_el = anvil.js.window.document.getElementById('contractSupplierSelect')
-            if supplier_el:
-                supplier_id = str(supplier_el.value or '')
-            currency_el = anvil.js.window.document.getElementById('contractCurrencySelect')
-            if currency_el:
-                currency = str(currency_el.value or 'USD')
-        except Exception:
-            pass
+        inventory_item_id = ''
+
+        if pricing_mode == 'New Order':
+            # New Order: require supplier selection
+            try:
+                supplier_el = anvil.js.window.document.getElementById('contractSupplierSelect')
+                if supplier_el:
+                    supplier_id = str(supplier_el.value or '')
+                currency_el = anvil.js.window.document.getElementById('contractCurrencySelect')
+                if currency_el:
+                    currency = str(currency_el.value or 'USD')
+            except Exception:
+                pass
+            if not supplier_id:
+                self._show_msg(
+                    'من فضلك اختر المورد (Supplier) أولاً لأن نوع السعر "طلب جديد"'
+                    if is_ar else
+                    'Please select a Supplier first — pricing mode is "New Order"'
+                )
+                return
+        elif pricing_mode == 'In Stock':
+            # In Stock: require inventory selection
+            try:
+                inv_el = anvil.js.window.document.getElementById('contractInventorySelect')
+                if inv_el:
+                    inventory_item_id = str(inv_el.value or '')
+            except Exception:
+                pass
+            if not inventory_item_id:
+                self._show_msg(
+                    'من فضلك اختر الماكينة من المخزون أولاً لأن نوع السعر "من المخزون"'
+                    if is_ar else
+                    'Please select a machine from Inventory — pricing mode is "In Stock"'
+                )
+                return
 
         contract_data = {
             'quotation_number': q_num,
@@ -661,16 +718,22 @@ class ContractPrintForm(ContractPrintFormTemplate):
             'machine_width': str(self.current_data.get('machine_width', '')),
             'material': str(self.current_data.get('material', '')),
             'winder_type': str(self.current_data.get('winder', '')),
-            'price_mode': str(self.current_data.get('pricing_mode', '')),
+            'price_mode': pricing_mode,
             'total_price': self.current_data.get('total_price') or self.current_data.get('total_price_raw', 0),
             'payment_method': self.payment_method,
             'num_payments': len(self.payment_data),
             'payments': self.payment_data,
             'delivery_date': delivery_date,
             'language': self.current_lang,
-            # Supplier for auto purchase invoice (optional)
+            # New Order fields
             'supplier_id': supplier_id if supplier_id else None,
             'currency': currency,
+            # In Stock fields
+            'inventory_item_id': inventory_item_id if inventory_item_id else None,
+            # FOB data from quotation (for New Order auto-invoice)
+            'fob_cost_usd': self.current_data.get('fob_cost_usd', ''),
+            'fob_with_cylinders_usd': self.current_data.get('fob_with_cylinders_usd', ''),
+            'exchange_rate': self.current_data.get('exchange_rate', 0),
         }
         
         try:
@@ -678,11 +741,21 @@ class ContractPrintForm(ContractPrintFormTemplate):
             auth = anvil.js.window.sessionStorage.getItem('auth_token') or user_email
             result = anvil.server.call('save_contract', contract_data, user_email, auth)
             if result and result.get('success'):
-                is_ar = self.current_lang == 'ar'
                 self.display_contract_number = result.get('contract_number')
                 if self.current_data:
                     self.render_template()
-                Notification('تم حفظ العقد بنجاح' if is_ar else 'Contract saved', style='success').show()
+                # Build success message with accounting details
+                acct_msg = ''
+                if result.get('purchase_invoice_number'):
+                    inv_num = result['purchase_invoice_number']
+                    acct_msg = f' | فاتورة شراء: {inv_num}' if is_ar else f' | Purchase Invoice: {inv_num}'
+                elif result.get('inventory_sold'):
+                    acct_msg = ' | تم ربط الماكينة من المخزون وتسجيل البيع' if is_ar else ' | Inventory item sold & linked'
+                base_msg = 'تم حفظ العقد بنجاح' if is_ar else 'Contract saved'
+                Notification(base_msg + acct_msg, style='success').show()
+                # Show accounting warning if applicable
+                if result.get('accounting_warning'):
+                    self._show_msg(result['accounting_warning'], 'warning')
             elif result and result.get('already_exists'):
                 # ربط الرسالة بلغة النموذج (زر اللغة في العقد)
                 is_ar = self.current_lang == 'ar'

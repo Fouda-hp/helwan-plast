@@ -329,7 +329,7 @@ container:
           </div>
         </div>
       </div>
-      
+
       <!-- Opening Balances Panel -->
       <div class="tab-panel" id="panel-opening">
         <div class="expense-form">
@@ -365,7 +365,7 @@ container:
           </div>
         </div>
       </div>
-      
+
       <script src="_/theme/i18n.js"></script>
       <script>
         (function() {

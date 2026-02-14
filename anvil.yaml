@@ -115,8 +115,12 @@ db_schema:
     - admin_ui: {width: 200}
       name: updated_at
       type: datetime
-    - {admin_ui: null, name: notes_json, type: string}
-    - {admin_ui: null, name: tags_json, type: string}
+    - admin_ui: {}
+      name: notes_json
+      type: string
+    - admin_ui: {}
+      name: tags_json
+      type: string
     server: full
     title: CLIENTS
   contracts:
@@ -545,26 +549,6 @@ db_schema:
       type: string
     server: full
     title: MACHINE_SPECS
-  opening_balances:
-    client: none
-    columns:
-    - admin_ui: {width: 200}
-      name: name
-      type: string
-    - admin_ui: {width: 120}
-      name: type
-      type: string
-    - admin_ui: {width: 150}
-      name: opening_balance
-      type: number
-    - admin_ui: {width: 200}
-      name: updated_at
-      type: datetime
-    - admin_ui: {width: 200}
-      name: updated_by
-      type: string
-    server: full
-    title: OPENING_BALANCES
   notifications:
     client: none
     columns:
@@ -588,6 +572,26 @@ db_schema:
       type: datetime
     server: full
     title: NOTIFICATIONS
+  opening_balances:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: name
+      type: string
+    - admin_ui: {width: 120}
+      name: type
+      type: string
+    - admin_ui: {width: 150}
+      name: opening_balance
+      type: number
+    - admin_ui: {width: 200}
+      name: updated_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: updated_by
+      type: string
+    server: full
+    title: OPENING_BALANCES
   otp_codes:
     client: none
     columns:
@@ -950,8 +954,12 @@ db_schema:
     - admin_ui: {width: 200}
       name: Source
       type: string
-    - {admin_ui: null, name: follow_up_date, type: string}
-    - {admin_ui: null, name: follow_up_status, type: string}
+    - admin_ui: {}
+      name: follow_up_date
+      type: string
+    - admin_ui: {}
+      name: follow_up_status
+      type: string
     server: full
     title: QUOTATIONS
   rate_limits:
@@ -1081,11 +1089,6 @@ db_schema:
       type: datetime
     server: full
     title: SUPPLIERS
-  table_17:
-    client: none
-    columns: []
-    server: full
-    title: Table 17
   users:
     client: none
     columns:

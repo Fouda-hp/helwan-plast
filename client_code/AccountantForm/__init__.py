@@ -179,7 +179,15 @@ class AccountantForm(AccountantFormTemplate):
 
     # --- Ledger ---
     def get_ledger_entries(self, account_id='', date_from='', date_to=''):
-        return anvil.server.call('get_ledger_entries', account_id, date_from, date_to, self._auth())
+        # السيرفر يتوقّع: account_code, date_from, date_to, ref_type, token_or_email — لا نمرّر التوكن مكان ref_type
+        return anvil.server.call(
+            'get_ledger_entries',
+            account_id,
+            date_from,
+            date_to,
+            None,  # ref_type
+            self._auth(),
+        )
 
     # --- Setup ---
     def seed_accounts(self):

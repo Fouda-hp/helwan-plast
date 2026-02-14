@@ -101,6 +101,33 @@ class AccountantForm(AccountantFormTemplate):
         anvil.js.window.pySetOpeningBalance = self.set_opening_balance
 
         register_notif_bridges()
+        self.add_event_handler('show', self._on_show)
+
+    def _on_show(self, **event_args):
+        """عند ظهور النموذج: نسخ التوكن من النافذة الرئيسية/الأب إن وُجد (لعمل لوحة المحاسب داخل iframe)."""
+        try:
+            anvil.js.window.eval("""
+                (function(){
+                    try {
+                        var t = window.sessionStorage && window.sessionStorage.getItem('auth_token');
+                        if (!t && window.top && window.top !== window) {
+                            t = (window.top.sessionStorage && window.top.sessionStorage.getItem('auth_token'))
+                                || (window.top.localStorage && window.top.localStorage.getItem('auth_token'));
+                        }
+                        if (!t && window.parent && window.parent !== window) {
+                            t = (window.parent.sessionStorage && window.parent.sessionStorage.getItem('auth_token'))
+                                || (window.parent.localStorage && window.parent.localStorage.getItem('auth_token'));
+                        }
+                        if (t && window.sessionStorage) {
+                            window.sessionStorage.setItem('auth_token', t);
+                            if (window.localStorage) window.localStorage.setItem('auth_token', t);
+                        }
+                    } catch (e) {}
+                })();
+            """)
+            self._token = get_auth_token() or self._token
+        except Exception:
+            pass
 
     def _auth(self):
         """استخدم التوكن من التخزين أو المخزّن في النموذج أو من نافذة الأدمن."""

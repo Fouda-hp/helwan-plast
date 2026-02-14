@@ -440,7 +440,7 @@ container:
           }
 
           var cashbankAccountsPopulated = false;
-          window.switchTab = function(el) {
+          window.switchTab = async function(el) {
             document.querySelectorAll('.sub-tab').forEach(function(t) { t.classList.remove('active'); });
             document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
             el.classList.add('active');
@@ -448,13 +448,13 @@ container:
             document.getElementById('panel-' + tab).classList.add('active');
             if (tab === 'cashbank') {
               if (!cashbankAccountsPopulated && window.populateCashBankAccounts) {
-                populateCashBankAccounts();
+                await populateCashBankAccounts();
               }
               var toEl = document.getElementById('cashbankTo');
               if (toEl && !toEl.value) toEl.value = new Date().toISOString().slice(0, 10);
             }
             if (tab === 'opening' && window.populateOpeningBalanceAccounts) {
-              populateOpeningBalanceAccounts();
+              await populateOpeningBalanceAccounts();
             }
           };
 
@@ -892,17 +892,18 @@ container:
               } else if (window.pyGetChartOfAccounts) {
                 var chartRes = await window.pyGetChartOfAccounts();
                 if (chartRes && chartRes.success && chartRes.accounts && chartRes.accounts.length) {
-                  list = chartRes.accounts.filter(function(a) { return isCashOrBankCode(a.code); });
-                  if (list.length) list.sort(function(a,b) { return (a.code || '').localeCompare(b.code || ''); });
+                  list = chartRes.accounts.filter(function(a) { return isCashOrBankCode(String(a.code || '')); });
+                  if (list.length) list.sort(function(a,b) { return String(a.code || '').localeCompare(String(b.code || '')); });
                 }
               }
             } catch (e) {}
-            if (!list.length) list = defaultBankAccounts;
+            if (!list.length) list = defaultBankAccounts.slice();
             sel.innerHTML = firstHtml;
             list.forEach(function(a) {
+              var code = String(a.code || '');
               var opt = document.createElement('option');
-              opt.value = a.code;
-              opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
+              opt.value = code;
+              opt.textContent = (a.name_en || a.name_ar || code) + ' (' + code + ')';
               sel.appendChild(opt);
             });
             cashbankAccountsPopulated = true;
@@ -954,9 +955,8 @@ container:
             if (openingAccountsPopulated) return;
             var sel = document.getElementById('obName');
             if (!sel) return;
-            var firstOpt = sel.options[0];
-            var firstHtml = firstOpt ? firstOpt.outerHTML : '<option value="">Select account...</option>';
-            var list = defaultObAccounts;
+            var firstHtml = '<option value="">' + t('Select account...', 'اختر حساباً...') + '</option>';
+            var list = defaultObAccounts.slice();
             try {
               var res = window.pyGetBankAccounts ? await window.pyGetBankAccounts() : null;
               if (res && res.success && res.accounts && res.accounts.length) {
@@ -964,17 +964,18 @@ container:
               } else if (window.pyGetChartOfAccounts) {
                 var chartRes = await window.pyGetChartOfAccounts();
                 if (chartRes && chartRes.success && chartRes.accounts && chartRes.accounts.length) {
-                  list = chartRes.accounts.filter(function(a) { return isCashOrBankCode(a.code); });
-                  if (list.length) list.sort(function(a,b) { return (a.code || '').localeCompare(b.code || ''); });
+                  list = chartRes.accounts.filter(function(a) { return isCashOrBankCode(String(a.code || '')); });
+                  if (list.length) list.sort(function(a,b) { return String(a.code || '').localeCompare(String(b.code || '')); });
                 }
               }
             } catch (e) {}
-            if (!list.length) list = defaultObAccounts;
+            if (!list.length) list = defaultObAccounts.slice();
             sel.innerHTML = firstHtml;
             list.forEach(function(a) {
+              var code = String(a.code || '');
               var opt = document.createElement('option');
-              opt.value = a.code;
-              opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
+              opt.value = code;
+              opt.textContent = (a.name_en || a.name_ar || code) + ' (' + code + ')';
               sel.appendChild(opt);
             });
             openingAccountsPopulated = true;
@@ -986,7 +987,7 @@ container:
               if (window.showNotification) window.showNotification('error', '', t('Select an account', 'اختر حساباً'));
               return;
             }
-            var type = (name === '1000') ? 'cash' : 'bank';
+            var type = 'bank';
             try {
               var res = await window.pySetOpeningBalance(name, type, amount);
               if (res && res.success) {

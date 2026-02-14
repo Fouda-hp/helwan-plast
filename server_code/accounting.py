@@ -1447,8 +1447,8 @@ def get_bank_accounts(token_or_email=None):
     try:
         accounts = []
         for r in app_tables.chart_of_accounts.search(is_active=True):
-            code = r.get('code', '')
-            # Include cash and all bank sub-accounts
+            code = str(r.get('code', '')).strip()
+            # Include cash (1000) and all bank sub-accounts (1010, 1011, 1012, 1013, ...)
             if code == '1000' or (code.startswith('101') and len(code) == 4):
                 accounts.append({
                     'code': code,
@@ -3677,11 +3677,11 @@ def get_treasury_summary(token_or_email=None):
         return error
 
     try:
-        # 1. Get all cash/bank account codes
+        # 1. Get all cash/bank account codes (code may be int in DB → normalize to string)
         bank_codes = []
         account_names = {}
         for acct in app_tables.chart_of_accounts.search(is_active=True):
-            code = acct.get('code', '')
+            code = str(acct.get('code', '')).strip()
             if code == '1000' or (code.startswith('101') and len(code) == 4):
                 bank_codes.append(code)
                 account_names[code] = {
@@ -3707,17 +3707,21 @@ def get_treasury_summary(token_or_email=None):
         except Exception:
             pass
 
-        # 4. Build result
+        # 4. Build result (include account_name for client display)
         result = []
         grand_total = 0
         for code in sorted(bank_codes):
             opening = opening_map.get(code, 0)
             ledger_bal = ledger_balances.get(code, 0)
             current = _round2(opening + ledger_bal)
+            names = account_names.get(code, {})
+            name_en = names.get('name_en', '') or names.get('name_ar', '') or code
+            name_ar = names.get('name_ar', '') or names.get('name_en', '') or code
             result.append({
                 'account_code': code,
-                'name_en': account_names.get(code, {}).get('name_en', ''),
-                'name_ar': account_names.get(code, {}).get('name_ar', ''),
+                'account_name': name_en,
+                'name_en': names.get('name_en', ''),
+                'name_ar': names.get('name_ar', ''),
                 'opening_balance': _round2(opening),
                 'ledger_balance': ledger_bal,
                 'current_balance': current,
@@ -3726,6 +3730,7 @@ def get_treasury_summary(token_or_email=None):
 
         return {
             'success': True,
+            'data': result,
             'accounts': result,
             'grand_total': _round2(grand_total),
         }
@@ -3757,13 +3762,13 @@ def get_cash_bank_statement(account_code=None, date_from=None, date_to=None, tok
 
         account_names = {}
         for acct in app_tables.chart_of_accounts.search():
-            c = acct.get('code', '')
+            c = str(acct.get('code', '')).strip()
             if c in codes or not account_code:
                 account_names[c] = acct.get('name_en', '') or acct.get('name_ar', '') or c
 
         rows = []
         for r in app_tables.ledger.search():
-            c = r.get('account_code', '')
+            c = str(r.get('account_code', '')).strip()
             if c not in codes:
                 continue
             row_date = r.get('date')

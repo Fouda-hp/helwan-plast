@@ -440,7 +440,6 @@ container:
             if (tab === 'cashbank') {
               if (!cashbankAccountsPopulated && window.populateCashBankAccounts) {
                 populateCashBankAccounts();
-                cashbankAccountsPopulated = true;
               }
               var toEl = document.getElementById('cashbankTo');
               if (toEl && !toEl.value) toEl.value = new Date().toISOString().slice(0, 10);
@@ -867,30 +866,37 @@ container:
 
           /* === Cash/Bank Statement (كشف النقدية والبنك) === */
           var defaultBankAccounts = [{ code: '1000', name_en: 'Cash', name_ar: 'نقدية' }, { code: '1010', name_en: 'Bank', name_ar: 'بنك' }];
+          function isCashOrBankCode(code) {
+            code = String(code || '');
+            return code === '1000' || (code.indexOf('101') === 0 && code.length === 4);
+          }
           async function populateCashBankAccounts() {
             var sel = document.getElementById('cashbankAccount');
             if (!sel) return;
             var firstOpt = sel.options[0];
             var firstHtml = firstOpt ? firstOpt.outerHTML : '<option value="" id="optCashbankAll">All (Cash &amp; Banks)</option>';
+            var list = defaultBankAccounts;
             try {
               var res = window.pyGetBankAccounts ? await window.pyGetBankAccounts() : null;
-              var list = (res && res.success && res.accounts && res.accounts.length) ? res.accounts : defaultBankAccounts;
-              sel.innerHTML = firstHtml;
-              list.forEach(function(a) {
-                var opt = document.createElement('option');
-                opt.value = a.code;
-                opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
-                sel.appendChild(opt);
-              });
-            } catch (e) {
-              sel.innerHTML = firstHtml;
-              defaultBankAccounts.forEach(function(a) {
-                var opt = document.createElement('option');
-                opt.value = a.code;
-                opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
-                sel.appendChild(opt);
-              });
-            }
+              if (res && res.success && res.accounts && res.accounts.length) {
+                list = res.accounts;
+              } else if (window.pyGetChartOfAccounts) {
+                var chartRes = await window.pyGetChartOfAccounts();
+                if (chartRes && chartRes.success && chartRes.accounts && chartRes.accounts.length) {
+                  list = chartRes.accounts.filter(function(a) { return isCashOrBankCode(a.code); });
+                  if (list.length) list.sort(function(a,b) { return (a.code || '').localeCompare(b.code || ''); });
+                }
+              }
+            } catch (e) {}
+            if (!list.length) list = defaultBankAccounts;
+            sel.innerHTML = firstHtml;
+            list.forEach(function(a) {
+              var opt = document.createElement('option');
+              opt.value = a.code;
+              opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
+              sel.appendChild(opt);
+            });
+            cashbankAccountsPopulated = true;
           }
           window.loadCashBankStatement = async function() {
             var tbody = document.getElementById('cashbankBody');
@@ -941,27 +947,28 @@ container:
             if (!sel) return;
             var firstOpt = sel.options[0];
             var firstHtml = firstOpt ? firstOpt.outerHTML : '<option value="">Select account...</option>';
+            var list = defaultObAccounts;
             try {
               var res = window.pyGetBankAccounts ? await window.pyGetBankAccounts() : null;
-              var list = (res && res.success && res.accounts && res.accounts.length) ? res.accounts : defaultObAccounts;
-              sel.innerHTML = firstHtml;
-              list.forEach(function(a) {
-                var opt = document.createElement('option');
-                opt.value = a.code;
-                opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
-                sel.appendChild(opt);
-              });
-              openingAccountsPopulated = true;
-            } catch (e) {
-              sel.innerHTML = firstHtml;
-              defaultObAccounts.forEach(function(a) {
-                var opt = document.createElement('option');
-                opt.value = a.code;
-                opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
-                sel.appendChild(opt);
-              });
-              openingAccountsPopulated = true;
-            }
+              if (res && res.success && res.accounts && res.accounts.length) {
+                list = res.accounts;
+              } else if (window.pyGetChartOfAccounts) {
+                var chartRes = await window.pyGetChartOfAccounts();
+                if (chartRes && chartRes.success && chartRes.accounts && chartRes.accounts.length) {
+                  list = chartRes.accounts.filter(function(a) { return isCashOrBankCode(a.code); });
+                  if (list.length) list.sort(function(a,b) { return (a.code || '').localeCompare(b.code || ''); });
+                }
+              }
+            } catch (e) {}
+            if (!list.length) list = defaultObAccounts;
+            sel.innerHTML = firstHtml;
+            list.forEach(function(a) {
+              var opt = document.createElement('option');
+              opt.value = a.code;
+              opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
+              sel.appendChild(opt);
+            });
+            openingAccountsPopulated = true;
           }
           window.setOpeningBalance = async function() {
             var name = document.getElementById('obName').value.trim();
@@ -1034,6 +1041,8 @@ container:
               if (window.pyGetExchangeRates) loadCurrencyRates();
               if (window.pyGetTreasurySummary) loadTreasury();
               if (window.pyGetOpeningBalances) loadOpeningBalances();
+              if (window.populateCashBankAccounts) populateCashBankAccounts();
+              if (window.populateOpeningBalanceAccounts) populateOpeningBalanceAccounts();
             } else {
               setTimeout(waitForBridge, 200);
             }

@@ -17,9 +17,9 @@ import anvil.js
 import logging
 
 try:
-    from ..auth_helpers import get_auth_token
+    from ..auth_helpers import get_auth_token, get_accountant_token
 except ImportError:
-    from auth_helpers import get_auth_token
+    from auth_helpers import get_auth_token, get_accountant_token
 
 try:
     from ..notif_bridge import register_notif_bridges
@@ -54,9 +54,10 @@ class AccountantForm(AccountantFormTemplate):
     def __init__(self, **properties):
         self.init_components(**properties)
 
-        # Auth — من المعامل، أو من نافذة JS (لوحة الأدمن)، أو من التخزين
+        # Auth — من المعامل، أو من auth_helpers (الأدمن حفظه قبل الفتح)، أو من النافذة أو التخزين
         self._token = (
             properties.get('auth_token')
+            or get_accountant_token()
             or _get_token_from_window()
             or get_auth_token()
         )
@@ -130,9 +131,9 @@ class AccountantForm(AccountantFormTemplate):
             pass
 
     def _auth(self):
-        """استخدم التوكن من التخزين أو المخزّن في النموذج أو من نافذة الأدمن."""
-        token = get_auth_token() or self._token or _get_token_from_window()
-        if token and not get_auth_token():
+        """استخدم التوكن من التخزين أو من النموذج أو من auth_helpers (الأدمن)."""
+        token = get_auth_token() or self._token or get_accountant_token() or _get_token_from_window()
+        if token:
             _sync_token_to_storage(token)
         return token
 

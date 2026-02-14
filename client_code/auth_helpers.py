@@ -12,6 +12,20 @@ import time
 _token_cache = {'result': None, 'ts': 0, 'token': None}
 _CACHE_TTL = 30  # seconds
 
+# توكن يُمرَّر قبل فتح لوحة المحاسب (نفس عملية البايثون) — يقرأه AccountantForm
+_accountant_token = None
+
+
+def set_accountant_token(token):
+    """استدعِه من لوحة الأدمن قبل open_form('AccountantForm') ليمرّر التوكن."""
+    global _accountant_token
+    _accountant_token = token
+
+
+def get_accountant_token():
+    """لوحة المحاسب تقرأ منه إن لم تجد التوكن في التخزين."""
+    return _accountant_token
+
 
 def get_auth_token():
     """Get auth token from sessionStorage with localStorage fallback.

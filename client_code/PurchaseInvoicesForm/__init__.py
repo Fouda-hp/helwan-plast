@@ -55,6 +55,7 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
         anvil.js.window.pyPostPurchaseInvoice = self.post_purchase_invoice
         anvil.js.window.pyRecordSupplierPayment = self.record_supplier_payment
         anvil.js.window.pyGetBankAccounts = self.get_bank_accounts
+        anvil.js.window.pyGetExchangeRates = self.get_exchange_rates
         anvil.js.window.pyGetContractPayableStatus = self.get_contract_payable_status
         anvil.js.window.pyGetImportCosts = self.get_import_costs
         anvil.js.window.pyGetLandedCost = self.get_landed_cost
@@ -91,14 +92,21 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
         """Legacy: record payment with method string."""
         return anvil.server.call('record_invoice_payment', invoice_id, amount, method, notes, self._auth())
 
-    def record_supplier_payment(self, invoice_id, amount, payment_method, payment_date):
-        """Record payment with specific bank account (cash/cib/nbe/qnb or account code)."""
-        return anvil.server.call('record_supplier_payment', invoice_id, amount,
-                                 payment_method, payment_date, self._auth())
+    def record_supplier_payment(self, invoice_id, amount, payment_method, payment_date,
+                               currency_code='EGP', exchange_rate=None, notes=''):
+        """تسجيل دفعة للمورد — أي مبلغ، عملة اختيارية، طريقة دفع (كاش/بنك)."""
+        return anvil.server.call(
+            'record_supplier_payment', invoice_id, amount, payment_method, payment_date,
+            currency_code=currency_code, exchange_rate=exchange_rate, notes=notes, token_or_email=self._auth()
+        )
 
     def get_bank_accounts(self):
         """Get list of cash/bank accounts for payment dropdown."""
         return anvil.server.call('get_bank_accounts', self._auth())
+
+    def get_exchange_rates(self):
+        """Get exchange rates for currency dropdown (دفع/استلام بعملة أخرى)."""
+        return anvil.server.call('get_exchange_rates', self._auth())
 
     # --- Import Costs ---
     def add_import_cost(self, invoice_id, cost_type, amount, description='',

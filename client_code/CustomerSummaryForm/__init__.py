@@ -37,6 +37,7 @@ class CustomerSummaryForm(CustomerSummaryFormTemplate):
         anvil.js.window.pyGetCustomerSummary = self.get_customer_summary
         anvil.js.window.pyRecordCollection = self.record_collection
         anvil.js.window.pyGetBankAccounts = self.get_bank_accounts
+        anvil.js.window.pyGetExchangeRates = self.get_exchange_rates
         anvil.js.window.pyGoBack = self.go_back
 
         register_notif_bridges()
@@ -48,13 +49,20 @@ class CustomerSummaryForm(CustomerSummaryFormTemplate):
         return anvil.server.call('get_customer_summary', self._auth())
 
     def record_collection(self, contract_number, amount, payment_method,
-                          collection_date='', notes=''):
-        return anvil.server.call('record_customer_collection',
-                                 contract_number, amount, payment_method,
-                                 collection_date, notes, self._auth())
+                          collection_date='', notes='',
+                          currency_code='EGP', exchange_rate=None):
+        """تسجيل تحصيل من عميل — أي مبلغ، عملة اختيارية، طريقة استلام (كاش/بنك)."""
+        return anvil.server.call(
+            'record_customer_collection',
+            contract_number, amount, payment_method, collection_date, notes,
+            currency_code=currency_code, exchange_rate=exchange_rate, token_or_email=self._auth()
+        )
 
     def get_bank_accounts(self):
         return anvil.server.call('get_bank_accounts', self._auth())
+
+    def get_exchange_rates(self):
+        return anvil.server.call('get_exchange_rates', self._auth())
 
     def go_back(self):
         open_form('AccountantForm')

@@ -121,6 +121,7 @@ container:
           <button class="sub-tab" data-tab="ledger" onclick="switchTab(this)">General Ledger</button>
           <button class="sub-tab" data-tab="currency" onclick="switchTab(this)">Currency</button>
           <button class="sub-tab" data-tab="treasury" onclick="switchTab(this)">Treasury</button>
+          <button class="sub-tab" data-tab="cashbank" onclick="switchTab(this)">Cash/Bank Statement</button>
           <button class="sub-tab" data-tab="opening" onclick="switchTab(this)">Opening Balances</button>
         </div>
 
@@ -307,6 +308,27 @@ container:
           </div>
         </div>
       </div>
+
+      <!-- Cash/Bank Statement (كشف النقدية والبنك) -->
+      <div class="tab-panel" id="panel-cashbank">
+        <div class="date-filter">
+          <label>Account</label>
+          <select id="cashbankAccount">
+            <option value="">All (النقدية والبنوك)</option>
+          </select>
+          <label>From</label>
+          <input type="date" id="cashbankFrom">
+          <label>To</label>
+          <input type="date" id="cashbankTo">
+          <button onclick="loadCashBankStatement()" id="btnLoadCashBank">Load</button>
+        </div>
+        <div class="report-card">
+          <h3 id="cashbankTitle">Cash &amp; Bank Statement</h3>
+          <div class="table-wrap">
+            <table><thead><tr><th>Date</th><th>Account</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th><th class="text-right">Balance</th></tr></thead><tbody id="cashbankBody"><tr><td colspan="6" class="empty-msg">Select dates and click Load</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
       
       <!-- Opening Balances Panel -->
       <div class="tab-panel" id="panel-opening">
@@ -369,6 +391,7 @@ container:
               expenses: t('Expenses', 'المصروفات'),
               ledger: t('General Ledger', 'دفتر الاستاذ'),
               treasury: t('Treasury', 'الخزينة'),
+              cashbank: t('Cash/Bank Statement', 'كشف النقدية والبنك'),
               opening: t('Opening Balances', 'ارصدة افتتاحية')
             };
             document.querySelectorAll('.sub-tab').forEach(function(tab) {
@@ -380,6 +403,8 @@ container:
             var el;
             el = document.getElementById('btnLoadTreasury'); if (el) el.textContent = t('Load Treasury', 'تحميل الخزينة');
             el = document.getElementById('treasuryTitle'); if (el) el.textContent = t('Treasury - Bank & Cash Balances', 'الخزينة - ارصدة البنوك والنقدية');
+            el = document.getElementById('cashbankTitle'); if (el) el.textContent = t('Cash & Bank Statement', 'كشف حساب النقدية والبنك');
+            el = document.getElementById('btnLoadCashBank'); if (el) el.textContent = t('Load', 'تحميل');
             el = document.getElementById('trAcctName'); if (el) el.textContent = t('Account', 'الحساب');
             el = document.getElementById('trOpenBal'); if (el) el.textContent = t('Opening Balance', 'الرصيد الافتتاحي');
             el = document.getElementById('trLedgerBal'); if (el) el.textContent = t('Ledger Balance', 'رصيد الدفتر');
@@ -396,12 +421,17 @@ container:
             el = document.getElementById('obThAmount'); if (el) el.textContent = t('Opening Balance', 'الرصيد الافتتاحي');
           }
 
+          var cashbankAccountsPopulated = false;
           window.switchTab = function(el) {
             document.querySelectorAll('.sub-tab').forEach(function(t) { t.classList.remove('active'); });
             document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
             el.classList.add('active');
             var tab = el.getAttribute('data-tab');
             document.getElementById('panel-' + tab).classList.add('active');
+            if (tab === 'cashbank' && !cashbankAccountsPopulated && window.populateCashBankAccounts) {
+              populateCashBankAccounts();
+              cashbankAccountsPopulated = true;
+            }
           };
 
           window.navTo = function(page) {
@@ -816,6 +846,62 @@ container:
               }
             } catch (err) {
               tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + err + '</td></tr>';
+            }
+          };
+
+          /* === Cash/Bank Statement (كشف النقدية والبنك) === */
+          async function populateCashBankAccounts() {
+            var sel = document.getElementById('cashbankAccount');
+            if (!sel || sel.options.length > 1) return;
+            try {
+              var res = await window.pyGetBankAccounts();
+              if (res && res.success && res.accounts) {
+                res.accounts.forEach(function(a) {
+                  var opt = document.createElement('option');
+                  opt.value = a.code;
+                  opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
+                  sel.appendChild(opt);
+                });
+              }
+            } catch (e) {}
+          }
+          window.loadCashBankStatement = async function() {
+            var tbody = document.getElementById('cashbankBody');
+            var fromEl = document.getElementById('cashbankFrom');
+            var toEl = document.getElementById('cashbankTo');
+            if (fromEl && !fromEl.value) {
+              var d = new Date();
+              fromEl.value = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+            }
+            if (toEl && !toEl.value) toEl.value = new Date().toISOString().slice(0, 10);
+            var accountCode = (document.getElementById('cashbankAccount') && document.getElementById('cashbankAccount').value) || '';
+            var fromVal = (fromEl && fromEl.value) || '';
+            var toVal = (toEl && toEl.value) || '';
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetCashBankStatement(accountCode || null, fromVal || null, toVal || null);
+              if (res && res.success) {
+                var data = res.data || [];
+                if (data.length === 0) {
+                  tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + t('No movements in this period', 'لا توجد حركات في هذه الفترة') + '</td></tr>';
+                  return;
+                }
+                var html = '';
+                data.forEach(function(row) {
+                  html += '<tr>';
+                  html += '<td>' + (row.date || '').toString().substring(0, 10) + '</td>';
+                  html += '<td>' + (row.account_name || row.account_code || '') + '</td>';
+                  html += '<td>' + (row.description || '') + '</td>';
+                  html += '<td class="text-right">' + fmt(row.debit) + '</td>';
+                  html += '<td class="text-right">' + fmt(row.credit) + '</td>';
+                  html += '<td class="text-right" style="font-weight:600;">' + fmt(row.balance) + '</td></tr>';
+                });
+                tbody.innerHTML = html;
+              } else {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + String(err) + '</td></tr>';
             }
           };
 

@@ -313,22 +313,33 @@ container:
         </div>
       </div>
 
-      <!-- Payment Modal -->
+      <!-- Payment Modal — أي مبلغ، عملة، طريقة دفع (كاش/بنك) -->
       <div class="hp-modal-overlay" id="paymentModal">
-        <div class="hp-modal" style="max-width:450px;">
+        <div class="hp-modal" style="max-width:500px;">
           <h2 id="payModalTitle">Record Payment</h2>
           <input type="hidden" id="payInvoiceId" value="">
           <div class="form-group">
             <label id="lblPayAmount">Amount *</label>
-            <input type="number" id="fPayAmount" step="0.01" value="0">
+            <input type="number" id="fPayAmount" step="0.01" value="0" placeholder="">
           </div>
           <div class="form-group">
-            <label id="lblPayMethod">Method</label>
+            <label id="lblPayCurrency">Currency</label>
+            <select id="fPayCurrency">
+              <option value="EGP">EGP</option>
+            </select>
+          </div>
+          <div class="form-group" id="payExchangeRateGroup" style="display:none;">
+            <label id="lblPayRate">Exchange rate to EGP</label>
+            <input type="number" id="fPayExchangeRate" step="0.01" value="1" placeholder="1">
+          </div>
+          <div class="form-group">
+            <label id="lblPayDate">Date</label>
+            <input type="date" id="fPayDate">
+          </div>
+          <div class="form-group">
+            <label id="lblPayMethod">Payment method (Cash / Bank)</label>
             <select id="fPayMethod">
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="cash">Cash</option>
-              <option value="check">Check</option>
-              <option value="other">Other</option>
+              <option value="1000">Cash</option>
             </select>
           </div>
           <div class="form-group">
@@ -416,7 +427,10 @@ container:
             // Payment modal i18n
             document.getElementById('payModalTitle').textContent = t('Record Payment', 'تسجيل دفعة');
             document.getElementById('lblPayAmount').textContent = t('Amount *', '* المبلغ');
-            document.getElementById('lblPayMethod').textContent = t('Method', 'طريقة الدفع');
+            document.getElementById('lblPayCurrency').textContent = t('Currency', 'العملة');
+            document.getElementById('lblPayRate').textContent = t('Exchange rate to EGP', 'سعر التحويل لجنيه');
+            document.getElementById('lblPayDate').textContent = t('Date', 'التاريخ');
+            document.getElementById('lblPayMethod').textContent = t('Payment method (Cash / Bank)', 'طريقة الدفع (كاش / بنك)');
             document.getElementById('lblPayNotes').textContent = t('Notes', 'ملاحظات');
             document.getElementById('detailsTitle').textContent = t('Invoice Details', 'تفاصيل الفاتورة');
             if (isAr) document.querySelector('.pi-wrapper').style.direction = 'rtl';
@@ -840,13 +854,64 @@ container:
             }
           };
 
-          window.openPaymentModal = function(id, balance) {
+          var paymentDropdownsReady = false;
+          async function ensurePaymentDropdowns() {
+            if (paymentDropdownsReady) return;
+            try {
+              var bankRes = window.pyGetBankAccounts && await window.pyGetBankAccounts();
+              var methodSel = document.getElementById('fPayMethod');
+              if (bankRes && bankRes.success && bankRes.accounts && methodSel) {
+                methodSel.innerHTML = '';
+                bankRes.accounts.forEach(function(a) {
+                  var opt = document.createElement('option');
+                  opt.value = a.code;
+                  opt.textContent = (a.name_en || a.name_ar || a.code);
+                  methodSel.appendChild(opt);
+                });
+              }
+              var rateRes = window.pyGetExchangeRates && await window.pyGetExchangeRates();
+              var currSel = document.getElementById('fPayCurrency');
+              if (rateRes && rateRes.success && currSel) {
+                var ratesList = rateRes.data || rateRes.rates || [];
+                currSel.innerHTML = '';
+                var hasEgp = ratesList.some(function(r) { return (r.currency_code || r.code || '') === 'EGP'; });
+                if (!hasEgp) {
+                  var o = document.createElement('option'); o.value = 'EGP'; o.textContent = 'EGP'; currSel.appendChild(o);
+                }
+                ratesList.forEach(function(r) {
+                  var code = r.currency_code || r.code || '';
+                  var opt = document.createElement('option');
+                  opt.value = code;
+                  opt.textContent = code + (r.rate_to_egp ? ' (1 = ' + r.rate_to_egp + ' EGP)' : '');
+                  currSel.appendChild(opt);
+                });
+              }
+              paymentDropdownsReady = true;
+            } catch (e) { /* ignore */ }
+          }
+
+          window.openPaymentModal = async function(id, balance) {
+            await ensurePaymentDropdowns();
             document.getElementById('payInvoiceId').value = id;
-            document.getElementById('fPayAmount').value = balance > 0 ? balance.toFixed(2) : '0';
-            document.getElementById('fPayMethod').value = 'bank_transfer';
+            document.getElementById('fPayAmount').value = (balance > 0 ? balance.toFixed(2) : '0');
+            var today = new Date().toISOString().slice(0, 10);
+            document.getElementById('fPayDate').value = today;
+            document.getElementById('fPayCurrency').value = 'EGP';
+            document.getElementById('payExchangeRateGroup').style.display = 'none';
+            document.getElementById('fPayExchangeRate').value = '1';
             document.getElementById('fPayNotes').value = '';
             document.getElementById('paymentModal').classList.add('show');
           };
+
+          document.addEventListener('DOMContentLoaded', function() {
+            var fPayCurrency = document.getElementById('fPayCurrency');
+            if (fPayCurrency) {
+              fPayCurrency.addEventListener('change', function() {
+                var isEgp = (fPayCurrency.value === 'EGP');
+                document.getElementById('payExchangeRateGroup').style.display = isEgp ? 'none' : 'block';
+              });
+            }
+          });
 
           window.closePaymentModal = function() {
             document.getElementById('paymentModal').classList.remove('show');
@@ -856,13 +921,20 @@ container:
             var invoiceId = document.getElementById('payInvoiceId').value;
             var amount = parseFloat(document.getElementById('fPayAmount').value) || 0;
             var method = document.getElementById('fPayMethod').value;
+            var paymentDate = document.getElementById('fPayDate').value;
+            var currencyCode = document.getElementById('fPayCurrency').value || 'EGP';
+            var exchangeRate = currencyCode === 'EGP' ? null : (parseFloat(document.getElementById('fPayExchangeRate').value) || null);
             var notes = document.getElementById('fPayNotes').value.trim();
             if (amount <= 0) {
               if (window.showNotification) window.showNotification('error', '', t('Enter a valid amount', 'ادخل مبلغ صحيح'));
               return;
             }
+            if (!paymentDate) {
+              if (window.showNotification) window.showNotification('error', '', t('Select date', 'اختر التاريخ'));
+              return;
+            }
             try {
-              var res = await window.pyRecordInvoicePayment(invoiceId, amount, method, notes);
+              var res = await window.pyRecordSupplierPayment(invoiceId, amount, method, paymentDate, currencyCode, exchangeRate, notes);
               if (res && res.success) {
                 if (window.showNotification) window.showNotification('success', '', t('Payment recorded', 'تم تسجيل الدفع'));
                 closePaymentModal();

@@ -181,6 +181,19 @@ def _resolve_payment_account(payment_method):
     return '1010' if 'bank' in method else '1000'
 
 
+def _get_rate_to_egp(currency_code):
+    """Return exchange rate to EGP for the given currency. EGP or missing => 1.0."""
+    if not currency_code or _safe_str(currency_code).upper() == 'EGP':
+        return 1.0
+    try:
+        r = app_tables.currency_exchange_rates.get(currency_code=_safe_str(currency_code).upper())
+        if r and r.get('rate_to_egp'):
+            return _round2(float(r.get('rate_to_egp', 1)))
+    except Exception:
+        pass
+    return 1.0
+
+
 @anvil.server.callable
 def get_chart_of_accounts(token_or_email=None):
     """Return the full chart of accounts as a list of dicts."""
@@ -1054,19 +1067,21 @@ def get_contract_payable_status(contract_number=None, token_or_email=None):
 
 
 @anvil.server.callable
-def record_supplier_payment(invoice_id, amount, payment_method, payment_date, token_or_email=None):
+def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
+                            currency_code='EGP', exchange_rate=None, notes='', token_or_email=None):
     """
-    Record a payment against a purchase invoice.
+    Record a payment against a purchase invoice. أي مبلغ مسموح (أكثر أو أقل من المستحق).
     DR Accounts Payable (2000)
     CR Cash (1000) or Bank (1010/1011/1012/1013)
-    Supports multiple banks: cash, bank, cib, nbe, qnb, or direct account code.
+    currency_code: EGP (افتراضي) أو USD أو غيرها — إن لم تكن EGP يُحوَّل المبلغ إلى EGP حسب سعر الصرف.
+    exchange_rate: اختياري؛ إن لم يُمرَّر يُؤخذ من جدول أسعار الصرف.
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
         return error
 
-    amount = _round2(amount)
-    if amount <= 0:
+    amount_in = _round2(amount)
+    if amount_in <= 0:
         return {'success': False, 'message': 'Payment amount must be greater than zero'}
 
     try:
@@ -1076,34 +1091,45 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date, to
         if row.get('status') in ('draft', 'cancelled'):
             return {'success': False, 'message': f"Cannot record payment for invoice with status '{row.get('status')}'"}
 
-        current_paid = _round2(row.get('paid_amount', 0))
-        total = _round2(row.get('total', 0))
-        if current_paid + amount > total + 0.005:
-            return {'success': False, 'message': f'Payment of {amount:.2f} exceeds remaining balance of {total - current_paid:.2f}'}
+        # تحويل المبلغ إلى EGP إن كانت العملة غير EGP
+        currency_code = _safe_str(currency_code or 'EGP').upper()
+        if currency_code == 'EGP':
+            amount_egp = amount_in
+            rate_used = 1.0
+        else:
+            rate_used = _round2(exchange_rate) if exchange_rate is not None and float(exchange_rate) > 0 else _get_rate_to_egp(currency_code)
+            if rate_used <= 0:
+                return {'success': False, 'message': f'سعر صرف غير صالح لعملة {currency_code} | Invalid exchange rate for {currency_code}'}
+            amount_egp = _round2(amount_in * rate_used)
 
-        # Determine cash/bank account — supports multiple banks
         cash_account = _resolve_payment_account(payment_method)
         parsed_date = _safe_date(payment_date) or date.today()
 
+        desc = f"Payment for purchase invoice {row.get('invoice_number', invoice_id)} ({payment_method})"
+        if currency_code != 'EGP':
+            desc += f" — {amount_in:,.2f} {currency_code} @ {rate_used} = {amount_egp:,.2f} EGP"
+        if notes:
+            desc += f" — {notes}"
+
         entries = [
-            {'account_code': '2000', 'debit': amount, 'credit': 0},
-            {'account_code': cash_account, 'debit': 0, 'credit': amount},
+            {'account_code': '2000', 'debit': amount_egp, 'credit': 0},
+            {'account_code': cash_account, 'debit': 0, 'credit': amount_egp},
         ]
-        inv_number = row.get('invoice_number', invoice_id)
         result = post_journal_entry(
-            parsed_date, entries,
-            f"Payment for purchase invoice {inv_number} ({payment_method})",
+            parsed_date, entries, desc,
             'payment', invoice_id, user_email,
         )
         if not result.get('success'):
             return result
 
-        new_paid = _round2(current_paid + amount)
-        new_status = 'paid' if abs(new_paid - total) < 0.005 else 'partial'
+        current_paid = _round2(row.get('paid_amount', 0))
+        total = _round2(row.get('total', 0))
+        new_paid = _round2(current_paid + amount_egp)
+        new_status = 'paid' if new_paid >= total - 0.005 else 'partial'
         row.update(paid_amount=new_paid, status=new_status, updated_at=get_utc_now())
 
-        logger.info("Supplier payment %.2f for %s by %s", amount, inv_number, user_email)
-        return {'success': True, 'paid_amount': new_paid, 'status': new_status, 'transaction_id': result['transaction_id']}
+        logger.info("Supplier payment %.2f EGP (%.2f %s) for %s by %s", amount_egp, amount_in, currency_code, row.get('invoice_number'), user_email)
+        return {'success': True, 'paid_amount': new_paid, 'status': new_status, 'transaction_id': result['transaction_id'], 'amount_egp': amount_egp}
     except Exception as e:
         logger.exception("record_supplier_payment error")
         return {'success': False, 'message': str(e)}
@@ -2449,10 +2475,14 @@ def delete_purchase_invoice(invoice_id, token_or_email=None):
 
 
 @anvil.server.callable
-def record_invoice_payment(invoice_id, amount, method='cash', notes='', token_or_email=None):
+def record_invoice_payment(invoice_id, amount, method='cash', notes='', payment_date=None,
+                           currency_code='EGP', exchange_rate=None, token_or_email=None):
     """Record payment for a purchase invoice (alias for record_supplier_payment)."""
-    payment_date = str(date.today())
-    return record_supplier_payment(invoice_id, amount, method, payment_date, token_or_email)
+    payment_date = _safe_date(payment_date) or date.today()
+    return record_supplier_payment(
+        invoice_id, amount, method, payment_date,
+        currency_code=currency_code, exchange_rate=exchange_rate, notes=notes, token_or_email=token_or_email
+    )
 
 
 @anvil.server.callable
@@ -3265,53 +3295,53 @@ def _get_customer_ar_balance(contract_number):
 
 @anvil.server.callable
 def record_customer_collection(contract_number, amount, payment_method,
-                                collection_date=None, notes='', token_or_email=None):
+                                collection_date=None, notes='',
+                                currency_code='EGP', exchange_rate=None, token_or_email=None):
     """
-    Record cash collection from a customer.
-    DR Cash/Bank (1000/101x)   — money in
-    CR Accounts Receivable (1100) — reduce customer debt
-
-    Uses contract_number as the link to the customer.
-    Prevents over-collection (amount > outstanding AR balance).
+    Record cash collection from a customer. أي مبلغ مسموح (أكثر أو أقل من المستحق — مقسط أو مقدّم).
+    DR Cash/Bank (1000/101x)
+    CR Accounts Receivable (1100)
+    currency_code: EGP (افتراضي) أو USD أو غيرها — يُحوَّل إلى EGP حسب سعر الصرف عند الحاجة.
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
         return error
 
-    amount = _round2(amount)
-    if amount <= 0:
+    amount_in = _round2(amount)
+    if amount_in <= 0:
         return {'success': False, 'message': 'Collection amount must be greater than zero'}
     if not contract_number:
         return {'success': False, 'message': 'Contract number is required'}
 
     try:
-        # Verify contract exists
         contract = app_tables.contracts.get(contract_number=contract_number)
         if not contract:
             return {'success': False, 'message': f'Contract {contract_number} not found'}
 
-        # Calculate outstanding AR balance
-        ar_balance = _get_customer_ar_balance(contract_number)
-        if amount > ar_balance + 0.005:
-            return {
-                'success': False,
-                'message': f'Collection of {amount:.2f} exceeds outstanding balance of {ar_balance:.2f}'
-            }
+        currency_code = _safe_str(currency_code or 'EGP').upper()
+        if currency_code == 'EGP':
+            amount_egp = amount_in
+            rate_used = 1.0
+        else:
+            rate_used = _round2(exchange_rate) if exchange_rate is not None and float(exchange_rate) > 0 else _get_rate_to_egp(currency_code)
+            if rate_used <= 0:
+                return {'success': False, 'message': f'سعر صرف غير صالح لعملة {currency_code} | Invalid exchange rate for {currency_code}'}
+            amount_egp = _round2(amount_in * rate_used)
 
-        # Resolve payment account
         cash_account = _resolve_payment_account(payment_method)
         parsed_date = _safe_date(collection_date) or date.today()
         client_name = contract.get('client_name', contract_number)
 
-        # Journal Entry: DR Cash/Bank, CR Accounts Receivable
-        entries = [
-            {'account_code': cash_account, 'debit': amount, 'credit': 0},
-            {'account_code': '1100', 'debit': 0, 'credit': amount},
-        ]
         description = f"Customer collection from {client_name} — contract {contract_number}"
+        if currency_code != 'EGP':
+            description += f" — {amount_in:,.2f} {currency_code} @ {rate_used} = {amount_egp:,.2f} EGP"
         if notes:
             description += f" ({notes})"
 
+        entries = [
+            {'account_code': cash_account, 'debit': amount_egp, 'credit': 0},
+            {'account_code': '1100', 'debit': 0, 'credit': amount_egp},
+        ]
         result = post_journal_entry(
             parsed_date, entries, description,
             'customer_collection', contract_number, user_email,
@@ -3319,24 +3349,24 @@ def record_customer_collection(contract_number, amount, payment_method,
         if not result.get('success'):
             return result
 
-        # Audit log
         try:
             AuthManager.log_audit(
                 user_email, 'customer_collection',
                 'ledger', result.get('transaction_id', ''),
-                None, {'contract': contract_number, 'amount': amount, 'method': payment_method}
+                None, {'contract': contract_number, 'amount': amount_egp, 'method': payment_method}
             )
         except Exception:
             pass
 
-        new_balance = _round2(ar_balance - amount)
-        logger.info("Customer collection %.2f for contract %s (%s) by %s",
-                     amount, contract_number, payment_method, user_email)
+        ar_balance = _get_customer_ar_balance(contract_number)
+        logger.info("Customer collection %.2f EGP (%.2f %s) for contract %s (%s) by %s",
+                     amount_egp, amount_in, currency_code, contract_number, payment_method, user_email)
         return {
             'success': True,
             'transaction_id': result.get('transaction_id'),
-            'new_balance': new_balance,
+            'new_balance': _round2(ar_balance),
             'client_name': client_name,
+            'amount_egp': amount_egp,
         }
     except Exception as e:
         logger.exception("record_customer_collection error")
@@ -3623,6 +3653,74 @@ def get_treasury_summary(token_or_email=None):
         }
     except Exception as e:
         logger.exception("get_treasury_summary error")
+        return {'success': False, 'message': str(e)}
+
+
+CASH_BANK_ACCOUNTS = ('1000', '1010', '1011', '1012', '1013')
+
+
+@anvil.server.callable
+def get_cash_bank_statement(account_code=None, date_from=None, date_to=None, token_or_email=None):
+    """
+    كشف حساب النقدية والبنك — كل الحركات (مدين/دائن) لحساب نقدية أو بنك ضمن الفترة.
+    account_code: اختياري — إن ترك فاضياً يعيد حركات كل الحسابات (1000, 1010, 1011, 1012, 1013).
+    يُرجع قائمة حركات مع الرصيد الجاري (running balance) واسم الحساب.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        if account_code and _safe_str(account_code).strip():
+            codes = [_safe_str(account_code).strip()]
+        else:
+            codes = list(CASH_BANK_ACCOUNTS)
+        d_from = _safe_date(date_from)
+        d_to = _safe_date(date_to)
+
+        account_names = {}
+        for acct in app_tables.chart_of_accounts.search():
+            c = acct.get('code', '')
+            if c in codes or not account_code:
+                account_names[c] = acct.get('name_en', '') or acct.get('name_ar', '') or c
+
+        rows = []
+        for r in app_tables.ledger.search():
+            c = r.get('account_code', '')
+            if c not in codes:
+                continue
+            row_date = r.get('date')
+            if isinstance(row_date, datetime):
+                row_date = row_date.date()
+            if d_from and row_date and row_date < d_from:
+                continue
+            if d_to and row_date and row_date > d_to:
+                continue
+            debit = _round2(r.get('debit', 0) or 0)
+            credit = _round2(r.get('credit', 0) or 0)
+            rows.append({
+                'date': row_date.isoformat() if hasattr(row_date, 'isoformat') else str(row_date),
+                'account_code': c,
+                'account_name': account_names.get(c, c),
+                'description': r.get('description', ''),
+                'debit': debit,
+                'credit': credit,
+                'reference_type': r.get('reference_type', ''),
+                'reference_id': r.get('reference_id', ''),
+                'created_at': r.get('created_at').isoformat() if r.get('created_at') else '',
+            })
+        rows.sort(key=lambda x: (x.get('date', ''), x.get('created_at', '')))
+
+        # رصيد جاري (running balance) — للنقدية والبنك: مدين - دائن
+        running = {}
+        for r in rows:
+            c = r['account_code']
+            bal = running.get(c, 0) + _round2(r['debit'] - r['credit'])
+            running[c] = bal
+            r['balance'] = _round2(bal)
+
+        return {'success': True, 'data': rows, 'count': len(rows)}
+    except Exception as e:
+        logger.exception("get_cash_bank_statement error")
         return {'success': False, 'message': str(e)}
 
 

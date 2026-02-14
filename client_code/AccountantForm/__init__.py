@@ -100,6 +100,7 @@ class AccountantForm(AccountantFormTemplate):
         anvil.js.window.pyGetTreasurySummary = self.get_treasury_summary
         anvil.js.window.pyGetOpeningBalances = self.get_opening_balances
         anvil.js.window.pySetOpeningBalance = self.set_opening_balance
+        anvil.js.window.pyGetCashBankStatement = self.get_cash_bank_statement
 
         register_notif_bridges()
         self.add_event_handler('show', self._on_show)
@@ -221,6 +222,12 @@ class AccountantForm(AccountantFormTemplate):
 
     def set_opening_balance(self, name, entity_type, amount):
         return anvil.server.call('set_opening_balance', name, entity_type, amount, self._auth())
+
+    def get_cash_bank_statement(self, account_code=None, date_from=None, date_to=None):
+        """كشف حساب النقدية والبنك — كل الحركات بالمبالغ والتواريخ."""
+        return anvil.server.call(
+            'get_cash_bank_statement', account_code, date_from, date_to, self._auth()
+        )
 
     # --- Navigation ---
     def open_suppliers(self):

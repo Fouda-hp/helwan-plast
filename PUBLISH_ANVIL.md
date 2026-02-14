@@ -1,9 +1,13 @@
 # رفع التطبيق على Anvil (نشر / Publish)
 
+يمكنك استخدام **Git for Windows** (أو أي عميل Git) لدفع التعديلات إلى GitHub؛ ثم في Anvil تسحب التحديثات (Pull) وتنشر (Publish). لا يوجد رفع مباشر إلى Anvil — المسار دائماً: جهازك → GitHub → Anvil (Pull ثم Publish).
+
+---
+
 ## الطريقة 1: المشروع مربوط بـ Git (GitHub)
 
 1. **دفع التعديلات من جهازك إلى GitHub**
-   - في Cursor أو Terminal من مجلد المشروع:
+   - من مجلد المشروع استخدم **Git for Windows** (Git Bash أو CMD) أو Terminal في Cursor:
    ```bash
    git add .
    git commit -m "Fix: pass auth in Calculator + debug instrumentation"
@@ -54,7 +58,7 @@
 
 | الخطوة | أين |
 |--------|-----|
-| دفع الكود | Cursor / Terminal: `git push` |
+| دفع الكود | Git for Windows (Git Bash) أو Cursor/Terminal: `git push origin master` |
 | سحب التعديلات في Anvil | Anvil Editor → Version Control → Pull |
 | تشغيل للتجربة | Anvil Editor → **Run** |
 | نشر على الإنترنت | Anvil Editor → **Publish** |

@@ -1,0 +1,39 @@
+---
+description: Fix loading indicator position — عرض اللودينج في منتصف الصفحة
+globs: "**/LoginForm/**"
+alwaysApply: false
+---
+
+# Fix Loading — توحيد موضع علامة التحميل
+
+عند تعديل أو إضافة أي **full-page loading overlay** (لودينج يغطي الصفحة)، اجعل المحتوى يظهر **في منتصف الصفحة** وليس في الشمال أو الأعلى.
+
+## القواعد
+
+1. **الـ overlay نفسه:** يغطي كامل الشاشة:
+   - `position: fixed; top: 0; left: 0; right: 0; bottom: 0;`
+   - اختياري: `width: 100vw; height: 100vh;` لضمان التغطية.
+
+2. **محتوى اللودر (النص + الأنيميشن):** داخل غلاف داخلي واحد ومركزه في المنتصف:
+   - غلاف داخلي (مثلاً `login-loading-overlay-inner` أو `loading-overlay-inner`):
+     - `position: absolute;`
+     - `top: 50%; left: 50%;`
+     - `transform: translate(-50%, -50%);`
+     - `display: flex; flex-direction: column; align-items: center; gap: 18px;`
+
+3. **الـ HTML:** ضع الـ loader والنص داخل هذا الغلاف الداخلي:
+   ```html
+   <div class="login-loading-overlay" id="pageLoadingOverlay">
+     <div class="login-loading-overlay-inner">
+       <div class="hp-code-loader">...</div>
+       <div class="loading-text" id="loadingText">Loading...</div>
+     </div>
+   </div>
+   ```
+
+4. **لا تعتمد على flex فقط على الـ overlay:** استخدام `transform: translate(-50%, -50%)` على الغلاف الداخلي يضمن توسيطًا ثابتًا حتى داخل iframes أو حاويات لها `transform`.
+
+## الملفات المعنية
+
+- `client_code/LoginForm/form_template.yaml`: الـ overlay والـ CSS للودينج (تسجيل الدخول و OTP).
+- أي نموذج آخر يضيف full-page loading: طبّق نفس النمط (overlay + inner wrapper متمركز).

@@ -680,7 +680,11 @@ container:
                 });
                 tbody.innerHTML = html;
               } else {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+                var msg = (res && res.message) ? res.message : 'Error';
+                if (msg === 'Authentication required' || msg.indexOf('Authentication') !== -1) {
+                  msg = t('Session expired or not logged in. Please go Back and sign in again.', 'انتهت الجلسة أو لم يتم تسجيل الدخول. من فضلك ارجع وسجّل الدخول مرة أخرى.');
+                }
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + msg + '</td></tr>';
               }
             } catch (err) {
               tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + err + '</td></tr>';

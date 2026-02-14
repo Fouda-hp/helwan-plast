@@ -33,7 +33,7 @@ class AccountantForm(AccountantFormTemplate):
     def __init__(self, **properties):
         self.init_components(**properties)
 
-        # Auth
+        # Auth — نقرأ التوكن عند كل استدعاء (_auth) لتفادي انتهاء الجلسة أو فتح النموذج قبل حفظ التوكن
         self._token = get_auth_token()
 
         # JS Bridges - Reports
@@ -76,7 +76,8 @@ class AccountantForm(AccountantFormTemplate):
         register_notif_bridges()
 
     def _auth(self):
-        return self._token or get_auth_token()
+        """استخدم التوكن الحالي من التخزين أولاً حتى لو فتحت النموذج قبل تسجيل الدخول."""
+        return get_auth_token() or self._token
 
     # --- Financial Reports ---
     def get_trial_balance(self, date_from='', date_to=''):

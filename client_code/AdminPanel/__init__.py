@@ -2457,9 +2457,14 @@ class AdminPanel(AdminPanelTemplate):
                 pass
 
     def open_accountant(self):
-        """فتح لوحة المحاسب — نمرّر التوكن صراحةً حتى تعمل الاستدعاءات من لوحة المحاسب."""
+        """فتح لوحة المحاسب — نمرّر التوكن صراحةً ونضعه في نافذة JS لقراءته من لوحة المحاسب."""
         try:
             token = self.get_auth()
+            if token:
+                try:
+                    anvil.js.window.__hpAccountantAuthToken = token
+                except Exception:
+                    pass
             open_form("AccountantForm", auth_token=token)
         except Exception as e:
             try:

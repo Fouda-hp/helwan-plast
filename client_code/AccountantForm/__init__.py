@@ -29,12 +29,39 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _get_token_from_window():
+    """اقرأ التوكن من نافذة JS إن وضعه الأدمن قبل فتح لوحة المحاسب."""
+    try:
+        return getattr(anvil.js.window, '__hpAccountantAuthToken', None) or None
+    except Exception:
+        return None
+
+
+def _sync_token_to_storage(token):
+    """اكتب التوكن في sessionStorage حتى تجده get_auth_token()."""
+    try:
+        if token:
+            anvil.js.window.sessionStorage.setItem('auth_token', token)
+            try:
+                anvil.js.window.localStorage.setItem('auth_token', token)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
 class AccountantForm(AccountantFormTemplate):
     def __init__(self, **properties):
         self.init_components(**properties)
 
-        # Auth — إن فُتحت من الأدمن نستقبل التوكن؛ وإلا من التخزين
-        self._token = properties.get('auth_token') or get_auth_token()
+        # Auth — من المعامل، أو من نافذة JS (لوحة الأدمن)، أو من التخزين
+        self._token = (
+            properties.get('auth_token')
+            or _get_token_from_window()
+            or get_auth_token()
+        )
+        if self._token:
+            _sync_token_to_storage(self._token)
 
         # JS Bridges - Reports
         anvil.js.window.pyGetTrialBalance = self.get_trial_balance
@@ -76,8 +103,11 @@ class AccountantForm(AccountantFormTemplate):
         register_notif_bridges()
 
     def _auth(self):
-        """استخدم التوكن الحالي من التخزين أولاً حتى لو فتحت النموذج قبل تسجيل الدخول."""
-        return get_auth_token() or self._token
+        """استخدم التوكن من التخزين أو المخزّن في النموذج أو من نافذة الأدمن."""
+        token = get_auth_token() or self._token or _get_token_from_window()
+        if token and not get_auth_token():
+            _sync_token_to_storage(token)
+        return token
 
     # --- Financial Reports ---
     def get_trial_balance(self, date_from='', date_to=''):

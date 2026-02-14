@@ -40,6 +40,8 @@ container:
         .date-filter input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; }
         .date-filter input:focus { outline: none; border-color: #667eea; }
         .date-filter button { padding: 8px 16px; background: #667eea; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .cashbank-date-filter { margin-left: 24px; }
+        .cashbank-date-filter select { min-width: 180px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; }
 
         /* Tables */
         .report-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 20px; }
@@ -311,13 +313,13 @@ container:
 
       <!-- Cash/Bank Statement (كشف النقدية والبنك) -->
       <div class="tab-panel" id="panel-cashbank">
-        <div class="date-filter">
-          <label>Account</label>
+        <div class="date-filter cashbank-date-filter">
+          <label id="lblCashbankAccount">Account</label>
           <select id="cashbankAccount">
-            <option value="">All (النقدية والبنوك)</option>
+            <option value="" id="optCashbankAll">All (Cash &amp; Banks)</option>
           </select>
           <label>From</label>
-          <input type="date" id="cashbankFrom">
+          <input type="date" id="cashbankFrom" value="2026-01-01">
           <label>To</label>
           <input type="date" id="cashbankTo">
           <button onclick="loadCashBankStatement()" id="btnLoadCashBank">Load</button>
@@ -405,6 +407,8 @@ container:
             el = document.getElementById('treasuryTitle'); if (el) el.textContent = t('Treasury - Bank & Cash Balances', 'الخزينة - ارصدة البنوك والنقدية');
             el = document.getElementById('cashbankTitle'); if (el) el.textContent = t('Cash & Bank Statement', 'كشف حساب النقدية والبنك');
             el = document.getElementById('btnLoadCashBank'); if (el) el.textContent = t('Load', 'تحميل');
+            el = document.getElementById('lblCashbankAccount'); if (el) el.textContent = t('Account', 'الحساب');
+            el = document.getElementById('optCashbankAll'); if (el) el.textContent = t('All (Cash & Banks)', 'الكل (النقدية والبنوك)');
             el = document.getElementById('trAcctName'); if (el) el.textContent = t('Account', 'الحساب');
             el = document.getElementById('trOpenBal'); if (el) el.textContent = t('Opening Balance', 'الرصيد الافتتاحي');
             el = document.getElementById('trLedgerBal'); if (el) el.textContent = t('Ledger Balance', 'رصيد الدفتر');
@@ -428,9 +432,13 @@ container:
             el.classList.add('active');
             var tab = el.getAttribute('data-tab');
             document.getElementById('panel-' + tab).classList.add('active');
-            if (tab === 'cashbank' && !cashbankAccountsPopulated && window.populateCashBankAccounts) {
-              populateCashBankAccounts();
-              cashbankAccountsPopulated = true;
+            if (tab === 'cashbank') {
+              if (!cashbankAccountsPopulated && window.populateCashBankAccounts) {
+                populateCashBankAccounts();
+                cashbankAccountsPopulated = true;
+              }
+              var toEl = document.getElementById('cashbankTo');
+              if (toEl && !toEl.value) toEl.value = new Date().toISOString().slice(0, 10);
             }
           };
 

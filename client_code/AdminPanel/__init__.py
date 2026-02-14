@@ -188,6 +188,19 @@ class AdminPanel(AdminPanelTemplate):
         """حقن تحسينات واجهة الأدمن بدون تعديل القالب"""
         js_code = """
         (function() {
+          if (!window.withButtonLock) {
+            window.withButtonLock = function(btn, fn) {
+              if (!btn || (btn.tagName && btn.tagName.toLowerCase() !== 'button' && btn.tagName.toLowerCase() !== 'input')) return Promise.resolve();
+              if (btn.disabled) return Promise.resolve();
+              var originalText = btn.textContent || btn.value || '';
+              var loadingText = (btn.getAttribute && btn.getAttribute('data-loading-text')) || '...';
+              btn.disabled = true;
+              if (btn.textContent !== undefined) btn.textContent = loadingText;
+              else if (btn.value !== undefined) btn.value = loadingText;
+              var p = Promise.resolve(typeof fn === 'function' ? fn() : fn);
+              return p.finally(function() { btn.disabled = false; if (btn.textContent !== undefined) btn.textContent = originalText; else if (btn.value !== undefined) btn.value = originalText; });
+            };
+          }
           function buildNavItem(id) {
             var item = document.createElement('a');
             item.className = 'nav-item';
@@ -682,8 +695,8 @@ class AdminPanel(AdminPanelTemplate):
               '<td style=\"padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;min-width:40px;\" class=\"spec-row-num\">' + (index + 1) + '</td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;text-align:center;min-width:80px;\">' +
                 '<div style=\"display:flex;flex-direction:column;gap:4px;align-items:center;\">' +
-                  '<button class=\"move-btn\" onclick=\"moveSpecRow(\\'' + spec.id + '\\', -1)\" title=\"Move Up\" style=\"padding:4px 8px;font-size:12px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fff;\">⬆️</button>' +
-                  '<button class=\"move-btn\" onclick=\"moveSpecRow(\\'' + spec.id + '\\', 1)\" title=\"Move Down\" style=\"padding:4px 8px;font-size:12px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fff;\">⬇️</button>' +
+                  '<button class=\"move-btn\" onclick=\"withButtonLock(this, function(){ return moveSpecRow(\\'' + spec.id + '\\', -1); })\" title=\"Move Up\" style=\"padding:4px 8px;font-size:12px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fff;\">⬆️</button>' +
+                  '<button class=\"move-btn\" onclick=\"withButtonLock(this, function(){ return moveSpecRow(\\'' + spec.id + '\\', 1); })\" title=\"Move Down\" style=\"padding:4px 8px;font-size:12px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fff;\">⬇️</button>' +
                 '</div>' +
               '</td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;\"><input type=\"text\" class=\"tech-label-ar\" value=\"' + (spec.label_ar || '') + '\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;\" dir=\"rtl\"></td>' +
@@ -730,7 +743,7 @@ class AdminPanel(AdminPanelTemplate):
                 '<input type=\"checkbox\" class=\"tech-active\"' + (spec.active ? ' checked' : '') + ' style=\"width:20px;height:20px;\">' +
               '</td>' +
               '<td style=\"padding:8px;border:1px solid #ddd;text-align:center;\">' +
-                '<button class=\"btn-sm delete\" onclick=\"removeTechSpecRow(\\'' + spec.id + '\\')\" style=\"padding:6px 12px;background:#f44336;color:#fff;border:none;border-radius:4px;cursor:pointer;\">🗑️</button>' +
+                '<button class=\"btn-sm delete\" onclick=\"withButtonLock(this, function(){ return removeTechSpecRow(\\'' + spec.id + '\\'); })\" style=\"padding:6px 12px;background:#f44336;color:#fff;border:none;border-radius:4px;cursor:pointer;\">🗑️</button>' +
               '</td>' +
               '</tr>';
           }
@@ -788,9 +801,9 @@ class AdminPanel(AdminPanelTemplate):
                 '</table>' +
               '</div>' +
               '<div style=\"margin-top:15px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;\">' +
-                '<button class=\"action-btn\" onclick=\"addTechSpecRow()\" style=\"padding:10px 20px;background:#2196f3;color:#fff;border:none;border-radius:6px;cursor:pointer;\">➕ Add New Row</button>' +
-                '<button class=\"action-btn\" onclick=\"resetTechSpecs()\" style=\"padding:10px 20px;background:#ff9800;color:#fff;border:none;border-radius:6px;cursor:pointer;\">🔄 Reset to Defaults</button>' +
-                '<button class=\"action-btn green\" onclick=\"saveTechSpecs()\" style=\"padding:12px 30px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;\">💾 Save All</button>' +
+                '<button class=\"action-btn\" onclick=\"withButtonLock(this, function(){ return addTechSpecRow(); })\" style=\"padding:10px 20px;background:#2196f3;color:#fff;border:none;border-radius:6px;cursor:pointer;\">➕ Add New Row</button>' +
+                '<button class=\"action-btn\" onclick=\"withButtonLock(this, function(){ return resetTechSpecs(); })\" style=\"padding:10px 20px;background:#ff9800;color:#fff;border:none;border-radius:6px;cursor:pointer;\">🔄 Reset to Defaults</button>' +
+                '<button class=\"action-btn green\" onclick=\"withButtonLock(this, function(){ return saveTechSpecs(); })\" style=\"padding:12px 30px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;\">💾 Save All</button>' +
               '</div>';
 
             section.innerHTML = tableHtml;
@@ -1022,7 +1035,7 @@ class AdminPanel(AdminPanelTemplate):
               html += '</div>';
             });
             html += '<div style="margin-top:15px;text-align:center;">';
-            html += '<button class="action-btn" onclick="saveMachinePricesAll()" style="padding:12px 30px;background:#ff9800;border:none;color:#fff;font-weight:bold;border-radius:8px;cursor:pointer;">💾 Save All Machine Prices</button>';
+            html += '<button class="action-btn" onclick="withButtonLock(this, function(){ return saveMachinePricesAll(); })" style="padding:12px 30px;background:#ff9800;border:none;color:#fff;font-weight:bold;border-radius:8px;cursor:pointer;" data-loading-text="...">💾 Save All Machine Prices</button>';
             html += '</div></div>';
             leftCol.insertAdjacentHTML('afterend', html);
             var mpSection = document.getElementById('machinePricesSection');
@@ -1297,8 +1310,8 @@ class AdminPanel(AdminPanelTemplate):
             
             // Filter buttons
             filtersHtml += '<div style="margin-top:12px;display:flex;gap:10px;">';
-            filtersHtml += '<button class="action-btn" onclick="applyAuditFilters()" style="padding:8px 20px;">🔍 Apply Filters</button>';
-            filtersHtml += '<button class="filter-btn" onclick="clearAuditFilters()" style="padding:8px 20px;">Clear</button>';
+            filtersHtml += '<button class="action-btn" onclick="withButtonLock(this, function(){ return applyAuditFilters(); })" style="padding:8px 20px;" data-loading-text="...">🔍 Apply Filters</button>';
+            filtersHtml += '<button class="filter-btn" onclick="withButtonLock(this, function(){ clearAuditFilters(); })" style="padding:8px 20px;">Clear</button>';
             filtersHtml += '</div>';
             
             filtersHtml += '</div>'; // End filters container
@@ -1414,7 +1427,7 @@ class AdminPanel(AdminPanelTemplate):
             html += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Machine Type Name</label>';
             html += '<input type="text" id="newMachineTypeName" placeholder="e.g. Ceramic anilox Double Doctor Blade" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
             html += '</div>';
-            html += '<button class="action-btn" onclick="addNewMachineType()" style="padding:8px 16px;white-space:nowrap;">➕ Add Type</button>';
+            html += '<button class="action-btn" onclick="withButtonLock(this, function(){ return addNewMachineType(); })" style="padding:8px 16px;white-space:nowrap;" data-loading-text="...">➕ Add Type</button>';
             html += '</div>';
             html += '</div>';
             
@@ -1426,7 +1439,7 @@ class AdminPanel(AdminPanelTemplate):
             html += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Color Count</label>';
             html += '<input type="number" id="newColorCount" placeholder="e.g. 10" min="1" max="20" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
             html += '</div>';
-            html += '<button class="action-btn" onclick="addNewColorCount()" style="padding:8px 16px;white-space:nowrap;">➕ Add Color</button>';
+            html += '<button class="action-btn" onclick="withButtonLock(this, function(){ return addNewColorCount(); })" style="padding:8px 16px;white-space:nowrap;" data-loading-text="...">➕ Add Color</button>';
             html += '</div>';
             html += '</div>';
             
@@ -1438,7 +1451,7 @@ class AdminPanel(AdminPanelTemplate):
             html += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Width (cm)</label>';
             html += '<input type="number" id="newMachineWidth" placeholder="e.g. 140" min="50" max="300" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
             html += '</div>';
-            html += '<button class="action-btn" onclick="addNewMachineWidth()" style="padding:8px 16px;white-space:nowrap;">➕ Add Width</button>';
+            html += '<button class="action-btn" onclick="withButtonLock(this, function(){ return addNewMachineWidth(); })" style="padding:8px 16px;white-space:nowrap;" data-loading-text="...">➕ Add Width</button>';
             html += '</div>';
             html += '</div>';
             
@@ -1631,9 +1644,9 @@ class AdminPanel(AdminPanelTemplate):
             html += '<div style="margin-top:10px;display:flex;gap:8px;align-items:end;">';
             html += '<input type="text" id="newMatName" placeholder="New Material Name" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:4px;">';
             html += '<input type="number" id="newMatValue" placeholder="USD" value="0" style="width:100px;padding:6px;border:1px solid #ddd;border-radius:4px;">';
-            html += '<button onclick="addNewMaterialAdj()" style="padding:6px 12px;background:#e91e63;color:#fff;border:none;border-radius:4px;cursor:pointer;">➕</button>';
+            html += '<button onclick="withButtonLock(this, function(){ return addNewMaterialAdj(); })" style="padding:6px 12px;background:#e91e63;color:#fff;border:none;border-radius:4px;cursor:pointer;" data-loading-text="...">➕</button>';
             html += '</div>';
-            html += '<div style="margin-top:10px;text-align:center;"><button onclick="saveMaterialAdjustments()" style="padding:8px 24px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;">💾 Save Material Adjustments</button></div>';
+            html += '<div style="margin-top:10px;text-align:center;"><button onclick="withButtonLock(this, function(){ return saveMaterialAdjustments(); })" style="padding:8px 24px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;" data-loading-text="...">💾 Save Material Adjustments</button></div>';
             html += '</div>';
 
             // === Section 2: Winder Adjustment ===
@@ -1645,7 +1658,7 @@ class AdminPanel(AdminPanelTemplate):
               html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;"><input type="number" class="win-adj-input" data-win="' + w + '" value="' + (winAdj[w] || 0) + '" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:4px;text-align:center;"></td></tr>';
             });
             html += '</tbody></table>';
-            html += '<div style="margin-top:10px;text-align:center;"><button onclick="saveWinderAdjustment()" style="padding:8px 24px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;">💾 Save Winder Adjustment</button></div>';
+            html += '<div style="margin-top:10px;text-align:center;"><button onclick="withButtonLock(this, function(){ return saveWinderAdjustment(); })" style="padding:8px 24px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;" data-loading-text="...">💾 Save Winder Adjustment</button></div>';
             html += '</div>';
 
             // === Section 3: Optional Equipment Adjustments ===
@@ -1658,7 +1671,7 @@ class AdminPanel(AdminPanelTemplate):
               html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;"><input type="number" class="opt-adj-input" data-eq="' + eq + '" value="' + (optAdj[eq] || 0) + '" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:4px;text-align:center;"></td></tr>';
             });
             html += '</tbody></table>';
-            html += '<div style="margin-top:10px;text-align:center;"><button onclick="saveOptionalAdjustments()" style="padding:8px 24px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;">💾 Save Equipment Adjustments</button></div>';
+            html += '<div style="margin-top:10px;text-align:center;"><button onclick="withButtonLock(this, function(){ return saveOptionalAdjustments(); })" style="padding:8px 24px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;" data-loading-text="...">💾 Save Equipment Adjustments</button></div>';
             html += '</div>';
 
             // === Section 4: Profit Markup Percentages ===
@@ -1687,7 +1700,7 @@ class AdminPanel(AdminPanelTemplate):
             });
 
             html += '</div>';
-            html += '<div style="margin-top:15px;text-align:center;"><button onclick="saveMarkupPercentages()" style="padding:10px 30px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">💾 Save All Markup Percentages</button></div>';
+            html += '<div style="margin-top:15px;text-align:center;"><button onclick="withButtonLock(this, function(){ return saveMarkupPercentages(); })" style="padding:10px 30px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;" data-loading-text="...">💾 Save All Markup Percentages</button></div>';
             html += '</div>';
 
             html += '</div>';  // Close pricingAdjustmentsSection

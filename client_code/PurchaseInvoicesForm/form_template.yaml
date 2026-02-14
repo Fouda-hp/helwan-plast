@@ -308,7 +308,7 @@ container:
           </div>
           <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closeInvoiceModal()">Cancel</button>
-            <button class="btn btn-save" onclick="saveInvoice()">Save</button>
+            <button class="btn btn-save" onclick="withButtonLock(this, function(){ return saveInvoice(); })" data-loading-text="...">Save</button>
           </div>
         </div>
       </div>
@@ -348,7 +348,7 @@ container:
           </div>
           <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closePaymentModal()">Cancel</button>
-            <button class="btn btn-save" onclick="submitPayment()">Pay</button>
+            <button class="btn btn-save" onclick="withButtonLock(this, function(){ return submitPayment(); })" data-loading-text="...">Pay</button>
           </div>
         </div>
       </div>
@@ -367,6 +367,14 @@ container:
       <script src="_/theme/i18n.js"></script>
       <script>
         (function() {
+          if (!window.withButtonLock) {
+            window.withButtonLock = function(btn, fn) {
+              if (!btn || btn.disabled) return Promise.resolve();
+              var orig = btn.textContent || btn.value || ''; var loading = btn.getAttribute('data-loading-text') || '...';
+              btn.disabled = true; if (btn.textContent !== undefined) btn.textContent = loading; else if (btn.value !== undefined) btn.value = loading;
+              return Promise.resolve(typeof fn === 'function' ? fn() : fn).finally(function() { btn.disabled = false; if (btn.textContent !== undefined) btn.textContent = orig; else if (btn.value !== undefined) btn.value = orig; });
+            };
+          }
           var lang = localStorage.getItem('hp_language') || 'en';
           var isAr = lang === 'ar';
           var currentFilter = '';
@@ -503,16 +511,16 @@ container:
               html += '<td style="font-weight:600;color:' + (balance > 0 ? '#c62828' : '#2e7d32') + ';">' + fmt(balance) + '</td>';
               html += '<td><span class="status-badge status-' + statusKey + '">' + (statusLabels[statusKey] || statusKey) + '</span></td>';
               html += '<td style="white-space:nowrap;">';
-              html += '<button class="btn-sm btn-view" onclick="viewInvoice(\'' + inv.id + '\')">' + t('View', 'عرض') + '</button> ';
+              html += '<button class="btn-sm btn-view" onclick="withButtonLock(this, function(){ return viewInvoice(\'' + inv.id + '\'); })" data-loading-text="...">' + t('View', 'عرض') + '</button> ';
               if (statusKey === 'draft' && userPerms.can_edit) {
-                html += '<button class="btn-sm" style="background:#ff9800;color:#fff;" onclick="editInvoice(\'' + inv.id + '\')">' + t('Edit', 'تعديل') + '</button> ';
+                html += '<button class="btn-sm" style="background:#ff9800;color:#fff;" onclick="withButtonLock(this, function(){ return editInvoice(\'' + inv.id + '\'); })" data-loading-text="...">' + t('Edit', 'تعديل') + '</button> ';
               }
               if (statusKey !== 'paid' && userPerms.can_edit) {
-                html += '<button class="btn-sm btn-pay" onclick="openPaymentModal(\'' + inv.id + '\', ' + balance + ')">' + t('Pay', 'دفع') + '</button> ';
+                html += '<button class="btn-sm btn-pay" onclick="withButtonLock(this, function(){ openPaymentModal(\'' + inv.id + '\', ' + balance + '); })">' + t('Pay', 'دفع') + '</button> ';
               }
-              html += '<button class="btn-sm" style="background:#9c27b0;color:#fff;" onclick="printInvoicePDF(\'' + inv.id + '\')">' + t('PDF', 'PDF') + '</button> ';
+              html += '<button class="btn-sm" style="background:#9c27b0;color:#fff;" onclick="withButtonLock(this, function(){ return printInvoicePDF(\'' + inv.id + '\'); })" data-loading-text="...">' + t('PDF', 'PDF') + '</button> ';
               if (userPerms.can_delete) {
-                html += '<button class="btn-sm btn-delete" onclick="deleteInvoice(\'' + inv.id + '\')">' + t('Del', 'حذف') + '</button>';
+                html += '<button class="btn-sm btn-delete" onclick="withButtonLock(this, function(){ return deleteInvoice(\'' + inv.id + '\'); })" data-loading-text="...">' + t('Del', 'حذف') + '</button>';
               }
               html += '</td></tr>';
             });

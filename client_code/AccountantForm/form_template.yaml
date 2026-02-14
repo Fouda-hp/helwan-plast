@@ -84,7 +84,7 @@ container:
         <div class="acc-header">
           <h1 id="pageTitle">Accountant</h1>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn btn-seed" onclick="seedAccounts()" id="btnSeed" title="Initialize chart of accounts">Setup Accounts</button>
+            <button class="btn btn-seed" onclick="withButtonLock(this, function(){ return seedAccounts(); })" id="btnSeed" title="Initialize chart of accounts" data-loading-text="...">Setup Accounts</button>
             <button class="btn btn-back" onclick="goBack()" id="btnBack">Back</button>
           </div>
         </div>
@@ -132,7 +132,7 @@ container:
           <div class="date-filter">
             <label>From:</label><input type="date" id="trialFrom">
             <label>To:</label><input type="date" id="trialTo">
-            <button onclick="loadTrialBalance()">Load</button>
+            <button onclick="withButtonLock(this, function(){ return loadTrialBalance(); })" data-loading-text="...">Load</button>
           </div>
           <div class="report-card">
             <h3 id="trialTitle">Trial Balance</h3>
@@ -147,7 +147,7 @@ container:
           <div class="date-filter">
             <label>From:</label><input type="date" id="incomeFrom">
             <label>To:</label><input type="date" id="incomeTo">
-            <button onclick="loadIncomeStatement()">Load</button>
+            <button onclick="withButtonLock(this, function(){ return loadIncomeStatement(); })" data-loading-text="...">Load</button>
           </div>
           <div class="summary-row" id="incomeSummary"></div>
           <div class="report-card">
@@ -162,7 +162,7 @@ container:
         <div class="tab-panel" id="panel-balance">
           <div class="date-filter">
             <label>As of:</label><input type="date" id="balanceDate">
-            <button onclick="loadBalanceSheet()">Load</button>
+            <button onclick="withButtonLock(this, function(){ return loadBalanceSheet(); })" data-loading-text="...">Load</button>
           </div>
           <div class="report-card">
             <h3 id="balanceTitle">Balance Sheet</h3>
@@ -175,7 +175,7 @@ container:
         <!-- Contract Profitability Panel -->
         <div class="tab-panel" id="panel-profitability">
           <div class="date-filter">
-            <button onclick="loadProfitability()">Load</button>
+            <button onclick="withButtonLock(this, function(){ return loadProfitability(); })" data-loading-text="...">Load</button>
           </div>
           <div class="summary-row" id="profitSummary"></div>
           <div class="report-card">
@@ -217,7 +217,7 @@ container:
                 <input type="text" id="expDesc">
               </div>
             </div>
-            <button class="btn btn-save" onclick="addExpense()" style="margin-top:10px;">Add Expense</button>
+            <button class="btn btn-save" onclick="withButtonLock(this, function(){ return addExpense(); })" style="margin-top:10px;" data-loading-text="...">Add Expense</button>
           </div>
           <div class="date-filter">
             <label>From:</label><input type="date" id="expFrom">
@@ -234,7 +234,7 @@ container:
               <option value="maintenance">Maintenance</option>
               <option value="other">Other</option>
             </select>
-            <button onclick="loadExpenses()">Load</button>
+            <button onclick="withButtonLock(this, function(){ return loadExpenses(); })" data-loading-text="...">Load</button>
           </div>
           <div class="summary-row" id="expSummary"></div>
           <div class="report-card">
@@ -267,7 +267,7 @@ container:
                 <input type="number" id="currRate" step="0.01" value="0" placeholder="e.g. 50.25">
               </div>
             </div>
-            <button class="btn btn-save" onclick="saveCurrRate()" style="margin-top:10px;">Save Rate</button>
+            <button class="btn btn-save" onclick="withButtonLock(this, function(){ return saveCurrRate(); })" style="margin-top:10px;" data-loading-text="...">Save Rate</button>
           </div>
           <div class="report-card">
             <h3>Exchange Rates</h3>
@@ -286,7 +286,7 @@ container:
             </select>
             <label>From:</label><input type="date" id="ledgerFrom">
             <label>To:</label><input type="date" id="ledgerTo">
-            <button onclick="loadLedger()">Load</button>
+            <button onclick="withButtonLock(this, function(){ return loadLedger(); })" data-loading-text="...">Load</button>
           </div>
           <div class="report-card">
             <h3 id="ledgerTitle">General Ledger</h3>
@@ -300,7 +300,7 @@ container:
       <!-- Treasury Panel -->
       <div class="tab-panel" id="panel-treasury">
         <div class="date-filter">
-          <button onclick="loadTreasury()" id="btnLoadTreasury">Load Treasury</button>
+          <button onclick="withButtonLock(this, function(){ return loadTreasury(); })" id="btnLoadTreasury" data-loading-text="...">Load Treasury</button>
         </div>
         <div class="summary-row" id="treasurySummary"></div>
         <div class="report-card">
@@ -324,7 +324,7 @@ container:
           <input type="date" id="cashbankFrom" value="2026-01-01">
           <label>To</label>
           <input type="date" id="cashbankTo">
-          <button onclick="loadCashBankStatement()" id="btnLoadCashBank">Load</button>
+          <button onclick="withButtonLock(this, function(){ return loadCashBankStatement(); })" id="btnLoadCashBank" data-loading-text="...">Load</button>
         </div>
         <div class="report-card">
           <h3 id="cashbankTitle">Cash &amp; Bank Statement</h3>
@@ -359,10 +359,10 @@ container:
               <input type="number" id="obAmount" step="0.01" value="0">
             </div>
           </div>
-          <button class="btn btn-save" onclick="setOpeningBalance()" style="margin-top:10px;" id="btnSetOb">Set Balance</button>
+          <button class="btn btn-save" onclick="withButtonLock(this, function(){ return setOpeningBalance(); })" style="margin-top:10px;" id="btnSetOb" data-loading-text="...">Set Balance</button>
         </div>
         <div class="date-filter">
-          <button onclick="loadOpeningBalances()" id="btnLoadOb">Load Balances</button>
+          <button onclick="withButtonLock(this, function(){ return loadOpeningBalances(); })" id="btnLoadOb" data-loading-text="...">Load Balances</button>
         </div>
         <div class="report-card">
           <h3 id="openingTitle">Opening Balances</h3>
@@ -373,8 +373,17 @@ container:
       </div>
 
       <script src="_/theme/i18n.js"></script>
+      <script src="_/theme/button-lock.js"></script>
       <script>
         (function() {
+          if (!window.withButtonLock) {
+            window.withButtonLock = function(btn, fn) {
+              if (!btn || btn.disabled) return Promise.resolve();
+              var orig = btn.textContent || btn.value || ''; var loading = btn.getAttribute('data-loading-text') || '...';
+              btn.disabled = true; if (btn.textContent !== undefined) btn.textContent = loading; else if (btn.value !== undefined) btn.value = loading;
+              return Promise.resolve(typeof fn === 'function' ? fn() : fn).finally(function() { btn.disabled = false; if (btn.textContent !== undefined) btn.textContent = orig; else if (btn.value !== undefined) btn.value = orig; });
+            };
+          }
           var lang = localStorage.getItem('hp_language') || 'en';
           var isAr = lang === 'ar';
           function t(en, ar) { return isAr ? ar : en; }
@@ -667,7 +676,7 @@ container:
                 data.forEach(function(e) {
                   var amt = parseFloat(e.amount || 0);
                   total += amt;
-                  html += '<tr><td>' + (e.date || '').substring(0, 10) + '</td><td>' + (e.category || '') + '</td><td>' + (e.description || '') + '</td><td class="text-right">' + fmt(amt) + '</td><td><button class="btn-delete" onclick="delExpense(\'' + e.id + '\')">' + t('Del', 'حذف') + '</button></td></tr>';
+                  html += '<tr><td>' + (e.date || '').substring(0, 10) + '</td><td>' + (e.category || '') + '</td><td>' + (e.description || '') + '</td><td class="text-right">' + fmt(amt) + '</td><td><button class="btn-delete" onclick="withButtonLock(this, function(){ return delExpense(\'' + e.id + '\'); })" data-loading-text="...">' + t('Del', 'حذف') + '</button></td></tr>';
                 });
                 html += '<tr class="total-row"><td colspan="3"><strong>' + t('Total', 'الاجمالي') + '</strong></td><td class="text-right"><strong>' + fmt(total) + '</strong></td><td></td></tr>';
                 tbody.innerHTML = html;
@@ -800,7 +809,7 @@ container:
                   html += '<tr><td><strong>' + r.currency_code + '</strong></td>';
                   html += '<td class="text-right">' + fmt(r.rate_to_egp) + '</td>';
                   html += '<td>' + (r.updated_at || '').substring(0, 10) + '</td>';
-                  html += '<td><button class="btn-delete" onclick="delCurrRate(\'' + r.currency_code + '\')">' + t('Del', 'حذف') + '</button></td></tr>';
+                  html += '<td><button class="btn-delete" onclick="withButtonLock(this, function(){ return delCurrRate(\'' + r.currency_code + '\'); })" data-loading-text="...">' + t('Del', 'حذف') + '</button></td></tr>';
                 });
                 tbody.innerHTML = html;
               } else {
@@ -1007,7 +1016,7 @@ container:
                   html += '<tr><td>' + (row.name || '') + '</td>';
                   html += '<td>' + (row.type || '') + '</td>';
                   html += '<td class="text-right" style="font-weight:600;">' + fmt(amt) + '</td>';
-                  html += '<td><button class="btn-delete" data-n="' + (row.name || '') + '" data-t="' + (row.type || '') + '" onclick="delOpeningBalance(this.dataset.n, this.dataset.t)">' + t('Del', 'حذف') + '</button></td></tr>';
+                  html += '<td><button class="btn-delete" data-n="' + (row.name || '') + '" data-t="' + (row.type || '') + '" onclick="withButtonLock(this, function(){ return delOpeningBalance(this.dataset.n, this.dataset.t); })" data-loading-text="...">' + t('Del', 'حذف') + '</button></td></tr>';
                 });
                 tbody.innerHTML = html;
               } else {

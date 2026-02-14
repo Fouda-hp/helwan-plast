@@ -115,7 +115,7 @@ container:
           </div>
           <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closeModal()" id="btnCancel">Cancel</button>
-            <button class="btn btn-save" onclick="saveSupplier()" id="btnSave">Save</button>
+            <button class="btn btn-save" onclick="withButtonLock(this, function(){ return saveSupplier(); })" id="btnSave" data-loading-text="...">Save</button>
           </div>
         </div>
       </div>
@@ -123,6 +123,7 @@ container:
       <script src="_/theme/i18n.js"></script>
       <script>
         (function() {
+          if (!window.withButtonLock) { window.withButtonLock = function(btn, fn) { if (!btn || btn.disabled) return Promise.resolve(); var o = btn.textContent || btn.value || ''; var loading = (btn.getAttribute && btn.getAttribute('data-loading-text')) || '...'; btn.disabled = true; if (btn.textContent !== undefined) btn.textContent = loading; else if (btn.value !== undefined) btn.value = loading; var p = Promise.resolve(typeof fn === 'function' ? fn() : fn); return p.finally(function() { btn.disabled = false; if (btn.textContent !== undefined) btn.textContent = o; else if (btn.value !== undefined) btn.value = o; }); }; }
           var lang = localStorage.getItem('hp_language') || 'en';
           var isAr = lang === 'ar';
           var searchTimer = null;
@@ -193,8 +194,8 @@ container:
               html += '<td>' + (s.country || '') + '</td>';
               html += '<td>' + (s.tax_id || '') + '</td>';
               html += '<td style="white-space:nowrap;">';
-              html += '<button class="btn btn-edit" onclick="editSupplier(\'' + s.id + '\')">' + t('Edit', 'تعديل') + '</button> ';
-              html += '<button class="btn btn-delete" onclick="deleteSupplier(\'' + s.id + '\')">' + t('Delete', 'حذف') + '</button>';
+              html += '<button class="btn btn-edit" onclick="withButtonLock(this, function(){ return editSupplier(\'' + s.id + '\'); })" data-loading-text="...">' + t('Edit', 'تعديل') + '</button> ';
+              html += '<button class="btn btn-delete" onclick="withButtonLock(this, function(){ return deleteSupplier(\'' + s.id + '\'); })" data-loading-text="...">' + t('Delete', 'حذف') + '</button>';
               html += '</td></tr>';
             });
             tbody.innerHTML = html;

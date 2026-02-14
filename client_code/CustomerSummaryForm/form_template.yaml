@@ -142,7 +142,7 @@ container:
           </div>
           <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closeModal()" id="btnCancel">Cancel</button>
-            <button class="btn btn-save" onclick="saveCollection()" id="btnSave">Collect</button>
+            <button class="btn btn-save" onclick="withButtonLock(this, function(){ return saveCollection(); })" id="btnSave" data-loading-text="...">Collect</button>
           </div>
         </div>
       </div>
@@ -162,13 +162,21 @@ container:
           </div>
           <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closeOpenReceivableModal()">Cancel</button>
-            <button class="btn btn-save" onclick="saveOpenReceivable()">Post</button>
+            <button class="btn btn-save" onclick="withButtonLock(this, function(){ return saveOpenReceivable(); })" data-loading-text="...">Post</button>
           </div>
         </div>
       </div>
 
       <script>
         (function() {
+          if (!window.withButtonLock) {
+            window.withButtonLock = function(btn, fn) {
+              if (!btn || btn.disabled) return Promise.resolve();
+              var orig = btn.textContent || btn.value || ''; var loading = btn.getAttribute('data-loading-text') || '...';
+              btn.disabled = true; if (btn.textContent !== undefined) btn.textContent = loading; else if (btn.value !== undefined) btn.value = loading;
+              return Promise.resolve(typeof fn === 'function' ? fn() : fn).finally(function() { btn.disabled = false; if (btn.textContent !== undefined) btn.textContent = orig; else if (btn.value !== undefined) btn.value = orig; });
+            };
+          }
           var lang = localStorage.getItem('hp_language') || 'en';
           var isAr = lang === 'ar';
           var allData = [];
@@ -293,8 +301,8 @@ container:
               html += '<td class="num-cell ' + balClass + '">' + fmt(c.current_balance) + '</td>';
               html += '<td>';
               (c.contracts || []).forEach(function(cn) {
-                html += '<button class="btn btn-collect" onclick="openCollect(\'' + cn + '\', \'' + (c.client_name || '').replace(/'/g, "\\'") + '\', ' + c.current_balance + ')">' + t('Collect', '\u062a\u062d\u0635\u064a\u0644') + '</button> ';
-                html += '<button class="btn" style="background:#5c6bc0;color:#fff;padding:6px 10px;font-size:11px;border-radius:6px;margin-left:4px;" onclick="openOpenReceivableModal(\'' + cn + '\', \'' + (c.client_name || '').replace(/'/g, "\\'") + '\')">' + t('Open receivable', '\u0641\u062a\u062d \u0630\u0645\u0645') + '</button> ';
+                html += '<button class="btn btn-collect" onclick="withButtonLock(this, function(){ return openCollect(\'' + cn + '\', \'' + (c.client_name || '').replace(/'/g, "\\'") + '\', ' + c.current_balance + '); })" data-loading-text="...">' + t('Collect', '\u062a\u062d\u0635\u064a\u0644') + '</button> ';
+                html += '<button class="btn" style="background:#5c6bc0;color:#fff;padding:6px 10px;font-size:11px;border-radius:6px;margin-left:4px;" onclick="withButtonLock(this, function(){ return openOpenReceivableModal(\'' + cn + '\', \'' + (c.client_name || '').replace(/'/g, "\\'") + '\'); })" data-loading-text="...">' + t('Open receivable', '\u0641\u062a\u062d \u0630\u0645\u0645') + '</button> ';
               });
               if ((c.contracts || []).length === 0 || c.current_balance <= 0.005) {
                 html += '<span style="color:#4caf50;font-size:12px;">' + t('Paid', '\u0645\u062f\u0641\u0648\u0639') + '</span>';

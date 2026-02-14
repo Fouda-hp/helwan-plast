@@ -2457,9 +2457,10 @@ class AdminPanel(AdminPanelTemplate):
                 pass
 
     def open_accountant(self):
-        """فتح لوحة المحاسب"""
+        """فتح لوحة المحاسب — نمرّر التوكن صراحةً حتى تعمل الاستدعاءات من لوحة المحاسب."""
         try:
-            open_form("AccountantForm")
+            token = self.get_auth()
+            open_form("AccountantForm", auth_token=token)
         except Exception as e:
             try:
                 anvil.js.window.showNotification('error', 'خطأ', str(e))

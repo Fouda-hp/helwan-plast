@@ -33,8 +33,8 @@ class AccountantForm(AccountantFormTemplate):
     def __init__(self, **properties):
         self.init_components(**properties)
 
-        # Auth — نقرأ التوكن عند كل استدعاء (_auth) لتفادي انتهاء الجلسة أو فتح النموذج قبل حفظ التوكن
-        self._token = get_auth_token()
+        # Auth — إن فُتحت من الأدمن نستقبل التوكن؛ وإلا من التخزين
+        self._token = properties.get('auth_token') or get_auth_token()
 
         # JS Bridges - Reports
         anvil.js.window.pyGetTrialBalance = self.get_trial_balance

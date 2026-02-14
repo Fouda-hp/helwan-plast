@@ -338,16 +338,16 @@ container:
           <h3 id="openingFormTitle">Set Opening Balance</h3>
           <div class="expense-grid">
             <div class="form-group">
-              <label id="lblObName">Name</label>
-              <input type="text" id="obName" placeholder="Account name...">
+              <label id="lblObName">Account</label>
+              <select id="obName">
+                <option value="">Select account...</option>
+              </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" style="display:none;">
               <label id="lblObType">Type</label>
               <select id="obType">
-                <option value="customer">Customer</option>
-                <option value="supplier">Supplier</option>
-                <option value="bank">Bank</option>
                 <option value="cash">Cash</option>
+                <option value="bank">Bank</option>
               </select>
             </div>
             <div class="form-group">
@@ -414,7 +414,8 @@ container:
             el = document.getElementById('trLedgerBal'); if (el) el.textContent = t('Ledger Balance', 'رصيد الدفتر');
             el = document.getElementById('trCurrBal'); if (el) el.textContent = t('Current Balance', 'الرصيد الحالي');
             el = document.getElementById('openingFormTitle'); if (el) el.textContent = t('Set Opening Balance', 'تعيين الرصيد الافتتاحي');
-            el = document.getElementById('lblObName'); if (el) el.textContent = t('Name', 'الاسم');
+            el = document.getElementById('lblObName'); if (el) el.textContent = t('Account', 'الحساب');
+            var obSel = document.getElementById('obName'); if (obSel && obSel.options[0]) obSel.options[0].textContent = t('Select account...', 'اختر حساباً...');
             el = document.getElementById('lblObType'); if (el) el.textContent = t('Type', 'النوع');
             el = document.getElementById('lblObAmount'); if (el) el.textContent = t('Opening Balance', 'الرصيد الافتتاحي');
             el = document.getElementById('btnSetOb'); if (el) el.textContent = t('Set Balance', 'تعيين الرصيد');
@@ -439,6 +440,9 @@ container:
               }
               var toEl = document.getElementById('cashbankTo');
               if (toEl && !toEl.value) toEl.value = new Date().toISOString().slice(0, 10);
+            }
+            if (tab === 'opening' && window.populateOpeningBalanceAccounts) {
+              populateOpeningBalanceAccounts();
             }
           };
 
@@ -914,14 +918,32 @@ container:
           };
 
           /* === Opening Balances === */
+          var openingAccountsPopulated = false;
+          async function populateOpeningBalanceAccounts() {
+            if (openingAccountsPopulated) return;
+            var sel = document.getElementById('obName');
+            if (!sel || sel.options.length > 1) return;
+            try {
+              var res = await window.pyGetBankAccounts();
+              if (res && res.success && res.accounts) {
+                res.accounts.forEach(function(a) {
+                  var opt = document.createElement('option');
+                  opt.value = a.code;
+                  opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
+                  sel.appendChild(opt);
+                });
+                openingAccountsPopulated = true;
+              }
+            } catch (e) {}
+          }
           window.setOpeningBalance = async function() {
             var name = document.getElementById('obName').value.trim();
-            var type = document.getElementById('obType').value;
             var amount = parseFloat(document.getElementById('obAmount').value) || 0;
             if (!name) {
-              if (window.showNotification) window.showNotification('error', '', t('Name is required', 'الاسم مطلوب'));
+              if (window.showNotification) window.showNotification('error', '', t('Select an account', 'اختر حساباً'));
               return;
             }
+            var type = (name === '1000') ? 'cash' : 'bank';
             try {
               var res = await window.pySetOpeningBalance(name, type, amount);
               if (res && res.success) {
@@ -947,7 +969,7 @@ container:
                 if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + t('No opening balances set', 'لا توجد ارصدة افتتاحية') + '</td></tr>'; return; }
                 var html = '';
                 data.forEach(function(row) {
-                  var amt = parseFloat(row.amount || 0);
+                  var amt = parseFloat(row.opening_balance || row.amount || 0);
                   html += '<tr><td>' + (row.name || '') + '</td>';
                   html += '<td>' + (row.type || '') + '</td>';
                   html += '<td class="text-right" style="font-weight:600;">' + fmt(amt) + '</td>';

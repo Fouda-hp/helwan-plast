@@ -4,6 +4,35 @@
 
 ---
 
+## إذا الـ remote عندك Anvil (SSH) وظهر "Permission denied" عند الـ push
+
+المشروع ممكن يكون مربوطاً مباشرة بـ **Anvil** (مش GitHub). عشان الـ push يشتغل لازم تضيف **مفتاح SSH** في حساب Anvil:
+
+1. **نسخ المفتاح العام (Public Key)** من جهازك:
+   - في PowerShell أو Git Bash:
+   ```powershell
+   Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub
+   ```
+   أو لو عندك `id_rsa.pub`:
+   ```powershell
+   Get-Content $env:USERPROFILE\.ssh\id_rsa.pub
+   ```
+   انسخ السطر كامل (يبدأ بـ `ssh-ed25519` أو `ssh-rsa`).
+
+2. **إضافة المفتاح في Anvil:**
+   - ادخل [Anvil](https://anvil.works/build) وسجّل الدخول.
+   - من القائمة أعلى اليمين → **Account / إعدادات الحساب**.
+   - افتح تبويب **SSH Keys**.
+   - الصق المفتاح العام في خانة "SSH public key" واحفظ.
+
+3. **بعد الحفظ** نفّذ من مجلد المشروع:
+   ```bash
+   git push origin master
+   ```
+   لو طلب passphrase للمفتاح أدخلها؛ بعدها الـ push يفترض ينجح.
+
+---
+
 ## الطريقة 1: المشروع مربوط بـ Git (GitHub)
 
 1. **دفع التعديلات من جهازك إلى GitHub**

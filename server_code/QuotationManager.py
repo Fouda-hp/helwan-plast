@@ -2328,6 +2328,32 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
                                 purchase_result.get('invoice_number'), contract_number)
                     result['purchase_invoice_id'] = purchase_result.get('invoice_id')
                     result['purchase_invoice_number'] = purchase_result.get('invoice_number')
+                    # Auto-receive and sell the new inventory so COGS/Revenue appear on dashboard
+                    inv_id = purchase_result.get('inventory_id')
+                    selling_price_raw = contract_data.get('total_price', 0)
+                    try:
+                        selling_price = float(str(selling_price_raw).replace(',', '').replace('،', '').strip() or 0)
+                    except (ValueError, TypeError):
+                        selling_price = 0.0
+                    if inv_id and selling_price > 0:
+                        recv = acct_module.receive_inventory(inv_id, '', auth_key)
+                        if recv and recv.get('success'):
+                            sell_result = acct_module.sell_inventory(
+                                inv_id, contract_number, selling_price,
+                                token_or_email=auth_key
+                            )
+                            if sell_result and sell_result.get('success'):
+                                result['inventory_sold'] = True
+                                result['gross_profit'] = sell_result.get('gross_profit', 0)
+                                result['landed_cost'] = sell_result.get('landed_cost', 0)
+                                logger.info("Auto-received and sold inventory %s for New Order contract %s",
+                                            inv_id, contract_number)
+                            elif sell_result:
+                                result['accounting_warning'] = (
+                                    result.get('accounting_warning', '') +
+                                    (' | فشل تسجيل البيع (COGS/الإيراد): ' if result.get('accounting_warning') else '') +
+                                    (sell_result.get('message', '') or 'Sale recording failed')
+                                )
                 else:
                     err = purchase_result.get('message', 'Unknown error') if purchase_result else 'No response'
                     result['accounting_warning'] = (

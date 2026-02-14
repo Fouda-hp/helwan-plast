@@ -1455,6 +1455,12 @@ def get_bank_accounts(token_or_email=None):
                     'name_en': r.get('name_en', ''),
                     'name_ar': r.get('name_ar', ''),
                 })
+        # إذا دليل الحسابات فاضي أو مفيش نقدية/بنوك — نرجع قائمة افتراضية عشان الدروب داون ما تبقاش فاضية
+        if not accounts:
+            accounts = [
+                {'code': '1000', 'name_en': 'Cash', 'name_ar': 'نقدية'},
+                {'code': '1010', 'name_en': 'Bank', 'name_ar': 'بنك'},
+            ]
         accounts.sort(key=lambda a: a.get('code', ''))
         return {'success': True, 'accounts': accounts}
     except Exception as e:

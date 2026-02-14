@@ -862,20 +862,27 @@ container:
           };
 
           /* === Cash/Bank Statement (كشف النقدية والبنك) === */
+          var defaultBankAccounts = [{ code: '1000', name_en: 'Cash', name_ar: 'نقدية' }, { code: '1010', name_en: 'Bank', name_ar: 'بنك' }];
           async function populateCashBankAccounts() {
             var sel = document.getElementById('cashbankAccount');
             if (!sel || sel.options.length > 1) return;
             try {
-              var res = await window.pyGetBankAccounts();
-              if (res && res.success && res.accounts) {
-                res.accounts.forEach(function(a) {
-                  var opt = document.createElement('option');
-                  opt.value = a.code;
-                  opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
-                  sel.appendChild(opt);
-                });
-              }
-            } catch (e) {}
+              var res = window.pyGetBankAccounts ? await window.pyGetBankAccounts() : null;
+              var list = (res && res.success && res.accounts && res.accounts.length) ? res.accounts : defaultBankAccounts;
+              list.forEach(function(a) {
+                var opt = document.createElement('option');
+                opt.value = a.code;
+                opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
+                sel.appendChild(opt);
+              });
+            } catch (e) {
+              defaultBankAccounts.forEach(function(a) {
+                var opt = document.createElement('option');
+                opt.value = a.code;
+                opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
+                sel.appendChild(opt);
+              });
+            }
           }
           window.loadCashBankStatement = async function() {
             var tbody = document.getElementById('cashbankBody');
@@ -919,22 +926,30 @@ container:
 
           /* === Opening Balances === */
           var openingAccountsPopulated = false;
+          var defaultObAccounts = [{ code: '1000', name_en: 'Cash', name_ar: 'نقدية' }, { code: '1010', name_en: 'Bank', name_ar: 'بنك' }];
           async function populateOpeningBalanceAccounts() {
             if (openingAccountsPopulated) return;
             var sel = document.getElementById('obName');
             if (!sel || sel.options.length > 1) return;
             try {
-              var res = await window.pyGetBankAccounts();
-              if (res && res.success && res.accounts) {
-                res.accounts.forEach(function(a) {
-                  var opt = document.createElement('option');
-                  opt.value = a.code;
-                  opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
-                  sel.appendChild(opt);
-                });
-                openingAccountsPopulated = true;
-              }
-            } catch (e) {}
+              var res = window.pyGetBankAccounts ? await window.pyGetBankAccounts() : null;
+              var list = (res && res.success && res.accounts && res.accounts.length) ? res.accounts : defaultObAccounts;
+              list.forEach(function(a) {
+                var opt = document.createElement('option');
+                opt.value = a.code;
+                opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
+                sel.appendChild(opt);
+              });
+              openingAccountsPopulated = true;
+            } catch (e) {
+              defaultObAccounts.forEach(function(a) {
+                var opt = document.createElement('option');
+                opt.value = a.code;
+                opt.textContent = (a.name_en || a.name_ar || a.code) + ' (' + a.code + ')';
+                sel.appendChild(opt);
+              });
+              openingAccountsPopulated = true;
+            }
           }
           window.setOpeningBalance = async function() {
             var name = document.getElementById('obName').value.trim();

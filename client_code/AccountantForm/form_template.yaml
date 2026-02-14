@@ -317,6 +317,8 @@ container:
           <label id="lblCashbankAccount">Account</label>
           <select id="cashbankAccount">
             <option value="" id="optCashbankAll">All (Cash &amp; Banks)</option>
+            <option value="1000">Cash (1000)</option>
+            <option value="1010">Bank (1010)</option>
           </select>
           <label>From</label>
           <input type="date" id="cashbankFrom" value="2026-01-01">
@@ -341,6 +343,8 @@ container:
               <label id="lblObName">Account</label>
               <select id="obName">
                 <option value="">Select account...</option>
+                <option value="1000">Cash (1000)</option>
+                <option value="1010">Bank (1010)</option>
               </select>
             </div>
             <div class="form-group" style="display:none;">
@@ -865,10 +869,13 @@ container:
           var defaultBankAccounts = [{ code: '1000', name_en: 'Cash', name_ar: 'نقدية' }, { code: '1010', name_en: 'Bank', name_ar: 'بنك' }];
           async function populateCashBankAccounts() {
             var sel = document.getElementById('cashbankAccount');
-            if (!sel || sel.options.length > 1) return;
+            if (!sel) return;
+            var firstOpt = sel.options[0];
+            var firstHtml = firstOpt ? firstOpt.outerHTML : '<option value="" id="optCashbankAll">All (Cash &amp; Banks)</option>';
             try {
               var res = window.pyGetBankAccounts ? await window.pyGetBankAccounts() : null;
               var list = (res && res.success && res.accounts && res.accounts.length) ? res.accounts : defaultBankAccounts;
+              sel.innerHTML = firstHtml;
               list.forEach(function(a) {
                 var opt = document.createElement('option');
                 opt.value = a.code;
@@ -876,6 +883,7 @@ container:
                 sel.appendChild(opt);
               });
             } catch (e) {
+              sel.innerHTML = firstHtml;
               defaultBankAccounts.forEach(function(a) {
                 var opt = document.createElement('option');
                 opt.value = a.code;
@@ -930,10 +938,13 @@ container:
           async function populateOpeningBalanceAccounts() {
             if (openingAccountsPopulated) return;
             var sel = document.getElementById('obName');
-            if (!sel || sel.options.length > 1) return;
+            if (!sel) return;
+            var firstOpt = sel.options[0];
+            var firstHtml = firstOpt ? firstOpt.outerHTML : '<option value="">Select account...</option>';
             try {
               var res = window.pyGetBankAccounts ? await window.pyGetBankAccounts() : null;
               var list = (res && res.success && res.accounts && res.accounts.length) ? res.accounts : defaultObAccounts;
+              sel.innerHTML = firstHtml;
               list.forEach(function(a) {
                 var opt = document.createElement('option');
                 opt.value = a.code;
@@ -942,6 +953,7 @@ container:
               });
               openingAccountsPopulated = true;
             } catch (e) {
+              sel.innerHTML = firstHtml;
               defaultObAccounts.forEach(function(a) {
                 var opt = document.createElement('option');
                 opt.value = a.code;

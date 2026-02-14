@@ -36,6 +36,8 @@ class CustomerSummaryForm(CustomerSummaryFormTemplate):
         # JS Bridges
         anvil.js.window.pyGetCustomerSummary = self.get_customer_summary
         anvil.js.window.pyRecordCollection = self.record_collection
+        anvil.js.window.pyPostContractReceivable = self.post_contract_receivable
+        anvil.js.window.pyGetContractTotal = self.get_contract_total
         anvil.js.window.pyGetBankAccounts = self.get_bank_accounts
         anvil.js.window.pyGetExchangeRates = self.get_exchange_rates
         anvil.js.window.pyGoBack = self.go_back
@@ -63,6 +65,16 @@ class CustomerSummaryForm(CustomerSummaryFormTemplate):
 
     def get_exchange_rates(self):
         return anvil.server.call('get_exchange_rates', self._auth())
+
+    def post_contract_receivable(self, contract_number, amount_egp, description=None):
+        """فتح ذمم العقد — تسجيل إيراد العقد في الدفتر حتى يظهر الرصيد المستحق."""
+        return anvil.server.call(
+            'post_contract_receivable', contract_number, amount_egp, description, self._auth()
+        )
+
+    def get_contract_total(self, contract_number):
+        """إرجاع إجمالي قيمة العقد (للاقتراح عند فتح الذمم)."""
+        return anvil.server.call('get_contract_total', contract_number, self._auth())
 
     def go_back(self):
         open_form('AccountantForm')

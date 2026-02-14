@@ -147,6 +147,26 @@ container:
         </div>
       </div>
 
+      <!-- Open Receivable Modal (فتح ذمم العقد) -->
+      <div class="hp-modal-overlay" id="openReceivableModal">
+        <div class="hp-modal">
+          <h2 id="openReceivableTitle">Open Contract Receivable</h2>
+          <input type="hidden" id="openReceivableContract" value="">
+          <div class="form-group">
+            <label id="lblOpenAmount">Amount (EGP) *</label>
+            <input type="number" id="fOpenAmount" step="0.01" min="0.01" placeholder="">
+          </div>
+          <div class="form-group">
+            <label id="lblOpenDesc">Description (optional)</label>
+            <input type="text" id="fOpenDesc" placeholder="">
+          </div>
+          <div class="hp-modal-actions">
+            <button class="btn btn-cancel" onclick="closeOpenReceivableModal()">Cancel</button>
+            <button class="btn btn-save" onclick="saveOpenReceivable()">Post</button>
+          </div>
+        </div>
+      </div>
+
       <script>
         (function() {
           var lang = localStorage.getItem('hp_language') || 'en';
@@ -180,6 +200,9 @@ container:
             document.getElementById('lblNotes').textContent = t('Notes', '\u0645\u0644\u0627\u062d\u0638\u0627\u062a');
             document.getElementById('btnCancel').textContent = t('Cancel', '\u0625\u0644\u063a\u0627\u0621');
             document.getElementById('btnSave').textContent = t('Collect', '\u062a\u062d\u0635\u064a\u0644');
+            if (document.getElementById('openReceivableTitle')) document.getElementById('openReceivableTitle').textContent = t('Open Contract Receivable', '\u0641\u062a\u062d \u0630\u0645\u0645 \u0627\u0644\u0639\u0642\u062f');
+            if (document.getElementById('lblOpenAmount')) document.getElementById('lblOpenAmount').textContent = t('Amount (EGP) *', '\u0627\u0644\u0645\u0628\u0644\u063a (\u062c\u0645) *');
+            if (document.getElementById('lblOpenDesc')) document.getElementById('lblOpenDesc').textContent = t('Description (optional)', '\u0627\u0644\u0648\u0635\u0641 (\u0627\u062e\u062a\u064a\u0627\u0631\u064a)');
             if (isAr) document.querySelector('.cs-wrapper').style.direction = 'rtl';
           }
 
@@ -269,12 +292,11 @@ container:
               html += '<td class="num-cell">' + fmt(c.total_collections) + '</td>';
               html += '<td class="num-cell ' + balClass + '">' + fmt(c.current_balance) + '</td>';
               html += '<td>';
-              if (c.current_balance > 0.005) {
-                // Show collect button for each contract with balance
-                (c.contracts || []).forEach(function(cn) {
-                  html += '<button class="btn btn-collect" onclick="openCollect(\'' + cn + '\', \'' + (c.client_name || '').replace(/'/g, "\\'") + '\', ' + c.current_balance + ')">' + t('Collect', '\u062a\u062d\u0635\u064a\u0644') + '</button> ';
-                });
-              } else {
+              (c.contracts || []).forEach(function(cn) {
+                html += '<button class="btn btn-collect" onclick="openCollect(\'' + cn + '\', \'' + (c.client_name || '').replace(/'/g, "\\'") + '\', ' + c.current_balance + ')">' + t('Collect', '\u062a\u062d\u0635\u064a\u0644') + '</button> ';
+                html += '<button class="btn" style="background:#5c6bc0;color:#fff;padding:6px 10px;font-size:11px;border-radius:6px;margin-left:4px;" onclick="openOpenReceivableModal(\'' + cn + '\', \'' + (c.client_name || '').replace(/'/g, "\\'") + '\')">' + t('Open receivable', '\u0641\u062a\u062d \u0630\u0645\u0645') + '</button> ';
+              });
+              if ((c.contracts || []).length === 0 || c.current_balance <= 0.005) {
                 html += '<span style="color:#4caf50;font-size:12px;">' + t('Paid', '\u0645\u062f\u0641\u0648\u0639') + '</span>';
               }
               html += '</td></tr>';
@@ -300,6 +322,43 @@ container:
 
           window.closeModal = function() {
             document.getElementById('collectModal').classList.remove('show');
+          };
+
+          window.openOpenReceivableModal = async function(contractNumber, clientName) {
+            document.getElementById('openReceivableContract').value = contractNumber;
+            document.getElementById('fOpenAmount').value = '';
+            document.getElementById('fOpenDesc').value = '';
+            document.getElementById('openReceivableModal').classList.add('show');
+            try {
+              var res = await window.pyGetContractTotal(contractNumber);
+              if (res && res.success && res.total_price > 0) {
+                document.getElementById('fOpenAmount').value = res.total_price.toFixed(2);
+              }
+            } catch (e) {}
+          };
+          window.closeOpenReceivableModal = function() {
+            document.getElementById('openReceivableModal').classList.remove('show');
+          };
+          window.saveOpenReceivable = async function() {
+            var contract = document.getElementById('openReceivableContract').value;
+            var amount = parseFloat(document.getElementById('fOpenAmount').value) || 0;
+            var desc = document.getElementById('fOpenDesc').value.trim();
+            if (amount <= 0) {
+              if (window.showNotification) window.showNotification('error', '', t('Enter a valid amount', '\u0623\u062f\u062e\u0644 \u0645\u0628\u0644\u063a \u0635\u062d\u064a\u062d'));
+              return;
+            }
+            try {
+              var res = await window.pyPostContractReceivable(contract, amount, desc || null);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', res.message || t('Receivable posted', '\u062a\u0645 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u0630\u0645\u0645'));
+                closeOpenReceivableModal();
+                loadData();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
           };
 
           window.saveCollection = async function() {

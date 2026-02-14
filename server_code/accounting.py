@@ -3373,6 +3373,74 @@ def record_customer_collection(contract_number, amount, payment_method,
         return {'success': False, 'message': str(e)}
 
 
+@anvil.server.callable
+def post_contract_receivable(contract_number, amount_egp, description=None, token_or_email=None):
+    """
+    فتح ذمم العقد — تسجيل إيراد العقد (المستحق على العميل) في الدفتر.
+    لما العقد يكون عليه دفعات ومفيش تسليم/صنف مخزون، الرصيد بيبقى 0 لأن مفيش قيد مبيعات.
+    استدعاء هذه الدالة يسجل: مدين 1100 (ذمم مدينة)، دائن 4000 (إيراد مبيعات) فيصبح الرصيد يظهر حتى يسجل المستخدم التحصيلات.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+    amount_egp = _round2(float(amount_egp or 0))
+    if amount_egp <= 0:
+        return {'success': False, 'message': 'المبلغ يجب أن يكون أكبر من صفر'}
+    try:
+        contract = app_tables.contracts.get(contract_number=contract_number)
+        if not contract:
+            return {'success': False, 'message': f'العقد غير موجود: {contract_number}'}
+        client_name = contract.get('client_name', contract_number)
+        desc = description or f"Contract receivable — {client_name} — {contract_number}"
+        entries = [
+            {'account_code': '1100', 'debit': amount_egp, 'credit': 0},
+            {'account_code': '4000', 'debit': 0, 'credit': amount_egp},
+        ]
+        result = post_journal_entry(
+            date.today(), entries, desc,
+            'contract_receivable', contract_number, user_email,
+        )
+        if not result.get('success'):
+            return result
+        try:
+            AuthManager.log_audit(
+                user_email, 'contract_receivable', 'ledger', result.get('transaction_id', ''),
+                None, {'contract': contract_number, 'amount': amount_egp}
+            )
+        except Exception:
+            pass
+        logger.info("Contract receivable %.2f EGP for %s by %s", amount_egp, contract_number, user_email)
+        return {
+            'success': True,
+            'transaction_id': result.get('transaction_id'),
+            'message': 'تم تسجيل إيراد العقد (فتح الذمم)',
+        }
+    except Exception as e:
+        logger.exception("post_contract_receivable error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_contract_total(contract_number, token_or_email=None):
+    """إرجاع إجمالي قيمة العقد (للاقتراح عند فتح الذمم)."""
+    is_valid, _, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        contract = app_tables.contracts.get(contract_number=contract_number)
+        if not contract:
+            return {'success': False, 'message': 'العقد غير موجود', 'total_price': None}
+        raw = contract.get('total_price') or ''
+        try:
+            total = _round2(float(str(raw).replace(',', '').strip() or 0))
+        except (ValueError, TypeError):
+            total = None
+        return {'success': True, 'total_price': total}
+    except Exception as e:
+        logger.exception("get_contract_total error")
+        return {'success': False, 'message': str(e), 'total_price': None}
+
+
 # ===========================================================================
 # 13. CUSTOMER / SUPPLIER / TREASURY SUMMARIES
 # ===========================================================================
@@ -3413,14 +3481,17 @@ def get_customer_summary(token_or_email=None):
                 contract_items[cn].append(item.get('id'))
 
         # 3. Load all AR ledger entries (account 1100) at once for efficiency
-        ar_sales = {}      # item_id -> debit total (sales)
-        ar_collections = {} # contract_number -> credit total (collections)
+        ar_sales = {}                  # item_id -> debit total (sales from sell_inventory)
+        ar_contract_receivable = {}     # contract_number -> debit total (فتح ذمم العقد)
+        ar_collections = {}             # contract_number -> credit total (collections)
 
         for entry in app_tables.ledger.search(account_code='1100'):
             ref_type = entry.get('reference_type', '')
             ref_id = entry.get('reference_id', '')
             if ref_type == 'sales_invoice':
                 ar_sales[ref_id] = ar_sales.get(ref_id, 0) + float(entry.get('debit', 0) or 0)
+            elif ref_type == 'contract_receivable':
+                ar_contract_receivable[ref_id] = ar_contract_receivable.get(ref_id, 0) + float(entry.get('debit', 0) or 0)
             elif ref_type == 'customer_collection':
                 ar_collections[ref_id] = ar_collections.get(ref_id, 0) + float(entry.get('credit', 0) or 0)
 
@@ -3441,11 +3512,12 @@ def get_customer_summary(token_or_email=None):
         for client_name, contracts_list in sorted(client_contracts.items()):
             opening = opening_map.get(client_name, 0)
 
-            # Total sales: sum debits for all inventory items across all contracts
+            # Total sales: (1) debits from sell_inventory (item_id) + (2) debits from فتح ذمم العقد (contract_number)
             total_sales = 0
             for cn in contracts_list:
                 for item_id in contract_items.get(cn, []):
                     total_sales += ar_sales.get(item_id, 0)
+                total_sales += ar_contract_receivable.get(cn, 0)
 
             # Total collections: sum credits for all contract numbers
             total_collections = 0

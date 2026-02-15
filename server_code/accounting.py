@@ -1490,7 +1490,11 @@ def _is_cash_bank_account_row(r):
             ('خز' in name_ar) or
             ('بنك' in name_ar)
         )
-        if by_name and account_type in ('asset', 'current_asset', 'cash', 'bank', ''):
+        normalized_type = account_type.replace(' ', '_').replace('-', '_')
+        if by_name and normalized_type in (
+            'asset', 'assets', 'current_asset', 'current_assets',
+            'cash', 'bank', ''
+        ):
             return True
 
         return False
@@ -1506,7 +1510,10 @@ def get_bank_accounts(token_or_email=None):
         return error
     try:
         accounts = []
-        for r in app_tables.chart_of_accounts.search(is_active=True):
+        for r in app_tables.chart_of_accounts.search():
+            # بعض السجلات القديمة لا تحتوي is_active؛ نعتبرها فعّالة افتراضياً
+            if r.get('is_active', True) is False:
+                continue
             if not _is_cash_bank_account_row(r):
                 continue
             code = str(r.get('code', '')).strip()
@@ -3826,7 +3833,10 @@ def get_cash_bank_statement(account_code=None, date_from=None, date_to=None, tok
             codes = [_safe_str(account_code).strip()]
         else:
             codes = []
-            for acct in app_tables.chart_of_accounts.search(is_active=True):
+            for acct in app_tables.chart_of_accounts.search():
+                # بعض السجلات القديمة لا تحتوي is_active؛ نعتبرها فعّالة افتراضياً
+                if acct.get('is_active', True) is False:
+                    continue
                 if _is_cash_bank_account_row(acct):
                     c = str(acct.get('code', '')).strip()
                     if c:

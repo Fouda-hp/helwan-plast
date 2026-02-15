@@ -125,10 +125,14 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
 
     # --- Import Costs ---
     def add_import_cost(self, invoice_id, cost_type, amount, description='',
-                        cost_date=None, payment_method='cash'):
-        """Add import cost: DR Inventory (1200), CR selected bank/cash."""
+                        cost_date=None, payment_method='cash', contract_number=None,
+                        currency_code='EGP', exchange_rate=None, payment_account=None):
+        """Add import cost: DR 1210/1200, CR selected bank/cash. Per cost: currency, rate, pay from."""
         return anvil.server.call('add_import_cost', invoice_id, cost_type, amount,
-                                 description, cost_date, payment_method, None, self._auth())
+                                 description, cost_date, payment_method or None, contract_number, self._auth(),
+                                 currency_code=currency_code or 'EGP',
+                                 exchange_rate=exchange_rate,
+                                 payment_account=payment_account)
 
     def get_import_costs(self, invoice_id, inventory_id=None):
         """Get import costs for a purchase invoice or inventory item."""

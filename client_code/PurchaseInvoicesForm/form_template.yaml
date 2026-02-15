@@ -420,6 +420,18 @@ container:
             </thead>
             <tbody id="importCostsPayBody"></tbody>
           </table>
+          <div id="importCostsAddSection" style="margin-top:16px;padding:12px;background:#f0f7ff;border:1px solid #90caf9;border-radius:8px;">
+            <h4 style="margin:0 0 10px;color:#1565c0;" id="lblAddImportCost">Add Import Cost</h4>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-items:end;margin-bottom:10px;">
+              <div><label style="font-size:12px;color:#555;" id="lblAddIcType">Type</label><select id="fAddIcType" style="width:100%;padding:6px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="other">Other</option></select></div>
+              <div><label style="font-size:12px;color:#555;" id="lblAddIcAmount">Amount</label><input type="number" id="fAddIcAmount" step="0.01" min="0" value="0" style="width:100%;padding:6px;"></div>
+              <div><label style="font-size:12px;color:#555;" id="lblAddIcCurrency">Currency</label><select id="fAddIcCurrency" style="width:100%;padding:6px;"><option value="EGP">EGP</option><option value="USD">USD</option></select></div>
+              <div><label style="font-size:12px;color:#555;" id="lblAddIcRate">Exchange rate</label><input type="number" id="fAddIcRate" step="0.01" min="0" placeholder="1" style="width:100%;padding:6px;"></div>
+              <div><label style="font-size:12px;color:#555;" id="lblAddIcPayFrom">Pay from</label><select id="fAddIcPayFrom" style="width:100%;padding:6px;"><option value="1000">Cash (1000)</option></select></div>
+              <div><label style="font-size:12px;color:#555;" id="lblAddIcDate">Date</label><input type="date" id="fAddIcDate" style="width:100%;padding:6px;"></div>
+              <div><button type="button" class="btn btn-save" id="btnAddImportCostInModal" style="padding:8px 14px;">Add</button></div>
+            </div>
+          </div>
           <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closeImportCostsPayModal()">Cancel</button>
             <button class="btn btn-save" id="btnSubmitImportCostsPay" onclick="withButtonLock(this, function(){ return submitImportCostsPay(); })" data-loading-text="...">Pay</button>
@@ -533,6 +545,15 @@ container:
             setText('icThPaid', t('Paid', 'المدفوع'));
             setText('icThRemaining', t('Remaining', 'المتبقي'));
             setText('icThPay', t('Pay (EGP)', 'دفع (ج.م)'));
+            setText('lblAddImportCost', t('Add Import Cost', 'إضافة تكلفة استيراد'));
+            setText('lblAddIcType', t('Type', 'النوع'));
+            setText('lblAddIcAmount', t('Amount', 'المبلغ'));
+            setText('lblAddIcCurrency', t('Currency', 'العملة'));
+            setText('lblAddIcRate', t('Exchange rate', 'سعر الصرف'));
+            setText('lblAddIcPayFrom', t('Pay from', 'الدفع من'));
+            setText('lblAddIcDate', t('Date', 'التاريخ'));
+            var addBtn = document.getElementById('btnAddImportCostInModal');
+            if (addBtn) addBtn.textContent = t('Add', 'إضافة');
             var piWrapper = document.querySelector('.pi-wrapper');
             if (isAr && piWrapper) piWrapper.style.direction = 'rtl';
           }
@@ -994,10 +1015,12 @@ container:
               var methodSel = document.getElementById('fPayMethod');
               if (bankRes && bankRes.success && bankRes.accounts && methodSel) {
                 methodSel.innerHTML = '';
+                var isAr = (localStorage.getItem('hp_language') || 'en') === 'ar';
                 bankRes.accounts.forEach(function(a) {
                   var opt = document.createElement('option');
-                  opt.value = a.code;
-                  opt.textContent = (a.name_en || a.name_ar || a.code);
+                  opt.value = a.code || a.id;
+                  var name = isAr ? (a.name_ar || a.name_en) : (a.name_en || a.name_ar);
+                  opt.textContent = (name || a.code || '') + ' (' + (a.code || '') + ')';
                   methodSel.appendChild(opt);
                 });
               }
@@ -1083,10 +1106,12 @@ container:
             var methodSel = document.getElementById('fImportPayMethod');
             if (bankRes && bankRes.success && bankRes.accounts && methodSel) {
               methodSel.innerHTML = '';
+              var isArBank = (localStorage.getItem('hp_language') || 'en') === 'ar';
               bankRes.accounts.forEach(function(acc) {
                 var opt = document.createElement('option');
                 opt.value = acc.code || acc.id;
-                opt.textContent = (acc.name || acc.code || '') + (acc.currency ? ' (' + acc.currency + ')' : '');
+                var name = isArBank ? (acc.name_ar || acc.name_en) : (acc.name_en || acc.name_ar);
+                opt.textContent = (name || acc.code || '') + ' (' + (acc.code || '') + ')';
                 methodSel.appendChild(opt);
               });
             }
@@ -1100,11 +1125,15 @@ container:
                 return;
               }
               var costs = res.costs || [];
+              var isAr = (localStorage.getItem('hp_language') || 'en') === 'ar';
               if (costs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="padding:12px;color:#666;">' + t('No import costs for this invoice.', 'لا توجد تكاليف استيراد لهذه الفاتورة.') + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="padding:12px;color:#666;">' + t('No import costs yet. Add one below.', 'لا توجد تكاليف استيراد بعد. أضف من الأسفل.') + '</td></tr>';
+                populateAddIcPayFrom(bankRes);
+                setAddIcDateToday();
+                document.getElementById('importCostsAddSection').style.display = 'block';
+                document.getElementById('importCostsPayHint').textContent = t('Add import costs (currency, rate, pay from) then pay when needed.', 'أضف تكاليف الاستيراد (عملة، سعر صرف، الدفع من) ثم ادفع عند الحاجة.');
                 return;
               }
-              var isAr = (localStorage.getItem('hp_language') || 'en') === 'ar';
               var egpSuffix = isAr ? ' ج.م' : ' EGP';
               var html = '';
               costs.forEach(function(c) {
@@ -1117,12 +1146,79 @@ container:
                 html += '<td style="padding:8px;border:1px solid #ddd;"><input type="number" class="ic-pay-amount" step="0.01" min="0" max="' + rem + '" placeholder="' + fmt(rem) + '" style="width:100px;padding:6px;text-align:right;"></td></tr>';
               });
               tbody.innerHTML = html;
-              document.getElementById('importCostsPayHint').textContent = t('Enter amount to pay per row (partial or full). Choose payment source and date below.', 'أدخل المبلغ المراد دفعه لكل بند (جزئي أو كلي). اختر مصدر الدفع والتاريخ أدناه.');
+              populateAddIcPayFrom(bankRes);
+              setAddIcDateToday();
+              document.getElementById('importCostsAddSection').style.display = 'block';
+              document.getElementById('importCostsPayHint').textContent = t('Enter amount to pay per row (partial or full). You can add more costs below.', 'أدخل المبلغ المراد دفعه لكل بند. يمكنك إضافة تكاليف أخرى من الأسفل.');
             } catch (err) {
               document.getElementById('importCostsPayBody').innerHTML = '<tr><td colspan="5" style="padding:12px;color:#c62828;">' + String(err) + '</td></tr>';
             }
           };
 
+          function populateAddIcPayFrom(bankRes) {
+            var sel = document.getElementById('fAddIcPayFrom');
+            if (!sel) return;
+            sel.innerHTML = '';
+            if (bankRes && bankRes.success && bankRes.accounts) {
+              var isAr = (localStorage.getItem('hp_language') || 'en') === 'ar';
+              bankRes.accounts.forEach(function(a) {
+                var opt = document.createElement('option');
+                opt.value = a.code || a.id;
+                var name = isAr ? (a.name_ar || a.name_en) : (a.name_en || a.name_ar);
+                opt.textContent = (name || a.code || '') + ' (' + (a.code || '') + ')';
+                sel.appendChild(opt);
+              });
+            } else {
+              var o = document.createElement('option'); o.value = '1000'; o.textContent = 'Cash (1000)'; sel.appendChild(o);
+            }
+          }
+          function setAddIcDateToday() {
+            var el = document.getElementById('fAddIcDate');
+            if (el) el.value = new Date().toISOString().substring(0, 10);
+          }
+          window.addImportCostInModal = async function() {
+            var invoiceId = document.getElementById('importCostsInvoiceId').value;
+            var costType = document.getElementById('fAddIcType').value;
+            var amount = parseFloat(document.getElementById('fAddIcAmount').value) || 0;
+            var currency = document.getElementById('fAddIcCurrency').value || 'EGP';
+            var rateInput = document.getElementById('fAddIcRate');
+            var exchangeRate = currency === 'EGP' ? null : (parseFloat(rateInput.value) || null);
+            var payFrom = document.getElementById('fAddIcPayFrom').value;
+            var costDate = document.getElementById('fAddIcDate').value;
+            if (!invoiceId) { if (window.showNotification) window.showNotification('error', '', t('Invoice missing', 'الفاتورة غير محددة')); return; }
+            if (amount <= 0) { if (window.showNotification) window.showNotification('error', '', t('Enter amount', 'أدخل المبلغ')); return; }
+            if (currency !== 'EGP' && (!exchangeRate || exchangeRate <= 0)) { if (window.showNotification) window.showNotification('error', '', t('Exchange rate required for non-EGP', 'سعر الصرف مطلوب لغير الجنيه')); return; }
+            if (!costDate) { if (window.showNotification) window.showNotification('error', '', t('Select date', 'اختر التاريخ')); return; }
+            try {
+              var res = await window.pyAddImportCost(invoiceId, costType, amount, '', costDate, null, null, currency, exchangeRate, payFrom);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Import cost added', 'تمت إضافة تكلفة الاستيراد'));
+                var res2 = await window.pyGetImportCostsForPayment(invoiceId);
+                var tbody = document.getElementById('importCostsPayBody');
+                var isAr = (localStorage.getItem('hp_language') || 'en') === 'ar';
+                var egpSuffix = isAr ? ' ج.م' : ' EGP';
+                if (!res2 || !res2.success) return;
+                var costs = res2.costs || [];
+                if (costs.length === 0) {
+                  tbody.innerHTML = '<tr><td colspan="5" style="padding:12px;color:#666;">' + t('No import costs yet. Add one below.', 'لا توجد تكاليف استيراد بعد. أضف من الأسفل.') + '</td></tr>';
+                } else {
+                  var html = '';
+                  costs.forEach(function(c) {
+                    var rem = parseFloat(c.remaining_egp) || 0;
+                    html += '<tr data-ic-id="' + (c.id || '') + '" data-remaining="' + rem + '"><td style="padding:8px;border:1px solid #ddd;">' + (c.cost_type || '') + (c.description ? ': ' + c.description : '') + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.amount_egp) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.paid_amount) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;font-weight:600;">' + fmt(rem) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;"><input type="number" class="ic-pay-amount" step="0.01" min="0" max="' + rem + '" placeholder="' + fmt(rem) + '" style="width:100px;padding:6px;text-align:right;"></td></tr>';
+                  });
+                  tbody.innerHTML = html;
+                }
+                document.getElementById('fAddIcAmount').value = '0';
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+          var btnAddIc = document.getElementById('btnAddImportCostInModal');
+          if (btnAddIc) btnAddIc.addEventListener('click', function() { withButtonLock(this, function() { return addImportCostInModal(); }); });
           window.closeImportCostsPayModal = function() {
             document.getElementById('importCostsPayModal').classList.remove('show');
           };

@@ -73,11 +73,14 @@ class AdminPanel(AdminPanelTemplate):
 
     def _finish_admin_init(self):
         """إكمال تهيئة الأدمن بعد التأكد من الصلاحية."""
-        self.check_route()
-        anvil.js.window.addEventListener("hashchange", self.on_hash_change)
+        # جهّز الـ JS bridges أولاً حتى لا يفشل التحميل الأول للداشبورد
         self._setup_js_bridges()
         self._inject_admin_panel_enhancements()
         register_notif_bridges()
+
+        # بعد الجاهزية، فعّل التوجيه والـ hash listener
+        self.check_route()
+        anvil.js.window.addEventListener("hashchange", self.on_hash_change)
 
     def _load_user_info(self):
         """تحميل معلومات المستخدم الحالي"""

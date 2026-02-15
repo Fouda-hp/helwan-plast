@@ -745,17 +745,61 @@ container:
             }
           };
 
-          /* Populate ledger account dropdown from trial balance */
+          /* Populate account dropdowns from full chart of accounts */
           async function populateLedgerAccounts() {
             try {
-              var res = await window.pyGetTrialBalance('', '');
-              if (res && res.success && res.data) {
-                var sel = document.getElementById('ledgerAccount');
-                var opts = '<option value="">' + t('All Accounts', 'كل الحسابات') + '</option>';
-                res.data.forEach(function(a) {
-                  opts += '<option value="' + (a.account_id || '') + '">' + (a.account_name || '') + '</option>';
+              var items = [];
+
+              if (window.pyGetChartOfAccounts) {
+                var chartRes = await window.pyGetChartOfAccounts();
+                if (chartRes && chartRes.success && Array.isArray(chartRes.accounts)) {
+                  items = chartRes.accounts
+                    .filter(function(a){ return a && a.code; })
+                    .map(function(a){
+                      return {
+                        id: a.code,
+                        label: (a.code || '') + ' - ' + (a.name_en || a.name_ar || a.code)
+                      };
+                    });
+                }
+              }
+
+              // fallback for older shape from trial balance
+              if (!items.length && window.pyGetTrialBalance) {
+                var res = await window.pyGetTrialBalance('', '');
+                var arr = (res && (res.data || res.rows || res.entries)) || [];
+                if (Array.isArray(arr)) {
+                  items = arr.map(function(a) {
+                    var id = a.account_id || a.account_code || a.code || '';
+                    var label = a.account_name || a.name_en || a.name_ar || id;
+                    return { id: id, label: label };
+                  }).filter(function(x){ return x.id; });
+                }
+              }
+
+              var seen = {};
+              items = items.filter(function(x){
+                if (!x.id || seen[x.id]) return false;
+                seen[x.id] = true;
+                return true;
+              }).sort(function(a,b){ return String(a.id).localeCompare(String(b.id)); });
+
+              var ledgerSel = document.getElementById('ledgerAccount');
+              if (ledgerSel) {
+                var ledgerOpts = '<option value="">' + t('All Accounts', 'كل الحسابات') + '</option>';
+                items.forEach(function(a) {
+                  ledgerOpts += '<option value="' + a.id + '">' + a.label + '</option>';
                 });
-                sel.innerHTML = opts;
+                ledgerSel.innerHTML = ledgerOpts;
+              }
+
+              var obSel = document.getElementById('obName');
+              if (obSel) {
+                var obOpts = '<option value="">' + t('Select account...', 'اختر حساباً...') + '</option>';
+                items.forEach(function(a) {
+                  obOpts += '<option value="' + a.id + '">' + a.label + '</option>';
+                });
+                obSel.innerHTML = obOpts;
               }
             } catch (err) { /* ignore */ }
           }
@@ -958,14 +1002,20 @@ container:
             var firstHtml = '<option value="">' + t('Select account...', 'اختر حساباً...') + '</option>';
             var list = defaultObAccounts.slice();
             try {
-              var res = window.pyGetBankAccounts ? await window.pyGetBankAccounts() : null;
-              if (res && res.success && res.accounts && res.accounts.length) {
-                list = res.accounts;
-              } else if (window.pyGetChartOfAccounts) {
+              // المطلوب: كل الحسابات تظهر في الرصيد الافتتاحي
+              if (window.pyGetChartOfAccounts) {
                 var chartRes = await window.pyGetChartOfAccounts();
                 if (chartRes && chartRes.success && chartRes.accounts && chartRes.accounts.length) {
-                  list = chartRes.accounts.filter(function(a) { return isCashOrBankCode(String(a.code || '')); });
-                  if (list.length) list.sort(function(a,b) { return String(a.code || '').localeCompare(String(b.code || '')); });
+                  list = chartRes.accounts.slice();
+                  list.sort(function(a,b) { return String(a.code || '').localeCompare(String(b.code || '')); });
+                }
+              }
+
+              // fallback
+              if ((!list || !list.length) && window.pyGetBankAccounts) {
+                var res = await window.pyGetBankAccounts();
+                if (res && res.success && res.accounts && res.accounts.length) {
+                  list = res.accounts;
                 }
               }
             } catch (e) {}

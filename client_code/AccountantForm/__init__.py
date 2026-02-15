@@ -246,4 +246,9 @@ class AccountantForm(AccountantFormTemplate):
         open_form('SupplierSummaryForm')
 
     def go_back(self):
+        try:
+            anvil.js.window.location.hash = '#admin'
+        except Exception:
+            pass
         open_form('AdminPanel')
+        return True

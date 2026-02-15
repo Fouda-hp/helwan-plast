@@ -177,6 +177,7 @@ container:
           </div>
           <div class="report-card">
             <h3 id="balanceTitle">Balance Sheet</h3>
+            <p id="balanceSubtitle" style="margin:0 0 12px 0;font-size:13px;color:#666;"></p>
             <div class="table-wrap">
               <table><thead><tr><th>Category</th><th>Account</th><th class="text-right">Amount</th></tr></thead><tbody id="balanceBody"><tr><td colspan="3" class="empty-msg">Click Load to generate report</td></tr></tbody></table>
             </div>
@@ -399,6 +400,7 @@ container:
           var isAr = lang === 'ar';
           function t(en, ar) { return isAr ? ar : en; }
           function fmt(n) { return (n || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+          function fmtCurr(n) { return fmt(n) + (isAr ? ' ج.م' : ' EGP'); }
 
           function applyI18n() {
             document.getElementById('pageTitle').textContent = t('Accountant Dashboard', 'لوحة المحاسب');
@@ -518,9 +520,9 @@ container:
                 data.forEach(function(row) {
                   var d = parseFloat(row.debit || 0); var c = parseFloat(row.credit || 0);
                   totalDebit += d; totalCredit += c;
-                  html += '<tr><td>' + (row.account_name || '') + '</td><td class="text-right">' + fmt(d) + '</td><td class="text-right">' + fmt(c) + '</td></tr>';
+                  html += '<tr><td>' + (row.account_name || '') + '</td><td class="text-right">' + (d > 0 ? fmtCurr(d) : '-') + '</td><td class="text-right">' + (c > 0 ? fmtCurr(c) : '-') + '</td></tr>';
                 });
-                html += '<tr class="total-row"><td><strong>' + t('Total', 'الاجمالي') + '</strong></td><td class="text-right"><strong>' + fmt(totalDebit) + '</strong></td><td class="text-right"><strong>' + fmt(totalCredit) + '</strong></td></tr>';
+                html += '<tr class="total-row"><td><strong>' + t('Total', 'الاجمالي') + '</strong></td><td class="text-right"><strong>' + fmtCurr(totalDebit) + '</strong></td><td class="text-right"><strong>' + fmtCurr(totalCredit) + '</strong></td></tr>';
                 tbody.innerHTML = html;
               } else {
                 tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
@@ -546,20 +548,20 @@ container:
                 var totalExpense = parseFloat(data.total_expenses || 0);
                 var netIncome = parseFloat(data.net_income || 0);
                 var summaryHtml = '';
-                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Revenue', 'اجمالي الايرادات') + '</div><div class="value text-green">' + fmt(totalRevenue) + '</div></div>';
-                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Expenses', 'اجمالي المصروفات') + '</div><div class="value text-red">' + fmt(totalExpense) + '</div></div>';
-                summaryHtml += '<div class="summary-box"><div class="label">' + t('Net Income', 'صافي الدخل') + '</div><div class="value" style="color:' + (netIncome >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(netIncome) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Revenue', 'اجمالي الايرادات') + '</div><div class="value text-green">' + fmtCurr(totalRevenue) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Expenses', 'اجمالي المصروفات') + '</div><div class="value text-red">' + fmtCurr(totalExpense) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Net Income', 'صافي الدخل') + '</div><div class="value" style="color:' + (netIncome >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmtCurr(netIncome) + '</div></div>';
                 document.getElementById('incomeSummary').innerHTML = summaryHtml;
                 var html = '';
                 if (revenues.length > 0) {
-                  revenues.forEach(function(r) { html += '<tr><td>' + t('Revenue', 'ايرادات') + '</td><td>' + (r.account_name || '') + '</td><td class="text-right text-green">' + fmt(r.amount) + '</td></tr>'; });
-                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Revenue', 'اجمالي الايرادات') + '</strong></td><td class="text-right text-green"><strong>' + fmt(totalRevenue) + '</strong></td></tr>';
+                  revenues.forEach(function(r) { html += '<tr><td>' + t('Revenue', 'ايرادات') + '</td><td>' + (r.account_name || '') + '</td><td class="text-right text-green">' + fmtCurr(r.amount) + '</td></tr>'; });
+                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Revenue', 'اجمالي الايرادات') + '</strong></td><td class="text-right text-green"><strong>' + fmtCurr(totalRevenue) + '</strong></td></tr>';
                 }
                 if (expenses.length > 0) {
-                  expenses.forEach(function(e) { html += '<tr><td>' + t('Expense', 'مصروفات') + '</td><td>' + (e.account_name || '') + '</td><td class="text-right text-red">' + fmt(e.amount) + '</td></tr>'; });
-                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Expenses', 'اجمالي المصروفات') + '</strong></td><td class="text-right text-red"><strong>' + fmt(totalExpense) + '</strong></td></tr>';
+                  expenses.forEach(function(e) { html += '<tr><td>' + t('Expense', 'مصروفات') + '</td><td>' + (e.account_name || '') + '</td><td class="text-right text-red">' + fmtCurr(e.amount) + '</td></tr>'; });
+                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Expenses', 'اجمالي المصروفات') + '</strong></td><td class="text-right text-red"><strong>' + fmtCurr(totalExpense) + '</strong></td></tr>';
                 }
-                html += '<tr class="total-row"><td></td><td><strong>' + t('Net Income', 'صافي الدخل') + '</strong></td><td class="text-right" style="color:' + (netIncome >= 0 ? '#2e7d32' : '#c62828') + ';"><strong>' + fmt(netIncome) + '</strong></td></tr>';
+                html += '<tr class="total-row"><td></td><td><strong>' + t('Net Income', 'صافي الدخل') + '</strong></td><td class="text-right" style="color:' + (netIncome >= 0 ? '#2e7d32' : '#c62828') + ';"><strong>' + fmtCurr(netIncome) + '</strong></td></tr>';
                 tbody.innerHTML = html || '<tr><td colspan="3" class="empty-msg">' + t('No data', 'لا توجد بيانات') + '</td></tr>';
               } else {
                 tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
@@ -577,22 +579,24 @@ container:
             try {
               var res = await window.pyGetBalanceSheet(asOf);
               if (res && res.success) {
+                var subEl = document.getElementById('balanceSubtitle');
+                if (subEl) subEl.textContent = t('All amounts in EGP', 'جميع المبالغ بالجنيه المصري');
                 var data = res.data || {};
                 var assets = data.assets || [];
                 var liabilities = data.liabilities || [];
                 var equity = data.equity || [];
                 var html = '';
                 if (assets.length > 0) {
-                  assets.forEach(function(a) { html += '<tr><td>' + t('Assets', 'اصول') + '</td><td>' + (a.account_name || '') + '</td><td class="text-right">' + fmt(a.amount) + '</td></tr>'; });
-                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Assets', 'اجمالي الاصول') + '</strong></td><td class="text-right"><strong>' + fmt(data.total_assets || 0) + '</strong></td></tr>';
+                  assets.forEach(function(a) { html += '<tr><td>' + t('Assets', 'اصول') + '</td><td>' + (a.account_name || '') + '</td><td class="text-right">' + fmtCurr(a.amount) + '</td></tr>'; });
+                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Assets', 'اجمالي الاصول') + '</strong></td><td class="text-right"><strong>' + fmtCurr(data.total_assets || 0) + '</strong></td></tr>';
                 }
                 if (liabilities.length > 0) {
-                  liabilities.forEach(function(l) { html += '<tr><td>' + t('Liabilities', 'التزامات') + '</td><td>' + (l.account_name || '') + '</td><td class="text-right">' + fmt(l.amount) + '</td></tr>'; });
-                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Liabilities', 'اجمالي الالتزامات') + '</strong></td><td class="text-right"><strong>' + fmt(data.total_liabilities || 0) + '</strong></td></tr>';
+                  liabilities.forEach(function(l) { html += '<tr><td>' + t('Liabilities', 'التزامات') + '</td><td>' + (l.account_name || '') + '</td><td class="text-right">' + fmtCurr(l.amount) + '</td></tr>'; });
+                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Liabilities', 'اجمالي الالتزامات') + '</strong></td><td class="text-right"><strong>' + fmtCurr(data.total_liabilities || 0) + '</strong></td></tr>';
                 }
                 if (equity.length > 0) {
-                  equity.forEach(function(e) { html += '<tr><td>' + t('Equity', 'حقوق الملكية') + '</td><td>' + (e.account_name || '') + '</td><td class="text-right">' + fmt(e.amount) + '</td></tr>'; });
-                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Equity', 'اجمالي حقوق الملكية') + '</strong></td><td class="text-right"><strong>' + fmt(data.total_equity || 0) + '</strong></td></tr>';
+                  equity.forEach(function(e) { html += '<tr><td>' + t('Equity', 'حقوق الملكية') + '</td><td>' + (e.account_name || '') + '</td><td class="text-right">' + fmtCurr(e.amount) + '</td></tr>'; });
+                  html += '<tr class="total-row"><td></td><td><strong>' + t('Total Equity', 'اجمالي حقوق الملكية') + '</strong></td><td class="text-right"><strong>' + fmtCurr(data.total_equity || 0) + '</strong></td></tr>';
                 }
                 tbody.innerHTML = html || '<tr><td colspan="3" class="empty-msg">' + t('No data', 'لا توجد بيانات') + '</td></tr>';
               } else {
@@ -623,19 +627,19 @@ container:
                   html += '<tr>';
                   html += '<td><strong>' + (c.contract_number || '') + '</strong></td>';
                   html += '<td>' + (c.client_name || '') + '</td>';
-                  html += '<td class="text-right">' + fmt(rev) + '</td>';
-                  html += '<td class="text-right">' + fmt(cost) + '</td>';
-                  html += '<td class="text-right" style="color:' + (profit >= 0 ? '#2e7d32' : '#c62828') + ';font-weight:600;">' + fmt(profit) + '</td>';
+                  html += '<td class="text-right">' + fmtCurr(rev) + '</td>';
+                  html += '<td class="text-right">' + fmtCurr(cost) + '</td>';
+                  html += '<td class="text-right" style="color:' + (profit >= 0 ? '#2e7d32' : '#c62828') + ';font-weight:600;">' + fmtCurr(profit) + '</td>';
                   html += '<td class="text-right">' + margin + '%</td>';
                   html += '</tr>';
                 });
                 var totalMargin = totalRev > 0 ? ((totalProfit / totalRev) * 100).toFixed(1) : '0.0';
-                html += '<tr class="total-row"><td colspan="2"><strong>' + t('Total', 'الاجمالي') + '</strong></td><td class="text-right"><strong>' + fmt(totalRev) + '</strong></td><td class="text-right"><strong>' + fmt(totalCost) + '</strong></td><td class="text-right" style="color:' + (totalProfit >= 0 ? '#2e7d32' : '#c62828') + ';"><strong>' + fmt(totalProfit) + '</strong></td><td class="text-right"><strong>' + totalMargin + '%</strong></td></tr>';
+                html += '<tr class="total-row"><td colspan="2"><strong>' + t('Total', 'الاجمالي') + '</strong></td><td class="text-right"><strong>' + fmtCurr(totalRev) + '</strong></td><td class="text-right"><strong>' + fmtCurr(totalCost) + '</strong></td><td class="text-right" style="color:' + (totalProfit >= 0 ? '#2e7d32' : '#c62828') + ';"><strong>' + fmtCurr(totalProfit) + '</strong></td><td class="text-right"><strong>' + totalMargin + '%</strong></td></tr>';
                 tbody.innerHTML = html;
                 var summaryHtml = '';
-                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Revenue', 'اجمالي الايرادات') + '</div><div class="value text-green">' + fmt(totalRev) + '</div></div>';
-                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Costs', 'اجمالي التكاليف') + '</div><div class="value text-red">' + fmt(totalCost) + '</div></div>';
-                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Profit', 'اجمالي الربح') + '</div><div class="value" style="color:' + (totalProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(totalProfit) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Revenue', 'اجمالي الايرادات') + '</div><div class="value text-green">' + fmtCurr(totalRev) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Costs', 'اجمالي التكاليف') + '</div><div class="value text-red">' + fmtCurr(totalCost) + '</div></div>';
+                summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Profit', 'اجمالي الربح') + '</div><div class="value" style="color:' + (totalProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmtCurr(totalProfit) + '</div></div>';
                 summaryHtml += '<div class="summary-box"><div class="label">' + t('Avg Margin', 'متوسط الهامش') + '</div><div class="value">' + totalMargin + '%</div></div>';
                 document.getElementById('profitSummary').innerHTML = summaryHtml;
               } else {

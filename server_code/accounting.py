@@ -810,10 +810,11 @@ def create_purchase_invoice(data, token_or_email=None):
 @anvil.server.callable
 def post_purchase_invoice(invoice_id, token_or_email=None):
     """
-    Post a draft purchase invoice: creates ledger entries.
-    DR Inventory (1200) or COGS (5000)  — total
-    CR Accounts Payable (2000)          — total
-    If tax: DR Tax Payable (2100)       — tax_amount
+    Post a draft purchase invoice: only the supplier (machine) portion goes to AP.
+    Import costs are posted separately when added (add_import_cost → DR Inventory, CR Bank/Cash).
+    DR Inventory (1200) — supplier cost (total minus import costs minus tax)
+    CR Accounts Payable (2000) — supplier amount only (total minus import costs)
+    If tax: DR 1300 — tax_amount (on supplier portion)
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
@@ -831,21 +832,29 @@ def post_purchase_invoice(invoice_id, token_or_email=None):
         if total <= 0:
             return {'success': False, 'message': 'Invoice total must be greater than zero'}
 
-        # Build journal entries (no line with zero amount — validation would fail)
+        # Import costs are in a separate statement: deducted from Bank/Cash when added. Only machine (supplier) goes to AP.
+        import_costs_total = 0.0
+        for ic in app_tables.import_costs.search(purchase_invoice_id=invoice_id):
+            import_costs_total += _round2(ic.get('amount', 0))
+        import_costs_total = _round2(import_costs_total)
+        amount_to_ap = _round2(total - import_costs_total)  # ما يُسجّل على حساب المورد = إجمالي الفاتورة ناقص مصاريف الاستيراد
+
+        if amount_to_ap <= 0:
+            return {'success': False, 'message': 'Supplier amount (total minus import costs) must be greater than zero'}
+
         inv_date = row.get('date') or date.today()
         entries = []
 
-        # Debit: Inventory for cost of goods (total minus tax). Skip if zero.
-        cost_to_inventory = _round2(total - tax_amount)
+        # Debit: Inventory for supplier cost only (machine). Skip if zero.
+        cost_to_inventory = _round2(amount_to_ap - tax_amount)
         if cost_to_inventory > 0:
             entries.append({'account_code': '1200', 'debit': cost_to_inventory, 'credit': 0})
 
-        # Debit: Tax Payable if there is tax (input VAT / recoverable tax)
         if tax_amount > 0:
             entries.append({'account_code': '1300', 'debit': tax_amount, 'credit': 0})
 
-        # Credit: Accounts Payable for the full total
-        entries.append({'account_code': '2000', 'debit': 0, 'credit': total})
+        # Credit: Accounts Payable — supplier (machine) amount only
+        entries.append({'account_code': '2000', 'debit': 0, 'credit': amount_to_ap})
 
         inv_number = row.get('invoice_number', invoice_id)
         result = post_journal_entry(

@@ -134,7 +134,8 @@ DEFAULT_ACCOUNTS = [
     ('1210', 'Purchase in Transit','مشتريات في الطريق', 'asset',    '1200'),
     # Liabilities
     ('2000', 'Accounts Payable',   'ذمم دائنة',         'liability', None),
-    ('2100', 'Tax Payable',        'ضريبة مستحقة',      'liability', None),
+    ('2100', 'VAT Payable',         'ضريبة مخرجات مستحقة', 'liability', None),   # Output VAT (sales)
+    ('2110', 'VAT Input Recoverable', 'ضريبة مدخلات قابلة للاسترداد', 'asset', None),  # Input VAT (purchases)
     # Equity
     ('3000', "Owner's Equity",     'حقوق الملكية',      'equity',   None),
     ('3100', 'Retained Earnings',  'أرباح محتجزة',      'equity',   None),
@@ -143,6 +144,7 @@ DEFAULT_ACCOUNTS = [
     ('4100', 'Other Revenue',      'إيرادات أخرى',      'revenue',  None),
     # COGS / Import
     ('5000', 'Cost of Goods Sold', 'تكلفة البضاعة المباعة', 'expense', None),
+    # 5100 DEPRECATED for new posting: import costs post to 1200 (Inventory) only. Kept for migration reclassification.
     ('5100', 'Import Costs',       'تكاليف الاستيراد',  'expense',  None),
     # Operating Expenses
     ('6000', 'Rent',               'الإيجار',           'expense',  None),
@@ -192,6 +194,33 @@ def _get_rate_to_egp(currency_code):
     except Exception:
         pass
     return 1.0
+
+
+# ---------------------------------------------------------------------------
+# EGP-ONLY LEDGER: Currency conversion (raises if rate missing for non-EGP)
+# ---------------------------------------------------------------------------
+def convert_to_egp(amount, currency_code, exchange_rate=None):
+    """
+    Convert amount to EGP. All ledger entries MUST be in EGP.
+
+    Rules:
+    - If currency is EGP (or missing/blank) → return amount unchanged.
+    - If exchange_rate is provided and > 0 → use it (rate = EGP per 1 unit of currency).
+    - Else fetch from currency_exchange_rates table.
+    - If rate missing or <= 0 for non-EGP → raise ValueError (callers return error dict).
+
+    Returns: float (amount in EGP, rounded to 2 decimals).
+    """
+    amount = _round2(amount)
+    code = _safe_str(currency_code or 'EGP').upper()
+    if not code or code == 'EGP':
+        return amount
+    if exchange_rate is not None and float(exchange_rate) > 0:
+        return _round2(amount * _round2(float(exchange_rate)))
+    rate = _get_rate_to_egp(code)
+    if rate <= 0:
+        raise ValueError(f"Exchange rate for {code} is missing or invalid. Ledger is EGP-only.")
+    return _round2(amount * rate)
 
 
 @anvil.server.callable
@@ -273,6 +302,21 @@ def seed_default_accounts(token_or_email=None):
 
 
 # ===========================================================================
+# AUDIT: EGP-ONLY LEDGER & JOURNAL INTEGRITY (see convert_to_egp, post_* flows)
+# ===========================================================================
+# post_purchase_invoice: Amounts converted to EGP via invoice exchange_rate or stored EGP.
+#   Duplicate post prevented (ledger ref_type=purchase_invoice, ref_id=invoice_id).
+#   VAT on purchases -> 2110 (VAT Input Recoverable). Journal balanced.
+# add_import_cost: amount converted to EGP (currency_code, exchange_rate) before post & save.
+# record_supplier_payment: Converts to EGP; balanced.
+# record_customer_collection: Converts to EGP; balanced.
+# create_contract_purchase: USD->EGP at entry; posts EGP only.
+# sell_inventory: total_cost & selling_price assumed EGP; balanced.
+# add_expense: Optional currency; converted to EGP before post.
+# Account 5100 (Import Costs): DEPRECATED for new posting; import costs post to 1200 only.
+# ===========================================================================
+
+# ===========================================================================
 # 2. GENERAL LEDGER (immutable double-entry)
 # ===========================================================================
 LEDGER_COLS = [
@@ -285,6 +329,25 @@ def _validate_account_exists(code):
     """Return True if the account code exists and is active."""
     acct = app_tables.chart_of_accounts.get(code=code)
     return acct is not None and acct.get('is_active', True)
+
+
+def _ensure_vat_accounts():
+    """Ensure VAT accounts 2100 (Output) and 2110 (Input) exist. Auto-create if missing."""
+    for code, name_en, name_ar, acct_type, parent in [
+        ('2100', 'VAT Payable', 'ضريبة مخرجات مستحقة', 'liability', None),
+        ('2110', 'VAT Input Recoverable', 'ضريبة مدخلات قابلة للاسترداد', 'asset', None),
+    ]:
+        if app_tables.chart_of_accounts.get(code=code):
+            continue
+        try:
+            app_tables.chart_of_accounts.add_row(
+                code=code, name_en=name_en, name_ar=name_ar,
+                account_type=acct_type, parent_code=parent,
+                is_active=True, created_at=get_utc_now(),
+            )
+            logger.info("VAT account %s auto-created", code)
+        except Exception as e:
+            logger.warning("Could not create account %s: %s", code, e)
 
 
 def post_journal_entry(entry_date, entries, description, ref_type, ref_id, user_email):
@@ -811,10 +874,11 @@ def create_purchase_invoice(data, token_or_email=None):
 def post_purchase_invoice(invoice_id, token_or_email=None):
     """
     Post a draft purchase invoice: only the supplier (machine) portion goes to AP.
-    Import costs are posted separately when added (add_import_cost → DR Inventory, CR Bank/Cash).
-    DR Inventory (1200) — supplier cost (total minus import costs minus tax)
-    CR Accounts Payable (2000) — supplier amount only (total minus import costs)
-    If tax: DR 1300 — tax_amount (on supplier portion)
+    All amounts are converted to EGP before posting (ledger is EGP-only).
+    Import costs are posted separately when added (add_import_cost → DR 1200, CR Bank/Cash).
+    DR Inventory (1200) — supplier cost (total minus import costs minus tax) in EGP
+    CR Accounts Payable (2000) — supplier amount only in EGP
+    If tax (VAT input): DR 2110 VAT Input Recoverable — tax_amount in EGP
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
@@ -826,48 +890,78 @@ def post_purchase_invoice(invoice_id, token_or_email=None):
         if row.get('status') != 'draft':
             return {'success': False, 'message': f"Cannot post invoice with status '{row.get('status')}'. Only draft invoices can be posted."}
 
+        # Prevent duplicate posting
+        existing = list(app_tables.ledger.search(reference_type='purchase_invoice', reference_id=invoice_id))
+        if existing:
+            return {'success': False, 'message': 'This invoice has already been posted. Duplicate posting is not allowed.'}
+
         total = _round2(row.get('total', 0))
         tax_amount = _round2(row.get('tax_amount', 0))
-
         if total <= 0:
             return {'success': False, 'message': 'Invoice total must be greater than zero'}
 
-        # Import costs are in a separate statement: deducted from Bank/Cash when added. Only machine (supplier) goes to AP.
-        import_costs_total = 0.0
-        for ic in app_tables.import_costs.search(purchase_invoice_id=invoice_id):
-            import_costs_total += _round2(ic.get('amount', 0))
-        import_costs_total = _round2(import_costs_total)
-        amount_to_ap = _round2(total - import_costs_total)  # ما يُسجّل على حساب المورد = إجمالي الفاتورة ناقص مصاريف الاستيراد
+        # Convert invoice totals to EGP: if exchange_rate_usd_to_egp is set, totals are in USD
+        inv_rate = row.get('exchange_rate_usd_to_egp')
+        try:
+            inv_rate = float(inv_rate) if inv_rate not in (None, '') else 0
+        except (TypeError, ValueError):
+            inv_rate = 0
+        if inv_rate and inv_rate > 0:
+            total_egp = convert_to_egp(total, 'USD', inv_rate)
+            tax_egp = convert_to_egp(tax_amount, 'USD', inv_rate)
+        else:
+            total_egp = total
+            tax_egp = tax_amount
 
-        if amount_to_ap <= 0:
+        # Import costs: convert each to EGP when summing (amounts may be in different currencies)
+        import_costs_total_egp = 0.0
+        for ic in app_tables.import_costs.search(purchase_invoice_id=invoice_id):
+            amt = _round2(ic.get('amount', 0))
+            if amt <= 0:
+                continue
+            curr = _safe_str(ic.get('currency') or 'EGP').upper()
+            try:
+                import_costs_total_egp += convert_to_egp(amt, curr, inv_rate if curr == 'USD' else None)
+            except ValueError as ve:
+                return {'success': False, 'message': str(ve)}
+        import_costs_total_egp = _round2(import_costs_total_egp)
+
+        amount_to_ap_egp = _round2(total_egp - import_costs_total_egp)
+        if amount_to_ap_egp <= 0:
             return {'success': False, 'message': 'Supplier amount (total minus import costs) must be greater than zero'}
+
+        _ensure_vat_accounts()
+        if not _validate_account_exists('2110'):
+            return {'success': False, 'message': 'Account 2110 (VAT Input Recoverable) not found. Run seed_default_accounts or add it.'}
+        if not _validate_account_exists('1200'):
+            return {'success': False, 'message': 'Account 1200 (Inventory) not found.'}
+        if not _validate_account_exists('2000'):
+            return {'success': False, 'message': 'Account 2000 (Accounts Payable) not found.'}
 
         inv_date = row.get('date') or date.today()
         entries = []
 
-        # Debit: Inventory for supplier cost only (machine). Skip if zero.
-        cost_to_inventory = _round2(amount_to_ap - tax_amount)
-        if cost_to_inventory > 0:
-            entries.append({'account_code': '1200', 'debit': cost_to_inventory, 'credit': 0})
-
-        if tax_amount > 0:
-            entries.append({'account_code': '1300', 'debit': tax_amount, 'credit': 0})
-
-        # Credit: Accounts Payable — supplier (machine) amount only
-        entries.append({'account_code': '2000', 'debit': 0, 'credit': amount_to_ap})
+        cost_to_inventory_egp = _round2(amount_to_ap_egp - tax_egp)
+        if cost_to_inventory_egp > 0:
+            entries.append({'account_code': '1200', 'debit': cost_to_inventory_egp, 'credit': 0})
+        if tax_egp > 0:
+            entries.append({'account_code': '2110', 'debit': tax_egp, 'credit': 0})
+        entries.append({'account_code': '2000', 'debit': 0, 'credit': amount_to_ap_egp})
 
         inv_number = row.get('invoice_number', invoice_id)
         result = post_journal_entry(
             inv_date, entries,
-            f"Purchase invoice {inv_number} posted",
+            f"Purchase invoice {inv_number} posted (EGP)",
             'purchase_invoice', invoice_id, user_email,
         )
         if not result.get('success'):
             return result
 
         row.update(status='posted', updated_at=get_utc_now())
-        logger.info("Purchase invoice %s posted by %s", inv_number, user_email)
+        logger.info("Purchase invoice %s posted (EGP) by %s", inv_number, user_email)
         return {'success': True, 'transaction_id': result['transaction_id']}
+    except ValueError as ve:
+        return {'success': False, 'message': str(ve)}
     except Exception as e:
         logger.exception("post_purchase_invoice error")
         return {'success': False, 'message': str(e)}
@@ -1196,41 +1290,39 @@ VALID_COST_TYPES = ('shipping', 'customs', 'insurance', 'clearance', 'transport'
 @anvil.server.callable
 def add_import_cost(purchase_invoice_id, cost_type, amount, description='',
                     cost_date=None, payment_method='cash', contract_number=None,
-                    token_or_email=None):
+                    currency_code='EGP', exchange_rate=None, token_or_email=None):
     """
-    Add an import cost linked to a purchase invoice.
-    CRITICAL: Import costs are part of Landed Cost, NOT period expenses.
+    Add an import cost linked to a purchase invoice. Ledger is EGP-only: amount is
+    converted to EGP before posting and before saving (stored amount is always EGP).
 
-    If inventory is NOT sold yet (in_transit / in_stock):
-        DR 1200 Inventory — increases inventory (landed cost)
-        CR Cash/Bank (selected account)
+    If inventory is NOT sold yet: DR 1200 Inventory, CR Cash/Bank (selected account).
+    If inventory is ALREADY SOLD: blocked; use manual COGS adjustment.
 
-    If inventory is ALREADY SOLD:
-        Import costs are blocked. Late costs after sale must be posted
-        manually as adjustments.
-
-    payment_method: cash, bank, cib, nbe, qnb, or direct account code
+    currency_code: EGP (default) or USD etc. exchange_rate: optional (EGP per 1 unit).
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
         return error
 
-    amount = _round2(amount)
-    if amount <= 0:
+    amount_in = _round2(amount)
+    if amount_in <= 0:
         return {'success': False, 'message': 'Import cost amount must be greater than zero'}
     if cost_type not in VALID_COST_TYPES:
         return {'success': False, 'message': f'Invalid cost_type. Must be one of: {", ".join(VALID_COST_TYPES)}'}
+
+    try:
+        amount_egp = convert_to_egp(amount_in, currency_code or 'EGP', exchange_rate)
+    except ValueError as ve:
+        return {'success': False, 'message': str(ve)}
 
     try:
         inv_row = app_tables.purchase_invoices.get(id=purchase_invoice_id)
         if not inv_row:
             return {'success': False, 'message': 'Purchase invoice not found'}
 
-        # Auto-detect contract_number from the invoice if not provided
         if not contract_number:
             contract_number = inv_row.get('contract_number')
 
-        # Check if related inventory item is already sold
         inv_items = list(app_tables.inventory.search(purchase_invoice_id=purchase_invoice_id))
         sold_items = [it for it in inv_items if it.get('status') == 'sold']
         if sold_items:
@@ -1243,17 +1335,16 @@ def add_import_cost(purchase_invoice_id, cost_type, amount, description='',
         parsed_date = _safe_date(cost_date) or date.today()
         cost_id = _uuid()
         credit_account = _resolve_payment_account(payment_method)
+        if not _validate_account_exists(credit_account):
+            return {'success': False, 'message': f'Payment account {credit_account} not found or inactive'}
 
-        # Resolve the inventory account from chart of accounts (not hardcoded)
         inventory_account = '1200'
-        acct_check = app_tables.chart_of_accounts.get(code=inventory_account)
-        if not acct_check or not acct_check.get('is_active', True):
+        if not _validate_account_exists(inventory_account):
             return {'success': False, 'message': f'Inventory account {inventory_account} not found or inactive'}
 
-        # Ledger entry: DR Inventory (landed cost), CR Cash/Bank
         entries = [
-            {'account_code': inventory_account, 'debit': amount, 'credit': 0},
-            {'account_code': credit_account, 'debit': 0, 'credit': amount},
+            {'account_code': inventory_account, 'debit': amount_egp, 'credit': 0},
+            {'account_code': credit_account, 'debit': 0, 'credit': amount_egp},
         ]
         je_result = post_journal_entry(
             parsed_date, entries,
@@ -1263,26 +1354,35 @@ def add_import_cost(purchase_invoice_id, cost_type, amount, description='',
         if not je_result.get('success'):
             return je_result
 
-        app_tables.import_costs.add_row(
+        row_data = dict(
             id=cost_id,
             purchase_invoice_id=purchase_invoice_id,
             cost_type=cost_type,
             description=_safe_str(description),
-            amount=amount,
+            amount=amount_egp,
             date=parsed_date,
             created_by=user_email,
             created_at=get_utc_now(),
             contract_number=_safe_str(contract_number) or None,
             payment_account=credit_account,
         )
+        try:
+            app_tables.import_costs.add_row(currency='EGP', **row_data)
+        except Exception as col_err:
+            if 'currency' in str(col_err).lower() or 'column' in str(col_err).lower():
+                row_data.pop('currency', None)
+                app_tables.import_costs.add_row(**row_data)
+            else:
+                raise
 
-        # Update linked inventory items — recalculate landed cost
         _update_inventory_import_totals(purchase_invoice_id)
 
-        logger.info("Import cost %s (%.2f) added to %s by %s [DR %s, CR %s]",
-                     cost_type, amount, purchase_invoice_id, user_email,
+        logger.info("Import cost %s (%.2f EGP) added to %s by %s [DR %s, CR %s]",
+                     cost_type, amount_egp, purchase_invoice_id, user_email,
                      inventory_account, credit_account)
-        return {'success': True, 'id': cost_id, 'transaction_id': je_result['transaction_id']}
+        return {'success': True, 'id': cost_id, 'transaction_id': je_result['transaction_id'], 'amount_egp': amount_egp}
+    except ValueError as ve:
+        return {'success': False, 'message': str(ve)}
     except Exception as e:
         logger.exception("add_import_cost error")
         return {'success': False, 'message': str(e)}
@@ -1305,7 +1405,11 @@ def get_import_costs(purchase_invoice_id, token_or_email=None):
 
 
 def _update_inventory_import_totals(purchase_invoice_id):
-    """Recalculate import_costs_total and total_cost for inventory items linked to a purchase invoice."""
+    """
+    Recalculate import_costs_total and total_cost for inventory items linked to a purchase invoice.
+    Guarantee: total_cost = purchase_cost + import_costs_total (all amounts in EGP).
+    Import cost amounts are stored in EGP (add_import_cost converts before save).
+    """
     try:
         cost_rows = list(app_tables.import_costs.search(purchase_invoice_id=purchase_invoice_id))
         import_total = _round2(sum(_round2(r.get('amount', 0)) for r in cost_rows))
@@ -1384,17 +1488,24 @@ def get_expenses(date_from=None, date_to=None, category=None, token_or_email=Non
 @anvil.server.callable
 def add_expense(data, token_or_email=None):
     """
-    Record an expense.
-    DR Expense Account (from category mapping or explicit account_code)
-    CR Cash (1000) / Bank (1010) / Cash (1000 for check)
+    Record an expense. Ledger is EGP-only: if data.currency is provided and not EGP,
+    amount is converted to EGP before posting. Stored amount is always EGP.
+    DR Expense Account (from category or account_code)
+    CR Cash (1000) / Bank (1010) etc.
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
         return error
 
-    amount = _round2(data.get('amount', 0))
-    if amount <= 0:
+    amount_in = _round2(data.get('amount', 0))
+    if amount_in <= 0:
         return {'success': False, 'message': 'Expense amount must be greater than zero'}
+
+    currency_code = _safe_str(data.get('currency') or 'EGP').upper()
+    try:
+        amount_egp = convert_to_egp(amount_in, currency_code, data.get('exchange_rate'))
+    except ValueError as ve:
+        return {'success': False, 'message': str(ve)}
 
     category = _safe_str(data.get('category')).lower()
     if category and category not in VALID_EXPENSE_CATEGORIES:
@@ -1404,20 +1515,22 @@ def add_expense(data, token_or_email=None):
     if payment_method not in VALID_PAYMENT_METHODS:
         return {'success': False, 'message': f'Invalid payment method. Must be one of: {", ".join(VALID_PAYMENT_METHODS)}'}
 
-    # Determine the expense account code
     account_code = _safe_str(data.get('account_code'))
     if not account_code:
         account_code = CATEGORY_ACCOUNT_MAP.get(category, '6090')
+    if not _validate_account_exists(account_code):
+        return {'success': False, 'message': f'Expense account {account_code} not found or inactive'}
+
+    credit_account = _resolve_payment_account(payment_method)
+    if not _validate_account_exists(credit_account):
+        return {'success': False, 'message': f'Payment account {credit_account} not found or inactive'}
 
     parsed_date = _safe_date(data.get('date')) or date.today()
     expense_id = _uuid()
 
-    # Determine credit account — supports multiple banks
-    credit_account = _resolve_payment_account(payment_method)
-
     entries = [
-        {'account_code': account_code, 'debit': amount, 'credit': 0},
-        {'account_code': credit_account, 'debit': 0, 'credit': amount},
+        {'account_code': account_code, 'debit': amount_egp, 'credit': 0},
+        {'account_code': credit_account, 'debit': 0, 'credit': amount_egp},
     ]
 
     try:
@@ -1435,7 +1548,7 @@ def add_expense(data, token_or_email=None):
             date=parsed_date,
             category=category,
             description=desc,
-            amount=amount,
+            amount=amount_egp,
             payment_method=payment_method,
             reference=_safe_str(data.get('reference')) or None,
             account_code=account_code,
@@ -1443,7 +1556,7 @@ def add_expense(data, token_or_email=None):
             created_by=user_email,
             created_at=get_utc_now(),
         )
-        logger.info("Expense %s (%.2f, %s) created by %s", expense_id, amount, category, user_email)
+        logger.info("Expense %s (%.2f EGP, %s) created by %s", expense_id, amount_egp, category, user_email)
         return {'success': True, 'id': expense_id, 'transaction_id': je_result['transaction_id']}
     except Exception as e:
         logger.exception("add_expense error")
@@ -1857,9 +1970,16 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
         if row.get('status') == 'in_transit':
             return {'success': False, 'message': 'Item is still in transit. Receive it first before selling.'}
 
-        # Landed cost = purchase_cost + import_costs_total
+        # Landed cost = purchase_cost + import_costs_total (both EGP)
         total_cost = _round2(row.get('total_cost', 0))
         sale_day = _safe_date(sale_date) or date.today()
+
+        if not _validate_account_exists('5000'):
+            return {'success': False, 'message': 'Account 5000 (COGS) not found or inactive'}
+        if not _validate_account_exists('1200'):
+            return {'success': False, 'message': 'Account 1200 (Inventory) not found or inactive'}
+        if not _validate_account_exists('1100') or not _validate_account_exists('4000'):
+            return {'success': False, 'message': 'Account 1100 or 4000 not found or inactive'}
 
         # Entry 1: Record cost of goods sold (COGS = Landed Cost)
         # Always post COGS entry even if total_cost is 0, to record inventory removal

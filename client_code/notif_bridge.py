@@ -52,13 +52,18 @@ def _get_all_notifications():
         for item in (res.get('data') or []):
             payload = item.get('payload') or {}
             msg_key = 'message_ar' if lang == 'ar' else 'message_en'
-            description = payload.get(msg_key, '') or payload.get('message_en', '') or _type_label(item.get('type', ''), payload, lang)
+            # For audit_action, show full detail from action_description (action + table + record)
+            notif_type = item.get('type', '')
+            if notif_type == 'audit_action':
+                description = (payload.get('action_description') or '').strip() or payload.get(msg_key, '') or payload.get('message_en', '') or _type_label(notif_type, payload, lang)
+            else:
+                description = payload.get(msg_key, '') or payload.get('message_en', '') or _type_label(notif_type, payload, lang)
             ts = (item.get('created_at') or '').replace('T', ' ')[:19]
             notifications.append({
                 'id': item.get('id', ''),
                 'timestamp': ts,
                 'action_description': description,
-                'action': item.get('type', ''),
+                'action': notif_type,
                 'read_at': item.get('read_at'),
                 'user_email': item.get('user_email', ''),
             })
@@ -69,6 +74,20 @@ def _get_all_notifications():
 
 def _type_label(notif_type, payload, lang):
     """Generate human-readable label from notification type."""
+    # audit_action: use stored action_description, or build from action + table + record
+    if notif_type == 'audit_action':
+        desc = (payload.get('action_description') or '').strip()
+        if desc:
+            return desc
+        action = payload.get('action', '')
+        table = payload.get('table_name', '')
+        record_id = payload.get('record_id', '')
+        parts = [action] if action else []
+        if table:
+            parts.append(table)
+        if record_id:
+            parts.append(str(record_id))
+        return ' - '.join(parts) if parts else ('Audit action' if lang == 'en' else 'إجراء تدقيق')
     labels = {
         'quotation_saved': ('Quotation saved', 'تم حفظ عرض سعر'),
         'contract_saved': ('Contract saved', 'تم حفظ عقد'),
@@ -78,7 +97,6 @@ def _type_label(notif_type, payload, lang):
         'user_rejected': ('User rejected', 'تم رفض مستخدم'),
         'backup_created': ('Backup created', 'تم إنشاء نسخة احتياطية'),
         'backup_restored': ('Backup restored', 'تمت استعادة نسخة احتياطية'),
-        'audit_action': ('Audit action', 'إجراء تدقيق'),
     }
     pair = labels.get(notif_type, (notif_type, notif_type))
     base = pair[1] if lang == 'ar' else pair[0]

@@ -33,10 +33,16 @@ def build_purchase_invoice_pdf_data(invoice_row, supplier_row, import_costs, lin
     if subtotal == 0 and total > 0:
         subtotal = total
 
-    inv_currency = (inv.get('currency_code') or 'EGP').upper()[:3]
-    inv_rate = float(inv.get('exchange_rate_usd_to_egp') or 0) if inv_currency == 'USD' else 1.0
-    if inv_currency == 'EGP':
-        inv_rate = 1.0
+    # If currency_code not stored (e.g. old/draft invoice) but exchange rate is set, treat as USD
+    _cc = (inv.get('currency_code') or '').strip().upper()[:3]
+    _rate = float(inv.get('exchange_rate_usd_to_egp') or 0)
+    if _cc:
+        inv_currency = _cc
+    elif _rate > 0:
+        inv_currency = 'USD'
+    else:
+        inv_currency = 'EGP'
+    inv_rate = _rate if inv_currency == 'USD' and _rate > 0 else (1.0 if inv_currency == 'EGP' else _rate or 1.0)
 
     costs_list = []
     import_total = 0.0

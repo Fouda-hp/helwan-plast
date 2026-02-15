@@ -99,6 +99,8 @@ def _delete_all_notifications():
     token = _get_token()
     if not token:
         return {'success': False}
+    if _is_admin():
+        return anvil.server.call('delete_all_notifications_admin', token)
     return anvil.server.call('delete_all_my_notifications', token)
 
 

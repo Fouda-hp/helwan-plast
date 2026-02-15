@@ -215,30 +215,40 @@ def get_user_notifications(token_or_email, limit=50, unread_only=False):
 
 @anvil.server.callable
 def mark_notification_read(notification_id, token_or_email):
-    """تعليم إشعار كمقروء."""
+    """تعليم إشعار كمقروء (الأدمن يمكنه تعديل أي إشعار)."""
     user_email = _user_email_from_token(token_or_email)
     if not user_email:
         return {'success': False, 'message': 'Authentication required'}
     try:
         row = app_tables.notifications.get(id=notification_id, user_email=user_email)
+        if not row:
+            # Admin can mark any notification as read
+            if AuthManager.is_admin(token_or_email):
+                row = app_tables.notifications.get(id=notification_id)
         if row:
             row.update(read_at=get_utc_now())
-        return {'success': True}
+            return {'success': True}
+        return {'success': False, 'message': 'Notification not found or access denied'}
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
 
 @anvil.server.callable
 def mark_notification_unread(notification_id, token_or_email):
-    """تعليم إشعار كغير مقروء."""
+    """تعليم إشعار كغير مقروء (الأدمن يمكنه تعديل أي إشعار)."""
     user_email = _user_email_from_token(token_or_email)
     if not user_email:
         return {'success': False, 'message': 'Authentication required'}
     try:
         row = app_tables.notifications.get(id=notification_id, user_email=user_email)
+        if not row:
+            # Admin can mark any notification as unread
+            if AuthManager.is_admin(token_or_email):
+                row = app_tables.notifications.get(id=notification_id)
         if row:
             row.update(read_at=None)
-        return {'success': True}
+            return {'success': True}
+        return {'success': False, 'message': 'Notification not found or access denied'}
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
@@ -278,15 +288,39 @@ def delete_all_my_notifications(token_or_email):
 
 
 @anvil.server.callable
+def delete_all_notifications_admin(token_or_email):
+    """حذف كل الإشعارات من الجدول — للأدمن فقط."""
+    user_email = _user_email_from_token(token_or_email)
+    if not user_email:
+        return {'success': False, 'message': 'Authentication required', 'deleted_count': 0}
+    if not AuthManager.is_admin(token_or_email):
+        return {'success': False, 'message': 'Admin access required', 'deleted_count': 0}
+    try:
+        rows = list(app_tables.notifications.search())
+        count = 0
+        for row in rows:
+            row.delete()
+            count += 1
+        logger.info("Admin %s deleted all notifications (%s rows)", user_email, count)
+        return {'success': True, 'deleted_count': count}
+    except Exception as e:
+        logger.warning("delete_all_notifications_admin: %s", e)
+        return {'success': False, 'message': str(e), 'deleted_count': 0}
+
+
+@anvil.server.callable
 def delete_notification(notification_id, token_or_email):
-    """حذف إشعار واحد من الجدول (للمستخدم الحالي فقط)."""
+    """حذف إشعار واحد من الجدول (الأدمن يمكنه حذف أي إشعار)."""
     user_email = _user_email_from_token(token_or_email)
     if not user_email:
         return {'success': False, 'message': 'Authentication required'}
     if not notification_id or not str(notification_id).strip():
         return {'success': False, 'message': 'Notification ID required'}
     try:
-        row = app_tables.notifications.get(id=str(notification_id).strip(), user_email=user_email)
+        nid = str(notification_id).strip()
+        row = app_tables.notifications.get(id=nid, user_email=user_email)
+        if not row and AuthManager.is_admin(token_or_email):
+            row = app_tables.notifications.get(id=nid)
         if row:
             row.delete()
             return {'success': True}

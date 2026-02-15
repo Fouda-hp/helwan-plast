@@ -1,6 +1,5 @@
 import anvil.users
-import anvil.files
-from anvil.files import data_files
+# anvil.files removed to avoid posixpath.getcwd() errors at app load (e.g. login)
 import anvil.google.auth, anvil.google.drive, anvil.google.mail
 from anvil.google.drive import app_files
 import anvil.secrets

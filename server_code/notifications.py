@@ -1,6 +1,5 @@
 import anvil.users
-import anvil.files
-from anvil.files import data_files
+# anvil.files removed to avoid posixpath.getcwd() errors at app load (e.g. login)
 """
 notifications.py - نظام الإشعارات (Enterprise / SaaS)
 ====================================================

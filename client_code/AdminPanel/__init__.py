@@ -2159,13 +2159,8 @@ class AdminPanel(AdminPanelTemplate):
         return token
 
     def get_auth(self):
-        """Get auth token (preferred) or email as fallback"""
-        # استخدام التوكن أولاً (مطلوب بعد تحديث الأمان)
-        token = self.get_token()
-        if token:
-            return token
-        # fallback للإيميل
-        return self.get_email()
+        """Get auth token only (no email fallback)."""
+        return self.get_token()
 
     def get_user_name(self):
         """الحصول على اسم المستخدم"""

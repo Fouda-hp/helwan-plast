@@ -1465,6 +1465,39 @@ def receive_inventory(item_id, location='', token_or_email=None):
         return {'success': False, 'message': str(e)}
 
 
+def _is_cash_bank_account_row(r):
+    """Detect cash/bank accounts robustly (supports custom COA trees/codes)."""
+    try:
+        code = str(r.get('code', '') or '').strip()
+        parent = str(r.get('parent_code', '') or '').strip()
+        name_en = str(r.get('name_en', '') or '').lower()
+        name_ar = str(r.get('name_ar', '') or '')
+        account_type = str(r.get('account_type', '') or '').lower()
+
+        # Common accounting structures in this app
+        if code == '1000':
+            return True
+        if code.startswith('101'):
+            return True
+        if parent in ('1000', '1010') or parent.startswith('101'):
+            return True
+
+        # Fallback by naming/type for customized charts
+        by_name = (
+            ('cash' in name_en) or
+            ('bank' in name_en) or
+            ('نقد' in name_ar) or
+            ('خز' in name_ar) or
+            ('بنك' in name_ar)
+        )
+        if by_name and account_type in ('asset', 'current_asset', 'cash', 'bank', ''):
+            return True
+
+        return False
+    except Exception:
+        return False
+
+
 @anvil.server.callable
 def get_bank_accounts(token_or_email=None):
     """Return list of cash/bank accounts for payment dropdowns."""
@@ -1474,22 +1507,31 @@ def get_bank_accounts(token_or_email=None):
     try:
         accounts = []
         for r in app_tables.chart_of_accounts.search(is_active=True):
+            if not _is_cash_bank_account_row(r):
+                continue
             code = str(r.get('code', '')).strip()
-            # Include cash (1000) and all bank sub-accounts (1010, 1011, 1012, 1013, ...)
-            if code == '1000' or (code.startswith('101') and len(code) == 4):
-                accounts.append({
-                    'code': code,
-                    'name_en': r.get('name_en', ''),
-                    'name_ar': r.get('name_ar', ''),
-                })
+            if not code:
+                continue
+            accounts.append({
+                'code': code,
+                'name_en': r.get('name_en', ''),
+                'name_ar': r.get('name_ar', ''),
+            })
         # إذا دليل الحسابات فاضي أو مفيش نقدية/بنوك — نرجع قائمة افتراضية عشان الدروب داون ما تبقاش فاضية
         if not accounts:
             accounts = [
                 {'code': '1000', 'name_en': 'Cash', 'name_ar': 'نقدية'},
                 {'code': '1010', 'name_en': 'Bank', 'name_ar': 'بنك'},
             ]
-        accounts.sort(key=lambda a: a.get('code', ''))
-        return {'success': True, 'accounts': accounts}
+        seen = set()
+        deduped = []
+        for a in sorted(accounts, key=lambda x: x.get('code', '')):
+            c = str(a.get('code', '') or '').strip()
+            if not c or c in seen:
+                continue
+            seen.add(c)
+            deduped.append(a)
+        return {'success': True, 'accounts': deduped}
     except Exception as e:
         logger.exception("get_bank_accounts error")
         return {'success': False, 'message': str(e)}
@@ -3773,7 +3815,7 @@ CASH_BANK_ACCOUNTS = ('1000', '1010', '1011', '1012', '1013')
 def get_cash_bank_statement(account_code=None, date_from=None, date_to=None, token_or_email=None):
     """
     كشف حساب النقدية والبنك — كل الحركات (مدين/دائن) لحساب نقدية أو بنك ضمن الفترة.
-    account_code: اختياري — إن ترك فاضياً يعيد حركات كل الحسابات (1000, 1010, 1011, 1012, 1013).
+    account_code: اختياري — إن ترك فاضياً يعيد حركات كل الحسابات المصنفة نقدية/بنوك من دليل الحسابات.
     يُرجع قائمة حركات مع الرصيد الجاري (running balance) واسم الحساب.
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'read')
@@ -3783,14 +3825,22 @@ def get_cash_bank_statement(account_code=None, date_from=None, date_to=None, tok
         if account_code and _safe_str(account_code).strip():
             codes = [_safe_str(account_code).strip()]
         else:
-            codes = list(CASH_BANK_ACCOUNTS)
+            codes = []
+            for acct in app_tables.chart_of_accounts.search(is_active=True):
+                if _is_cash_bank_account_row(acct):
+                    c = str(acct.get('code', '')).strip()
+                    if c:
+                        codes.append(c)
+            if not codes:
+                codes = list(CASH_BANK_ACCOUNTS)
+            codes = sorted(set(codes))
         d_from = _safe_date(date_from)
         d_to = _safe_date(date_to)
 
         account_names = {}
         for acct in app_tables.chart_of_accounts.search():
             c = str(acct.get('code', '')).strip()
-            if c in codes or not account_code:
+            if c in codes:
                 account_names[c] = acct.get('name_en', '') or acct.get('name_ar', '') or c
 
         rows = []

@@ -757,36 +757,48 @@ def create_purchase_invoice(data, token_or_email=None):
         # Try adding machine_config_json column (may not exist yet)
         if machine_config_str:
             row_data['machine_config_json'] = machine_config_str
+        # Optional: سعر الصرف للفاتورة (إن وُجد العمود)
+        ex_rate = data.get('exchange_rate_usd_to_egp')
+        if ex_rate is not None and ex_rate != '':
+            try:
+                row_data['exchange_rate_usd_to_egp'] = _round2(float(ex_rate))
+            except (TypeError, ValueError):
+                pass
         try:
             app_tables.purchase_invoices.add_row(**row_data)
         except Exception as col_err:
-            # If machine_config_json column doesn't exist, retry without it
-            if 'machine_config_json' in str(col_err):
+            err_str = str(col_err)
+            row_data.pop('exchange_rate_usd_to_egp', None)
+            if 'machine_config' in err_str:
                 row_data.pop('machine_config_json', None)
-                app_tables.purchase_invoices.add_row(**row_data)
-                logger.info("machine_config_json column not found - saved invoice without it")
-            else:
-                raise
+            app_tables.purchase_invoices.add_row(**row_data)
 
         # Save import costs if provided
         import_costs = data.get('import_costs', [])
         for ic in import_costs:
             ic_amount = _round2(ic.get('amount', 0))
             if ic_amount > 0:
+                ic_row = dict(
+                    id=_uuid(),
+                    purchase_invoice_id=inv_id,
+                    cost_type=_safe_str(ic.get('cost_type', 'other')),
+                    amount=ic_amount,
+                    description=_safe_str(ic.get('description', '')),
+                    date=_safe_date(data.get('date')) or date.today(),
+                    payment_method=_safe_str(ic.get('payment_method', 'cash')),
+                    payment_account=_resolve_payment_account(ic.get('payment_method', 'cash')),
+                    created_at=now,
+                )
+                if ic.get('currency'):
+                    ic_row['currency'] = _safe_str(ic.get('currency', 'USD')).upper()[:3]
                 try:
-                    app_tables.import_costs.add_row(
-                        id=_uuid(),
-                        purchase_invoice_id=inv_id,
-                        cost_type=_safe_str(ic.get('cost_type', 'other')),
-                        amount=ic_amount,
-                        description=_safe_str(ic.get('description', '')),
-                        date=_safe_date(data.get('date')) or date.today(),
-                        payment_method=_safe_str(ic.get('payment_method', 'cash')),
-                        payment_account=_resolve_payment_account(ic.get('payment_method', 'cash')),
-                        created_at=now,
-                    )
+                    app_tables.import_costs.add_row(**ic_row)
                 except Exception as ic_err:
-                    logger.warning("Could not save import cost: %s", ic_err)
+                    ic_row.pop('currency', None)
+                    try:
+                        app_tables.import_costs.add_row(**ic_row)
+                    except Exception:
+                        logger.warning("Could not save import cost: %s", ic_err)
 
         logger.info("Purchase invoice %s created by %s", inv_number, user_email)
         return {'success': True, 'id': inv_id, 'invoice_number': inv_number}
@@ -1166,7 +1178,7 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
 # 5. IMPORT COSTS
 # ===========================================================================
 IMPORT_COST_COLS = ['id', 'purchase_invoice_id', 'cost_type', 'description', 'amount', 'date',
-                    'created_by', 'created_at', 'contract_number', 'payment_account']
+                    'created_by', 'created_at', 'contract_number', 'payment_account', 'currency']
 
 VALID_COST_TYPES = ('shipping', 'customs', 'insurance', 'clearance', 'transport', 'other')
 
@@ -2458,6 +2470,11 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
             updates['due_date'] = _safe_date(data['due_date'])
         if 'notes' in data:
             updates['notes'] = _safe_str(data['notes'])
+        if data.get('exchange_rate_usd_to_egp') is not None and data.get('exchange_rate_usd_to_egp') != '':
+            try:
+                updates['exchange_rate_usd_to_egp'] = _round2(float(data['exchange_rate_usd_to_egp']))
+            except (TypeError, ValueError):
+                pass
         if 'machine_code' in data:
             updates['machine_code'] = _safe_str(data['machine_code'])
         # Update machine config JSON
@@ -2494,13 +2511,9 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
         try:
             row.update(**updates)
         except Exception as col_err:
-            # If machine_config_json column doesn't exist, retry without it
-            if 'machine_config_json' in str(col_err):
-                updates.pop('machine_config_json', None)
-                row.update(**updates)
-                logger.info("machine_config_json column not found - updated invoice without it")
-            else:
-                raise
+            updates.pop('exchange_rate_usd_to_egp', None)
+            updates.pop('machine_config_json', None)
+            row.update(**updates)
 
         # Update import costs if provided - delete old ones and re-add
         if 'import_costs' in data:
@@ -2509,25 +2522,32 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
                 for old_ic in old_ics:
                     old_ic.delete()
             except Exception:
-                pass  # Table may not exist or no old costs
+                pass
             now = get_utc_now()
             for ic in data.get('import_costs', []):
                 ic_amount = _round2(ic.get('amount', 0))
                 if ic_amount > 0:
+                    ic_row = dict(
+                        id=_uuid(),
+                        purchase_invoice_id=invoice_id,
+                        cost_type=_safe_str(ic.get('cost_type', 'other')),
+                        amount=ic_amount,
+                        description=_safe_str(ic.get('description', '')),
+                        date=_safe_date(data.get('date')) or date.today(),
+                        payment_method=_safe_str(ic.get('payment_method', 'cash')),
+                        payment_account=_resolve_payment_account(ic.get('payment_method', 'cash')),
+                        created_at=now,
+                    )
+                    if ic.get('currency'):
+                        ic_row['currency'] = _safe_str(ic.get('currency', 'USD')).upper()[:3]
                     try:
-                        app_tables.import_costs.add_row(
-                            id=_uuid(),
-                            purchase_invoice_id=invoice_id,
-                            cost_type=_safe_str(ic.get('cost_type', 'other')),
-                            amount=ic_amount,
-                            description=_safe_str(ic.get('description', '')),
-                            date=_safe_date(data.get('date')) or date.today(),
-                            payment_method=_safe_str(ic.get('payment_method', 'cash')),
-                            payment_account=_resolve_payment_account(ic.get('payment_method', 'cash')),
-                            created_at=now,
-                        )
+                        app_tables.import_costs.add_row(**ic_row)
                     except Exception as ic_err:
-                        logger.warning("Could not save import cost on update: %s", ic_err)
+                        ic_row.pop('currency', None)
+                        try:
+                            app_tables.import_costs.add_row(**ic_row)
+                        except Exception:
+                            logger.warning("Could not save import cost on update: %s", ic_err)
 
         logger.info("Purchase invoice %s updated by %s", invoice_id, user_email)
         return {'success': True}
@@ -2631,8 +2651,13 @@ def get_invoice_details(invoice_id, token_or_email=None):
         # Alias paid_amount -> paid for frontend consistency
         d['paid'] = d.get('paid_amount', 0)
 
-        # سعر الصرف دولار → جنيه لعرض الفاتورة بالمصري
-        d['exchange_rate_usd_to_egp'] = _get_rate_to_egp('USD')
+        # سعر الصرف: المُحفوظ مع الفاتورة إن وُجد، وإلا سعر الصرف الحالي
+        saved_rate = row.get('exchange_rate_usd_to_egp')
+        try:
+            saved_rate = float(saved_rate) if saved_rate not in (None, '') else 0
+        except (TypeError, ValueError):
+            saved_rate = 0
+        d['exchange_rate_usd_to_egp'] = saved_rate if saved_rate > 0 else _get_rate_to_egp('USD')
 
         return {'success': True, 'data': d}
     except Exception as e:

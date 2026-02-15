@@ -81,6 +81,19 @@ class AdminPanel(AdminPanelTemplate):
         self._inject_admin_panel_enhancements()
         register_notif_bridges()
 
+        # Ensure display name is always present for header rendering scripts
+        try:
+            display_name = (self.user_name or '').strip()
+            if not display_name:
+                em = (self.user_email or '').strip()
+                if em and '@' in em:
+                    display_name = em.split('@')[0]
+            if display_name:
+                anvil.js.window.sessionStorage.setItem('user_name', display_name)
+                anvil.js.window.localStorage.setItem('user_name', display_name)
+        except Exception:
+            pass
+
         # بعد الجاهزية، فعّل التوجيه والـ hash listener (مع منع تكرار listeners القديمة)
         self.check_route()
         try:
@@ -2052,21 +2065,28 @@ class AdminPanel(AdminPanelTemplate):
               try {
                 if (!window.getDashboardStats) { setTimeout(loadDashboard, 500); return; }
                 injectDashboardSectionsOnce();
-                var stats = await window.getDashboardStats();
-                if (stats) {
-                  setStatText('statClients', (stats.total_clients || 0).toLocaleString());
-                  setStatText('statQuotations', (stats.total_quotations || 0).toLocaleString());
-                  setStatText('statValue', (stats.total_value || 0).toLocaleString());
-                  setStatText('statMonthly', (stats.this_month_quotations || 0).toLocaleString());
-                  setStatText('statTotalContracts', (stats.total_contracts || 0).toLocaleString());
-                  setStatText('statContractsValue', (stats.contracts_value_egp || 0).toLocaleString());
-                  setStatText('statThisMonthContracts', (stats.this_month_contracts || 0).toLocaleString());
-                  setStatText('statTotalDuePayments', (stats.total_due_payments_egp || 0).toLocaleString());
-                  renderFinanceChart(stats);
-                }
+                var statsRes = await window.getDashboardStats();
+                var stats = (statsRes && statsRes.data) ? statsRes.data : (statsRes || {});
+
+                setStatText('statClients', Number(stats.total_clients || 0).toLocaleString());
+                setStatText('statQuotations', Number(stats.total_quotations || 0).toLocaleString());
+                setStatText('statValue', Number(stats.total_value || 0).toLocaleString());
+                setStatText('statMonthly', Number(stats.this_month_quotations || 0).toLocaleString());
+                setStatText('statTotalContracts', Number(stats.total_contracts || 0).toLocaleString());
+                setStatText('statContractsValue', Number(stats.contracts_value_egp || 0).toLocaleString());
+                setStatText('statThisMonthContracts', Number(stats.this_month_contracts || 0).toLocaleString());
+                setStatText('statTotalDuePayments', Number(stats.total_due_payments_egp || 0).toLocaleString());
+
+                try { renderFinanceChart(stats); } catch (eChart) { console.warn('Finance chart error:', eChart); }
+
                 if (window.getPendingUsers) {
-                  var pending = await window.getPendingUsers();
-                  if (pending && pending.success && pending.users) setStatText('pendingBadge', pending.users.length);
+                  try {
+                    var pending = await window.getPendingUsers();
+                    var cnt = (pending && pending.success && Array.isArray(pending.users)) ? pending.users.length : 0;
+                    setStatText('pendingBadge', cnt);
+                  } catch (ePending) {
+                    console.warn('Pending users error:', ePending);
+                  }
                 }
               } catch (e) {
                 console.error('Dashboard error:', e);

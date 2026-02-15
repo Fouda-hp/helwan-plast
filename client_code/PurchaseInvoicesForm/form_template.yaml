@@ -418,6 +418,7 @@ container:
             <thead>
               <tr style="background:#f5f5f5;">
                 <th style="padding:8px;border:1px solid #ddd;text-align:left;" id="icThType">Type</th>
+                <th style="padding:8px;border:1px solid #ddd;text-align:left;" id="icThDesc">Description</th>
                 <th style="padding:8px;border:1px solid #ddd;text-align:right;" id="icThAmount">Amount (EGP)</th>
                 <th style="padding:8px;border:1px solid #ddd;text-align:right;" id="icThPaid">Paid</th>
                 <th style="padding:8px;border:1px solid #ddd;text-align:right;" id="icThRemaining">Remaining</th>
@@ -549,6 +550,7 @@ container:
             setText('lblImportPayMethod', t('Payment from (Cash / Bank)', 'الدفع من (كاش / بنك)'));
             setText('lblImportPayDate', t('Date', 'التاريخ'));
             setText('icThType', t('Type', 'النوع'));
+            setText('icThDesc', t('Description', 'الوصف'));
             setText('icThAmount', t('Amount (EGP)', 'المبلغ (ج.م)'));
             setText('icThPaid', t('Paid', 'المدفوع'));
             setText('icThRemaining', t('Remaining', 'المتبقي'));
@@ -1125,18 +1127,18 @@ container:
               });
             }
             document.getElementById('importCostsPayModal').classList.add('show');
-            document.getElementById('importCostsPayBody').innerHTML = '<tr><td colspan="5" style="padding:12px;text-align:center;color:#666;">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            document.getElementById('importCostsPayBody').innerHTML = '<tr><td colspan="6" style="padding:12px;text-align:center;color:#666;">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
               var res = await window.pyGetImportCostsForPayment(invoiceId);
               var tbody = document.getElementById('importCostsPayBody');
               if (!res || !res.success) {
-                tbody.innerHTML = '<tr><td colspan="5" style="padding:12px;color:#c62828;">' + (res ? res.message : 'Error') + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#c62828;">' + (res ? res.message : 'Error') + '</td></tr>';
                 return;
               }
               var costs = res.costs || [];
               var isAr = (localStorage.getItem('hp_language') || 'en') === 'ar';
               if (costs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="padding:12px;color:#666;">' + t('No import costs yet. Add one below.', 'لا توجد تكاليف استيراد بعد. أضف من الأسفل.') + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#666;">' + t('No import costs yet. Add one below.', 'لا توجد تكاليف استيراد بعد. أضف من الأسفل.') + '</td></tr>';
                 populateAddIcPayFrom(bankRes);
                 setAddIcDateToday();
                 document.getElementById('importCostsAddSection').style.display = 'block';
@@ -1147,8 +1149,10 @@ container:
               var html = '';
               costs.forEach(function(c) {
                 var rem = parseFloat(c.remaining_egp) || 0;
+                var desc = (c.description || '').trim() || '—';
                 html += '<tr data-ic-id="' + (c.id || '') + '" data-remaining="' + rem + '">';
-                html += '<td style="padding:8px;border:1px solid #ddd;">' + (c.cost_type || '') + (c.description ? ': ' + c.description : '') + '</td>';
+                html += '<td style="padding:8px;border:1px solid #ddd;">' + (c.cost_type || '') + '</td>';
+                html += '<td style="padding:8px;border:1px solid #ddd;color:#555;">' + desc + '</td>';
                 html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.amount_egp) + egpSuffix + '</td>';
                 html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.paid_amount) + egpSuffix + '</td>';
                 html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;font-weight:600;">' + fmt(rem) + egpSuffix + '</td>';
@@ -1161,7 +1165,7 @@ container:
               document.getElementById('importCostsAddSection').style.display = 'block';
               document.getElementById('importCostsPayHint').textContent = t('Enter amount to pay per row (partial or full). You can add more costs below.', 'أدخل المبلغ المراد دفعه لكل بند. يمكنك إضافة تكاليف أخرى من الأسفل.');
             } catch (err) {
-              document.getElementById('importCostsPayBody').innerHTML = '<tr><td colspan="5" style="padding:12px;color:#c62828;">' + String(err) + '</td></tr>';
+              document.getElementById('importCostsPayBody').innerHTML = '<tr><td colspan="6" style="padding:12px;color:#c62828;">' + String(err) + '</td></tr>';
             }
           };
 
@@ -1233,12 +1237,13 @@ container:
                 if (!res2 || !res2.success) return;
                 var costs = res2.costs || [];
                 if (costs.length === 0) {
-                  tbody.innerHTML = '<tr><td colspan="5" style="padding:12px;color:#666;">' + t('No import costs yet. Add one below.', 'لا توجد تكاليف استيراد بعد. أضف من الأسفل.') + '</td></tr>';
+                  tbody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#666;">' + t('No import costs yet. Add one below.', 'لا توجد تكاليف استيراد بعد. أضف من الأسفل.') + '</td></tr>';
                 } else {
                   var html = '';
                   costs.forEach(function(c) {
                     var rem = parseFloat(c.remaining_egp) || 0;
-                    html += '<tr data-ic-id="' + (c.id || '') + '" data-remaining="' + rem + '"><td style="padding:8px;border:1px solid #ddd;">' + (c.cost_type || '') + (c.description ? ': ' + c.description : '') + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.amount_egp) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.paid_amount) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;font-weight:600;">' + fmt(rem) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;"><input type="number" class="ic-pay-amount" step="0.01" min="0" max="' + rem + '" value="' + (rem || 0) + '" placeholder="' + fmt(rem) + '" style="width:100px;padding:6px;text-align:right;"></td></tr>';
+                    var desc = (c.description || '').trim() || '—';
+                    html += '<tr data-ic-id="' + (c.id || '') + '" data-remaining="' + rem + '"><td style="padding:8px;border:1px solid #ddd;">' + (c.cost_type || '') + '</td><td style="padding:8px;border:1px solid #ddd;color:#555;">' + desc + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.amount_egp) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.paid_amount) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;font-weight:600;">' + fmt(rem) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;"><input type="number" class="ic-pay-amount" step="0.01" min="0" max="' + rem + '" value="' + (rem || 0) + '" placeholder="' + fmt(rem) + '" style="width:100px;padding:6px;text-align:right;"></td></tr>';
                   });
                   tbody.innerHTML = html;
                 }

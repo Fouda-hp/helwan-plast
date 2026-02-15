@@ -1,6 +1,5 @@
 import anvil.users
-import anvil.files
-from anvil.files import data_files
+# anvil.files not used here; removed to avoid posixpath.getcwd() errors in some environments
 """
 access_policy.py - توحيد سياسة الوصول (Enterprise / SaaS)
 ==========================================================

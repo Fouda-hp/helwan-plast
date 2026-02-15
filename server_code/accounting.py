@@ -347,7 +347,7 @@ RESIDUAL_TOLERANCE = 0.01
 def is_period_locked(entry_date):
     """
     Return True if the accounting period for entry_date (year/month) is locked.
-    If table accounting_period_locks does not exist, returns False.
+    If table accounting_period_locks does not exist, raises so posting is never silently allowed.
     """
     if entry_date is None:
         return False
@@ -356,12 +356,15 @@ def is_period_locked(entry_date):
     month = d.month if hasattr(d, 'month') else int(str(d)[5:7]) if len(str(d)) >= 7 else 1
     try:
         tbl = app_tables.accounting_period_locks
-        for r in tbl.search(year=year, month=month):
-            if r.get('locked'):
-                return True
-        return False
-    except Exception:
-        return False
+    except AttributeError:
+        raise RuntimeError(
+            'Accounting period locks table (accounting_period_locks) is missing. '
+            'Create it in Anvil Data Tables with columns: year, month, locked, locked_at, locked_by.'
+        )
+    for r in tbl.search(year=year, month=month):
+        if r.get('locked'):
+            return True
+    return False
 
 
 @anvil.server.callable
@@ -1162,23 +1165,18 @@ def post_purchase_invoice(invoice_id, token_or_email=None):
 
 def _sum_1210_balance_for_invoice(invoice_id):
     """
-    Sum (debit - credit) on account 1210 for this purchase invoice = net transit balance.
-    Uses balance per entry (not debit only) so reversals/adjustments are correct.
-    Includes:
-    - post_purchase_invoice: reference_type=purchase_invoice, reference_id=invoice_id
-    - add_import_cost: reference_type=import_cost, reference_id=invoice_id (so included in first loop)
-    - pay_import_cost: reference_type=import_cost_payment, reference_id=cost_id (per-cost loop)
+    Transit balance per invoice: sum(debit - credit) on 1210 for this invoice.
+    No reference_type filter on 1210 — all 1210 activity with reference_id=invoice_id included.
+    Also includes 1210 entries with reference_id=cost_id for this invoice's import costs (import_cost_payment).
     """
     total = 0.0
-    # All 1210 entries with reference_id=invoice_id (purchase_invoice post + import_cost entries)
     for entry in app_tables.ledger.search(account_code='1210', reference_id=invoice_id):
         total += _round2(entry.get('debit', 0)) - _round2(entry.get('credit', 0))
-    # pay_import_cost uses reference_id=cost_id; include those for this invoice's costs
     for ic in app_tables.import_costs.search(purchase_invoice_id=invoice_id):
         cost_id = ic.get('id')
         if not cost_id:
             continue
-        for entry in app_tables.ledger.search(account_code='1210', reference_type='import_cost_payment', reference_id=cost_id):
+        for entry in app_tables.ledger.search(account_code='1210', reference_id=cost_id):
             total += _round2(entry.get('debit', 0)) - _round2(entry.get('credit', 0))
     return _round2(total)
 
@@ -3428,17 +3426,17 @@ def get_inventory_detailed(token_or_email=None):
 def get_supplier_aging(as_of_date=None, token_or_email=None):
     """
     Supplier aging report. Ledger account 2000 only.
-    remaining = sum(CR purchase_invoice) - sum(DR payment) per invoice.
+    Remaining per invoice = sum(CR on 2000 where reference_id=invoice_id) - sum(DR on 2000 where reference_id=invoice_id).
+    No reference_type filter — full ledger truth.
     Age buckets: 0_30, 31_60, 61_90, 90_plus by invoice date.
-    Exclude fully paid (remaining <= tolerance).
+    Exclude invoices where abs(remaining) < 0.01.
     """
     is_valid, _, error = _require_permission(token_or_email, 'read')
     if not is_valid:
         return error
     try:
         as_of = _safe_date(as_of_date) or date.today()
-        # Remaining per invoice from ledger 2000
-        remaining = {}
+        remaining = _ledger_2000_remaining_by_invoice()
         invoice_supplier = {}
         invoice_date = {}
         for row in app_tables.purchase_invoices.search():
@@ -3446,15 +3444,6 @@ def get_supplier_aging(as_of_date=None, token_or_email=None):
             invoice_supplier[inv_id] = row.get('supplier_id')
             d = row.get('date')
             invoice_date[inv_id] = d.date() if hasattr(d, 'date') else _safe_date(str(d)[:10]) if d else as_of
-
-        for e in app_tables.ledger.search(account_code='2000', reference_type='purchase_invoice'):
-            rid = _safe_str(e.get('reference_id', ''))
-            if rid:
-                remaining[rid] = remaining.get(rid, 0) + _round2(e.get('credit', 0)) - _round2(e.get('debit', 0))
-        for e in app_tables.ledger.search(account_code='2000', reference_type='payment'):
-            rid = _safe_str(e.get('reference_id', ''))
-            if rid:
-                remaining[rid] = remaining.get(rid, 0) - _round2(e.get('debit', 0)) + _round2(e.get('credit', 0))
 
         # Buckets per supplier
         buckets = {}
@@ -3485,15 +3474,16 @@ def get_supplier_aging(as_of_date=None, token_or_email=None):
 @anvil.server.callable
 def get_fx_report_per_invoice(token_or_email=None):
     """
-    FX report per invoice: booked_egp (supplier_amount_egp), paid_egp (ledger CR bank ref_type=payment),
-    fx_gain (4110 credits), fx_loss (6110 debits), net_fx = gain - loss.
-    Ledger-only aggregation for paid_egp, 4110, 6110.
+    FX report per invoice. Ledger-only (no stored payment fields).
+    paid_egp = sum(CR on cash/bank 1000,1010-1013) - sum(DR on same) where reference_id=invoice_id.
+    fx_gain = sum(CR 4110 where reference_id=invoice_id).
+    fx_loss = sum(DR 6110 where reference_id=invoice_id).
+    Reconciliation: sum(net_fx) over invoices = balance(4110) - balance(6110).
     """
     is_valid, _, error = _require_permission(token_or_email, 'read')
     if not is_valid:
         return error
     try:
-        # paid_egp per invoice: sum CR on bank/cash accounts where reference_type=payment, reference_id=invoice_id
         paid_by_inv = {}
         for e in app_tables.ledger.search(reference_type='payment'):
             rid = _safe_str(e.get('reference_id', ''))
@@ -3503,18 +3493,16 @@ def get_fx_report_per_invoice(token_or_email=None):
             if code in ('1000', '1010', '1011', '1012', '1013'):
                 paid_by_inv[rid] = paid_by_inv.get(rid, 0) + _round2(e.get('credit', 0)) - _round2(e.get('debit', 0))
 
-        # 4110 credits per invoice (ref_id may be payment ref; we need to attribute to invoice)
-        # In record_supplier_payment we post 4110 with same ref as payment. So reference_id on 4110 is invoice_id? Check.
         fx_gain_by_inv = {}
         for e in app_tables.ledger.search(account_code='4110'):
             rid = _safe_str(e.get('reference_id', ''))
             if rid:
-                fx_gain_by_inv[rid] = fx_gain_by_inv.get(rid, 0) + _round2(e.get('credit', 0)) - _round2(e.get('debit', 0))
+                fx_gain_by_inv[rid] = fx_gain_by_inv.get(rid, 0) + _round2(e.get('credit', 0))
         fx_loss_by_inv = {}
         for e in app_tables.ledger.search(account_code='6110'):
             rid = _safe_str(e.get('reference_id', ''))
             if rid:
-                fx_loss_by_inv[rid] = fx_loss_by_inv.get(rid, 0) + _round2(e.get('debit', 0)) - _round2(e.get('credit', 0))
+                fx_loss_by_inv[rid] = fx_loss_by_inv.get(rid, 0) + _round2(e.get('debit', 0))
 
         results = []
         for row in app_tables.purchase_invoices.search():
@@ -3537,26 +3525,34 @@ def get_fx_report_per_invoice(token_or_email=None):
         return {'success': False, 'message': str(e)}
 
 
+def _ledger_2000_remaining_by_invoice():
+    """
+    Full ledger truth for account 2000: remaining per reference_id (invoice_id).
+    remaining = sum(CR on 2000 where reference_id=invoice_id) - sum(DR on 2000 where reference_id=invoice_id).
+    No reference_type filter — all 2000 activity included.
+    """
+    by_inv = {}
+    for e in app_tables.ledger.search(account_code='2000'):
+        rid = _safe_str(e.get('reference_id', ''))
+        if not rid:
+            continue
+        by_inv[rid] = by_inv.get(rid, 0) + _round2(e.get('credit', 0)) - _round2(e.get('debit', 0))
+    return by_inv
+
+
 @anvil.server.callable
 def get_unrealized_fx(current_rate_provider, token_or_email=None):
     """
     Unrealized FX valuation: for each open invoice, remaining in original currency at current rate vs remaining_egp.
-    current_rate_provider: callable(invoice_row) returning (current_rate_to_egp, currency_code) or dict with those keys.
+    Mathematically correct: invoice_rate = supplier_amount_egp / original_amount;
+    remaining_original = remaining_egp / invoice_rate; revalued_egp = remaining_original * current_rate.
     DO NOT post journal entries; reporting only.
     """
     is_valid, _, error = _require_permission(token_or_email, 'read')
     if not is_valid:
         return error
     try:
-        remaining_egp_by_inv = {}
-        for e in app_tables.ledger.search(account_code='2000', reference_type='purchase_invoice'):
-            rid = _safe_str(e.get('reference_id', ''))
-            if rid:
-                remaining_egp_by_inv[rid] = remaining_egp_by_inv.get(rid, 0) + _round2(e.get('credit', 0)) - _round2(e.get('debit', 0))
-        for e in app_tables.ledger.search(account_code='2000', reference_type='payment'):
-            rid = _safe_str(e.get('reference_id', ''))
-            if rid:
-                remaining_egp_by_inv[rid] = remaining_egp_by_inv.get(rid, 0) - _round2(e.get('debit', 0)) + _round2(e.get('credit', 0))
+        remaining_egp_by_inv = _ledger_2000_remaining_by_invoice()
 
         results = []
         for row in app_tables.purchase_invoices.search():
@@ -3564,19 +3560,19 @@ def get_unrealized_fx(current_rate_provider, token_or_email=None):
             remaining_egp = _round2(remaining_egp_by_inv.get(inv_id, 0))
             if abs(remaining_egp) < RESIDUAL_TOLERANCE:
                 continue
-            # Stored original_amount and invoice rate
             original_amount = _round2(row.get('original_amount') or row.get('total') or 0)
-            inv_rate = _round2(row.get('exchange_rate_usd_to_egp') or row.get('exchange_rate') or 0)
-            if inv_rate <= 0 or original_amount <= 0:
+            supplier_egp = _round2(row.get('supplier_amount_egp') or 0)
+            if original_amount <= 0:
                 results.append({'invoice_id': inv_id, 'remaining_egp': remaining_egp, 'revalued_egp': remaining_egp, 'unrealized_fx': 0})
                 continue
-            # Remaining in original currency (proportional)
-            supplier_egp = _round2(row.get('supplier_amount_egp') or 0)
             if supplier_egp <= 0:
                 results.append({'invoice_id': inv_id, 'remaining_egp': remaining_egp, 'revalued_egp': remaining_egp, 'unrealized_fx': 0})
                 continue
-            remaining_original = remaining_egp * original_amount / supplier_egp
-            # Current rate from provider (callable or dict)
+            invoice_rate = _round2(supplier_egp / original_amount)
+            if invoice_rate <= 0:
+                results.append({'invoice_id': inv_id, 'remaining_egp': remaining_egp, 'revalued_egp': remaining_egp, 'unrealized_fx': 0})
+                continue
+            remaining_original = _round2(remaining_egp / invoice_rate)
             if callable(current_rate_provider):
                 rate_info = current_rate_provider(row)
             else:

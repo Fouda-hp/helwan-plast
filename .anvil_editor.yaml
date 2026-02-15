@@ -72,6 +72,8 @@ unique_ids:
     quotation_pdf: V6UVIQWZKE5LWHHSQQSQRVE7MAV54ELM
     schema_export: '1769978562887620456353726.7023'
     tests: OLU3TAY25YQNUXLUUUCSVDKX3RRMJZFY
+    tests.test_accounting_hardening: AMGZDP7EBFOPLGF42WD5EKTNSSZTOYQJ
     tests.test_accounting_integration: RJHLUH5Z2BCM4BKQAHMHWXYADXC7THO6
     tests.test_enterprise: IE3ABR4LPDJK5J2D6XGLSQ3YWFMREN3F
     tests.test_full_scenario: OZP7ZCZQE3GKDISWUYXCJDVWSJDTU3GE
+    tests.test_transit_inventory: OOUAERA6FFZ3HUKLCUPTQ5Q7ALCAFEDT

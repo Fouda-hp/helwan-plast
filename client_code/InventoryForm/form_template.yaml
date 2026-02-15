@@ -284,46 +284,47 @@ container:
           function t(en, ar) { return isAr ? ar : en; }
           function fmt(n) { return (n || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
 
+          function setText(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
           function applyI18n() {
-            document.getElementById('pageTitle').textContent = t('Inventory', 'المخازن');
-            document.getElementById('btnAdd').textContent = t('+ Add Item', '+ اضافة صنف');
-            document.getElementById('btnBack').textContent = t('Back', 'رجوع');
-            document.getElementById('fAll').textContent = t('All', 'الكل');
-            document.getElementById('fStock').textContent = t('In Stock', 'في المخزن');
-            document.getElementById('fReserved').textContent = t('Reserved', 'محجوز');
-            document.getElementById('fSold').textContent = t('Sold', 'مباع');
-            document.getElementById('searchInput').placeholder = t('Search by code or description...', 'بحث بالكود او الوصف...');
-            document.getElementById('thCode').textContent = t('Machine Code', 'كود الماكينة');
-            document.getElementById('thDesc').textContent = t('Description', 'الوصف');
-            document.getElementById('thPurchase').textContent = t('Purchase Cost', 'سعر الشراء');
-            document.getElementById('thImport').textContent = t('Import Costs', 'تكاليف الاستيراد');
-            document.getElementById('thTotal').textContent = t('Total Cost', 'التكلفة الاجمالية');
-            document.getElementById('thSelling').textContent = t('Selling Price', 'سعر البيع');
-            document.getElementById('thProfit').textContent = t('Profit/Loss', 'ربح/خسارة');
-            document.getElementById('thStatus').textContent = t('Status', 'الحالة');
-            document.getElementById('thActions').textContent = t('Actions', 'اجراءات');
-            document.getElementById('lblCode').textContent = t('Machine Code *', '* كود الماكينة');
-            document.getElementById('lblDesc').textContent = t('Description', 'الوصف');
-            document.getElementById('lblPurchaseCost').textContent = t('Purchase Cost', 'سعر الشراء');
-            document.getElementById('lblLocation').textContent = t('Location', 'الموقع');
-            document.getElementById('lblItemNotes').textContent = t('Notes', 'ملاحظات');
+            setText('pageTitle', t('Inventory', 'المخازن'));
+            setText('btnAdd', t('+ Add Item', '+ اضافة صنف'));
+            setText('btnBack', t('Back', 'رجوع'));
+            setText('fAll', t('All', 'الكل'));
+            setText('fStock', t('In Stock', 'في المخزن'));
+            setText('fReserved', t('Reserved', 'محجوز'));
+            setText('fSold', t('Sold', 'مباع'));
+            var searchEl = document.getElementById('searchInput'); if (searchEl) searchEl.placeholder = t('Search by code or description...', 'بحث بالكود او الوصف...');
+            setText('thCode', t('Machine Code', 'كود الماكينة'));
+            setText('thDesc', t('Description', 'الوصف'));
+            setText('thPurchase', t('Purchase Cost', 'سعر الشراء'));
+            setText('thImport', t('Import Costs', 'تكاليف الاستيراد'));
+            setText('thTotal', t('Total Cost', 'التكلفة الاجمالية'));
+            setText('thSelling', t('Selling Price', 'سعر البيع'));
+            setText('thProfit', t('Profit/Loss', 'ربح/خسارة'));
+            setText('thStatus', t('Status', 'الحالة'));
+            setText('thActions', t('Actions', 'اجراءات'));
+            setText('lblCode', t('Machine Code *', '* كود الماكينة'));
+            setText('lblDesc', t('Description', 'الوصف'));
+            setText('lblPurchaseCost', t('Purchase Cost', 'سعر الشراء'));
+            setText('lblLocation', t('Location', 'الموقع'));
+            setText('lblItemNotes', t('Notes', 'ملاحظات'));
             // Machine config i18n
-            document.getElementById('lblMachConfig').textContent = t('⚙ Machine Configuration', '⚙ إعداد الماكينة');
-            document.getElementById('lblInvCondition').textContent = t('Condition', 'الحالة');
-            document.getElementById('lblInvMachType').textContent = t('Machine Type', 'نوع الماكينة');
-            document.getElementById('lblInvColors').textContent = t('Colors', 'الألوان');
-            document.getElementById('lblInvWidth').textContent = t('Width (cm)', 'العرض (سم)');
-            document.getElementById('lblInvMaterial').textContent = t('Material', 'الخامة');
-            document.getElementById('lblInvWinder').textContent = t('Winder', 'اللفاف');
-            document.getElementById('lblInvOptionals').textContent = t('Optional Features', 'اضافات اختيارية');
-            document.getElementById('lblInvFobStd').textContent = t('Standard Machine FOB ($)', 'سعر FOB القياسي ($)');
-            document.getElementById('lblInvFobCyl').textContent = t('FOB With Cylinders ($)', 'FOB مع السلندرات ($)');
-            document.getElementById('lblInvCylinders').textContent = t('🔧 Cylinders', '🔧 السلندرات');
-            document.getElementById('cylThSize').textContent = t('Size (CM)', 'المقاس (سم)');
-            document.getElementById('cylThCount').textContent = t('Count', 'العدد');
-            document.getElementById('cylThCost').textContent = t('Cost ($)', 'التكلفة ($)');
-            document.getElementById('lblCylTotal').textContent = t('Total', 'الاجمالي');
-            if (isAr) document.querySelector('.inv-wrapper').style.direction = 'rtl';
+            setText('lblMachConfig', t('⚙ Machine Configuration', '⚙ إعداد الماكينة'));
+            setText('lblInvCondition', t('Condition', 'الحالة'));
+            setText('lblInvMachType', t('Machine Type', 'نوع الماكينة'));
+            setText('lblInvColors', t('Colors', 'الألوان'));
+            setText('lblInvWidth', t('Width (cm)', 'العرض (سم)'));
+            setText('lblInvMaterial', t('Material', 'الخامة'));
+            setText('lblInvWinder', t('Winder', 'اللفاف'));
+            setText('lblInvOptionals', t('Optional Features', 'اضافات اختيارية'));
+            setText('lblInvFobStd', t('Standard Machine FOB ($)', 'سعر FOB القياسي ($)'));
+            setText('lblInvFobCyl', t('FOB With Cylinders ($)', 'FOB مع السلندرات ($)'));
+            setText('lblInvCylinders', t('🔧 Cylinders', '🔧 السلندرات'));
+            setText('cylThSize', t('Size (CM)', 'المقاس (سم)'));
+            setText('cylThCount', t('Count', 'العدد'));
+            setText('cylThCost', t('Cost ($)', 'التكلفة ($)'));
+            setText('lblCylTotal', t('Total', 'الاجمالي'));
+            var wrapper = document.querySelector('.inv-wrapper'); if (isAr && wrapper) wrapper.style.direction = 'rtl';
           }
 
           function renderSummary(data) {

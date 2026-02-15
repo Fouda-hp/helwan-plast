@@ -55,6 +55,7 @@ container:
         .totals-section { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px; }
         .totals-section .total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
         .totals-section .total-row.grand { font-size: 16px; font-weight: 700; border-top: 2px solid #333; padding-top: 8px; margin-top: 4px; }
+        .totals-section .egp-suffix { margin-left: 8px; color: #1565c0; font-weight: 600; }
         .import-costs-section { margin-top: 15px; padding: 15px; background: #fff8e1; border-radius: 8px; border: 1px solid #ffd54f; }
         .import-costs-section h4 { margin: 0 0 10px; color: #f57f17; }
         .hp-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
@@ -306,10 +307,11 @@ container:
           </div>
 
           <div class="totals-section" id="totalsSection">
-            <div class="total-row"><span id="lblFobLine">FOB With Cylinders:</span><span id="valFobLine">0.00</span></div>
-            <div class="total-row"><span id="lblAddItems">Additional Items:</span><span id="valAddItems">0.00</span></div>
-            <div class="total-row"><span id="lblImportTotal">Import Costs:</span><span id="valImportTotal">0.00</span></div>
-            <div class="total-row grand"><span id="lblGrandTotal">Grand Total:</span><span id="valGrandTotal">0.00</span></div>
+            <div class="total-row" id="invRateRow"><span id="lblInvRate">Exchange rate (1 USD = X EGP)</span><span id="valInvRate">-</span></div>
+            <div class="total-row"><span id="lblFobLine">FOB With Cylinders:</span><span id="valFobLine">0.00</span> <span class="egp-suffix" id="valFobLineEgp"></span></div>
+            <div class="total-row"><span id="lblAddItems">Additional Items:</span><span id="valAddItems">0.00</span> <span class="egp-suffix" id="valAddItemsEgp"></span></div>
+            <div class="total-row"><span id="lblImportTotal">Import Costs:</span><span id="valImportTotal">0.00</span> <span class="egp-suffix" id="valImportTotalEgp"></span></div>
+            <div class="total-row grand"><span id="lblGrandTotal">Grand Total (EGP):</span><span id="valGrandTotalEgp">0.00 ج.م</span></div>
           </div>
 
           <div class="form-group" style="margin-top:15px;">
@@ -390,6 +392,8 @@ container:
           var currentFilter = '';
           var searchTimer = null;
           var allInvoices = [];
+          var usdRateToEgp = 0;
+          var currentInvoiceRate = 0;
 
           function t(en, ar) { return isAr ? ar : en; }
           function fmt(n) { return (n || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
@@ -440,7 +444,8 @@ container:
             document.getElementById('lblFobLine').textContent = t('FOB With Cylinders:', 'FOB مع السلندرات:');
             document.getElementById('lblAddItems').textContent = t('Additional Items:', 'الاصناف الاضافية:');
             document.getElementById('lblImportTotal').textContent = t('Import Costs:', 'تكاليف الاستيراد:');
-            document.getElementById('lblGrandTotal').textContent = t('Grand Total:', 'الاجمالي الكلي:');
+            document.getElementById('lblGrandTotal').textContent = t('Grand Total (EGP):', 'الاجمالي الكلي (ج.م):');
+            var lblInvRate = document.getElementById('lblInvRate'); if (lblInvRate) lblInvRate.textContent = t('Exchange rate (1 USD = X EGP)', 'سعر الصرف (1 دولار = X جنيه)');
             document.getElementById('lblInvNotes').textContent = t('Notes', 'ملاحظات');
             // Payment modal i18n
             document.getElementById('payModalTitle').textContent = t('Record Payment', 'تسجيل دفعة');
@@ -460,11 +465,14 @@ container:
               totalAmt += parseFloat(inv.total || 0);
               totalPaid += parseFloat(inv.paid || 0);
             });
+            var rate = usdRateToEgp || 0;
+            var egpSuffix = (isAr ? ' ج.م' : ' EGP');
+            var dispAmt = function(usd) { return rate > 0 ? fmt(usd * rate) + egpSuffix : fmt(usd) + ' $'; };
             var html = '';
             html += '<div class="summary-card"><div class="num" style="color:#667eea;">' + count + '</div><div class="lbl">' + t('Total Invoices', 'اجمالي الفواتير') + '</div></div>';
-            html += '<div class="summary-card"><div class="num" style="color:#1565c0;">' + fmt(totalAmt) + '</div><div class="lbl">' + t('Total Amount', 'اجمالي المبلغ') + '</div></div>';
-            html += '<div class="summary-card"><div class="num" style="color:#2e7d32;">' + fmt(totalPaid) + '</div><div class="lbl">' + t('Total Paid', 'اجمالي المدفوع') + '</div></div>';
-            html += '<div class="summary-card"><div class="num" style="color:#c62828;">' + fmt(totalAmt - totalPaid) + '</div><div class="lbl">' + t('Outstanding', 'المتبقي') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#1565c0;">' + dispAmt(totalAmt) + '</div><div class="lbl">' + t('Total Amount', 'اجمالي المبلغ') + (rate > 0 ? ' (ج.م)' : '') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#2e7d32;">' + dispAmt(totalPaid) + '</div><div class="lbl">' + t('Total Paid', 'اجمالي المدفوع') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#c62828;">' + dispAmt(totalAmt - totalPaid) + '</div><div class="lbl">' + t('Outstanding', 'المتبقي') + '</div></div>';
             document.getElementById('summaryCards').innerHTML = html;
           }
 
@@ -505,6 +513,9 @@ container:
               return;
             }
             var html = '';
+            var rate = usdRateToEgp || 0;
+            var egpSuffix = isAr ? ' ج.م' : ' EGP';
+            var disp = function(usd) { return rate > 0 ? fmt(parseFloat(usd) * rate) + egpSuffix : fmt(usd) + ' $'; };
             data.forEach(function(inv) {
               var total = parseFloat(inv.total || 0);
               var paid = parseFloat(inv.paid || 0);
@@ -516,9 +527,9 @@ container:
               html += '<td>' + (inv.supplier_name || '') + '</td>';
               html += '<td>' + (inv.date || '').substring(0, 10) + '</td>';
               html += '<td>' + (inv.machine_code || '') + '</td>';
-              html += '<td>' + fmt(total) + '</td>';
-              html += '<td>' + fmt(paid) + '</td>';
-              html += '<td style="font-weight:600;color:' + (balance > 0 ? '#c62828' : '#2e7d32') + ';">' + fmt(balance) + '</td>';
+              html += '<td>' + disp(total) + '</td>';
+              html += '<td>' + disp(paid) + '</td>';
+              html += '<td style="font-weight:600;color:' + (balance > 0 ? '#c62828' : '#2e7d32') + ';">' + disp(balance) + '</td>';
               html += '<td><span class="status-badge status-' + statusKey + '">' + (statusLabels[statusKey] || statusKey) + '</span></td>';
               html += '<td style="white-space:nowrap;">';
               html += '<button class="btn-sm btn-view" onclick="withButtonLock(this, function(){ return viewInvoice(\'' + inv.id + '\'); })" data-loading-text="...">' + t('View', 'عرض') + '</button> ';
@@ -595,11 +606,9 @@ container:
             calcInvoiceTotals();
           };
 
-          // Grand totals: FOB With Cylinders + Additional Items + Import Costs
+          // Grand totals: FOB With Cylinders + Additional Items + Import Costs (USD). EGP display using rate.
           window.calcInvoiceTotals = function() {
-            // FOB With Cylinders
             var fobCyl = parseFloat(document.getElementById('fFobCyl').value) || 0;
-            // Additional Line Items
             var addItems = 0;
             document.querySelectorAll('#lineItemsBody .line-row').forEach(function(row) {
               var qty = parseFloat(row.querySelector('.li-qty').value) || 0;
@@ -608,15 +617,28 @@ container:
               row.querySelector('.li-total').textContent = fmt(lineTotal);
               addItems += lineTotal;
             });
-            // Import Costs
             var importTotal = 0;
             document.querySelectorAll('.import-cost-row .ic-amount').forEach(function(inp) {
               importTotal += parseFloat(inp.value) || 0;
             });
-            document.getElementById('valFobLine').textContent = fmt(fobCyl);
-            document.getElementById('valAddItems').textContent = fmt(addItems);
-            document.getElementById('valImportTotal').textContent = fmt(importTotal);
-            document.getElementById('valGrandTotal').textContent = fmt(fobCyl + addItems + importTotal);
+            var grandUsd = fobCyl + addItems + importTotal;
+            document.getElementById('valFobLine').textContent = fmt(fobCyl) + ' $';
+            document.getElementById('valAddItems').textContent = fmt(addItems) + ' $';
+            document.getElementById('valImportTotal').textContent = fmt(importTotal) + ' $';
+            var rate = currentInvoiceRate || usdRateToEgp || 0;
+            if (rate > 0) {
+              document.getElementById('valInvRate').textContent = fmt(rate) + ' ' + (isAr ? 'ج.م' : 'EGP');
+              document.getElementById('valFobLineEgp').textContent = '= ' + fmt(fobCyl * rate) + (isAr ? ' ج.م' : ' EGP');
+              document.getElementById('valAddItemsEgp').textContent = '= ' + fmt(addItems * rate) + (isAr ? ' ج.م' : ' EGP');
+              document.getElementById('valImportTotalEgp').textContent = '= ' + fmt(importTotal * rate) + (isAr ? ' ج.م' : ' EGP');
+              document.getElementById('valGrandTotalEgp').textContent = fmt(grandUsd * rate) + (isAr ? ' ج.م' : ' EGP');
+            } else {
+              document.getElementById('valInvRate').textContent = '-';
+              document.getElementById('valFobLineEgp').textContent = '';
+              document.getElementById('valAddItemsEgp').textContent = '';
+              document.getElementById('valImportTotalEgp').textContent = '';
+              document.getElementById('valGrandTotalEgp').textContent = fmt(grandUsd) + ' $';
+            }
           };
 
           window.addLineRow = function() {
@@ -686,12 +708,10 @@ container:
             // Reset line items
             document.getElementById('lineItemsBody').innerHTML = '<tr class="line-row"><td><input type="text" class="li-desc"></td><td><input type="number" class="li-qty" value="1" min="1" oninput="calcInvoiceTotals()"></td><td><input type="number" class="li-price" value="0" step="0.01" oninput="calcInvoiceTotals()"></td><td class="li-total" style="text-align:right;font-weight:600;">0.00</td><td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td></tr>';
             document.getElementById('importCostRows').innerHTML = '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="other">Other</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div><div style="display:flex;align-items:center;"><button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button></div></div>';
-            document.getElementById('valFobLine').textContent = '0.00';
-            document.getElementById('valAddItems').textContent = '0.00';
-            document.getElementById('valImportTotal').textContent = '0.00';
-            document.getElementById('valGrandTotal').textContent = '0.00';
+            currentInvoiceRate = usdRateToEgp;
             loadSuppliers();
             loadCalcSettings();
+            calcInvoiceTotals();
             document.getElementById('invoiceModal').classList.add('show');
           };
 
@@ -704,6 +724,7 @@ container:
                 return;
               }
               var inv = res.data;
+              currentInvoiceRate = parseFloat(inv.exchange_rate_usd_to_egp) || usdRateToEgp || 0;
               document.getElementById('invoiceModalTitle').textContent = t('Edit Purchase Invoice', 'تعديل فاتورة شراء');
               document.getElementById('editInvoiceId').value = inv.id;
               await loadSuppliers();
@@ -993,28 +1014,37 @@ container:
                   if (mc.material) html += '<div><strong>' + t('Material', 'الخامة') + ':</strong> ' + mc.material + '</div>';
                   if (mc.winder) html += '<div><strong>' + t('Winder', 'اللفاف') + ':</strong> ' + mc.winder + '</div>';
                   if (mc.optionals && mc.optionals.length) html += '<div style="grid-column:1/3;"><strong>' + t('Options', 'الاضافات') + ':</strong> ' + mc.optionals.join(', ') + '</div>';
-                  if (mc.fob_standard) html += '<div><strong>FOB:</strong> $' + fmt(mc.fob_standard) + '</div>';
-                  if (mc.fob_with_cylinders) html += '<div><strong>FOB+Cyl:</strong> $' + fmt(mc.fob_with_cylinders) + '</div>';
+                  var rateMc = parseFloat(inv.exchange_rate_usd_to_egp) || usdRateToEgp || 0;
+                  var toEgpMc = function(v) { return (parseFloat(v) || 0) * (rateMc > 0 ? rateMc : 1); };
+                  var egpSuffixMc = isAr ? ' ج.م' : ' EGP';
+                  if (mc.fob_standard) html += '<div><strong>FOB:</strong> $' + fmt(mc.fob_standard) + (rateMc > 0 ? ' = ' + fmt(toEgpMc(mc.fob_standard)) + egpSuffixMc : '') + '</div>';
+                  if (mc.fob_with_cylinders) html += '<div><strong>FOB+Cyl:</strong> $' + fmt(mc.fob_with_cylinders) + (rateMc > 0 ? ' = ' + fmt(toEgpMc(mc.fob_with_cylinders)) + egpSuffixMc : '') + '</div>';
                   html += '</div></div>';
                 }
+                var rate = parseFloat(inv.exchange_rate_usd_to_egp) || usdRateToEgp || 0;
+                var toEgp = function(usdVal) { return (parseFloat(usdVal) || 0) * (rate > 0 ? rate : 1); };
+                var egpSuffix = isAr ? ' ج.م' : ' EGP';
+                if (rate > 0) {
+                  html += '<p style="margin-bottom:10px;font-size:13px;color:#1565c0;"><strong>' + t('Exchange rate (1 USD = X EGP)', 'سعر الصرف (1 دولار = X جنيه)') + '</strong>: ' + fmt(rate) + egpSuffix + '</p>';
+                }
                 if (inv.line_items && inv.line_items.length > 0) {
-                  html += '<h4 style="margin:10px 0 5px;">' + t('Line Items', 'البنود') + '</h4>';
+                  html += '<h4 style="margin:10px 0 5px;">' + t('Line Items', 'البنود') + ' (' + (isAr ? 'بالجنيه' : 'EGP') + ')</h4>';
                   html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f5f5f5;"><th style="padding:6px;border:1px solid #ddd;">' + t('Description', 'الوصف') + '</th><th style="padding:6px;border:1px solid #ddd;">' + t('Qty', 'الكمية') + '</th><th style="padding:6px;border:1px solid #ddd;">' + t('Price', 'السعر') + '</th><th style="padding:6px;border:1px solid #ddd;">' + t('Total', 'الاجمالي') + '</th></tr></thead><tbody>';
                   inv.line_items.forEach(function(li) {
-                    html += '<tr><td style="padding:6px;border:1px solid #ddd;">' + (li.description || '') + '</td><td style="padding:6px;border:1px solid #ddd;">' + (li.quantity || 0) + '</td><td style="padding:6px;border:1px solid #ddd;">' + fmt(li.unit_price) + '</td><td style="padding:6px;border:1px solid #ddd;">' + fmt(li.total) + '</td></tr>';
+                    html += '<tr><td style="padding:6px;border:1px solid #ddd;">' + (li.description || '') + '</td><td style="padding:6px;border:1px solid #ddd;">' + (li.quantity || 0) + '</td><td style="padding:6px;border:1px solid #ddd;">' + fmt(toEgp(li.unit_price)) + egpSuffix + '</td><td style="padding:6px;border:1px solid #ddd;">' + fmt(toEgp(li.total)) + egpSuffix + '</td></tr>';
                   });
                   html += '</tbody></table>';
                 }
                 if (inv.import_costs && inv.import_costs.length > 0) {
-                  html += '<h4 style="margin:10px 0 5px;color:#f57f17;">' + t('Import Costs', 'تكاليف الاستيراد') + '</h4>';
+                  html += '<h4 style="margin:10px 0 5px;color:#f57f17;">' + t('Import Costs', 'تكاليف الاستيراد') + ' (' + (isAr ? 'ج.م' : 'EGP') + ')</h4>';
                   inv.import_costs.forEach(function(ic) {
-                    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>' + (ic.cost_type || '') + '</span><span>' + fmt(ic.amount) + '</span></div>';
+                    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>' + (ic.cost_type || '') + '</span><span>' + fmt(toEgp(ic.amount)) + egpSuffix + '</span></div>';
                   });
                 }
                 html += '<div style="margin-top:15px;padding:10px;background:#f8f9fa;border-radius:8px;">';
-                html += '<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;"><span>' + t('Total', 'الاجمالي') + '</span><span>' + fmt(inv.total) + '</span></div>';
-                html += '<div style="display:flex;justify-content:space-between;"><span>' + t('Paid', 'المدفوع') + '</span><span style="color:#2e7d32;">' + fmt(inv.paid) + '</span></div>';
-                html += '<div style="display:flex;justify-content:space-between;"><span>' + t('Balance', 'المتبقي') + '</span><span style="color:#c62828;">' + fmt((inv.total || 0) - (inv.paid || 0)) + '</span></div>';
+                html += '<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;"><span>' + t('Total', 'الاجمالي') + ' (' + (isAr ? 'ج.م' : 'EGP') + ')</span><span>' + fmt(toEgp(inv.total)) + egpSuffix + '</span></div>';
+                html += '<div style="display:flex;justify-content:space-between;"><span>' + t('Paid', 'المدفوع') + '</span><span style="color:#2e7d32;">' + fmt(toEgp(inv.paid)) + egpSuffix + '</span></div>';
+                html += '<div style="display:flex;justify-content:space-between;"><span>' + t('Balance', 'المتبقي') + '</span><span style="color:#c62828;">' + fmt(toEgp((inv.total || 0) - (inv.paid || 0))) + egpSuffix + '</span></div>';
                 html += '</div>';
                 if (inv.notes) {
                   html += '<div style="margin-top:10px;"><strong>' + t('Notes', 'ملاحظات') + ':</strong> ' + inv.notes + '</div>';
@@ -1266,11 +1296,23 @@ container:
             if (btnCreate && !userPerms.can_create) btnCreate.style.display = 'none';
           }
 
+          async function loadExchangeRates() {
+            try {
+              if (!window.pyGetExchangeRates) return;
+              var res = await window.pyGetExchangeRates();
+              var list = (res && (res.data || res.rates)) ? (res.data || res.rates) : [];
+              var usd = list.find(function(r) { return (r.currency_code || r.code || '').toUpperCase() === 'USD'; });
+              if (usd && (usd.rate_to_egp != null)) usdRateToEgp = parseFloat(usd.rate_to_egp) || 0;
+              if (allInvoices.length > 0) { renderSummary(allInvoices); renderTable(allInvoices); }
+            } catch (e) { }
+          }
+
           function waitForBridge() {
             if (window.pyGetPurchaseInvoices) {
               applyI18n();
               applyPermissions();
               loadInvoices();
+              loadExchangeRates();
             } else {
               setTimeout(waitForBridge, 200);
             }

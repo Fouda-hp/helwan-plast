@@ -2631,6 +2631,9 @@ def get_invoice_details(invoice_id, token_or_email=None):
         # Alias paid_amount -> paid for frontend consistency
         d['paid'] = d.get('paid_amount', 0)
 
+        # سعر الصرف دولار → جنيه لعرض الفاتورة بالمصري
+        d['exchange_rate_usd_to_egp'] = _get_rate_to_egp('USD')
+
         return {'success': True, 'data': d}
     except Exception as e:
         logger.exception("get_invoice_details error")

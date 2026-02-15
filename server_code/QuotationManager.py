@@ -725,6 +725,9 @@ MAX_PAGINATION_SCAN = 50000
 # Payment dashboard cache (60 second TTL)
 _payment_dashboard_cache = {'data': None, 'timestamp': 0}
 
+# Admin dashboard cache (20 second TTL) to reduce repeated heavy calculations
+_dashboard_stats_cache = {'data': None, 'timestamp': 0}
+
 def _quotation_matches_search(r, search_lower, get_client):
     if not search_lower:
         return True
@@ -1094,6 +1097,11 @@ def get_dashboard_stats(token_or_email=None):
                 "finance_chart": {"months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
                                  "paid": [0] * 12, "due": [0] * 12, "overdue": [0] * 12}}
 
+    # Short cache to reduce repeated heavy recalculation when user switches panels quickly
+    now_ts = _time.time()
+    if _dashboard_stats_cache['data'] is not None and (now_ts - _dashboard_stats_cache['timestamp']) < 20:
+        return _dashboard_stats_cache['data']
+
     now = get_utc_now()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     month_start_date = month_start.date()
@@ -1220,7 +1228,7 @@ def get_dashboard_stats(token_or_email=None):
         "overdue": [round(x, 2) for x in month_totals_overdue],
     }
 
-    return {
+    result = {
         "total_clients": active_clients_count,
         "total_quotations": active_quotations_count,
         "total_value": total_agreed,
@@ -1234,6 +1242,10 @@ def get_dashboard_stats(token_or_email=None):
         "total_due_payments_egp": round(total_due_payments_egp, 2),
         "finance_chart": finance_chart,
     }
+
+    _dashboard_stats_cache['data'] = result
+    _dashboard_stats_cache['timestamp'] = _time.time()
+    return result
 
 
 # =========================================================

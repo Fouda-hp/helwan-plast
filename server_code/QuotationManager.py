@@ -722,11 +722,14 @@ DEFAULT_PAGE = 1
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGINATION_SCAN = 50000
 
-# Payment dashboard cache (60 second TTL)
+# Payment dashboard cache
 _payment_dashboard_cache = {'data': None, 'timestamp': 0}
 
-# Admin dashboard cache (20 second TTL) to reduce repeated heavy calculations
+# Admin dashboard cache
 _dashboard_stats_cache = {'data': None, 'timestamp': 0}
+
+_DASHBOARD_CACHE_TTL_SECONDS = 45
+_PAYMENT_DASHBOARD_CACHE_TTL_SECONDS = 90
 
 def _quotation_matches_search(r, search_lower, get_client):
     if not search_lower:
@@ -770,7 +773,7 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
 
         is_valid, _, error = _require_permission(token_or_email, 'view')
         if not is_valid:
-            return {"data": [], "page": page, "per_page": per_page, "total": 0, "total_pages": 0}
+            return {"success": False, "message": "Permission denied", "data": [], "page": page, "per_page": per_page, "total": 0, "total_pages": 0}
 
         search_lower = (search or '').strip().lower()
     except Exception as e:
@@ -892,7 +895,7 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
                 row_data[f"Cost{i}"] = r.get(f"Cost{i}", "")
             rows.append(row_data)
 
-        return {"data": rows, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}
+        return {"success": True, "message": "", "data": rows, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}
     except Exception as e:
         logger.exception("get_all_quotations: %s", e)
         return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
@@ -924,7 +927,7 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
 
         is_valid, _, error = _require_permission(token_or_email, 'view')
         if not is_valid:
-            return {"data": [], "page": page, "per_page": per_page, "total": 0, "total_pages": 0}
+            return {"success": False, "message": "Permission denied", "data": [], "page": page, "per_page": per_page, "total": 0, "total_pages": 0}
 
         search_lower = (search or '').strip().lower()
     except Exception as e:
@@ -988,7 +991,7 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
                 "tags_json": r.get("tags_json", "[]"),
             })
 
-        return {"data": rows, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}
+        return {"success": True, "message": "", "data": rows, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}
     except Exception as e:
         logger.exception("get_all_clients: %s", e)
         return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
@@ -1101,7 +1104,7 @@ def get_dashboard_stats(token_or_email=None):
 
     # Short cache to reduce repeated heavy recalculation when user switches panels quickly
     now_ts = _time.time()
-    if _dashboard_stats_cache['data'] is not None and (now_ts - _dashboard_stats_cache['timestamp']) < 20:
+    if _dashboard_stats_cache['data'] is not None and (now_ts - _dashboard_stats_cache['timestamp']) < _DASHBOARD_CACHE_TTL_SECONDS:
         return _dashboard_stats_cache['data']
 
     now = get_utc_now()
@@ -2859,7 +2862,7 @@ def get_payment_dashboard_data(token_or_email=None):
     # Check cache (60 second TTL)
     now_ts = _time.time()
     if (_payment_dashboard_cache['data'] is not None
-        and (now_ts - _payment_dashboard_cache['timestamp']) < 60):
+        and (now_ts - _payment_dashboard_cache['timestamp']) < _PAYMENT_DASHBOARD_CACHE_TTL_SECONDS):
         return _payment_dashboard_cache['data']
 
     try:

@@ -30,8 +30,9 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Simple server-side cache for dashboard data (invalidated after 60 seconds)
-_dashboard_cache = {'data': None, 'timestamp': 0, 'filter': None}
+# Simple server-side cache for dashboard data
+_dashboard_cache = {'data': None, 'timestamp': 0, 'filter': None, 'user': None}
+_DASHBOARD_CACHE_TTL_SECONDS = 90
 
 
 # =========================================================
@@ -85,6 +86,8 @@ def _parse_date(date_str):
 def _invalidate_dashboard_cache():
     _dashboard_cache['data'] = None
     _dashboard_cache['timestamp'] = 0
+    _dashboard_cache['filter'] = None
+    _dashboard_cache['user'] = None
 
 @anvil.server.callable
 def set_followup(quotation_number, follow_up_date, token_or_email=None):
@@ -245,7 +248,8 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
     now_ts = _time.time()
     if (_dashboard_cache['data'] is not None
         and _dashboard_cache['filter'] == filter_status
-        and (now_ts - _dashboard_cache['timestamp']) < 60):
+        and _dashboard_cache.get('user') == user_email
+        and (now_ts - _dashboard_cache['timestamp']) < _DASHBOARD_CACHE_TTL_SECONDS):
         return _dashboard_cache['data']
 
     try:
@@ -345,6 +349,7 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
         # Update cache
         _dashboard_cache['data'] = result
         _dashboard_cache['filter'] = filter_status
+        _dashboard_cache['user'] = user_email
         _dashboard_cache['timestamp'] = _time.time()
 
         return result

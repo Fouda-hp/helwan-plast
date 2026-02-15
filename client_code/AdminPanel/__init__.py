@@ -37,7 +37,7 @@ class AdminPanel(AdminPanelTemplate):
         self.user_name = ''
 
         # Lightweight in-form cache to reduce repeated heavy dashboard calls
-        self._dash_cache = {'stats': None, 'acct': None, 'ts': 0}
+        self._dash_cache = {'stats': None, 'acct': None, 'stats_ts': 0, 'acct_ts': 0}
 
         # التحقق من الجلسة وتحميل بيانات المستخدم
         self._load_user_info()
@@ -2225,11 +2225,11 @@ class AdminPanel(AdminPanelTemplate):
     def get_dashboard_stats(self):
         import time
         now = time.time()
-        if self._dash_cache.get('stats') is not None and (now - self._dash_cache.get('ts', 0)) < 20:
+        if self._dash_cache.get('stats') is not None and (now - self._dash_cache.get('stats_ts', 0)) < 45:
             return self._dash_cache['stats']
         result = anvil.server.call('get_dashboard_stats', self.get_auth())
         self._dash_cache['stats'] = result
-        self._dash_cache['ts'] = now
+        self._dash_cache['stats_ts'] = now
         return result
 
     def get_accounting_dashboard_stats(self):
@@ -2237,11 +2237,11 @@ class AdminPanel(AdminPanelTemplate):
         import time
         try:
             now = time.time()
-            if self._dash_cache.get('acct') is not None and (now - self._dash_cache.get('ts', 0)) < 20:
+            if self._dash_cache.get('acct') is not None and (now - self._dash_cache.get('acct_ts', 0)) < 45:
                 return self._dash_cache['acct']
             result = anvil.server.call('get_accounting_dashboard_stats', self.get_auth())
             self._dash_cache['acct'] = result
-            self._dash_cache['ts'] = now
+            self._dash_cache['acct_ts'] = now
             return result
         except Exception as e:
             logger.warning("Could not load accounting dashboard stats: %s", e)

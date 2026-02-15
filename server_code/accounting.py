@@ -2936,6 +2936,9 @@ def get_user_permissions(token_or_email=None):
 # ---------------------------------------------------------------------------
 # Enhanced Dashboard Stats (Accounting module)
 # ---------------------------------------------------------------------------
+_accounting_dashboard_cache = {'data': None, 'timestamp': 0, 'user': None}
+_ACCOUNTING_DASHBOARD_CACHE_TTL_SECONDS = 60
+
 @anvil.server.callable
 def get_accounting_dashboard_stats(token_or_email=None):
     """Return inventory, purchase invoice, and P&L stats for the dashboard."""
@@ -2943,6 +2946,13 @@ def get_accounting_dashboard_stats(token_or_email=None):
     if not is_valid:
         return error
     try:
+        import time as _time
+        now_ts = _time.time()
+        if (_accounting_dashboard_cache.get('data') is not None
+            and _accounting_dashboard_cache.get('user') == user_email
+            and (now_ts - _accounting_dashboard_cache.get('timestamp', 0)) < _ACCOUNTING_DASHBOARD_CACHE_TTL_SECONDS):
+            return _accounting_dashboard_cache['data']
+
         now = date.today()
         year = now.year
 
@@ -2959,21 +2969,19 @@ def get_accounting_dashboard_stats(token_or_email=None):
             elif status == 'sold':
                 inv_sold += 1
 
-        # Purchase invoice stats
+        # Purchase invoice stats + top suppliers in one pass
         pi_count = 0; pi_total_value = 0.0; pi_total_paid = 0.0; pi_draft = 0; pi_posted = 0
+        supplier_totals = {}
         for pi in app_tables.purchase_invoices.search():
             pi_count += 1
-            pi_total_value += _round2(pi.get('total', 0))
+            total_pi = _round2(pi.get('total', 0))
+            pi_total_value += total_pi
             pi_total_paid += _round2(pi.get('paid_amount', 0))
             st = (pi.get('status') or '').strip().lower()
             if st == 'draft': pi_draft += 1
             elif st == 'posted': pi_posted += 1
-
-        # Top 5 suppliers by purchase value
-        supplier_totals = {}
-        for pi in app_tables.purchase_invoices.search():
             sid = pi.get('supplier_id', '')
-            supplier_totals[sid] = supplier_totals.get(sid, 0) + _round2(pi.get('total', 0))
+            supplier_totals[sid] = supplier_totals.get(sid, 0) + total_pi
         top_suppliers_raw = sorted(supplier_totals.items(), key=lambda x: x[1], reverse=True)[:5]
         top_suppliers = []
         for sid, total in top_suppliers_raw:
@@ -2985,33 +2993,29 @@ def get_accounting_dashboard_stats(token_or_email=None):
                 pass
             top_suppliers.append({'name': name, 'total': _round2(total)})
 
-        # Monthly purchase totals (12 months current year)
+        # Monthly totals + profitability in one ledger pass (current year)
         monthly_purchases = [0.0] * 12
         monthly_sales = [0.0] * 12
+        total_cogs = 0.0; total_revenue = 0.0
         for entry in app_tables.ledger.search():
             d = entry.get('date')
             if not d or not hasattr(d, 'year') or d.year != year:
                 continue
             m = d.month - 1
             code = entry.get('account_code', '')
+            debit = _round2(entry.get('debit', 0))
+            credit = _round2(entry.get('credit', 0))
+
             if code == '1200':  # Inventory (purchases)
-                monthly_purchases[m] += _round2(entry.get('debit', 0))
+                monthly_purchases[m] += debit
             elif code.startswith('4'):  # Revenue (sales)
-                monthly_sales[m] += _round2(entry.get('credit', 0)) - _round2(entry.get('debit', 0))
+                delta = credit - debit
+                monthly_sales[m] += delta
+                total_revenue += delta
+            elif code.startswith('5'):
+                total_cogs += debit - credit
 
-        # COGS and gross profit (current year)
-        total_cogs = 0.0; total_revenue = 0.0
-        for entry in app_tables.ledger.search():
-            d = entry.get('date')
-            if not d or not hasattr(d, 'year') or d.year != year:
-                continue
-            code = entry.get('account_code', '')
-            if code.startswith('5'):
-                total_cogs += _round2(entry.get('debit', 0)) - _round2(entry.get('credit', 0))
-            elif code.startswith('4'):
-                total_revenue += _round2(entry.get('credit', 0)) - _round2(entry.get('debit', 0))
-
-        return {
+        result = {
             'success': True,
             'inventory': {
                 'total_count': inv_count, 'total_value': _round2(inv_value),
@@ -3032,6 +3036,11 @@ def get_accounting_dashboard_stats(token_or_email=None):
             'monthly_purchases': monthly_purchases,
             'monthly_sales': monthly_sales,
         }
+
+        _accounting_dashboard_cache['data'] = result
+        _accounting_dashboard_cache['timestamp'] = now_ts
+        _accounting_dashboard_cache['user'] = user_email
+        return result
     except Exception as e:
         logger.exception("get_accounting_dashboard_stats error")
         return {'success': False, 'message': str(e)}

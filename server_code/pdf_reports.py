@@ -29,6 +29,9 @@ def build_purchase_invoice_pdf_data(invoice_row, supplier_row, import_costs, lin
     tax = float(inv.get('tax_amount', 0) or 0)
     total = float(inv.get('total', 0) or 0)
     paid = float(inv.get('paid_amount', 0) or 0)
+    # If subtotal was never set (e.g. old or contract-created invoice) but total is set, show total as subtotal so print is consistent
+    if subtotal == 0 and total > 0:
+        subtotal = total
 
     costs_list = []
     import_total = 0

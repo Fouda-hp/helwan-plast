@@ -709,8 +709,40 @@ db_schema:
     - admin_ui: {width: 200}
       name: updated_at
       type: datetime
+    - admin_ui: {width: 150}
+      name: currency_code
+      type: string
+    - admin_ui: {width: 120}
+      name: total_egp
+      type: number
+    - admin_ui: {width: 120}
+      name: exchange_rate_usd_to_egp
+      type: number
+    - admin_ui: {width: 120}
+      name: original_amount
+      type: number
+    - admin_ui: {width: 120}
+      name: supplier_amount_egp
+      type: number
+    - admin_ui: {width: 400}
+      name: machine_config_json
+      type: string
     server: full
     title: PURCHASE_INVOICES
+  posted_purchase_invoice_ids:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: invoice_id
+      type: string
+    - admin_ui: {width: 200}
+      name: posted_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: created_by
+      type: string
+    server: full
+    title: POSTED_PURCHASE_INVOICE_IDS
   quotations:
     client: none
     columns:

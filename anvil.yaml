@@ -1,6 +1,26 @@
 allow_embedding: false
 correct_dependency_ids: {}
 db_schema:
+  accounting_period_locks:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      name: year
+      type: number
+    - admin_ui: {order: 1, width: 200}
+      name: month
+      type: number
+    - admin_ui: {order: 2, width: 200}
+      name: locked
+      type: bool
+    - admin_ui: {order: 3, width: 200}
+      name: locked_at
+      type: datetime
+    - admin_ui: {order: 4, width: 200}
+      name: locked_by
+      type: string
+    server: full
+    title: accounting_period_locks
   audit_log:
     client: none
     columns:
@@ -664,6 +684,20 @@ db_schema:
       type: datetime
     server: full
     title: PENDING_PASSWORDS
+  posted_purchase_invoice_ids:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: invoice_id
+      type: string
+    - admin_ui: {width: 200}
+      name: posted_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: created_by
+      type: string
+    server: full
+    title: POSTED_PURCHASE_INVOICE_IDS
   purchase_invoices:
     client: none
     columns:
@@ -738,20 +772,6 @@ db_schema:
       type: string
     server: full
     title: PURCHASE_INVOICES
-  posted_purchase_invoice_ids:
-    client: none
-    columns:
-    - admin_ui: {width: 200}
-      name: invoice_id
-      type: string
-    - admin_ui: {width: 200}
-      name: posted_at
-      type: datetime
-    - admin_ui: {width: 200}
-      name: created_by
-      type: string
-    server: full
-    title: POSTED_PURCHASE_INVOICE_IDS
   quotations:
     client: none
     columns:

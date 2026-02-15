@@ -1,6 +1,5 @@
 import anvil.users
-import anvil.files
-from anvil.files import data_files
+# anvil.files not used here; removed to avoid posixpath.getcwd() errors in some environments
 """
 auth_sessions.py - إدارة الجلسات (إنشاء، التحقق، إنهاء، تنظيف)
 مع تشفير التوكن في قاعدة البيانات (hash فقط) + تنظيف تلقائي مجدول

@@ -1,6 +1,5 @@
 import anvil.users
-import anvil.files
-from anvil.files import data_files
+# anvil.files not needed for auth; removed to avoid posixpath.getcwd() errors in some environments
 """
 AuthManager.py - نظام المصادقة والتفويض الآمن (واجهة موحدة)
 ============================================================

@@ -923,6 +923,26 @@ container:
             code = String(code || '');
             return code === '1000' || (code.indexOf('101') === 0 && code.length === 4);
           }
+          function isCashOrBankAccount(a) {
+            if (!a) return false;
+            var code = String(a.code || '');
+            var nameEn = String(a.name_en || '').toLowerCase();
+            var nameAr = String(a.name_ar || '');
+            var acctType = String(a.account_type || '').toLowerCase();
+            var parent = String(a.parent_code || '');
+
+            if (isCashOrBankCode(code)) return true;
+            if (parent === '1000' || parent === '1010' || parent.indexOf('101') === 0) return true;
+
+            var byName =
+              nameEn.indexOf('cash') !== -1 ||
+              nameEn.indexOf('bank') !== -1 ||
+              nameAr.indexOf('نقد') !== -1 ||
+              nameAr.indexOf('خز') !== -1 ||
+              nameAr.indexOf('بنك') !== -1;
+
+            return byName && (acctType === 'asset' || acctType === '');
+          }
           async function populateCashBankAccounts() {
             var sel = document.getElementById('cashbankAccount');
             if (!sel) return;
@@ -936,7 +956,7 @@ container:
               } else if (window.pyGetChartOfAccounts) {
                 var chartRes = await window.pyGetChartOfAccounts();
                 if (chartRes && chartRes.success && chartRes.accounts && chartRes.accounts.length) {
-                  list = chartRes.accounts.filter(function(a) { return isCashOrBankCode(String(a.code || '')); });
+                  list = chartRes.accounts.filter(function(a) { return isCashOrBankAccount(a); });
                   if (list.length) list.sort(function(a,b) { return String(a.code || '').localeCompare(String(b.code || '')); });
                 }
               }

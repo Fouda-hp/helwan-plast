@@ -992,6 +992,7 @@ container:
               fob_with_cylinders: parseFloat(fobCylVal) || 0,
               line_items: lineItems,
               import_costs: importCosts,
+              currency_code: (exchangeRate && exchangeRate > 0) ? 'USD' : 'EGP',
               exchange_rate_usd_to_egp: exchangeRate,
               notes: document.getElementById('fInvNotes').value.trim()
             };

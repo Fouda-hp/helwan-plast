@@ -38,12 +38,12 @@ def _get_token_from_window():
 
 
 def _sync_token_to_storage(token):
-    """اكتب التوكن في sessionStorage حتى تجده get_auth_token()."""
+    """اكتب التوكن في sessionStorage فقط (hardening)."""
     try:
         if token:
             anvil.js.window.sessionStorage.setItem('auth_token', token)
             try:
-                anvil.js.window.localStorage.setItem('auth_token', token)
+                anvil.js.window.localStorage.removeItem('auth_token')
             except Exception:
                 pass
     except Exception:

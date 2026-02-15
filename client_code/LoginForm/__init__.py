@@ -61,17 +61,19 @@ class LoginForm(LoginFormTemplate):
         anvil.js.window.addEventListener("hashchange", self.on_hash_change)
 
     def check_existing_session(self):
-        """Check if user has valid session (sessionStorage + localStorage fallback)"""
+        """Check if user has valid session (sessionStorage primary; migrate/remove legacy localStorage token)."""
         try:
             auth_token = anvil.js.window.sessionStorage.getItem('auth_token')
             user_email = anvil.js.window.sessionStorage.getItem('user_email')
             user_role = anvil.js.window.sessionStorage.getItem('user_role')
 
-            # Fallback: نسخ من localStorage لو sessionStorage فاضي
+            # One-way migration from legacy localStorage token, then remove it
             if not auth_token:
-                auth_token = anvil.js.window.localStorage.getItem('auth_token')
-                if auth_token:
+                legacy_token = anvil.js.window.localStorage.getItem('auth_token')
+                if legacy_token:
+                    auth_token = legacy_token
                     anvil.js.window.sessionStorage.setItem('auth_token', auth_token)
+                    anvil.js.window.localStorage.removeItem('auth_token')
             if not user_email:
                 user_email = anvil.js.window.localStorage.getItem('user_email')
                 if user_email:
@@ -152,7 +154,7 @@ class LoginForm(LoginFormTemplate):
     def _user_is_admin(self):
         """التحقق من السيرفر أن المستخدم الحالي أدمن (مع cache)."""
         try:
-            token = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.localStorage.getItem('auth_token')
+            token = anvil.js.window.sessionStorage.getItem('auth_token')
             if not token:
                 return False
             result = validate_token_cached(token)
@@ -262,7 +264,7 @@ class LoginForm(LoginFormTemplate):
             return {'success': False, 'message': f'Error: {str(e)}'}
 
     def _save_auth_everywhere(self, user_email='', user_name='', user_role='', auth_token=''):
-        """حفظ التوكن ومعلومات المستخدم في sessionStorage و localStorage"""
+        """حفظ التوكن في sessionStorage فقط + بيانات المستخدم (بدون auth_token في localStorage)."""
         try:
             ss = anvil.js.window.sessionStorage
             ls = anvil.js.window.localStorage
@@ -272,13 +274,12 @@ class LoginForm(LoginFormTemplate):
                 ss.setItem('user_role', user_role or '')
                 if auth_token:
                     ss.setItem('auth_token', auth_token)
-            # حفظ في localStorage كمان عشان يفضل متاح بعد refresh وفي كل الـ forms
+            # localStorage: بيانات مساعدة فقط + تنظيف أي token قديم
             if ls:
                 ls.setItem('user_email', user_email or '')
                 ls.setItem('user_name', user_name or '')
                 ls.setItem('user_role', user_role or '')
-                if auth_token:
-                    ls.setItem('auth_token', auth_token)
+                ls.removeItem('auth_token')
             # حفظ أيضاً في الإطار الأعلى إن وُجد
             try:
                 if anvil.js.window.top and anvil.js.window.top != anvil.js.window:

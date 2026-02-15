@@ -28,38 +28,40 @@ def get_accountant_token():
 
 
 def get_auth_token():
-    """Get auth token from sessionStorage with localStorage fallback.
+    """Get auth token from sessionStorage (primary) with one-way migration from localStorage.
 
-    Checks current window first, then (if empty) tries window.top and
-    window.parent so forms opened in iframes (e.g. AccountantForm) can
-    see the token set by the main app. Copies any token found into
-    current window's sessionStorage.
-
-    Returns:
-        str or None: The auth token, or None if not found.
+    Security hardening:
+    - Prefer sessionStorage only.
+    - If an old token is found in localStorage, copy it to sessionStorage then remove it.
     """
     try:
         token = anvil.js.window.sessionStorage.getItem('auth_token')
         if not token:
-            token = anvil.js.window.localStorage.getItem('auth_token')
+            legacy = anvil.js.window.localStorage.getItem('auth_token')
+            if legacy:
+                token = legacy
+                try:
+                    anvil.js.window.sessionStorage.setItem('auth_token', token)
+                    anvil.js.window.localStorage.removeItem('auth_token')
+                except Exception:
+                    pass
         if not token:
             try:
                 w = anvil.js.window.top if anvil.js.window.top else anvil.js.window
                 if w and w != anvil.js.window:
-                    token = w.sessionStorage.getItem('auth_token') or w.localStorage.getItem('auth_token')
+                    token = w.sessionStorage.getItem('auth_token')
             except Exception:
                 pass
         if not token:
             try:
                 w = anvil.js.window.parent if anvil.js.window.parent else anvil.js.window
                 if w and w != anvil.js.window:
-                    token = w.sessionStorage.getItem('auth_token') or w.localStorage.getItem('auth_token')
+                    token = w.sessionStorage.getItem('auth_token')
             except Exception:
                 pass
         if token:
             try:
                 anvil.js.window.sessionStorage.setItem('auth_token', token)
-                anvil.js.window.localStorage.setItem('auth_token', token)
             except Exception:
                 pass
         return token

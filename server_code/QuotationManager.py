@@ -1089,13 +1089,15 @@ def get_dashboard_stats(token_or_email=None):
     """الحصول على إحصائيات لوحة التحكم - يتطلب صلاحية view"""
     is_valid, _, error = _require_permission(token_or_email, 'view')
     if not is_valid:
-        return {"total_clients": 0, "total_quotations": 0, "total_value": 0,
-                "this_month_quotations": 0, "this_month_value": 0,
-                "deleted_clients": 0, "deleted_quotations": 0,
-                "total_contracts": 0, "contracts_value_egp": 0, "this_month_contracts": 0,
-                "total_due_payments_egp": 0,
-                "finance_chart": {"months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-                                 "paid": [0] * 12, "due": [0] * 12, "overdue": [0] * 12}}
+        empty = {"total_clients": 0, "total_quotations": 0, "total_value": 0,
+                 "this_month_quotations": 0, "this_month_value": 0,
+                 "deleted_clients": 0, "deleted_quotations": 0,
+                 "total_contracts": 0, "contracts_value_egp": 0, "this_month_contracts": 0,
+                 "total_due_payments_egp": 0,
+                 "finance_chart": {"months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+                                  "paid": [0] * 12, "due": [0] * 12, "overdue": [0] * 12}}
+        # Unified envelope + backward-compatible top-level fields
+        return {'success': False, 'message': 'Permission denied', 'data': empty, **empty}
 
     # Short cache to reduce repeated heavy recalculation when user switches panels quickly
     now_ts = _time.time()
@@ -1243,9 +1245,10 @@ def get_dashboard_stats(token_or_email=None):
         "finance_chart": finance_chart,
     }
 
-    _dashboard_stats_cache['data'] = result
+    wrapped = {'success': True, 'message': '', 'data': result, **result}
+    _dashboard_stats_cache['data'] = wrapped
     _dashboard_stats_cache['timestamp'] = _time.time()
-    return result
+    return wrapped
 
 
 # =========================================================

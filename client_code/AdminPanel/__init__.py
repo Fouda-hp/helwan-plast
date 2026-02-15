@@ -2159,14 +2159,14 @@ class AdminPanel(AdminPanelTemplate):
         return anvil.js.window.sessionStorage.getItem('user_email') or anvil.js.window.localStorage.getItem('user_email') or self.user_email
 
     def get_token(self):
-        """Get auth token from sessionStorage or localStorage"""
+        """Get auth token from sessionStorage (with one-way migration from legacy localStorage)."""
         token = anvil.js.window.sessionStorage.getItem('auth_token')
         if not token:
             token = anvil.js.window.localStorage.getItem('auth_token')
-            # نسخه لـ sessionStorage عشان يفضل متاح
             if token:
                 try:
                     anvil.js.window.sessionStorage.setItem('auth_token', token)
+                    anvil.js.window.localStorage.removeItem('auth_token')
                 except Exception:
                     pass
         return token

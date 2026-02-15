@@ -2096,10 +2096,11 @@ def get_setting(key, token_or_email=None):
     """
     الحصول على قيمة إعداد معين - يتطلب مصادقة
     """
-    if token_or_email:
-        session = validate_session(token_or_email)
-        if not session:
-            return None
+    if not token_or_email:
+        return None
+    session = validate_session(token_or_email)
+    if not session:
+        return None
     setting = app_tables.settings.get(setting_key=key)
 
     if not setting:

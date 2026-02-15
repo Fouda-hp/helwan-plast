@@ -86,6 +86,7 @@ def _invalidate_dashboard_cache():
     _dashboard_cache['data'] = None
     _dashboard_cache['timestamp'] = 0
 
+@anvil.server.callable
 def set_followup(quotation_number, follow_up_date, token_or_email=None):
     """تعيين تاريخ متابعة لعرض سعر"""
     is_valid, user_email, error = _require_permission(token_or_email, 'edit')

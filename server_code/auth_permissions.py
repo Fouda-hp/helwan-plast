@@ -55,35 +55,25 @@ def is_admin_by_email(email):
 
 
 @anvil.server.callable
-def is_admin(token_or_email):
-    """التحقق من أن المستخدم أدمن (توكن أو بريد)."""
-    if not token_or_email:
+def is_admin(token):
+    """التحقق من أن المستخدم أدمن (توكن جلسة صالح فقط)."""
+    if not token:
         return False
-    if '@' in str(token_or_email):
-        return is_admin_by_email(token_or_email)
-    session = validate_session(token_or_email)
-    if session and session.get('role') == 'admin':
-        return True
-    return False
+    session = validate_session(token)
+    if not session:
+        return False
+    return (session.get('role') or '').strip().lower() == 'admin'
 
 
-def require_admin(token_or_email):
+def require_admin(token):
     """
     التحقق من صلاحية الأدمن. يُرجع (is_admin: bool, error_dict أو None).
+    ملاحظة أمنية: يقبل توكن جلسة صالح فقط (لا يقبل email أو user_id).
     """
-    if not token_or_email:
+    if not token:
         return False, {'success': False, 'message': 'Admin access required'}
-    if is_admin(token_or_email):
+    if is_admin(token):
         return True, None
-    session = validate_session(token_or_email)
-    if session and session.get('email') and is_admin_by_email(session['email']):
-        return True, None
-    try:
-        user_by_id = app_tables.users.get(user_id=token_or_email)
-        if user_by_id and user_by_id['role'] == 'admin' and user_by_id['is_active'] and user_by_id['is_approved']:
-            return True, None
-    except Exception as _e:
-        logger.debug("Suppressed: %s", _e)
     return False, {'success': False, 'message': 'Admin access required'}
 
 

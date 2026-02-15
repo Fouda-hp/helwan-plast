@@ -94,22 +94,16 @@ class DataImportForm(DataImportFormTemplate):
             logger.debug("Error getting auth info: %s", e)
 
     def import_clients(self, data):
-        """Import clients data - sends both token and email for verification"""
-        if self.user_email:
-            return anvil.server.call('import_clients_data', data, self.user_email)
-        elif self.auth_token:
+        """Import clients data - token only (secure)."""
+        if self.auth_token:
             return anvil.server.call('import_clients_data', data, self.auth_token)
-        else:
-            return {'success': False, 'message': 'Not authenticated. Please login again.'}
+        return {'success': False, 'message': 'Not authenticated. Please login again.'}
 
     def import_quotations(self, data):
-        """Import quotations data - sends both token and email for verification"""
-        if self.user_email:
-            return anvil.server.call('import_quotations_data', data, self.user_email)
-        elif self.auth_token:
+        """Import quotations data - token only (secure)."""
+        if self.auth_token:
             return anvil.server.call('import_quotations_data', data, self.auth_token)
-        else:
-            return {'success': False, 'message': 'Not authenticated. Please login again.'}
+        return {'success': False, 'message': 'Not authenticated. Please login again.'}
 
     def go_back(self):
         """Navigate back to AdminPanel"""

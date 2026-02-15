@@ -1313,7 +1313,13 @@ def import_clients_data(data_list, token_or_email):
         return error
 
     ip_address = get_client_ip()
-    user_email = token_or_email if '@' in str(token_or_email) else 'admin'
+    user_email = 'admin'
+    try:
+        session_info = AuthManager.validate_token(token_or_email)
+        if session_info.get('valid') and session_info.get('user'):
+            user_email = session_info['user'].get('email') or 'admin'
+    except Exception:
+        pass
 
     imported = 0
     errors = []
@@ -1478,7 +1484,13 @@ def import_quotations_data(data_list, token_or_email):
         return error
 
     ip_address = get_client_ip()
-    user_email = token_or_email if '@' in str(token_or_email) else 'admin'
+    user_email = 'admin'
+    try:
+        session_info = AuthManager.validate_token(token_or_email)
+        if session_info.get('valid') and session_info.get('user'):
+            user_email = session_info['user'].get('email') or 'admin'
+    except Exception:
+        pass
 
     imported = 0
     errors = []

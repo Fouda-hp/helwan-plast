@@ -57,7 +57,7 @@ class CalculatorForm(CalculatorFormTemplate):
   # JS → PYTHON BRIDGES
   # =================================================
   def _get_auth(self):
-    return anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email')
+    return anvil.js.window.sessionStorage.getItem('auth_token')
 
   def peek_next_client_code_js(self):
     """عرض رمز العميل التالي المتوقع بدون حجز (للعرض فقط)."""
@@ -150,7 +150,9 @@ class CalculatorForm(CalculatorFormTemplate):
   def _save_to_server(self, form_data):
     try:
       user_email = anvil.js.window.sessionStorage.getItem('user_email') or 'system'
-      auth = anvil.js.window.sessionStorage.getItem('auth_token') or user_email
+      auth = self._get_auth()
+      if not auth:
+        return {"success": False, "message": "Not authenticated. Please login again."}
       return anvil.server.call("save_quotation", form_data, user_email, auth)
     except Exception as e:
       return {"success": False, "message": str(e)}
@@ -159,15 +161,21 @@ class CalculatorForm(CalculatorFormTemplate):
   # OVERLAYS
   # =================================================
   def get_quotations_for_overlay(self):
-    auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email')
+    auth = self._get_auth()
+    if not auth:
+      return {"success": False, "message": "Not authenticated", "data": []}
     return anvil.server.call("get_all_quotations", 1, 20, '', False, auth)
 
   def get_clients_for_overlay(self):
-    auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email')
+    auth = self._get_auth()
+    if not auth:
+      return {"success": False, "message": "Not authenticated", "data": []}
     return anvil.server.call("get_all_clients", 1, 20, '', False, auth)
 
   def get_active_users_for_dropdown(self):
-    auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email')
+    auth = self._get_auth()
+    if not auth:
+      return {"success": False, "message": "Not authenticated", "users": []}
     return anvil.server.call("get_active_users_for_dropdown", auth)
 
   # =================================================
@@ -182,8 +190,11 @@ class CalculatorForm(CalculatorFormTemplate):
     except Exception:
       pass
     try:
-      auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email')
+      auth = self._get_auth()
       logger.info("CalculatorForm form_show: auth=%s", auth[:12] + '...' if auth and len(auth) > 12 else auth)
+      if not auth:
+        logger.warning("CalculatorForm form_show: missing auth token")
+        return
       data = anvil.server.call("get_calculator_settings", auth)
       logger.info("CalculatorForm form_show: success=%s, has_priceOptions=%s, has_machinePrices=%s, message=%s",
                   data.get('success') if data else None,

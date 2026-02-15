@@ -459,87 +459,82 @@ container:
 
           function t(en, ar) { return isAr ? ar : en; }
           function fmt(n) { return (n || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+          function setText(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
+          function setPlaceholder(id, text) { var el = document.getElementById(id); if (el) el.placeholder = text; }
 
           function applyI18n() {
-            document.getElementById('pageTitle').textContent = t('Purchase Invoices', 'فواتير الشراء');
-            document.getElementById('btnCreate').textContent = t('+ New Invoice', '+ فاتورة جديدة');
-            document.getElementById('btnBack').textContent = t('Back', 'رجوع');
-            document.getElementById('searchInput').placeholder = t('Search invoices...', 'بحث في الفواتير...');
-            document.getElementById('thInvNo').textContent = t('Invoice #', 'رقم الفاتورة');
-            document.getElementById('thSupplier').textContent = t('Supplier', 'المورد');
-            document.getElementById('thDate').textContent = t('Date', 'التاريخ');
-            document.getElementById('thMachine').textContent = t('Machine Code', 'كود الماكينة');
-            document.getElementById('thTotal').textContent = t('Total', 'الاجمالي');
-            document.getElementById('thPaid').textContent = t('Paid', 'المدفوع');
-            document.getElementById('thBalance').textContent = t('Balance', 'المتبقي');
-            document.getElementById('thStatus').textContent = t('Status', 'الحالة');
-            document.getElementById('thActions').textContent = t('Actions', 'اجراءات');
+            setText('pageTitle', t('Purchase Invoices', 'فواتير الشراء'));
+            setText('btnCreate', t('+ New Invoice', '+ فاتورة جديدة'));
+            setText('btnBack', t('Back', 'رجوع'));
+            setPlaceholder('searchInput', t('Search invoices...', 'بحث في الفواتير...'));
+            setText('thInvNo', t('Invoice #', 'رقم الفاتورة'));
+            setText('thSupplier', t('Supplier', 'المورد'));
+            setText('thDate', t('Date', 'التاريخ'));
+            setText('thMachine', t('Machine Code', 'كود الماكينة'));
+            setText('thTotal', t('Total', 'الاجمالي'));
+            setText('thPaid', t('Paid', 'المدفوع'));
+            setText('thBalance', t('Balance', 'المتبقي'));
+            setText('thStatus', t('Status', 'الحالة'));
+            setText('thActions', t('Actions', 'اجراءات'));
             // Machine config i18n
-            document.getElementById('lblMachineConfig').textContent = t('⚙ Machine Configuration', '⚙ إعداد الماكينة');
-            document.getElementById('lblCondition').textContent = t('Condition', 'الحالة');
-            document.getElementById('lblMachineType').textContent = t('Machine Type', 'نوع الماكينة');
-            document.getElementById('lblColors').textContent = t('Colors', 'الألوان');
-            document.getElementById('lblWidth').textContent = t('Width (cm)', 'العرض (سم)');
-            document.getElementById('lblMaterial').textContent = t('Material', 'الخامة');
-            document.getElementById('lblWinder').textContent = t('Winder', 'اللفاف');
-            document.getElementById('lblOptionals').textContent = t('Optional Features', 'اضافات اختيارية');
-            document.getElementById('lblFobStd').textContent = t('Standard Machine FOB ($)', 'سعر FOB القياسي ($)');
-            document.getElementById('lblFobCyl').textContent = t('FOB With Cylinders ($)', 'FOB مع السلندرات ($)');
-            document.getElementById('lblMachineCode').textContent = t('Machine Code (auto)', 'كود الماكينة (تلقائي)');
+            setText('lblMachineConfig', t('⚙ Machine Configuration', '⚙ إعداد الماكينة'));
+            setText('lblCondition', t('Condition', 'الحالة'));
+            setText('lblMachineType', t('Machine Type', 'نوع الماكينة'));
+            setText('lblColors', t('Colors', 'الألوان'));
+            setText('lblWidth', t('Width (cm)', 'العرض (سم)'));
+            setText('lblMaterial', t('Material', 'الخامة'));
+            setText('lblWinder', t('Winder', 'اللفاف'));
+            setText('lblOptionals', t('Optional Features', 'اضافات اختيارية'));
+            setText('lblFobStd', t('Standard Machine FOB ($)', 'سعر FOB القياسي ($)'));
+            setText('lblFobCyl', t('FOB With Cylinders ($)', 'FOB مع السلندرات ($)'));
+            setText('lblMachineCode', t('Machine Code (auto)', 'كود الماكينة (تلقائي)'));
             // Cylinder i18n
-            document.getElementById('lblPiCylinders').textContent = t('🔧 Cylinders', '🔧 السلندرات');
-            document.getElementById('piCylThSize').textContent = t('Size (CM)', 'المقاس (سم)');
-            document.getElementById('piCylThCount').textContent = t('Count', 'العدد');
-            document.getElementById('piCylThCost').textContent = t('Cost ($)', 'التكلفة ($)');
-            document.getElementById('lblPiCylTotal').textContent = t('Total', 'الاجمالي');
+            setText('lblPiCylinders', t('🔧 Cylinders', '🔧 السلندرات'));
+            setText('piCylThSize', t('Size (CM)', 'المقاس (سم)'));
+            setText('piCylThCount', t('Count', 'العدد'));
+            setText('piCylThCost', t('Cost ($)', 'التكلفة ($)'));
+            setText('lblPiCylTotal', t('Total', 'الاجمالي'));
             // Form labels i18n
-            document.getElementById('lblSupplier').textContent = t('Supplier *', '* المورد');
-            document.getElementById('lblDate').textContent = t('Date *', '* التاريخ');
-            document.getElementById('lblContractNo').textContent = t('Contract Number', 'رقم العقد');
-            document.getElementById('lblLineItems').textContent = t('Additional Items / Spare Parts', 'اصناف اضافية / قطع غيار');
-            document.getElementById('liDesc').textContent = t('Description', 'الوصف');
-            document.getElementById('liQty').textContent = t('Qty', 'الكمية');
-            document.getElementById('liPrice').textContent = t('Unit Price', 'سعر الوحدة');
-            document.getElementById('liTotal').textContent = t('Total', 'الاجمالي');
-            document.getElementById('btnAddRow').textContent = t('+ Add Row', '+ اضافة سطر');
-            document.getElementById('lblImportCosts').textContent = t('Import Costs', 'تكاليف الاستيراد');
-            document.getElementById('lblFobLine').textContent = t('FOB With Cylinders:', 'FOB مع السلندرات:');
-            document.getElementById('lblAddItems').textContent = t('Additional Items:', 'الاصناف الاضافية:');
-            document.getElementById('lblImportTotal').textContent = t('Import Costs (EGP):', 'تكاليف الاستيراد (ج.م):');
-            document.getElementById('lblGrandTotal').textContent = t('Grand Total (EGP):', 'الاجمالي الكلي (ج.م):');
-            var lblInvRate = document.getElementById('lblInvRate'); if (lblInvRate) lblInvRate.textContent = t('Exchange rate (1 USD = X EGP)', 'سعر الصرف (1 دولار = X جنيه)');
-            document.getElementById('lblInvNotes').textContent = t('Notes', 'ملاحظات');
+            setText('lblSupplier', t('Supplier *', '* المورد'));
+            setText('lblDate', t('Date *', '* التاريخ'));
+            setText('lblContractNo', t('Contract Number', 'رقم العقد'));
+            setText('lblLineItems', t('Additional Items / Spare Parts', 'اصناف اضافية / قطع غيار'));
+            setText('liDesc', t('Description', 'الوصف'));
+            setText('liQty', t('Qty', 'الكمية'));
+            setText('liPrice', t('Unit Price', 'سعر الوحدة'));
+            setText('liTotal', t('Total', 'الاجمالي'));
+            setText('btnAddRow', t('+ Add Row', '+ اضافة سطر'));
+            setText('lblImportCosts', t('Import Costs', 'تكاليف الاستيراد'));
+            setText('lblFobLine', t('FOB With Cylinders:', 'FOB مع السلندرات:'));
+            setText('lblAddItems', t('Additional Items:', 'الاصناف الاضافية:'));
+            setText('lblImportTotal', t('Import Costs (EGP):', 'تكاليف الاستيراد (ج.م):'));
+            setText('lblGrandTotal', t('Grand Total (EGP):', 'الاجمالي الكلي (ج.م):'));
+            setText('lblInvRate', t('Exchange rate (1 USD = X EGP)', 'سعر الصرف (1 دولار = X جنيه)'));
+            setText('lblInvNotes', t('Notes', 'ملاحظات'));
             // Payment modal i18n
-            document.getElementById('payModalTitle').textContent = t('Record Payment', 'تسجيل دفعة');
-            document.getElementById('lblPayAmount').textContent = t('Amount *', '* المبلغ');
-            document.getElementById('lblPayCurrency').textContent = t('Currency', 'العملة');
-            document.getElementById('lblPayRemaining').textContent = t('Remaining (EGP)', 'المتبقي (ج.م)');
-            document.getElementById('lblPayBy').textContent = t('Pay by', 'الدفع بـ');
-            document.getElementById('lblPayByAmount').textContent = t('Amount', 'مبلغ');
-            document.getElementById('lblPayByPct').textContent = t('Percentage', 'نسبة');
-            document.getElementById('lblPayRate').textContent = t('Payment exchange rate (at payment)', 'سعر الصرف عند الدفع');
-            document.getElementById('lblPayInFull').textContent = t('Paid in full (settlement)', 'تسوية كاملة');
-            document.getElementById('lblPayDate').textContent = t('Date', 'التاريخ');
-            document.getElementById('lblPayMethod').textContent = t('Payment method (Cash / Bank)', 'طريقة الدفع (كاش / بنك)');
-            document.getElementById('lblPayNotes').textContent = t('Notes', 'ملاحظات');
-            document.getElementById('detailsTitle').textContent = t('Invoice Details', 'تفاصيل الفاتورة');
-            var icTitle = document.getElementById('importCostsPayTitle');
-            if (icTitle) icTitle.textContent = t('Pay Import Costs', 'دفع تكاليف الاستيراد');
-            var icMethod = document.getElementById('lblImportPayMethod');
-            if (icMethod) icMethod.textContent = t('Payment from (Cash / Bank)', 'الدفع من (كاش / بنك)');
-            var icDate = document.getElementById('lblImportPayDate');
-            if (icDate) icDate.textContent = t('Date', 'التاريخ');
-            var icThType = document.getElementById('icThType');
-            if (icThType) icThType.textContent = t('Type', 'النوع');
-            var icThAmount = document.getElementById('icThAmount');
-            if (icThAmount) icThAmount.textContent = t('Amount (EGP)', 'المبلغ (ج.م)');
-            var icThPaid = document.getElementById('icThPaid');
-            if (icThPaid) icThPaid.textContent = t('Paid', 'المدفوع');
-            var icThRemaining = document.getElementById('icThRemaining');
-            if (icThRemaining) icThRemaining.textContent = t('Remaining', 'المتبقي');
-            var icThPay = document.getElementById('icThPay');
-            if (icThPay) icThPay.textContent = t('Pay (EGP)', 'دفع (ج.م)');
-            if (isAr) document.querySelector('.pi-wrapper').style.direction = 'rtl';
+            setText('payModalTitle', t('Record Payment', 'تسجيل دفعة'));
+            setText('lblPayAmount', t('Amount *', '* المبلغ'));
+            setText('lblPayCurrency', t('Currency', 'العملة'));
+            setText('lblPayRemaining', t('Remaining (EGP)', 'المتبقي (ج.م)'));
+            setText('lblPayBy', t('Pay by', 'الدفع بـ'));
+            setText('lblPayByAmount', t('Amount', 'مبلغ'));
+            setText('lblPayByPct', t('Percentage', 'نسبة'));
+            setText('lblPayRate', t('Payment exchange rate (at payment)', 'سعر الصرف عند الدفع'));
+            setText('lblPayInFull', t('Paid in full (settlement)', 'تسوية كاملة'));
+            setText('lblPayDate', t('Date', 'التاريخ'));
+            setText('lblPayMethod', t('Payment method (Cash / Bank)', 'طريقة الدفع (كاش / بنك)'));
+            setText('lblPayNotes', t('Notes', 'ملاحظات'));
+            setText('detailsTitle', t('Invoice Details', 'تفاصيل الفاتورة'));
+            setText('importCostsPayTitle', t('Pay Import Costs', 'دفع تكاليف الاستيراد'));
+            setText('lblImportPayMethod', t('Payment from (Cash / Bank)', 'الدفع من (كاش / بنك)'));
+            setText('lblImportPayDate', t('Date', 'التاريخ'));
+            setText('icThType', t('Type', 'النوع'));
+            setText('icThAmount', t('Amount (EGP)', 'المبلغ (ج.م)'));
+            setText('icThPaid', t('Paid', 'المدفوع'));
+            setText('icThRemaining', t('Remaining', 'المتبقي'));
+            setText('icThPay', t('Pay (EGP)', 'دفع (ج.م)'));
+            var piWrapper = document.querySelector('.pi-wrapper');
+            if (isAr && piWrapper) piWrapper.style.direction = 'rtl';
           }
 
           function renderSummary(data) {

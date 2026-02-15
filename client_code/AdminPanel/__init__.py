@@ -95,6 +95,9 @@ class AdminPanel(AdminPanelTemplate):
         except Exception:
             pass
 
+        # إجبار تحميل الداشبورد عند الرجوع من أي صفحة بدون الحاجة لـ refresh
+        self._force_dashboard_reload()
+
     def _load_user_info(self):
         """تحميل معلومات المستخدم الحالي"""
         try:
@@ -107,6 +110,25 @@ class AdminPanel(AdminPanelTemplate):
                     self.user_name = self.current_user.get('full_name', '')
         except Exception as e:
             logger.debug("Error loading user info: %s", e)
+
+    def _force_dashboard_reload(self):
+        """Ensure dashboard widgets load after back/navigation without manual refresh."""
+        try:
+            anvil.js.window.eval("""
+                (function(){
+                  var run = function(){
+                    try {
+                      if (window.loadDashboard) window.loadDashboard();
+                      if (window.refreshNotificationBell) window.refreshNotificationBell();
+                    } catch(e) {}
+                  };
+                  setTimeout(run, 120);
+                  setTimeout(run, 450);
+                  setTimeout(run, 900);
+                })();
+            """)
+        except Exception:
+            pass
 
     def _is_admin(self):
         """التحقق من أن المستخدم الحالي أدمن (حسب السيرفر)."""
@@ -2118,6 +2140,12 @@ class AdminPanel(AdminPanelTemplate):
     # =========================================================
     def on_hash_change(self, event):
         self.check_route()
+        try:
+            h = str(anvil.js.window.location.hash or '')
+            if h == '#admin':
+                self._force_dashboard_reload()
+        except Exception:
+            pass
 
     def check_route(self):
         try:

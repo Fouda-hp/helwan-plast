@@ -44,6 +44,26 @@ def build_purchase_invoice_pdf_data(invoice_row, supplier_row, import_costs, lin
         inv_currency = 'EGP'
     inv_rate = _rate if inv_currency == 'USD' and _rate > 0 else (1.0 if inv_currency == 'EGP' else _rate or 1.0)
 
+    # When invoice is in USD, convert to EGP for "Amount (EGP)" column (or use stored total_egp if present)
+    stored_total_egp = inv.get('total_egp')
+    try:
+        stored_total_egp = float(stored_total_egp) if stored_total_egp not in (None, '') else None
+    except (TypeError, ValueError):
+        stored_total_egp = None
+    if inv_currency == 'USD' and inv_rate > 0:
+        if stored_total_egp is not None and stored_total_egp > 0:
+            total_egp = round(stored_total_egp, 2)
+            subtotal_egp = round(subtotal * (total_egp / total), 2) if total else total_egp
+            tax_egp = round(total_egp - subtotal_egp, 2)
+        else:
+            subtotal_egp = round(subtotal * inv_rate, 2)
+            tax_egp = round(tax * inv_rate, 2)
+            total_egp = round(total * inv_rate, 2)
+    else:
+        subtotal_egp = subtotal
+        tax_egp = tax
+        total_egp = round(stored_total_egp, 2) if (stored_total_egp is not None and stored_total_egp > 0) else total
+
     costs_list = []
     import_total = 0.0
     for c in (import_costs or []):
@@ -77,8 +97,9 @@ def build_purchase_invoice_pdf_data(invoice_row, supplier_row, import_costs, lin
             'description': p.get('description', ''),
         })
 
-    supplier_total_egp = total  # invoice total in EGP (stored/converted)
+    supplier_total_egp = total_egp
     landed_egp = supplier_total_egp + import_total
+    remaining_egp = total_egp - paid
 
     return {
         'invoice_number': inv.get('invoice_number', ''),
@@ -97,11 +118,11 @@ def build_purchase_invoice_pdf_data(invoice_row, supplier_row, import_costs, lin
         },
         'invoice_currency': inv_currency,
         'invoice_exchange_rate': format_number(inv_rate) if inv_rate else '1',
-        'subtotal': format_number(subtotal),
-        'tax': format_number(tax),
-        'total': format_number(total),
+        'subtotal': format_number(subtotal_egp),
+        'tax': format_number(tax_egp),
+        'total': format_number(total_egp),
         'paid': format_number(paid),
-        'remaining': format_number(total - paid),
+        'remaining': format_number(remaining_egp),
         'import_costs': costs_list,
         'import_total': format_number(import_total),
         'landed_cost': format_number(landed_egp),

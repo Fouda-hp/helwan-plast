@@ -826,18 +826,19 @@ def post_purchase_invoice(invoice_id, token_or_email=None):
             return {'success': False, 'message': f"Cannot post invoice with status '{row.get('status')}'. Only draft invoices can be posted."}
 
         total = _round2(row.get('total', 0))
-        subtotal = _round2(row.get('subtotal', 0))
         tax_amount = _round2(row.get('tax_amount', 0))
 
         if total <= 0:
             return {'success': False, 'message': 'Invoice total must be greater than zero'}
 
-        # Build journal entries
+        # Build journal entries (no line with zero amount — validation would fail)
         inv_date = row.get('date') or date.today()
         entries = []
 
-        # Debit: Inventory for the subtotal (pre-tax cost of goods)
-        entries.append({'account_code': '1200', 'debit': subtotal, 'credit': 0})
+        # Debit: Inventory for cost of goods (total minus tax). Skip if zero.
+        cost_to_inventory = _round2(total - tax_amount)
+        if cost_to_inventory > 0:
+            entries.append({'account_code': '1200', 'debit': cost_to_inventory, 'credit': 0})
 
         # Debit: Tax Payable if there is tax (input VAT / recoverable tax)
         if tax_amount > 0:

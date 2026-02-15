@@ -107,7 +107,18 @@ class AdminPanel(AdminPanelTemplate):
                 if result.get('valid'):
                     self.current_user = result['user']
                     self.user_email = self.current_user.get('email', '')
-                    self.user_name = self.current_user.get('full_name', '')
+                    self.user_name = (self.current_user.get('full_name', '') or '').strip()
+                    # Sync visible user info in storage so header never falls back to generic "Admin"
+                    try:
+                        if self.user_email:
+                            anvil.js.window.sessionStorage.setItem('user_email', self.user_email)
+                        role = (self.current_user.get('role') or '').strip()
+                        if role:
+                            anvil.js.window.sessionStorage.setItem('user_role', role)
+                        if self.user_name:
+                            anvil.js.window.sessionStorage.setItem('user_name', self.user_name)
+                    except Exception:
+                        pass
         except Exception as e:
             logger.debug("Error loading user info: %s", e)
 
@@ -2207,7 +2218,17 @@ class AdminPanel(AdminPanelTemplate):
         """الحصول على اسم المستخدم"""
         if self.user_name:
             return self.user_name
-        return anvil.js.window.sessionStorage.getItem('user_name') or anvil.js.window.localStorage.getItem('user_name') or 'Admin'
+        try:
+            name = (anvil.js.window.sessionStorage.getItem('user_name') or '').strip()
+            if name:
+                return name
+            # Fallback: derive a readable name from email instead of generic Admin
+            email = (anvil.js.window.sessionStorage.getItem('user_email') or '').strip()
+            if email and '@' in email:
+                return email.split('@')[0]
+        except Exception:
+            pass
+        return 'Admin'
 
     def get_user_email(self):
         """الحصول على بريد المستخدم"""

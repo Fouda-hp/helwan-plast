@@ -1,4 +1,4 @@
-from ._anvil_designer import ContractPrintFormTemplate
+﻿from ._anvil_designer import ContractPrintFormTemplate
 from anvil import *
 import anvil.users
 import anvil.server
@@ -35,8 +35,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
         self.payment_data = []
         self.payment_method = 'percentage'
         self.delivery_date = ''
-        self.display_contract_number = None  # رقم العقد المحفوظ
-        self.preview_contract_serial = None  # المتسلسل التالي من جدول العقود (للمعاينة)
+        self.display_contract_number = None  # ط±ظ‚ظ… ط§ظ„ط¹ظ‚ط¯ ط§ظ„ظ…ط­ظپظˆط¸
+        self.preview_contract_serial = None  # ط§ظ„ظ…طھط³ظ„ط³ظ„ ط§ظ„طھط§ظ„ظٹ ظ…ظ† ط¬ط¯ظˆظ„ ط§ظ„ط¹ظ‚ظˆط¯ (ظ„ظ„ظ…ط¹ط§ظٹظ†ط©)
 
         # Expose functions to JavaScript
         anvil.js.window.loadQuotationForPrint = self.load_quotation_for_print
@@ -74,8 +74,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
         register_notif_bridges()
 
     def _show_msg(self, msg, typ='error'):
-        """عرض رسالة من النظام فقط (بدون alert البراوزر)."""
-        s = str(msg).strip() or ('خطأ' if self.current_lang == 'ar' else 'Error')
+        """ط¹ط±ط¶ ط±ط³ط§ظ„ط© ظ…ظ† ط§ظ„ظ†ط¸ط§ظ… ظپظ‚ط· (ط¨ط¯ظˆظ† alert ط§ظ„ط¨ط±ط§ظˆط²ط±)."""
+        s = str(msg).strip() or ('ط®ط·ط£' if self.current_lang == 'ar' else 'Error')
         try:
             if anvil.js.window.showNotification:
                 anvil.js.window.showNotification(typ, '', s)
@@ -87,12 +87,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
             pass
 
     def _validate_delivery_date(self):
-        """التحقق من إدخال تاريخ التسليم — إجباري فقط عند Save Contract / Update وليس عند حفظ الدفعات من نافذة إدارة الدفعات."""
+        """ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط¥ط¯ط®ط§ظ„ طھط§ط±ظٹط® ط§ظ„طھط³ظ„ظٹظ… â€” ط¥ط¬ط¨ط§ط±ظٹ ظپظ‚ط· ط¹ظ†ط¯ Save Contract / Update ظˆظ„ظٹط³ ط¹ظ†ط¯ ط­ظپط¸ ط§ظ„ط¯ظپط¹ط§طھ ظ…ظ† ظ†ط§ظپط°ط© ط¥ط¯ط§ط±ط© ط§ظ„ط¯ظپط¹ط§طھ."""
         delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
         delivery_val = (delivery_input.value or '').strip() if delivery_input else ''
         if not delivery_val:
             is_ar = self.current_lang == 'ar'
-            msg_ar = 'تاريخ التسليم (Expected Delivery Date) مطلوب. من فضلك أدخل تاريخ التسليم قبل الحفظ أو تأكيد الدفعات.'
+            msg_ar = 'طھط§ط±ظٹط® ط§ظ„طھط³ظ„ظٹظ… (Expected Delivery Date) ظ…ط·ظ„ظˆط¨. ظ…ظ† ظپط¶ظ„ظƒ ط£ط¯ط®ظ„ طھط§ط±ظٹط® ط§ظ„طھط³ظ„ظٹظ… ظ‚ط¨ظ„ ط§ظ„ط­ظپط¸ ط£ظˆ طھط£ظƒظٹط¯ ط§ظ„ط¯ظپط¹ط§طھ.'
             msg_en = 'Expected Delivery Date is required. Please enter the delivery date before saving or confirming payments.'
             return False, msg_ar, msg_en
         return True, None, None
@@ -122,9 +122,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
         anvil.js.window.location.hash = '#launcher'
 
     def load_quotations_list(self):
-        """عقد جديد: فقط العروض التي لم يُنشأ لها عقد. غير ذلك: كل العروض (للتوافق مع الروابط القديمة)."""
+        """ط¹ظ‚ط¯ ط¬ط¯ظٹط¯: ظپظ‚ط· ط§ظ„ط¹ط±ظˆط¶ ط§ظ„طھظٹ ظ„ظ… ظٹظڈظ†ط´ط£ ظ„ظ‡ط§ ط¹ظ‚ط¯. ط؛ظٹط± ط°ظ„ظƒ: ظƒظ„ ط§ظ„ط¹ط±ظˆط¶ (ظ„ظ„طھظˆط§ظپظ‚ ظ…ط¹ ط§ظ„ط±ظˆط§ط¨ط· ط§ظ„ظ‚ط¯ظٹظ…ط©)."""
         try:
-            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or None
             try:
                 hash_val = (anvil.js.window.location.hash or '').strip()
             except Exception:
@@ -183,12 +183,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
             self.display_contract_number = None
             self.preview_contract_serial = None
             try:
-                auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+                auth = anvil.js.window.sessionStorage.getItem('auth_token') or None
                 contract_res = anvil.server.call('get_contract', q_num, auth)
                 if contract_res and contract_res.get('success') and contract_res.get('data'):
                     self.display_contract_number = contract_res['data'].get('contract_number')
                 else:
-                    # جلب المتسلسل التالي من جدول العقود للمعاينة (مكان الشرطة)
+                    # ط¬ظ„ط¨ ط§ظ„ظ…طھط³ظ„ط³ظ„ ط§ظ„طھط§ظ„ظٹ ظ…ظ† ط¬ط¯ظˆظ„ ط§ظ„ط¹ظ‚ظˆط¯ ظ„ظ„ظ…ط¹ط§ظٹظ†ط© (ظ…ظƒط§ظ† ط§ظ„ط´ط±ط·ط©)
                     preview_res = anvil.server.call('get_next_contract_serial_preview', auth)
                     if preview_res and preview_res.get('success'):
                         self.preview_contract_serial = preview_res.get('next_serial', 2)
@@ -202,7 +202,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             except Exception:
                 pass
             # Update total in payment modal - remove commas from formatted price
-            total_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
+            total_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('طŒ', '')
             try:
                 total = float(total_str) if total_str else 0
             except Exception:
@@ -239,14 +239,14 @@ class ContractPrintForm(ContractPrintFormTemplate):
         
         # Check if empty or contains non-numeric characters
         if not val or not val.isdigit():
-            msg = 'عدد الدفعات يجب أن يكون رقم من 1 إلى 12' if is_ar else 'Number of payments must be a number from 1 to 12'
+            msg = 'ط¹ط¯ط¯ ط§ظ„ط¯ظپط¹ط§طھ ظٹط¬ط¨ ط£ظ† ظٹظƒظˆظ† ط±ظ‚ظ… ظ…ظ† 1 ط¥ظ„ظ‰ 12' if is_ar else 'Number of payments must be a number from 1 to 12'
             self._show_msg(msg)
             num_input.value = 3
             return False
         
         num = int(val)
         if num < 1 or num > 12:
-            msg = 'عدد الدفعات يجب أن يكون من 1 إلى 12 فقط' if is_ar else 'Number of payments must be between 1 and 12 only'
+            msg = 'ط¹ط¯ط¯ ط§ظ„ط¯ظپط¹ط§طھ ظٹط¬ط¨ ط£ظ† ظٹظƒظˆظ† ظ…ظ† 1 ط¥ظ„ظ‰ 12 ظپظ‚ط·' if is_ar else 'Number of payments must be between 1 and 12 only'
             self._show_msg(msg)
             num_input.value = max(1, min(12, num))
             return False
@@ -273,7 +273,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             err_el.innerHTML = ''
 
     def _handle_save_payments_click(self):
-        """يستدعى من زر الحفظ في نافذة الدفعات — يعرض الرسالة داخل النافذة ومن خلال إشعار النظام إن فشل الحفظ."""
+        """ظٹط³طھط¯ط¹ظ‰ ظ…ظ† ط²ط± ط§ظ„ط­ظپط¸ ظپظٹ ظ†ط§ظپط°ط© ط§ظ„ط¯ظپط¹ط§طھ â€” ظٹط¹ط±ط¶ ط§ظ„ط±ط³ط§ظ„ط© ط¯ط§ط®ظ„ ط§ظ„ظ†ط§ظپط°ط© ظˆظ…ظ† ط®ظ„ط§ظ„ ط¥ط´ط¹ط§ط± ط§ظ„ظ†ط¸ط§ظ… ط¥ظ† ظپط´ظ„ ط§ظ„ط­ظپط¸."""
         result = self.save_payments()
         err_el = anvil.js.window.document.getElementById('paymentModalError')
         if err_el:
@@ -281,7 +281,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 err_el.style.display = 'none'
                 err_el.innerHTML = ''
             else:
-                msg = (result or {}).get('message') or ('حدث خطأ' if self.current_lang == 'ar' else 'An error occurred')
+                msg = (result or {}).get('message') or ('ط­ط¯ط« ط®ط·ط£' if self.current_lang == 'ar' else 'An error occurred')
                 err_el.textContent = msg
                 err_el.style.display = 'block'
                 try:
@@ -299,9 +299,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
         if header:
             is_ar = self.current_lang == 'ar'
             if self.payment_method == 'percentage':
-                header.textContent = 'النسبة % / Percentage'
+                header.textContent = 'ط§ظ„ظ†ط³ط¨ط© % / Percentage'
             else:
-                header.textContent = 'المبلغ / Amount'
+                header.textContent = 'ط§ظ„ظ…ط¨ظ„ط؛ / Amount'
         self.update_payment_rows()
         self.calculate_total_percentage()  # Recalculate when method changes
 
@@ -320,7 +320,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             num = int(val)
             if num < 1 or num > 12:
                 is_ar = self.current_lang == 'ar'
-                msg = 'عدد الدفعات يجب أن يكون من 1 إلى 12 فقط' if is_ar else 'Number of payments must be between 1 and 12 only'
+                msg = 'ط¹ط¯ط¯ ط§ظ„ط¯ظپط¹ط§طھ ظٹط¬ط¨ ط£ظ† ظٹظƒظˆظ† ظ…ظ† 1 ط¥ظ„ظ‰ 12 ظپظ‚ط·' if is_ar else 'Number of payments must be between 1 and 12 only'
                 self._show_msg(msg)
                 num = max(1, min(12, num))
                 num_input.value = num
@@ -329,24 +329,24 @@ class ContractPrintForm(ContractPrintFormTemplate):
         rows_html = ''
         
         labels = {
-            1: ('مقدم تعاقد', 'Down Payment'),
-            2: ('الدفعة الثانية', 'Installment 2'),
-            3: ('الدفعة الثالثة', 'Installment 3'),
-            4: ('الدفعة الرابعة', 'Installment 4'),
-            5: ('الدفعة الخامسة', 'Installment 5'),
-            6: ('الدفعة السادسة', 'Installment 6'),
-            7: ('الدفعة السابعة', 'Installment 7'),
-            8: ('الدفعة الثامنة', 'Installment 8'),
-            9: ('الدفعة التاسعة', 'Installment 9'),
-            10: ('الدفعة العاشرة', 'Installment 10'),
-            11: ('الدفعة الحادية عشر', 'Installment 11'),
-            12: ('الدفعة الثانية عشر', 'Installment 12'),
+            1: ('ظ…ظ‚ط¯ظ… طھط¹ط§ظ‚ط¯', 'Down Payment'),
+            2: ('ط§ظ„ط¯ظپط¹ط© ط§ظ„ط«ط§ظ†ظٹط©', 'Installment 2'),
+            3: ('ط§ظ„ط¯ظپط¹ط© ط§ظ„ط«ط§ظ„ط«ط©', 'Installment 3'),
+            4: ('ط§ظ„ط¯ظپط¹ط© ط§ظ„ط±ط§ط¨ط¹ط©', 'Installment 4'),
+            5: ('ط§ظ„ط¯ظپط¹ط© ط§ظ„ط®ط§ظ…ط³ط©', 'Installment 5'),
+            6: ('ط§ظ„ط¯ظپط¹ط© ط§ظ„ط³ط§ط¯ط³ط©', 'Installment 6'),
+            7: ('ط§ظ„ط¯ظپط¹ط© ط§ظ„ط³ط§ط¨ط¹ط©', 'Installment 7'),
+            8: ('ط§ظ„ط¯ظپط¹ط© ط§ظ„ط«ط§ظ…ظ†ط©', 'Installment 8'),
+            9: ('ط§ظ„ط¯ظپط¹ط© ط§ظ„طھط§ط³ط¹ط©', 'Installment 9'),
+            10: ('ط§ظ„ط¯ظپط¹ط© ط§ظ„ط¹ط§ط´ط±ط©', 'Installment 10'),
+            11: ('ط§ظ„ط¯ظپط¹ط© ط§ظ„ط­ط§ط¯ظٹط© ط¹ط´ط±', 'Installment 11'),
+            12: ('ط§ظ„ط¯ظپط¹ط© ط§ظ„ط«ط§ظ†ظٹط© ط¹ط´ط±', 'Installment 12'),
         }
         
         placeholder = '%' if self.payment_method == 'percentage' else 'Amount'
         
         for i in range(1, num + 1):
-            label = labels.get(i, (f'الدفعة {i}', f'Installment {i}'))
+            label = labels.get(i, (f'ط§ظ„ط¯ظپط¹ط© {i}', f'Installment {i}'))
             label_text = f"{label[0]} / {label[1]}"
             
             saved_val = ''
@@ -383,7 +383,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         def safe_float(val):
             if val is None:
                 return 0.0
-            val_str = str(val).replace(',', '').replace('،', '').strip()
+            val_str = str(val).replace(',', '').replace('طŒ', '').strip()
             try:
                 return float(val_str) if val_str else 0.0
             except Exception:
@@ -415,12 +415,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     total_el.style.color = '#ff9800'  # Orange when under 100%
             
             if entered_el:
-                currency = 'ج.م' if is_ar else 'EGP'
+                currency = 'ط¬.ظ…' if is_ar else 'EGP'
                 entered_el.textContent = f"{entered_amount:,.0f} {currency}"
                 entered_el.style.color = '#2196F3'
             
             if remaining_el:
-                currency = 'ج.م' if is_ar else 'EGP'
+                currency = 'ط¬.ظ…' if is_ar else 'EGP'
                 remaining_el.textContent = f"{remaining_amount:,.0f} {currency}"
                 if remaining_amount == 0:
                     remaining_el.style.color = '#4caf50'  # Green when done
@@ -433,7 +433,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             remaining_amount = total_contract - total_entered
             
             if total_el:
-                currency = 'ج.م' if is_ar else 'EGP'
+                currency = 'ط¬.ظ…' if is_ar else 'EGP'
                 total_el.textContent = f"{total_entered:,.0f}"
                 if total_unit:
                     total_unit.textContent = currency
@@ -446,12 +446,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     total_el.style.color = '#ff9800'  # Orange when under
             
             if entered_el:
-                currency = 'ج.م' if is_ar else 'EGP'
+                currency = 'ط¬.ظ…' if is_ar else 'EGP'
                 entered_el.textContent = f"{total_entered:,.0f} {currency}"
                 entered_el.style.color = '#2196F3'
             
             if remaining_el:
-                currency = 'ج.م' if is_ar else 'EGP'
+                currency = 'ط¬.ظ…' if is_ar else 'EGP'
                 remaining_el.textContent = f"{remaining_amount:,.0f} {currency}"
                 if remaining_amount == 0:
                     remaining_el.style.color = '#4caf50'
@@ -466,7 +466,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         date_inputs = anvil.js.window.document.querySelectorAll('.payment-date')
         
         # Remove commas from formatted price
-        price_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
+        price_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('طŒ', '')
         try:
             total_price = float(price_str) if price_str else 0
         except Exception:
@@ -482,15 +482,15 @@ class ContractPrintForm(ContractPrintFormTemplate):
             date_str = (str(date_inp.value or '')).strip()
             payment_date = None
             
-            # تاريخ ناقص: لو فيه قيمة ومفيش تاريخ
+            # طھط§ط±ظٹط® ظ†ط§ظ‚طµ: ظ„ظˆ ظپظٹظ‡ ظ‚ظٹظ…ط© ظˆظ…ظپظٹط´ طھط§ط±ظٹط®
             if val > 0 and not date_str:
                 errors.append(
-                    f'تاريخ الدفعة رقم {i+1} ناقص' if is_ar else f'Date for installment {i+1} is missing'
+                    f'طھط§ط±ظٹط® ط§ظ„ط¯ظپط¹ط© ط±ظ‚ظ… {i+1} ظ†ط§ظ‚طµ' if is_ar else f'Date for installment {i+1} is missing'
                 )
-            # دفعة ناقصة: لو فيه تاريخ ومفيش قيمة
+            # ط¯ظپط¹ط© ظ†ط§ظ‚طµط©: ظ„ظˆ ظپظٹظ‡ طھط§ط±ظٹط® ظˆظ…ظپظٹط´ ظ‚ظٹظ…ط©
             if date_str and val <= 0:
                 errors.append(
-                    f'قيمة الدفعة رقم {i+1} ناقصة' if is_ar else f'Value for installment {i+1} is missing'
+                    f'ظ‚ظٹظ…ط© ط§ظ„ط¯ظپط¹ط© ط±ظ‚ظ… {i+1} ظ†ط§ظ‚طµط©' if is_ar else f'Value for installment {i+1} is missing'
                 )
             
             if date_str:
@@ -498,22 +498,22 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     payment_date = datetime.strptime(date_str, '%Y-%m-%d').date()
                 except Exception:
                     errors.append(
-                        f'تاريخ غير صحيح للدفعة رقم {i+1}' if is_ar else f'Invalid date for installment {i+1}'
+                        f'طھط§ط±ظٹط® ط؛ظٹط± طµط­ظٹط­ ظ„ظ„ط¯ظپط¹ط© ط±ظ‚ظ… {i+1}' if is_ar else f'Invalid date for installment {i+1}'
                     )
                 else:
                     if payment_date < today:
                         errors.append(
-                            f'تاريخ الدفعة رقم {i+1} لا يمكن أن يكون قبل اليوم' if is_ar else f'Date for installment {i+1} cannot be before today'
+                            f'طھط§ط±ظٹط® ط§ظ„ط¯ظپط¹ط© ط±ظ‚ظ… {i+1} ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظ‚ط¨ظ„ ط§ظ„ظٹظˆظ…' if is_ar else f'Date for installment {i+1} cannot be before today'
                         )
                     if date_str in dates_used:
                         errors.append(
-                            'تاريخ مكرر — لا يمكن تكرار نفس التاريخ لأكثر من دفعة' if is_ar else 'Duplicate date — each installment must have a different date'
+                            'طھط§ط±ظٹط® ظ…ظƒط±ط± â€” ظ„ط§ ظٹظ…ظƒظ† طھظƒط±ط§ط± ظ†ظپط³ ط§ظ„طھط§ط±ظٹط® ظ„ط£ظƒط«ط± ظ…ظ† ط¯ظپط¹ط©' if is_ar else 'Duplicate date â€” each installment must have a different date'
                         )
                     dates_used.append(date_str)
-                    # دفعة لاحقة لا تكون أقدم من أي دفعة سابقة
+                    # ط¯ظپط¹ط© ظ„ط§ط­ظ‚ط© ظ„ط§ طھظƒظˆظ† ط£ظ‚ط¯ظ… ظ…ظ† ط£ظٹ ط¯ظپط¹ط© ط³ط§ط¨ظ‚ط©
                     if last_date is not None and payment_date < last_date:
                         errors.append(
-                            f'تاريخ الدفعة رقم {i+1} لا يمكن أن يكون قبل تاريخ الدفعة السابقة' if is_ar else f'Date for installment {i+1} cannot be before previous installment'
+                            f'طھط§ط±ظٹط® ط§ظ„ط¯ظپط¹ط© ط±ظ‚ظ… {i+1} ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظ‚ط¨ظ„ طھط§ط±ظٹط® ط§ظ„ط¯ظپط¹ط© ط§ظ„ط³ط§ط¨ظ‚ط©' if is_ar else f'Date for installment {i+1} cannot be before previous installment'
                         )
                     if payment_date is not None:
                         last_date = payment_date
@@ -523,13 +523,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
         if self.payment_method == 'percentage':
             if round(total_value, 2) != 100:
                 errors.append(
-                    f'إجمالي النسب = {total_value}% — يجب أن يكون 100%' if is_ar else f'Total = {total_value}% — must be 100%'
+                    f'ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ†ط³ط¨ = {total_value}% â€” ظٹط¬ط¨ ط£ظ† ظٹظƒظˆظ† 100%' if is_ar else f'Total = {total_value}% â€” must be 100%'
                 )
         else:
             if round(total_value, 0) != round(total_price, 0):
                 diff = abs(total_price - total_value)
                 errors.append(
-                    f'إجمالي المبالغ ({total_value:,.0f}) لا يساوي قيمة العقد ({total_price:,.0f}) — الفرق {diff:,.0f}' if is_ar else f'Total ({total_value:,.0f}) does not match contract ({total_price:,.0f}) — diff {diff:,.0f}'
+                    f'ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ…ط¨ط§ظ„ط؛ ({total_value:,.0f}) ظ„ط§ ظٹط³ط§ظˆظٹ ظ‚ظٹظ…ط© ط§ظ„ط¹ظ‚ط¯ ({total_price:,.0f}) â€” ط§ظ„ظپط±ظ‚ {diff:,.0f}' if is_ar else f'Total ({total_value:,.0f}) does not match contract ({total_price:,.0f}) â€” diff {diff:,.0f}'
                 )
         
         if errors:
@@ -538,35 +538,35 @@ class ContractPrintForm(ContractPrintFormTemplate):
         return True, ''
 
     def save_payments(self):
-        """يحفظ بيانات الدفعات ويرجع {success: True} أو {success: False, message: '...'}."""
+        """ظٹط­ظپط¸ ط¨ظٹط§ظ†ط§طھ ط§ظ„ط¯ظپط¹ط§طھ ظˆظٹط±ط¬ط¹ {success: True} ط£ظˆ {success: False, message: '...'}."""
         is_ar = self.current_lang == 'ar'
         try:
             if not self.current_data:
-                msg = ('الناقص: من فضلك اختر عرضاً أو عقداً أولاً ثم افتح إدارة الدفعات مرة أخرى.'
+                msg = ('ط§ظ„ظ†ط§ظ‚طµ: ظ…ظ† ظپط¶ظ„ظƒ ط§ط®طھط± ط¹ط±ط¶ط§ظ‹ ط£ظˆ ط¹ظ‚ط¯ط§ظ‹ ط£ظˆظ„ط§ظ‹ ط«ظ… ط§ظپطھط­ ط¥ط¯ط§ط±ط© ط§ظ„ط¯ظپط¹ط§طھ ظ…ط±ط© ط£ط®ط±ظ‰.'
                        if is_ar else 'Missing: Please select a quotation or contract first, then open Manage Payments again.')
                 return {'success': False, 'message': msg}
-            # تاريخ التسليم غير مطلوب عند حفظ الدفعات من النافذة — مطلوب فقط عند Save Contract
+            # طھط§ط±ظٹط® ط§ظ„طھط³ظ„ظٹظ… ط؛ظٹط± ظ…ط·ظ„ظˆط¨ ط¹ظ†ط¯ ط­ظپط¸ ط§ظ„ط¯ظپط¹ط§طھ ظ…ظ† ط§ظ„ظ†ط§ظپط°ط© â€” ظ…ط·ظ„ظˆط¨ ظپظ‚ط· ط¹ظ†ط¯ Save Contract
             valid, validation_msg = self.validate_payments()
             if not valid:
-                return {'success': False, 'message': validation_msg or ('التحقق من البيانات فشل' if is_ar else 'Validation failed')}
+                return {'success': False, 'message': validation_msg or ('ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط§ظ„ط¨ظٹط§ظ†ط§طھ ظپط´ظ„' if is_ar else 'Validation failed')}
 
             value_inputs = anvil.js.window.document.querySelectorAll('.payment-value')
             date_inputs = anvil.js.window.document.querySelectorAll('.payment-date')
             if not value_inputs or not date_inputs:
-                msg = ('الناقص: لم يتم العثور على حقول الدفعات. أعد فتح نافذة إدارة الدفعات.'
+                msg = ('ط§ظ„ظ†ط§ظ‚طµ: ظ„ظ… ظٹطھظ… ط§ظ„ط¹ط«ظˆط± ط¹ظ„ظ‰ ط­ظ‚ظˆظ„ ط§ظ„ط¯ظپط¹ط§طھ. ط£ط¹ط¯ ظپطھط­ ظ†ط§ظپط°ط© ط¥ط¯ط§ط±ط© ط§ظ„ط¯ظپط¹ط§طھ.'
                        if is_ar else 'Missing: Payment fields not found. Please reopen Manage Payments.')
                 return {'success': False, 'message': msg}
 
             self.payment_data = []
-            price_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
+            price_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('طŒ', '')
             try:
                 total_price = float(price_str) if price_str else 0
             except Exception:
                 total_price = 0
 
-            labels_ar = ['مقدم تعاقد', 'الدفعة الثانية', 'الدفعة الثالثة', 'الدفعة الرابعة',
-                         'الدفعة الخامسة', 'الدفعة السادسة', 'الدفعة السابعة', 'الدفعة الثامنة',
-                         'الدفعة التاسعة', 'الدفعة العاشرة', 'الدفعة الحادية عشر', 'الدفعة الثانية عشر']
+            labels_ar = ['ظ…ظ‚ط¯ظ… طھط¹ط§ظ‚ط¯', 'ط§ظ„ط¯ظپط¹ط© ط§ظ„ط«ط§ظ†ظٹط©', 'ط§ظ„ط¯ظپط¹ط© ط§ظ„ط«ط§ظ„ط«ط©', 'ط§ظ„ط¯ظپط¹ط© ط§ظ„ط±ط§ط¨ط¹ط©',
+                         'ط§ظ„ط¯ظپط¹ط© ط§ظ„ط®ط§ظ…ط³ط©', 'ط§ظ„ط¯ظپط¹ط© ط§ظ„ط³ط§ط¯ط³ط©', 'ط§ظ„ط¯ظپط¹ط© ط§ظ„ط³ط§ط¨ط¹ط©', 'ط§ظ„ط¯ظپط¹ط© ط§ظ„ط«ط§ظ…ظ†ط©',
+                         'ط§ظ„ط¯ظپط¹ط© ط§ظ„طھط§ط³ط¹ط©', 'ط§ظ„ط¯ظپط¹ط© ط§ظ„ط¹ط§ط´ط±ط©', 'ط§ظ„ط¯ظپط¹ط© ط§ظ„ط­ط§ط¯ظٹط© ط¹ط´ط±', 'ط§ظ„ط¯ظپط¹ط© ط§ظ„ط«ط§ظ†ظٹط© ط¹ط´ط±']
             labels_en = ['Down Payment', 'Installment 2', 'Installment 3', 'Installment 4',
                          'Installment 5', 'Installment 6', 'Installment 7', 'Installment 8',
                          'Installment 9', 'Installment 10', 'Installment 11', 'Installment 12']
@@ -585,7 +585,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
                     self.payment_data.append({
                         'index': i + 1,
-                        'label_ar': labels_ar[i] if i < len(labels_ar) else f'الدفعة {i+1}',
+                        'label_ar': labels_ar[i] if i < len(labels_ar) else f'ط§ظ„ط¯ظپط¹ط© {i+1}',
                         'label_en': labels_en[i] if i < len(labels_en) else f'Installment {i+1}',
                         'value': val,
                         'percentage': percentage,
@@ -595,14 +595,14 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     })
 
             self.close_payment_modal()
-            Notification('تم حفظ الدفعات' if is_ar else 'Payments saved', style='success').show()
+            Notification('طھظ… ط­ظپط¸ ط§ظ„ط¯ظپط¹ط§طھ' if is_ar else 'Payments saved', style='success').show()
 
             if self.current_data:
                 self.render_template()
             return {'success': True}
         except Exception as e:
-            err_msg = str(e) if e else ('خطأ غير متوقع' if is_ar else 'Unexpected error')
-            return {'success': False, 'message': ('خطأ عند الحفظ: ' + err_msg) if is_ar else ('Error while saving: ' + err_msg)}
+            err_msg = str(e) if e else ('ط®ط·ط£ ط؛ظٹط± ظ…طھظˆظ‚ط¹' if is_ar else 'Unexpected error')
+            return {'success': False, 'message': ('ط®ط·ط£ ط¹ظ†ط¯ ط§ظ„ط­ظپط¸: ' + err_msg) if is_ar else ('Error while saving: ' + err_msg)}
 
     def get_suppliers_list(self):
         """Get suppliers list for the supplier dropdown in contract form."""
@@ -639,7 +639,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         if not self.payment_data:
             is_ar = self.current_lang == 'ar'
-            self._show_msg('من فضلك أدخل بيانات الدفعات أولاً' if is_ar else 'Please enter payment data first')
+            self._show_msg('ظ…ظ† ظپط¶ظ„ظƒ ط£ط¯ط®ظ„ ط¨ظٹط§ظ†ط§طھ ط§ظ„ط¯ظپط¹ط§طھ ط£ظˆظ„ط§ظ‹' if is_ar else 'Please enter payment data first')
             return
         ok, msg_ar, msg_en = self._validate_delivery_date()
         if not ok:
@@ -649,8 +649,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
         delivery_input = anvil.js.window.document.getElementById('deliveryDateInput')
         delivery_date = str(delivery_input.value) if delivery_input else ''
 
-        # بيانات العرض من get_quotation_pdf_data تستخدم client_company, client_phone, client_address
-        # وـ company في current_data قد تكون قاموس إعدادات وليست اسم الشركة
+        # ط¨ظٹط§ظ†ط§طھ ط§ظ„ط¹ط±ط¶ ظ…ظ† get_quotation_pdf_data طھط³طھط®ط¯ظ… client_company, client_phone, client_address
+        # ظˆظ€ company ظپظٹ current_data ظ‚ط¯ طھظƒظˆظ† ظ‚ط§ظ…ظˆط³ ط¥ط¹ط¯ط§ط¯ط§طھ ظˆظ„ظٹط³طھ ط§ط³ظ… ط§ظ„ط´ط±ظƒط©
         company_val = self.current_data.get('client_company') or ''
         if not company_val and isinstance(self.current_data.get('company'), str):
             company_val = self.current_data.get('company', '')
@@ -685,9 +685,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 pass
             if not supplier_id:
                 self._show_msg(
-                    'من فضلك اختر المورد (Supplier) أولاً لأن نوع السعر "طلب جديد"'
+                    'ظ…ظ† ظپط¶ظ„ظƒ ط§ط®طھط± ط§ظ„ظ…ظˆط±ط¯ (Supplier) ط£ظˆظ„ط§ظ‹ ظ„ط£ظ† ظ†ظˆط¹ ط§ظ„ط³ط¹ط± "ط·ظ„ط¨ ط¬ط¯ظٹط¯"'
                     if is_ar else
-                    'Please select a Supplier first — pricing mode is "New Order"'
+                    'Please select a Supplier first â€” pricing mode is "New Order"'
                 )
                 return
         elif pricing_mode == 'In Stock':
@@ -700,9 +700,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 pass
             if not inventory_item_id:
                 self._show_msg(
-                    'من فضلك اختر الماكينة من المخزون أولاً لأن نوع السعر "من المخزون"'
+                    'ظ…ظ† ظپط¶ظ„ظƒ ط§ط®طھط± ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ…ظ† ط§ظ„ظ…ط®ط²ظˆظ† ط£ظˆظ„ط§ظ‹ ظ„ط£ظ† ظ†ظˆط¹ ط§ظ„ط³ط¹ط± "ظ…ظ† ط§ظ„ظ…ط®ط²ظˆظ†"'
                     if is_ar else
-                    'Please select a machine from Inventory — pricing mode is "In Stock"'
+                    'Please select a machine from Inventory â€” pricing mode is "In Stock"'
                 )
                 return
 
@@ -748,19 +748,19 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 acct_msg = ''
                 if result.get('purchase_invoice_number'):
                     inv_num = result['purchase_invoice_number']
-                    acct_msg = f' | فاتورة شراء: {inv_num}' if is_ar else f' | Purchase Invoice: {inv_num}'
+                    acct_msg = f' | ظپط§طھظˆط±ط© ط´ط±ط§ط،: {inv_num}' if is_ar else f' | Purchase Invoice: {inv_num}'
                 elif result.get('inventory_sold'):
-                    acct_msg = ' | تم ربط الماكينة من المخزون وتسجيل البيع' if is_ar else ' | Inventory item sold & linked'
-                base_msg = 'تم حفظ العقد بنجاح' if is_ar else 'Contract saved'
+                    acct_msg = ' | طھظ… ط±ط¨ط· ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ…ظ† ط§ظ„ظ…ط®ط²ظˆظ† ظˆطھط³ط¬ظٹظ„ ط§ظ„ط¨ظٹط¹' if is_ar else ' | Inventory item sold & linked'
+                base_msg = 'طھظ… ط­ظپط¸ ط§ظ„ط¹ظ‚ط¯ ط¨ظ†ط¬ط§ط­' if is_ar else 'Contract saved'
                 Notification(base_msg + acct_msg, style='success').show()
                 # Show accounting warning if applicable
                 if result.get('accounting_warning'):
                     self._show_msg(result['accounting_warning'], 'warning')
             elif result and result.get('already_exists'):
-                # ربط الرسالة بلغة النموذج (زر اللغة في العقد)
+                # ط±ط¨ط· ط§ظ„ط±ط³ط§ظ„ط© ط¨ظ„ط؛ط© ط§ظ„ظ†ظ…ظˆط°ط¬ (ط²ط± ط§ظ„ظ„ط؛ط© ظپظٹ ط§ظ„ط¹ظ‚ط¯)
                 is_ar = self.current_lang == 'ar'
                 msg = result.get('message') if is_ar else result.get('message_en', result.get('message', ''))
-                self._show_msg(msg or ('العقد لهذا العرض تم إنشاؤه مسبقاً.' if is_ar else 'This contract for this quotation was already created before.'))
+                self._show_msg(msg or ('ط§ظ„ط¹ظ‚ط¯ ظ„ظ‡ط°ط§ ط§ظ„ط¹ط±ط¶ طھظ… ط¥ظ†ط´ط§ط¤ظ‡ ظ…ط³ط¨ظ‚ط§ظ‹.' if is_ar else 'This contract for this quotation was already created before.'))
             else:
                 err_msg = result.get('message', 'Unknown error') if result else 'Server returned empty response'
                 self._show_msg(err_msg)
@@ -768,16 +768,16 @@ class ContractPrintForm(ContractPrintFormTemplate):
             detail = str(e)
             is_ar = self.current_lang == 'ar'
             if is_ar:
-                msg = f'المشكلة: فشل حفظ العقد. تفاصيل: {detail}'
+                msg = f'ط§ظ„ظ…ط´ظƒظ„ط©: ظپط´ظ„ ط­ظپط¸ ط§ظ„ط¹ظ‚ط¯. طھظپط§طµظٹظ„: {detail}'
             else:
                 msg = f'Save failed. Details: {detail}'
             self._show_msg(msg)
 
     def delete_contract(self):
-        """حذف العقد وبيناته بالكامل من الجدول (يتطلب صلاحية delete)"""
+        """ط­ط°ظپ ط§ظ„ط¹ظ‚ط¯ ظˆط¨ظٹظ†ط§طھظ‡ ط¨ط§ظ„ظƒط§ظ…ظ„ ظ…ظ† ط§ظ„ط¬ط¯ظˆظ„ (ظٹطھط·ظ„ط¨ طµظ„ط§ط­ظٹط© delete)"""
         if not self.current_data:
             is_ar = self.current_lang == 'ar'
-            self._show_msg('اختر عرضاً أولاً' if is_ar else 'Please select a quotation first')
+            self._show_msg('ط§ط®طھط± ط¹ط±ط¶ط§ظ‹ ط£ظˆظ„ط§ظ‹' if is_ar else 'Please select a quotation first')
             return
         q_num = self.current_data.get('quotation_number')
         try:
@@ -786,10 +786,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
             q_num = None
         if q_num is None:
             is_ar = self.current_lang == 'ar'
-            self._show_msg('رقم العرض غير صالح' if is_ar else 'Invalid quotation number')
+            self._show_msg('ط±ظ‚ظ… ط§ظ„ط¹ط±ط¶ ط؛ظٹط± طµط§ظ„ط­' if is_ar else 'Invalid quotation number')
             return
         try:
-            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or None
             result = anvil.server.call('delete_contract', q_num, auth)
             is_ar = self.current_lang == 'ar'
             if result and result.get('success'):
@@ -804,13 +804,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     template_content.style.display = 'none'
                 self.load_quotations_list()
                 msg = result.get('message') if is_ar else result.get('message_en', result.get('message', ''))
-                self._show_msg(msg or ('تم حذف العقد وبيناته بالكامل' if is_ar else 'Contract and all its data have been deleted'), typ='success')
+                self._show_msg(msg or ('طھظ… ط­ط°ظپ ط§ظ„ط¹ظ‚ط¯ ظˆط¨ظٹظ†ط§طھظ‡ ط¨ط§ظ„ظƒط§ظ…ظ„' if is_ar else 'Contract and all its data have been deleted'), typ='success')
             else:
                 err = result.get('message') if is_ar else result.get('message_en', result.get('message', '')) if result else 'Unknown error'
                 self._show_msg(err)
         except Exception as e:
             is_ar = self.current_lang == 'ar'
-            self._show_msg(f'فشل الحذف: {str(e)}' if is_ar else f'Delete failed: {str(e)}')
+            self._show_msg(f'ظپط´ظ„ ط§ظ„ط­ط°ظپ: {str(e)}' if is_ar else f'Delete failed: {str(e)}')
 
     # ==================== RENDER TEMPLATE (Same as Quotation) ====================
     def render_template(self):
@@ -836,22 +836,22 @@ class ContractPrintForm(ContractPrintFormTemplate):
         material = str(data.get('material', '')).upper()
         plc_value = str(data.get('plc', '')).upper()
         machine_type_base = data.get('machine_type', '') or data.get('model', '')
-        machine_type_display = f"Flexo Stack With {machine_type_base}" if not is_ar else f"فليكسو ستاك مع {machine_type_base}"
+        machine_type_display = f"Flexo Stack With {machine_type_base}" if not is_ar else f"ظپظ„ظٹظƒط³ظˆ ط³طھط§ظƒ ظ…ط¹ {machine_type_base}"
 
         # Winder type
         def get_winder_type():
             unwind_options = []
             rewind_options = []
             if str(data.get('pneumatic_unwind', '')).upper() in ['YES', 'TRUE', '1']:
-                unwind_options.append('Pneumatic Unwind' if not is_ar else 'فك هوائي')
+                unwind_options.append('Pneumatic Unwind' if not is_ar else 'ظپظƒ ظ‡ظˆط§ط¦ظٹ')
             if str(data.get('hydraulic_station_unwind', '')).upper() in ['YES', 'TRUE', '1']:
-                unwind_options.append('Hydraulic Station Unwind' if not is_ar else 'فك هيدروليك')
+                unwind_options.append('Hydraulic Station Unwind' if not is_ar else 'ظپظƒ ظ‡ظٹط¯ط±ظˆظ„ظٹظƒ')
             if str(data.get('pneumatic_rewind', '')).upper() in ['YES', 'TRUE', '1']:
-                rewind_options.append('Pneumatic Rewind' if not is_ar else 'لف هوائي')
+                rewind_options.append('Pneumatic Rewind' if not is_ar else 'ظ„ظپ ظ‡ظˆط§ط¦ظٹ')
             if str(data.get('surface_rewind', '')).upper() in ['YES', 'TRUE', '1']:
-                rewind_options.append('Surface Rewind' if not is_ar else 'لف سطحي')
+                rewind_options.append('Surface Rewind' if not is_ar else 'ظ„ظپ ط³ط·ط­ظٹ')
             if not unwind_options and not rewind_options:
-                return 'Central' if not is_ar else 'مركزي'
+                return 'Central' if not is_ar else 'ظ…ط±ظƒط²ظٹ'
             parts = []
             if unwind_options:
                 parts.append(', '.join(unwind_options))
@@ -862,14 +862,14 @@ class ContractPrintForm(ContractPrintFormTemplate):
         winder_type_display = get_winder_type()
         q_num = data.get('quotation_number', '')
 
-        # رقم العقد: C - رقم الكوتيشن / متسلسل (من جدول CONTRACTS) - السنة
+        # ط±ظ‚ظ… ط§ظ„ط¹ظ‚ط¯: C - ط±ظ‚ظ… ط§ظ„ظƒظˆطھظٹط´ظ† / ظ…طھط³ظ„ط³ظ„ (ظ…ظ† ط¬ط¯ظˆظ„ CONTRACTS) - ط§ظ„ط³ظ†ط©
         contract_display = getattr(self, 'display_contract_number', None) or data.get('contract_number')
         year = date.today().year
         if not contract_display and q_num:
             serial = getattr(self, 'preview_contract_serial', None) or 2
             contract_display = f"C - {q_num} / {serial} - {year}"
         contract_display = contract_display or (f"C - {q_num} / {getattr(self, 'preview_contract_serial', None) or 2} - {year}" if q_num else "")
-        # تحويل التنسيق القديم C-8 إلى التنسيق الجديد (المتسلسل من الجدول أو 2)
+        # طھط­ظˆظٹظ„ ط§ظ„طھظ†ط³ظٹظ‚ ط§ظ„ظ‚ط¯ظٹظ… C-8 ط¥ظ„ظ‰ ط§ظ„طھظ†ط³ظٹظ‚ ط§ظ„ط¬ط¯ظٹط¯ (ط§ظ„ظ…طھط³ظ„ط³ظ„ ظ…ظ† ط§ظ„ط¬ط¯ظˆظ„ ط£ظˆ 2)
         if contract_display and re.match(r'^C-\d+$', str(contract_display).strip()):
             old_num = str(contract_display).strip().replace('C-', '')
             serial = getattr(self, 'preview_contract_serial', None) or 2
@@ -893,30 +893,30 @@ class ContractPrintForm(ContractPrintFormTemplate):
         html += '</div>'
         html += '</div>'
 
-        # Contract Info (رقم العقد بالتنسيق: C - رقم الكوتيشن / متسلسل - السنة)
+        # Contract Info (ط±ظ‚ظ… ط§ظ„ط¹ظ‚ط¯ ط¨ط§ظ„طھظ†ط³ظٹظ‚: C - ط±ظ‚ظ… ط§ظ„ظƒظˆطھظٹط´ظ† / ظ…طھط³ظ„ط³ظ„ - ط§ظ„ط³ظ†ط©)
         html += '<div class="quotation-info">'
-        html += f'<div class="quotation-number">{"عقد رقم" if is_ar else "Contract No.:"} <span>{_h(contract_display)}</span></div>'
+        html += f'<div class="quotation-number">{"ط¹ظ‚ط¯ ط±ظ‚ظ…" if is_ar else "Contract No.:"} <span>{_h(contract_display)}</span></div>'
         client_name = data.get("client_name", "") or ""
         company = data.get("client_company", "") or ""
         client_display = f"{client_name} - {company}".strip(" - ") if company else client_name
-        html += f'<div class="client-info">{"السادة - شركة /" if is_ar else "To: / Company:"} <span>{_h(client_display)}</span></div>'
-        html += f'<div class="greeting">{"تحية طيبة وبعد،" if is_ar else "Dear Sir/Madam,"}</div>'
-        intro = 'تم الاتفاق بين الطرفين على توريد ماكينة الطباعة التالية طبقاً للمواصفات الموضحة أدناه:' if is_ar else 'Both parties have agreed to supply the following printing machine according to the specifications detailed below:'
+        html += f'<div class="client-info">{"ط§ظ„ط³ط§ط¯ط© - ط´ط±ظƒط© /" if is_ar else "To: / Company:"} <span>{_h(client_display)}</span></div>'
+        html += f'<div class="greeting">{"طھط­ظٹط© ط·ظٹط¨ط© ظˆط¨ط¹ط¯طŒ" if is_ar else "Dear Sir/Madam,"}</div>'
+        intro = 'طھظ… ط§ظ„ط§طھظپط§ظ‚ ط¨ظٹظ† ط§ظ„ط·ط±ظپظٹظ† ط¹ظ„ظ‰ طھظˆط±ظٹط¯ ظ…ط§ظƒظٹظ†ط© ط§ظ„ط·ط¨ط§ط¹ط© ط§ظ„طھط§ظ„ظٹط© ط·ط¨ظ‚ط§ظ‹ ظ„ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظ…ظˆط¶ط­ط© ط£ط¯ظ†ط§ظ‡:' if is_ar else 'Both parties have agreed to supply the following printing machine according to the specifications detailed below:'
         html += f'<div class="intro-text">{intro}</div>'
         html += '</div>'
 
         # Machine Details (Same as Quotation)
-        html += f'<div class="section-title">{"تفاصيل الماكينة :" if is_ar else "Machine Details"}</div>'
+        html += f'<div class="section-title">{"طھظپط§طµظٹظ„ ط§ظ„ظ…ط§ظƒظٹظ†ط© :" if is_ar else "Machine Details"}</div>'
         html += '<table class="details-table">'
         
         if is_ar:
-            html += f'<tr><th>نوع الماكينة :</th><td>{machine_type_display}</td></tr>'
-            html += f'<tr><th>الموديل :</th><td>{data.get("model", "")}</td></tr>'
-            html += f'<tr><th>بلد المنشأ :</th><td>{c.get("country_origin_ar", "")}</td></tr>'
-            html += f'<tr><th>عدد الألوان :</th><td>{data.get("colors_count", "")}</td></tr>'
-            html += f'<tr><th>الوندر :</th><td>{data.get("winder", "")}</td></tr>'
-            html += f'<tr><th>نوع الوندر :</th><td>{winder_type_display}</td></tr>'
-            html += f'<tr><th>عرض الماكينة :</th><td>{data.get("machine_width", "")} سم</td></tr>'
+            html += f'<tr><th>ظ†ظˆط¹ ط§ظ„ظ…ط§ظƒظٹظ†ط© :</th><td>{machine_type_display}</td></tr>'
+            html += f'<tr><th>ط§ظ„ظ…ظˆط¯ظٹظ„ :</th><td>{data.get("model", "")}</td></tr>'
+            html += f'<tr><th>ط¨ظ„ط¯ ط§ظ„ظ…ظ†ط´ط£ :</th><td>{c.get("country_origin_ar", "")}</td></tr>'
+            html += f'<tr><th>ط¹ط¯ط¯ ط§ظ„ط£ظ„ظˆط§ظ† :</th><td>{data.get("colors_count", "")}</td></tr>'
+            html += f'<tr><th>ط§ظ„ظˆظ†ط¯ط± :</th><td>{data.get("winder", "")}</td></tr>'
+            html += f'<tr><th>ظ†ظˆط¹ ط§ظ„ظˆظ†ط¯ط± :</th><td>{winder_type_display}</td></tr>'
+            html += f'<tr><th>ط¹ط±ط¶ ط§ظ„ظ…ط§ظƒظٹظ†ط© :</th><td>{data.get("machine_width", "")} ط³ظ…</td></tr>'
         else:
             html += f'<tr><th>Machine Type:</th><td>{machine_type_display}</td></tr>'
             html += f'<tr><th>Model:</th><td>{data.get("model", "")}</td></tr>'
@@ -928,7 +928,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         html += '</table>'
 
         # ==================== 17 SPECIFICATIONS (Same as Quotation - FULL VERSION) ====================
-        html += f'<div class="section-title">{"المواصفات الفنية:" if is_ar else "Technical Specifications:"}</div>'
+        html += f'<div class="section-title">{"ط§ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظپظ†ظٹط©:" if is_ar else "Technical Specifications:"}</div>'
         html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
 
         # Helper function to determine Belt/Gear drive for item 13
@@ -938,19 +938,19 @@ class ContractPrintForm(ContractPrintFormTemplate):
             # Belt drive if: Ceramic anilox OR NONWOVEN material
             # Gear drive if: Metal anilox AND NOT NONWOVEN
             if is_metal_anilox and not is_nonwoven:
-                return ('نقل الحركه من الموتور الرئيسي لأجزاء الماكينة عن طريق التروس' if is_ar else 'Gear drive',
-                        'نقل الحركه من الموتور الرئيسي إلى مكونات الماكينة عبر التروس لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+                return ('ظ†ظ‚ظ„ ط§ظ„ط­ط±ظƒظ‡ ظ…ظ† ط§ظ„ظ…ظˆطھظˆط± ط§ظ„ط±ط¦ظٹط³ظٹ ظ„ط£ط¬ط²ط§ط، ط§ظ„ظ…ط§ظƒظٹظ†ط© ط¹ظ† ط·ط±ظٹظ‚ ط§ظ„طھط±ظˆط³' if is_ar else 'Gear drive',
+                        'ظ†ظ‚ظ„ ط§ظ„ط­ط±ظƒظ‡ ظ…ظ† ط§ظ„ظ…ظˆطھظˆط± ط§ظ„ط±ط¦ظٹط³ظٹ ط¥ظ„ظ‰ ظ…ظƒظˆظ†ط§طھ ط§ظ„ظ…ط§ظƒظٹظ†ط© ط¹ط¨ط± ط§ظ„طھط±ظˆط³ ظ„ط¶ظ…ط§ظ† ط¹ظ…ط± ط£ط·ظˆظ„طŒ طھظ‚ظ„ظٹظ„ ط§ظ„ط£ط¹ط·ط§ظ„طŒ ظˆطھظ…ظƒظٹظ† ط§ظ„طھط´ط؛ظٹظ„ ط¨ط³ط±ط¹ط© ط¹ط§ظ„ظٹط© ظˆظ‡ط¯ظˆط، ظ…ط¹ طھطµظ…ظٹظ… ط؛ظٹط± ظ…ط¹ظ‚ط¯' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
             else:
-                return ('نقل الحركه من الموتور الرئيسي لأجزاء الماكينة عن طريق السيور' if is_ar else 'Belt drive',
-                        'نقل الحركه من الموتور الرئيسي إلى مكونات الماكينة عبر السيور لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+                return ('ظ†ظ‚ظ„ ط§ظ„ط­ط±ظƒظ‡ ظ…ظ† ط§ظ„ظ…ظˆطھظˆط± ط§ظ„ط±ط¦ظٹط³ظٹ ظ„ط£ط¬ط²ط§ط، ط§ظ„ظ…ط§ظƒظٹظ†ط© ط¹ظ† ط·ط±ظٹظ‚ ط§ظ„ط³ظٹظˆط±' if is_ar else 'Belt drive',
+                        'ظ†ظ‚ظ„ ط§ظ„ط­ط±ظƒظ‡ ظ…ظ† ط§ظ„ظ…ظˆطھظˆط± ط§ظ„ط±ط¦ظٹط³ظٹ ط¥ظ„ظ‰ ظ…ظƒظˆظ†ط§طھ ط§ظ„ظ…ط§ظƒظٹظ†ط© ط¹ط¨ط± ط§ظ„ط³ظٹظˆط± ظ„ط¶ظ…ط§ظ† ط¹ظ…ط± ط£ط·ظˆظ„طŒ طھظ‚ظ„ظٹظ„ ط§ظ„ط£ط¹ط·ط§ظ„طŒ ظˆطھظ…ظƒظٹظ† ط§ظ„طھط´ط؛ظٹظ„ ط¨ط³ط±ط¹ط© ط¹ط§ظ„ظٹط© ظˆظ‡ط¯ظˆط، ظ…ط¹ طھطµظ…ظٹظ… ط؛ظٹط± ظ…ط¹ظ‚ط¯' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
 
         # Helper function for item 7 (color registration)
         def get_color_registration():
-            is_plc_yes = plc_value in ['YES', 'TRUE', '1', 'نعم']
+            is_plc_yes = plc_value in ['YES', 'TRUE', '1', 'ظ†ط¹ظ…']
             if is_plc_yes:
-                return ('ضبط تسجيل الألوان الأفقي والرأسي أوتوماتيكياً أثناء التشغيل' if is_ar else 'Automatically horizontal and vertical color registration adjustment during operation')
+                return ('ط¶ط¨ط· طھط³ط¬ظٹظ„ ط§ظ„ط£ظ„ظˆط§ظ† ط§ظ„ط£ظپظ‚ظٹ ظˆط§ظ„ط±ط£ط³ظٹ ط£ظˆطھظˆظ…ط§طھظٹظƒظٹط§ظ‹ ط£ط«ظ†ط§ط، ط§ظ„طھط´ط؛ظٹظ„' if is_ar else 'Automatically horizontal and vertical color registration adjustment during operation')
             else:
-                return ('ضبط تسجيل الألوان الأفقي والرأسي يدوياً أثناء التشغيل' if is_ar else 'Manual horizontal and vertical color registration adjustment during operation')
+                return ('ط¶ط¨ط· طھط³ط¬ظٹظ„ ط§ظ„ط£ظ„ظˆط§ظ† ط§ظ„ط£ظپظ‚ظٹ ظˆط§ظ„ط±ط£ط³ظٹ ظٹط¯ظˆظٹط§ظ‹ ط£ط«ظ†ط§ط، ط§ظ„طھط´ط؛ظٹظ„' if is_ar else 'Manual horizontal and vertical color registration adjustment during operation')
 
         drive_type, drive_desc = get_drive_type()
         color_reg = get_color_registration()
@@ -977,23 +977,23 @@ class ContractPrintForm(ContractPrintFormTemplate):
         ]
 
         specs_ar = [
-            "هيكل من الحديد الزهر الثقيل، ثابت ومقاوم للاهتزازات",
-            "وحدات تحكم أوتوماتيكية في شد الخامة مناسبة لأوزان وسماكات ومرونات مختلفة، مع خيار الضبط اليدوي",
-            "وحدات توجيه الخامة (المتأرجحة) لضمان دقة توسيط الطباعة على الخامة وإعادة لف سلسة للمادة المطبوعة",
-            "الأسطوانات معالجة بالليزر للتشغيل الشاق وإطالة عمر الخدمة",
-            "مستشعرات إيقاف أوتوماتيكي للماكينة في حالة انقطاع الفيلم أو نفاد الخامة",
-            "ضغط أسطوانة الطباعة يتم عبر نظام الزيت الهيدروليكي لتجنب مشاكل الضغط الهوائي وتقليل استهلاك الكهرباء الناتج عن تشغيل ضاغط الهواء المتكرر",
+            "ظ‡ظٹظƒظ„ ظ…ظ† ط§ظ„ط­ط¯ظٹط¯ ط§ظ„ط²ظ‡ط± ط§ظ„ط«ظ‚ظٹظ„طŒ ط«ط§ط¨طھ ظˆظ…ظ‚ط§ظˆظ… ظ„ظ„ط§ظ‡طھط²ط§ط²ط§طھ",
+            "ظˆط­ط¯ط§طھ طھط­ظƒظ… ط£ظˆطھظˆظ…ط§طھظٹظƒظٹط© ظپظٹ ط´ط¯ ط§ظ„ط®ط§ظ…ط© ظ…ظ†ط§ط³ط¨ط© ظ„ط£ظˆط²ط§ظ† ظˆط³ظ…ط§ظƒط§طھ ظˆظ…ط±ظˆظ†ط§طھ ظ…ط®طھظ„ظپط©طŒ ظ…ط¹ ط®ظٹط§ط± ط§ظ„ط¶ط¨ط· ط§ظ„ظٹط¯ظˆظٹ",
+            "ظˆط­ط¯ط§طھ طھظˆط¬ظٹظ‡ ط§ظ„ط®ط§ظ…ط© (ط§ظ„ظ…طھط£ط±ط¬ط­ط©) ظ„ط¶ظ…ط§ظ† ط¯ظ‚ط© طھظˆط³ظٹط· ط§ظ„ط·ط¨ط§ط¹ط© ط¹ظ„ظ‰ ط§ظ„ط®ط§ظ…ط© ظˆط¥ط¹ط§ط¯ط© ظ„ظپ ط³ظ„ط³ط© ظ„ظ„ظ…ط§ط¯ط© ط§ظ„ظ…ط·ط¨ظˆط¹ط©",
+            "ط§ظ„ط£ط³ط·ظˆط§ظ†ط§طھ ظ…ط¹ط§ظ„ط¬ط© ط¨ط§ظ„ظ„ظٹط²ط± ظ„ظ„طھط´ط؛ظٹظ„ ط§ظ„ط´ط§ظ‚ ظˆط¥ط·ط§ظ„ط© ط¹ظ…ط± ط§ظ„ط®ط¯ظ…ط©",
+            "ظ…ط³طھط´ط¹ط±ط§طھ ط¥ظٹظ‚ط§ظپ ط£ظˆطھظˆظ…ط§طھظٹظƒظٹ ظ„ظ„ظ…ط§ظƒظٹظ†ط© ظپظٹ ط­ط§ظ„ط© ط§ظ†ظ‚ط·ط§ط¹ ط§ظ„ظپظٹظ„ظ… ط£ظˆ ظ†ظپط§ط¯ ط§ظ„ط®ط§ظ…ط©",
+            "ط¶ط؛ط· ط£ط³ط·ظˆط§ظ†ط© ط§ظ„ط·ط¨ط§ط¹ط© ظٹطھظ… ط¹ط¨ط± ظ†ط¸ط§ظ… ط§ظ„ط²ظٹطھ ط§ظ„ظ‡ظٹط¯ط±ظˆظ„ظٹظƒظٹ ظ„طھط¬ظ†ط¨ ظ…ط´ط§ظƒظ„ ط§ظ„ط¶ط؛ط· ط§ظ„ظ‡ظˆط§ط¦ظٹ ظˆطھظ‚ظ„ظٹظ„ ط§ط³طھظ‡ظ„ط§ظƒ ط§ظ„ظƒظ‡ط±ط¨ط§ط، ط§ظ„ظ†ط§طھط¬ ط¹ظ† طھط´ط؛ظٹظ„ ط¶ط§ط؛ط· ط§ظ„ظ‡ظˆط§ط، ط§ظ„ظ…طھظƒط±ط±",
             get_color_registration(),
-            "رافعات علويه مدمجة لتسهيل تحميل وتفريغ الرولات وأسطوانات الطباعة، مما يوفر الوقت والجهد والعمالة",
-            "مناسبة لأحبار المذيبات والأحبار المائية",
-            "إنفرترات دلتا (تايواني)",
-            "إنذار أمان قبل بدء تشغيل الماكينة لمنع الإصابات",
-            "وحدات تجفيف بالهواء الساخن مع مسار خامة ممتد لضمان جفاف الحبر الكامل، بالإضافة إلى وحدات تجفيف بين الألوان",
+            "ط±ط§ظپط¹ط§طھ ط¹ظ„ظˆظٹظ‡ ظ…ط¯ظ…ط¬ط© ظ„طھط³ظ‡ظٹظ„ طھط­ظ…ظٹظ„ ظˆطھظپط±ظٹط؛ ط§ظ„ط±ظˆظ„ط§طھ ظˆط£ط³ط·ظˆط§ظ†ط§طھ ط§ظ„ط·ط¨ط§ط¹ط©طŒ ظ…ظ…ط§ ظٹظˆظپط± ط§ظ„ظˆظ‚طھ ظˆط§ظ„ط¬ظ‡ط¯ ظˆط§ظ„ط¹ظ…ط§ظ„ط©",
+            "ظ…ظ†ط§ط³ط¨ط© ظ„ط£ط­ط¨ط§ط± ط§ظ„ظ…ط°ظٹط¨ط§طھ ظˆط§ظ„ط£ط­ط¨ط§ط± ط§ظ„ظ…ط§ط¦ظٹط©",
+            "ط¥ظ†ظپط±طھط±ط§طھ ط¯ظ„طھط§ (طھط§ظٹظˆط§ظ†ظٹ)",
+            "ط¥ظ†ط°ط§ط± ط£ظ…ط§ظ† ظ‚ط¨ظ„ ط¨ط¯ط، طھط´ط؛ظٹظ„ ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ„ظ…ظ†ط¹ ط§ظ„ط¥طµط§ط¨ط§طھ",
+            "ظˆط­ط¯ط§طھ طھط¬ظپظٹظپ ط¨ط§ظ„ظ‡ظˆط§ط، ط§ظ„ط³ط§ط®ظ† ظ…ط¹ ظ…ط³ط§ط± ط®ط§ظ…ط© ظ…ظ…طھط¯ ظ„ط¶ظ…ط§ظ† ط¬ظپط§ظپ ط§ظ„ط­ط¨ط± ط§ظ„ظƒط§ظ…ظ„طŒ ط¨ط§ظ„ط¥ط¶ط§ظپط© ط¥ظ„ظ‰ ظˆط­ط¯ط§طھ طھط¬ظپظٹظپ ط¨ظٹظ† ط§ظ„ط£ظ„ظˆط§ظ†",
             get_drive_type()[1],
-            "مضخات تشحيم مدمجة لضمان توزيع متوازن للزيت على جميع المكونات، تشغيل سلس، وحماية جميع الأجزاء المتحركة",
-            "مواتير إعادة لف منفصلة بتحكم مستقل للسماح بالتشغيل مع مرونات وسماكات مختلفة للخامات",
-            "أسطوانات فك/لف بشافت هوائي، بالإضافة إلى شافت ميكانيكي إضافي لتمكين التشغيل مع أي حجم كور",
-            "إمكانية الطباعة على الوجهين"
+            "ظ…ط¶ط®ط§طھ طھط´ط­ظٹظ… ظ…ط¯ظ…ط¬ط© ظ„ط¶ظ…ط§ظ† طھظˆط²ظٹط¹ ظ…طھظˆط§ط²ظ† ظ„ظ„ط²ظٹطھ ط¹ظ„ظ‰ ط¬ظ…ظٹط¹ ط§ظ„ظ…ظƒظˆظ†ط§طھطŒ طھط´ط؛ظٹظ„ ط³ظ„ط³طŒ ظˆط­ظ…ط§ظٹط© ط¬ظ…ظٹط¹ ط§ظ„ط£ط¬ط²ط§ط، ط§ظ„ظ…طھط­ط±ظƒط©",
+            "ظ…ظˆط§طھظٹط± ط¥ط¹ط§ط¯ط© ظ„ظپ ظ…ظ†ظپطµظ„ط© ط¨طھط­ظƒظ… ظ…ط³طھظ‚ظ„ ظ„ظ„ط³ظ…ط§ط­ ط¨ط§ظ„طھط´ط؛ظٹظ„ ظ…ط¹ ظ…ط±ظˆظ†ط§طھ ظˆط³ظ…ط§ظƒط§طھ ظ…ط®طھظ„ظپط© ظ„ظ„ط®ط§ظ…ط§طھ",
+            "ط£ط³ط·ظˆط§ظ†ط§طھ ظپظƒ/ظ„ظپ ط¨ط´ط§ظپطھ ظ‡ظˆط§ط¦ظٹطŒ ط¨ط§ظ„ط¥ط¶ط§ظپط© ط¥ظ„ظ‰ ط´ط§ظپطھ ظ…ظٹظƒط§ظ†ظٹظƒظٹ ط¥ط¶ط§ظپظٹ ظ„طھظ…ظƒظٹظ† ط§ظ„طھط´ط؛ظٹظ„ ظ…ط¹ ط£ظٹ ط­ط¬ظ… ظƒظˆط±",
+            "ط¥ظ…ظƒط§ظ†ظٹط© ط§ظ„ط·ط¨ط§ط¹ط© ط¹ظ„ظ‰ ط§ظ„ظˆط¬ظ‡ظٹظ†"
         ]
 
         specs = specs_ar if is_ar else specs_en
@@ -1021,7 +1021,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         html += '</div>'
         html += '</div>'
 
-        html += f'<div class="section-title">{"جدول المواصفات الفنية:" if is_ar else "General Specifications:"}</div>'
+        html += f'<div class="section-title">{"ط¬ط¯ظˆظ„ ط§ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظپظ†ظٹط©:" if is_ar else "General Specifications:"}</div>'
 
         # Calculate table values
         winder_type = str(data.get('winder', '')).upper()
@@ -1043,21 +1043,21 @@ class ContractPrintForm(ContractPrintFormTemplate):
         double_winder_roll_dia = int(c.get('double_winder_roll_dia', 800))
         single_winder_brake_power = c.get('single_winder_brake_power', '1 pc (10kg) + 1 pc (5kg)')
         double_winder_brake_power = c.get('double_winder_brake_power', '2 pc (10kg) + 2 pc (5kg)')
-        dryer_capacity = c.get('dryer_capacity', '2.2kw air blower × 2 units')
+        dryer_capacity = c.get('dryer_capacity', '2.2kw air blower أ— 2 units')
         main_motor_power = c.get('main_motor_power', '5 HP')
 
         # Helper: convert English digits to Arabic digits
         def to_ar(val):
-            ar_digits = {'0': '٠', '1': '١', '2': '٢', '3': '٣', '4': '٤', '5': '٥', '6': '٦', '7': '٧', '8': '٨', '9': '٩'}
+            ar_digits = {'0': 'ظ ', '1': 'ظ،', '2': 'ظ¢', '3': 'ظ£', '4': 'ظ¤', '5': 'ظ¥', '6': 'ظ¦', '7': 'ظ§', '8': 'ظ¨', '9': 'ظ©'}
             return ''.join(ar_digits.get(ch, ch) for ch in str(val))
 
         # Calculate values - Number of Colors format (same as Quotation)
         if colors_count == 8:
-            colors_display = "8+0, 7+1, 6+2, 5+3, 4+4 reverse printing" if not is_ar else f"{to_ar('8+0')}، {to_ar('7+1')}، {to_ar('6+2')}، {to_ar('5+3')}، {to_ar('4+4')} طباعة عكسية"
+            colors_display = "8+0, 7+1, 6+2, 5+3, 4+4 reverse printing" if not is_ar else f"{to_ar('8+0')}طŒ {to_ar('7+1')}طŒ {to_ar('6+2')}طŒ {to_ar('5+3')}طŒ {to_ar('4+4')} ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©"
         elif colors_count == 6:
-            colors_display = "6+0, 5+1, 4+2, 3+3 reverse printing" if not is_ar else f"{to_ar('6+0')}، {to_ar('5+1')}، {to_ar('4+2')}، {to_ar('3+3')} طباعة عكسية"
+            colors_display = "6+0, 5+1, 4+2, 3+3 reverse printing" if not is_ar else f"{to_ar('6+0')}طŒ {to_ar('5+1')}طŒ {to_ar('4+2')}طŒ {to_ar('3+3')} ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©"
         elif colors_count == 4:
-            colors_display = "4+0, 3+1, 2+2 reverse printing" if not is_ar else f"{to_ar('4+0')}، {to_ar('3+1')}، {to_ar('2+2')} طباعة عكسية"
+            colors_display = "4+0, 3+1, 2+2 reverse printing" if not is_ar else f"{to_ar('4+0')}طŒ {to_ar('3+1')}طŒ {to_ar('2+2')} ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©"
         else:
             colors_display = str(colors_count) if not is_ar else to_ar(colors_count)
 
@@ -1069,27 +1069,27 @@ class ContractPrintForm(ContractPrintFormTemplate):
         max_print_width = int(machine_width * 10 - 40)
         print_length = belt_print_length if is_belt_drive else gear_print_length
         max_roll_diameter = double_winder_roll_dia if is_double_winder else single_winder_roll_dia
-        anilox_display = ("Metal Anilox" if not is_ar else "انيلوكس معدني") if is_metal_anilox else ("Ceramic Anilox" if not is_ar else "انيلوكس سيراميك")
+        anilox_display = ("Metal Anilox" if not is_ar else "ط§ظ†ظٹظ„ظˆظƒط³ ظ…ط¹ط¯ظ†ظٹ") if is_metal_anilox else ("Ceramic Anilox" if not is_ar else "ط§ظ†ظٹظ„ظˆظƒط³ ط³ظٹط±ط§ظ…ظٹظƒ")
         max_machine_speed = belt_max_machine_speed if is_belt_drive else gear_max_machine_speed
         max_print_speed = belt_max_print_speed if is_belt_drive else gear_max_print_speed
-        drive_display = ("Belt Drive" if not is_ar else "سيور") if is_belt_drive else ("Gear Drive" if not is_ar else "تروس")
+        drive_display = ("Belt Drive" if not is_ar else "ط³ظٹظˆط±") if is_belt_drive else ("Gear Drive" if not is_ar else "طھط±ظˆط³")
 
         def yes_no(field):
             val = str(data.get(field, '')).upper()
-            if val in ['YES', 'TRUE', '1', 'نعم']:
-                return 'نعم' if is_ar else 'Yes'
+            if val in ['YES', 'TRUE', '1', 'ظ†ط¹ظ…']:
+                return 'ظ†ط¹ظ…' if is_ar else 'Yes'
             return None  # Hide if No
 
         # Build specs table - using same dynamic logic as QuotationPrintForm
         def yes_no_value(field_name):
             val = str(data.get(field_name, '')).upper()
-            if val in ['YES', 'TRUE', '1', 'نعم']:
-                return 'نعم' if is_ar else 'Yes'
+            if val in ['YES', 'TRUE', '1', 'ظ†ط¹ظ…']:
+                return 'ظ†ط¹ظ…' if is_ar else 'Yes'
             return None
 
         def is_yes_value(field_name):
             val = str(data.get(field_name, '')).upper()
-            return val in ['YES', 'TRUE', '1', 'نعم']
+            return val in ['YES', 'TRUE', '1', 'ظ†ط¹ظ…']
 
         def normalize_values(values):
             if values is None:
@@ -1107,26 +1107,26 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         def default_specs():
             return [
-                {'label_ar': 'الموديل', 'label_en': 'Model', 'source': 'field', 'values': ['model'], 'active': True},
-                {'label_ar': 'عدد الألوان', 'label_en': 'Number of Colors', 'source': 'field', 'values': ['colors_display'], 'active': True},
-                {'label_ar': 'أوجه الطباعة', 'label_en': 'Printing Sides', 'source': 'field', 'values': ['printing_sides'], 'active': True},
-                {'label_ar': 'وحدات التحكم في الشد', 'label_en': 'Tension Control Units', 'source': 'field', 'values': ['tension_units'], 'active': True},
-                {'label_ar': 'نظام الفرامل', 'label_en': 'Brake System', 'source': 'field', 'values': ['brake_system'], 'active': True},
-                {'label_ar': 'قوة الفرامل', 'label_en': 'Brake Power', 'source': 'field', 'values': ['brake_power'], 'active': True},
-                {'label_ar': 'نظام توجيه الخامة (النوع المتأرجح)', 'label_en': 'Web Guiding System (Oscillating Type)', 'source': 'field', 'values': ['web_guiding'], 'active': True},
-                {'label_ar': 'أقصى عرض للفيلم', 'label_en': 'Maximum Film Width', 'source': 'field', 'values': ['max_film_width'], 'active': True},
-                {'label_ar': 'أقصى عرض للطباعة', 'label_en': 'Maximum Printing Width', 'source': 'field', 'values': ['max_print_width'], 'active': True},
-                {'label_ar': 'الحد الأدنى والأقصى لطول الطباعة', 'label_en': 'Minimum and Maximum Printing Length', 'source': 'field', 'values': ['print_length'], 'active': True},
-                {'label_ar': 'أقصى قطر للرول', 'label_en': 'Maximum Roll Diameter', 'source': 'field', 'values': ['max_roll_diameter'], 'active': True},
-                {'label_ar': 'نوع الأنيلوكس', 'label_en': 'Anilox Type', 'source': 'field', 'values': ['anilox_display'], 'active': True},
-                {'label_ar': 'أقصى سرعة للماكينة', 'label_en': 'Maximum Machine Speed', 'source': 'field', 'values': ['max_machine_speed'], 'active': True},
-                {'label_ar': 'أقصى سرعة للطباعة', 'label_en': 'Maximum Printing Speed', 'source': 'field', 'values': ['max_print_speed'], 'active': True},
-                {'label_ar': 'قدرة المجفف', 'label_en': 'Dryer Capacity', 'source': 'field', 'values': ['dryer_capacity'], 'active': True},
-                {'label_ar': 'طريقة نقل القدرة', 'label_en': 'Power Transmission Method', 'source': 'field', 'values': ['drive_display'], 'active': True},
-                {'label_ar': 'قدرة الموتور الرئيسي', 'label_en': 'Main Motor Power', 'source': 'field', 'values': ['main_motor_power'], 'active': True},
-                {'label_ar': 'الفحص بالفيديو', 'label_en': 'Video Inspection', 'source': 'yes_no', 'values': ['video_inspection'], 'active': True},
+                {'label_ar': 'ط§ظ„ظ…ظˆط¯ظٹظ„', 'label_en': 'Model', 'source': 'field', 'values': ['model'], 'active': True},
+                {'label_ar': 'ط¹ط¯ط¯ ط§ظ„ط£ظ„ظˆط§ظ†', 'label_en': 'Number of Colors', 'source': 'field', 'values': ['colors_display'], 'active': True},
+                {'label_ar': 'ط£ظˆط¬ظ‡ ط§ظ„ط·ط¨ط§ط¹ط©', 'label_en': 'Printing Sides', 'source': 'field', 'values': ['printing_sides'], 'active': True},
+                {'label_ar': 'ظˆط­ط¯ط§طھ ط§ظ„طھط­ظƒظ… ظپظٹ ط§ظ„ط´ط¯', 'label_en': 'Tension Control Units', 'source': 'field', 'values': ['tension_units'], 'active': True},
+                {'label_ar': 'ظ†ط¸ط§ظ… ط§ظ„ظپط±ط§ظ…ظ„', 'label_en': 'Brake System', 'source': 'field', 'values': ['brake_system'], 'active': True},
+                {'label_ar': 'ظ‚ظˆط© ط§ظ„ظپط±ط§ظ…ظ„', 'label_en': 'Brake Power', 'source': 'field', 'values': ['brake_power'], 'active': True},
+                {'label_ar': 'ظ†ط¸ط§ظ… طھظˆط¬ظٹظ‡ ط§ظ„ط®ط§ظ…ط© (ط§ظ„ظ†ظˆط¹ ط§ظ„ظ…طھط£ط±ط¬ط­)', 'label_en': 'Web Guiding System (Oscillating Type)', 'source': 'field', 'values': ['web_guiding'], 'active': True},
+                {'label_ar': 'ط£ظ‚طµظ‰ ط¹ط±ط¶ ظ„ظ„ظپظٹظ„ظ…', 'label_en': 'Maximum Film Width', 'source': 'field', 'values': ['max_film_width'], 'active': True},
+                {'label_ar': 'ط£ظ‚طµظ‰ ط¹ط±ط¶ ظ„ظ„ط·ط¨ط§ط¹ط©', 'label_en': 'Maximum Printing Width', 'source': 'field', 'values': ['max_print_width'], 'active': True},
+                {'label_ar': 'ط§ظ„ط­ط¯ ط§ظ„ط£ط¯ظ†ظ‰ ظˆط§ظ„ط£ظ‚طµظ‰ ظ„ط·ظˆظ„ ط§ظ„ط·ط¨ط§ط¹ط©', 'label_en': 'Minimum and Maximum Printing Length', 'source': 'field', 'values': ['print_length'], 'active': True},
+                {'label_ar': 'ط£ظ‚طµظ‰ ظ‚ط·ط± ظ„ظ„ط±ظˆظ„', 'label_en': 'Maximum Roll Diameter', 'source': 'field', 'values': ['max_roll_diameter'], 'active': True},
+                {'label_ar': 'ظ†ظˆط¹ ط§ظ„ط£ظ†ظٹظ„ظˆظƒط³', 'label_en': 'Anilox Type', 'source': 'field', 'values': ['anilox_display'], 'active': True},
+                {'label_ar': 'ط£ظ‚طµظ‰ ط³ط±ط¹ط© ظ„ظ„ظ…ط§ظƒظٹظ†ط©', 'label_en': 'Maximum Machine Speed', 'source': 'field', 'values': ['max_machine_speed'], 'active': True},
+                {'label_ar': 'ط£ظ‚طµظ‰ ط³ط±ط¹ط© ظ„ظ„ط·ط¨ط§ط¹ط©', 'label_en': 'Maximum Printing Speed', 'source': 'field', 'values': ['max_print_speed'], 'active': True},
+                {'label_ar': 'ظ‚ط¯ط±ط© ط§ظ„ظ…ط¬ظپظپ', 'label_en': 'Dryer Capacity', 'source': 'field', 'values': ['dryer_capacity'], 'active': True},
+                {'label_ar': 'ط·ط±ظٹظ‚ط© ظ†ظ‚ظ„ ط§ظ„ظ‚ط¯ط±ط©', 'label_en': 'Power Transmission Method', 'source': 'field', 'values': ['drive_display'], 'active': True},
+                {'label_ar': 'ظ‚ط¯ط±ط© ط§ظ„ظ…ظˆطھظˆط± ط§ظ„ط±ط¦ظٹط³ظٹ', 'label_en': 'Main Motor Power', 'source': 'field', 'values': ['main_motor_power'], 'active': True},
+                {'label_ar': 'ط§ظ„ظپط­طµ ط¨ط§ظ„ظپظٹط¯ظٹظˆ', 'label_en': 'Video Inspection', 'source': 'yes_no', 'values': ['video_inspection'], 'active': True},
                 {'label_ar': 'PLC', 'label_en': 'PLC', 'source': 'yes_no', 'values': ['plc'], 'active': True},
-                {'label_ar': 'سليتر', 'label_en': 'Slitter', 'source': 'yes_no', 'values': ['slitter'], 'active': True},
+                {'label_ar': 'ط³ظ„ظٹطھط±', 'label_en': 'Slitter', 'source': 'yes_no', 'values': ['slitter'], 'active': True},
             ]
 
         def normalize_specs(raw):
@@ -1196,7 +1196,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 part = part.strip()
                 m = re.match(r'(\d+)\s*pc\s*\((\d+)kg\)', part)
                 if m:
-                    ar_parts.append(f"{to_ar(m.group(1))} قطعة ({to_ar(m.group(2))} كجم)")
+                    ar_parts.append(f"{to_ar(m.group(1))} ظ‚ط·ط¹ط© ({to_ar(m.group(2))} ظƒط¬ظ…)")
                 else:
                     ar_parts.append(to_ar(part))
             return ' + '.join(ar_parts)
@@ -1204,9 +1204,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # Arabic dryer capacity formatting
         def ar_dryer(dc_str):
             import re
-            m = re.match(r'([\d.]+)kw\s*air\s*blower\s*[×x]\s*(\d+)\s*units?', str(dc_str), re.IGNORECASE)
+            m = re.match(r'([\d.]+)kw\s*air\s*blower\s*[أ—x]\s*(\d+)\s*units?', str(dc_str), re.IGNORECASE)
             if m:
-                return f"{to_ar(m.group(1))} كيلو وات تجفيف هوائي × {to_ar(m.group(2))}"
+                return f"{to_ar(m.group(1))} ظƒظٹظ„ظˆ ظˆط§طھ طھط¬ظپظٹظپ ظ‡ظˆط§ط¦ظٹ أ— {to_ar(m.group(2))}"
             return to_ar(dc_str)
 
         # Arabic print length formatting
@@ -1214,7 +1214,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             import re
             m = re.match(r'(\d+)\s*mm\s*-\s*(\d+)\s*mm', str(pl_str), re.IGNORECASE)
             if m:
-                return f"{to_ar(m.group(1))} مم - {to_ar(m.group(2))} مم"
+                return f"{to_ar(m.group(1))} ظ…ظ… - {to_ar(m.group(2))} ظ…ظ…"
             return to_ar(pl_str)
 
         if is_ar:
@@ -1222,20 +1222,20 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 'model': data.get('model', '-'),
                 'colors_display': colors_display,
                 'printing_sides': to_ar('2'),
-                'tension_units': f"{to_ar(tension_units)} قطعة",
-                'brake_system': f"{to_ar(brake_system)} قطعة",
+                'tension_units': f"{to_ar(tension_units)} ظ‚ط·ط¹ط©",
+                'brake_system': f"{to_ar(brake_system)} ظ‚ط·ط¹ط©",
                 'brake_power': ar_brake_power(brake_power),
-                'web_guiding': f"{to_ar(web_guiding)} قطعة",
-                'max_film_width': f"{to_ar(max_film_width)} مم",
-                'max_print_width': f"{to_ar(max_print_width)} مم",
+                'web_guiding': f"{to_ar(web_guiding)} ظ‚ط·ط¹ط©",
+                'max_film_width': f"{to_ar(max_film_width)} ظ…ظ…",
+                'max_print_width': f"{to_ar(max_print_width)} ظ…ظ…",
                 'print_length': ar_print_length(print_length),
-                'max_roll_diameter': f"{to_ar(max_roll_diameter)} مم",
+                'max_roll_diameter': f"{to_ar(max_roll_diameter)} ظ…ظ…",
                 'anilox_display': anilox_display,
-                'max_machine_speed': f"{to_ar(max_machine_speed)} متر في الدقيقة",
-                'max_print_speed': f"{to_ar(max_print_speed)} متر في الدقيقة",
+                'max_machine_speed': f"{to_ar(max_machine_speed)} ظ…طھط± ظپظٹ ط§ظ„ط¯ظ‚ظٹظ‚ط©",
+                'max_print_speed': f"{to_ar(max_print_speed)} ظ…طھط± ظپظٹ ط§ظ„ط¯ظ‚ظٹظ‚ط©",
                 'dryer_capacity': ar_dryer(dryer_capacity),
                 'drive_display': drive_display,
-                'main_motor_power': f"{to_ar(main_motor_power.replace('HP', '').replace('hp', '').strip())} حصان",
+                'main_motor_power': f"{to_ar(main_motor_power.replace('HP', '').replace('hp', '').strip())} ط­طµط§ظ†",
             }
         else:
             value_map = {
@@ -1282,7 +1282,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 show_row = any(is_yes_value(v) for v in values)
                 if not show_row:
                     continue
-                value_text = 'نعم' if is_ar else 'Yes'
+                value_text = 'ظ†ط¹ظ…' if is_ar else 'Yes'
             elif source == 'custom':
                 condition_field = spec.get('condition_field', '')
                 condition_value = str(spec.get('condition_value', '')).upper().strip()
@@ -1318,9 +1318,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
                         value_parts.append(str(resolved))
                 value_text = '<br>'.join(value_parts) if value_parts else '-'
 
-            # DYNAMIC: Hide any row where value is "No" or "لا" or empty
+            # DYNAMIC: Hide any row where value is "No" or "ظ„ط§" or empty
             value_upper = str(value_text).strip().upper()
-            if value_upper in ['NO', 'لا', 'N/A', '-', '']:
+            if value_upper in ['NO', 'ظ„ط§', 'N/A', '-', '']:
                 continue
 
             val_style = ' style="text-align:right;"' if is_ar else ''
@@ -1330,10 +1330,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         # Cylinders - centered table
         cylinders = data.get('cylinders', [])
-        html += f'<div class="section-title">{"سلندرات الطباعة :" if is_ar else "Printing Cylinders:"}</div>'
+        html += f'<div class="section-title">{"ط³ظ„ظ†ط¯ط±ط§طھ ط§ظ„ط·ط¨ط§ط¹ط© :" if is_ar else "Printing Cylinders:"}</div>'
         html += '<div style="display: flex; justify-content: center;">'
         html += '<table class="cylinders-table" style="width: 50%; margin: 0 auto;">'
-        html += f'<tr><th style="background:#f5f5f5; padding:8px; border:1px solid #ddd;">{"مقاس" if is_ar else "Size"}</th><th style="background:#f5f5f5; padding:8px; border:1px solid #ddd;">{"عدد" if is_ar else "Count"}</th></tr>'
+        html += f'<tr><th style="background:#f5f5f5; padding:8px; border:1px solid #ddd;">{"ظ…ظ‚ط§ط³" if is_ar else "Size"}</th><th style="background:#f5f5f5; padding:8px; border:1px solid #ddd;">{"ط¹ط¯ط¯" if is_ar else "Count"}</th></tr>'
         for i in range(12):
             if i < len(cylinders):
                 cyl = cylinders[i]
@@ -1364,26 +1364,26 @@ class ContractPrintForm(ContractPrintFormTemplate):
         html += '</div>'
         html += '</div>'
 
-        html += f'<div class="section-title">{"القيمة المالية:" if is_ar else "Contract Value:"}</div>'
+        html += f'<div class="section-title">{"ط§ظ„ظ‚ظٹظ…ط© ط§ظ„ظ…ط§ظ„ظٹط©:" if is_ar else "Contract Value:"}</div>'
 
         html += '<div class="financial-box">'
         total_price = data.get("total_price", "")
-        html += f'<div class="total-price">{total_price} {"ج.م" if is_ar else "EGP"}</div>'
+        html += f'<div class="total-price">{total_price} {"ط¬.ظ…" if is_ar else "EGP"}</div>'
         html += '</div>'
 
         # Payment Schedule
         if self.payment_data:
-            html += f'<div class="section-title">{"جدول الدفعات:" if is_ar else "Payment Schedule:"}</div>'
+            html += f'<div class="section-title">{"ط¬ط¯ظˆظ„ ط§ظ„ط¯ظپط¹ط§طھ:" if is_ar else "Payment Schedule:"}</div>'
             html += '<table class="payment-table" style="width:100%;">'
             html += '<tr style="background:#667eea;color:white;">'
             html += f'<th style="padding:10px;color:white;">#</th>'
-            html += f'<th style="padding:10px;color:white;">{"البند" if is_ar else "Description"}</th>'
-            html += f'<th style="padding:10px;color:white;">{"النسبة" if is_ar else "%"}</th>'
-            html += f'<th style="padding:10px;color:white;">{"المبلغ" if is_ar else "Amount"}</th>'
-            html += f'<th style="padding:10px;color:white;">{"التاريخ" if is_ar else "Date"}</th>'
+            html += f'<th style="padding:10px;color:white;">{"ط§ظ„ط¨ظ†ط¯" if is_ar else "Description"}</th>'
+            html += f'<th style="padding:10px;color:white;">{"ط§ظ„ظ†ط³ط¨ط©" if is_ar else "%"}</th>'
+            html += f'<th style="padding:10px;color:white;">{"ط§ظ„ظ…ط¨ظ„ط؛" if is_ar else "Amount"}</th>'
+            html += f'<th style="padding:10px;color:white;">{"ط§ظ„طھط§ط±ظٹط®" if is_ar else "Date"}</th>'
             html += '</tr>'
             
-            currency = 'ج.م' if is_ar else 'EGP'
+            currency = 'ط¬.ظ…' if is_ar else 'EGP'
             for i, p in enumerate(self.payment_data):
                 label = p.get('label_ar' if is_ar else 'label_en', '')
                 bg = '#f8f9fa' if i % 2 == 0 else 'white'
@@ -1399,17 +1399,17 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # Delivery
         html += '<div class="info-grid">'
         html += '<div class="info-box">'
-        html += f'<h4>{"التسليم :" if is_ar else "Delivery:"}</h4>'
-        html += f'<p>{"مكان التسليم :" if is_ar else "Delivery location:"} <span class="highlight">{data.get("delivery_location", "-")}</span></p>'
+        html += f'<h4>{"ط§ظ„طھط³ظ„ظٹظ… :" if is_ar else "Delivery:"}</h4>'
+        html += f'<p>{"ظ…ظƒط§ظ† ط§ظ„طھط³ظ„ظٹظ… :" if is_ar else "Delivery location:"} <span class="highlight">{data.get("delivery_location", "-")}</span></p>'
         delivery_time = self.delivery_date if self.delivery_date else data.get("expected_delivery_formatted", "-")
-        html += f'<p>{"تاريخ التسليم المتوقع :" if is_ar else "Expected delivery:"} <span class="highlight">{delivery_time}</span></p>'
+        html += f'<p>{"طھط§ط±ظٹط® ط§ظ„طھط³ظ„ظٹظ… ط§ظ„ظ…طھظˆظ‚ط¹ :" if is_ar else "Expected delivery:"} <span class="highlight">{delivery_time}</span></p>'
         html += '</div>'
 
         html += '<div class="info-box">'
-        html += f'<h4>{"الضمان:" if is_ar else "Warranty:"}</h4>'
-        warranty_text = f'يسري الضمان لمدة <strong>{c.get("warranty_months", "12")}</strong> شهر' if is_ar else f'Warranty: <strong>{c.get("warranty_months", "12")}</strong> months'
+        html += f'<h4>{"ط§ظ„ط¶ظ…ط§ظ†:" if is_ar else "Warranty:"}</h4>'
+        warranty_text = f'ظٹط³ط±ظٹ ط§ظ„ط¶ظ…ط§ظ† ظ„ظ…ط¯ط© <strong>{c.get("warranty_months", "12")}</strong> ط´ظ‡ط±' if is_ar else f'Warranty: <strong>{c.get("warranty_months", "12")}</strong> months'
         html += f'<p>{warranty_text}</p>'
-        support_text = 'دعم فني كامل مع توافر قطع الغيار عند الطلب' if is_ar else 'Full technical support with spare parts availability upon request'
+        support_text = 'ط¯ط¹ظ… ظپظ†ظٹ ظƒط§ظ…ظ„ ظ…ط¹ طھظˆط§ظپط± ظ‚ط·ط¹ ط§ظ„ط؛ظٹط§ط± ط¹ظ†ط¯ ط§ظ„ط·ظ„ط¨' if is_ar else 'Full technical support with spare parts availability upon request'
         html += f'<p style="margin-top:8px; color:#555;">{support_text}</p>'
         html += '</div>'
         html += '</div>'
@@ -1418,14 +1418,14 @@ class ContractPrintForm(ContractPrintFormTemplate):
         html += '<div style="margin-top:40px;display:flex;justify-content:space-around;">'
         html += f'''
         <div style="text-align:center;min-width:200px;">
-            <div style="font-weight:bold;margin-bottom:10px;">{"الطرف الأول" if is_ar else "First Party"}</div>
+            <div style="font-weight:bold;margin-bottom:10px;">{"ط§ظ„ط·ط±ظپ ط§ظ„ط£ظˆظ„" if is_ar else "First Party"}</div>
             <div>{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>
-            <div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">{"التوقيع" if is_ar else "Signature"}</div>
+            <div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">{"ط§ظ„طھظˆظ‚ظٹط¹" if is_ar else "Signature"}</div>
         </div>
         <div style="text-align:center;min-width:200px;">
-            <div style="font-weight:bold;margin-bottom:10px;">{"الطرف الثاني" if is_ar else "Second Party"}</div>
+            <div style="font-weight:bold;margin-bottom:10px;">{"ط§ظ„ط·ط±ظپ ط§ظ„ط«ط§ظ†ظٹ" if is_ar else "Second Party"}</div>
             <div>{_h(client_display)}</div>
-            <div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">{"التوقيع" if is_ar else "Signature"}</div>
+            <div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">{"ط§ظ„طھظˆظ‚ظٹط¹" if is_ar else "Signature"}</div>
         </div>
         '''
         html += '</div>'
@@ -1448,7 +1448,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             return
         q_num = self.current_data.get('quotation_number', '')
         client = (self.current_data.get('client_name') or '').replace(' ', '_')
-        # تنظيف اسم الملف: إزالة أي أحرف غير آمنة قبل إدخاله في eval (منع حقن JS)
+        # طھظ†ط¸ظٹظپ ط§ط³ظ… ط§ظ„ظ…ظ„ظپ: ط¥ط²ط§ظ„ط© ط£ظٹ ط£ط­ط±ظپ ط؛ظٹط± ط¢ظ…ظ†ط© ظ‚ط¨ظ„ ط¥ط¯ط®ط§ظ„ظ‡ ظپظٹ eval (ظ…ظ†ط¹ ط­ظ‚ظ† JS)
         safe_client = ''.join(c for c in client if c.isalnum() or c in ('_', '-'))[:80]
         safe_q = str(q_num).strip()[:20]
         filename = f"Contract_C-{safe_q}_{safe_client or 'contract'}.pdf"
@@ -1507,7 +1507,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             return
         try:
             q_num = self.current_data.get('quotation_number', 0)
-            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or None
             result = anvil.server.call('export_quotation_excel', q_num, auth)
             if result.get('success'):
                 media = result.get('file')
@@ -1530,7 +1530,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
     def search_quotations_for_print(self, query=''):
         try:
-            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or None
             result = anvil.server.call('get_quotations_list', query, False, auth)
             return result
         except Exception as e:
@@ -1538,8 +1538,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
     def get_all_settings(self):
         try:
-            auth = anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.sessionStorage.getItem('user_email') or None
+            auth = anvil.js.window.sessionStorage.getItem('auth_token') or None
             result = anvil.server.call('get_all_settings', auth)
             return result
         except Exception as e:
             return {'success': False, 'message': str(e)}
+

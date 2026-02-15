@@ -1394,7 +1394,8 @@ container:
                 if (inv.import_costs && inv.import_costs.length > 0) {
                   html += '<h4 style="margin:10px 0 5px;color:#f57f17;">' + t('Import Costs', 'تكاليف الاستيراد') + ' (' + (isAr ? 'ج.م' : 'EGP') + ')</h4>';
                   inv.import_costs.forEach(function(ic) {
-                    var amtEgp = parseFloat(ic.amount_egp) || (ic.original_currency === 'EGP' || ic.currency === 'EGP' ? parseFloat(ic.amount) : toEgp(ic.amount)) || 0;
+                    var amtEgp = parseFloat(ic.amount_egp) || parseFloat(ic.amount) || 0;
+                    if (amtEgp === 0 && (ic.original_currency === 'USD' || ic.currency === 'USD') && ic.original_amount != null) amtEgp = toEgp(ic.original_amount);
                     importTotalEgp += amtEgp;
                     html += '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>' + (ic.cost_type || ic.cost_type_id || '') + (ic.description ? ': ' + ic.description : '') + '</span><span>' + fmt(amtEgp) + egpSuffix + '</span></div>';
                   });

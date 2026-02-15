@@ -4139,11 +4139,16 @@ def get_invoice_details(invoice_id, token_or_email=None):
         except (json.JSONDecodeError, TypeError):
             d['machine_config'] = {}
 
-        # Get import costs
+        # Get import costs (include amount_egp so view shows same values as PDF; server stores EGP in amount when amount_egp col missing)
         import_costs = []
         try:
+            extra_ic_cols = ['amount_egp', 'original_amount', 'original_currency', 'exchange_rate']
             for ic in app_tables.import_costs.search(purchase_invoice_id=invoice_id):
-                import_costs.append(_row_to_dict(ic, IMPORT_COST_COLS))
+                dd = _row_to_dict(ic, IMPORT_COST_COLS)
+                for c in extra_ic_cols:
+                    if c not in dd and ic.get(c) is not None:
+                        dd[c] = ic.get(c)
+                import_costs.append(dd)
         except Exception as _e:
             logger.debug("Suppressed: %s", _e)
         d['import_costs'] = import_costs

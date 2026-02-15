@@ -22,7 +22,11 @@ Add column (in Anvil Data Tables):
 |------------------|---------|--------|--------------------------------------------------|
 | inventory_moved   | boolean | False  | False = in transit (cost in 1210); True = moved to inventory (1200). |
 
-If the column is missing, code uses `row.get('inventory_moved', False)`. New postings set `inventory_moved=False` when the column exists.
+If the column is missing, code uses `row.get('inventory_moved', False)`. New postings set `inventory_moved=False` when the column exists. `get_purchase_invoices` returns `inventory_moved` (with try/except so missing column does not break).
+
+## UI
+
+- **Purchase Invoices list**: When status is *Posted* and `inventory_moved` is false, a green **"Move to inventory" / "نقل للمخزون"** button is shown. Clicking it calls `move_purchase_to_inventory(invoice_id)` and refreshes the list.
 
 ## move_purchase_to_inventory — review checks
 

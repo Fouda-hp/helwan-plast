@@ -53,6 +53,7 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
 
         # JS Bridges — new (multiple banks, posting, payable status, contract purchase)
         anvil.js.window.pyPostPurchaseInvoice = self.post_purchase_invoice
+        anvil.js.window.pyMovePurchaseToInventory = self.move_purchase_to_inventory
         anvil.js.window.pyRecordSupplierPayment = self.record_supplier_payment
         anvil.js.window.pyGetSupplierRemainingEgp = self.get_supplier_remaining_egp
         anvil.js.window.pyGetBankAccounts = self.get_bank_accounts
@@ -88,8 +89,12 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
         return anvil.server.call('delete_purchase_invoice', invoice_id, self._auth())
 
     def post_purchase_invoice(self, invoice_id):
-        """Post a draft invoice → creates journal entries (DR Inventory, CR AP)."""
+        """Post a draft invoice → DR 1210, CR 2000 (Transit model)."""
         return anvil.server.call('post_purchase_invoice', invoice_id, self._auth())
+
+    def move_purchase_to_inventory(self, invoice_id):
+        """Move posted invoice from 1210 (Transit) to 1200 (Inventory). Idempotent."""
+        return anvil.server.call('move_purchase_to_inventory', invoice_id, self._auth())
 
     # --- Payments (with multiple bank support) ---
     def record_invoice_payment(self, invoice_id, amount, method='cash', notes=''):

@@ -615,6 +615,9 @@ container:
                 html += '<button class="btn-sm" style="background:#ff9800;color:#fff;" onclick="withButtonLock(this, function(){ return editInvoice(\'' + inv.id + '\'); })" data-loading-text="...">' + t('Edit', 'تعديل') + '</button> ';
                 html += '<button class="btn-sm" style="background:#2196f3;color:#fff;" onclick="withButtonLock(this, function(){ return postInvoice(\'' + inv.id + '\'); })" data-loading-text="...">' + t('Post', 'ترحيل') + '</button> ';
               }
+              if (statusKey === 'posted' && !inv.inventory_moved && userPerms.can_edit && window.pyMovePurchaseToInventory) {
+                html += '<button class="btn-sm" style="background:#2e7d32;color:#fff;" onclick="withButtonLock(this, function(){ return moveToInventory(\'' + inv.id + '\'); })" data-loading-text="...">' + t('Move to inventory', 'نقل للمخزون') + '</button> ';
+              }
               if (statusKey !== 'paid' && userPerms.can_edit) {
                 var invRate = parseFloat(inv.exchange_rate_usd_to_egp) || rate || 0;
                 html += '<button class="btn-sm btn-pay" onclick="withButtonLock(this, function(){ openPaymentModal(\'' + inv.id + '\', ' + balance + ', ' + (invRate || 0) + '); })">' + t('Pay', 'دفع') + '</button> ';
@@ -1304,6 +1307,26 @@ container:
               var res = await window.pyPostPurchaseInvoice(id);
               if (res && res.success) {
                 if (window.showNotification) window.showNotification('success', '', t('Invoice posted', 'تم ترحيل الفاتورة'));
+                loadInvoices();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.moveToInventory = async function(id) {
+            var ok = await (window.showConfirm || function(m) { return Promise.resolve(confirm(m)); })(t('Move this invoice to inventory? (1210 → 1200)', 'نقل هذه الفاتورة للمخزون؟ (من العبور إلى المخزون)'));
+            if (!ok) return;
+            try {
+              if (!window.pyMovePurchaseToInventory) {
+                if (window.showNotification) window.showNotification('error', '', 'Move to inventory not available');
+                return;
+              }
+              var res = await window.pyMovePurchaseToInventory(id);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Moved to inventory', 'تم النقل للمخزون'));
                 loadInvoices();
               } else {
                 if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');

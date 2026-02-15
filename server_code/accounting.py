@@ -784,6 +784,11 @@ def get_purchase_invoices(status=None, search='', token_or_email=None):
                 d['exchange_rate_usd_to_egp'] = _round2(float(ex)) if ex not in (None, '') else None
             except (TypeError, ValueError):
                 d['exchange_rate_usd_to_egp'] = None
+            # Transit model: inventory_moved (optional column; safe if missing)
+            try:
+                d['inventory_moved'] = bool(r.get('inventory_moved'))
+            except Exception:
+                d['inventory_moved'] = False
             results.append(d)
         results.sort(key=lambda x: x.get('date', ''), reverse=True)
         return {'success': True, 'data': results, 'count': len(results)}

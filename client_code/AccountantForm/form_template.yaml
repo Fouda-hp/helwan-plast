@@ -74,9 +74,20 @@ container:
         .summary-box .value { font-size: 22px; font-weight: 700; }
 
         @media (max-width: 768px) {
+          .acc-wrapper { padding: 12px 8px; }
           .acc-header { flex-direction: column; align-items: flex-start; }
+          .acc-header h1 { font-size: 20px; }
+          .quick-nav { grid-template-columns: 1fr 1fr; gap: 8px; }
+          .quick-nav-card { padding: 12px; }
           .sub-tabs { overflow-x: auto; flex-wrap: nowrap; }
+          .sub-tab { padding: 8px 12px; font-size: 12px; }
+          .date-filter { gap: 8px; }
+          .date-filter input, .date-filter select, .date-filter button { width: 100%; }
+          .cashbank-date-filter { margin-left: 0; }
           .expense-grid { grid-template-columns: 1fr; }
+          .summary-row { grid-template-columns: 1fr; }
+          .table-wrap { overflow-x: auto; }
+          table { min-width: 720px; }
         }
       </style>
 

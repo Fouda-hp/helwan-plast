@@ -35,8 +35,13 @@ container:
         .num-cell { text-align: right; font-family: 'Courier New', monospace; font-size: 13px; }
 
         @media (max-width: 768px) {
+          .ss-wrapper { padding: 12px 8px; }
           .ss-header { flex-direction: column; align-items: flex-start; }
+          .ss-header h1 { font-size: 20px; }
           .summary-cards { grid-template-columns: repeat(2, 1fr); }
+          .table-wrap { overflow-x: auto; }
+          table { min-width: 820px; }
+          .btn { width: 100%; }
         }
       </style>
 

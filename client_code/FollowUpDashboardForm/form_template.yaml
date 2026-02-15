@@ -194,10 +194,14 @@ container:
           flex-direction: row-reverse;
         }
         @media (max-width: 768px) {
-          .fu-wrapper { padding: 12px; }
+          .fu-wrapper { padding: 12px 8px; }
           .stats-row { grid-template-columns: 1fr 1fr; }
           .fu-table-wrap { overflow-x: auto; }
           .fu-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+          .fu-header h1 { font-size: 20px; }
+          .fu-toolbar, .fu-filters { flex-direction: column; }
+          .fu-toolbar button, .fu-filters input, .fu-filters select, .fu-filters button { width: 100%; }
+          .fu-table { min-width: 920px; }
         }
       </style>
 

@@ -63,8 +63,18 @@ container:
         .summary-card .num { font-size: 24px; font-weight: 700; }
         .summary-card .lbl { font-size: 12px; color: #666; margin-top: 4px; }
         @media (max-width: 768px) {
+          .pi-wrapper { padding: 12px 8px; }
           .pi-header { flex-direction: column; align-items: flex-start; }
+          .pi-header h1 { font-size: 20px; }
+          .filter-row { flex-direction: column; }
+          .filter-row input, .filter-btn, .btn { width: 100%; }
+          .summary-cards { grid-template-columns: 1fr 1fr; }
+          .table-wrap { overflow-x: auto; }
+          table { min-width: 980px; }
           .form-row { grid-template-columns: 1fr; }
+          .hp-modal { width: 98%; padding: 14px; }
+          .hp-modal-actions { flex-direction: column; }
+          .hp-modal-actions .btn { width: 100%; justify-content: center; }
         }
       </style>
 

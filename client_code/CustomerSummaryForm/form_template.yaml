@@ -51,8 +51,14 @@ container:
         .balance-info strong { color: #1565c0; }
 
         @media (max-width: 768px) {
+          .cs-wrapper { padding: 12px 8px; }
           .cs-header { flex-direction: column; align-items: flex-start; }
+          .cs-header h1 { font-size: 20px; }
           .summary-cards { grid-template-columns: repeat(2, 1fr); }
+          .filter-row { flex-direction: column; }
+          .filter-row input, .filter-row select, .filter-row button, .btn { width: 100%; }
+          .table-wrap { overflow-x: auto; }
+          table { min-width: 860px; }
         }
       </style>
 

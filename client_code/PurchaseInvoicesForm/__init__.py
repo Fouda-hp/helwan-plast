@@ -103,12 +103,13 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
 
     def record_supplier_payment(self, invoice_id, amount, payment_method, payment_date,
                                currency_code='EGP', exchange_rate=None, notes='',
-                               percentage=None, is_paid_in_full=False):
-        """تسجيل دفعة للمورد — مبلغ أو نسبة، سعر صرف عند الدفع، تسوية كاملة (فروق عملة 4110/6110)."""
+                               percentage=None, is_paid_in_full=False, bank_fee_egp=None):
+        """تسجيل دفعة للمورد — مبلغ أو نسبة، سعر صرف عند الدفع، تسوية كاملة، رسوم بنك (لا تؤثر على حساب المورد)."""
         return anvil.server.call(
             'record_supplier_payment', invoice_id, amount, payment_method, payment_date,
             currency_code=currency_code, exchange_rate=exchange_rate, notes=notes,
-            percentage=percentage, is_paid_in_full=is_paid_in_full, token_or_email=self._auth()
+            percentage=percentage, is_paid_in_full=is_paid_in_full, bank_fee_egp=bank_fee_egp,
+            token_or_email=self._auth()
         )
 
     def get_supplier_remaining_egp(self, invoice_id):

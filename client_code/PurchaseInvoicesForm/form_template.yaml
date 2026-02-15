@@ -383,6 +383,11 @@ container:
             </select>
           </div>
           <div class="form-group">
+            <label id="lblPayBankFee">Bank fees (EGP)</label>
+            <input type="number" id="fPayBankFee" step="0.01" min="0" value="0" placeholder="0" style="width:120px;padding:6px 8px;">
+            <small id="payBankFeeHint" style="color:#666;margin-top:4px;display:block;">Added to cost from bank; does not reduce supplier balance.</small>
+          </div>
+          <div class="form-group">
             <label id="lblPayNotes">Notes</label>
             <textarea id="fPayNotes" rows="2"></textarea>
           </div>
@@ -425,9 +430,9 @@ container:
             <h4 style="margin:0 0 10px;color:#1565c0;" id="lblAddImportCost">Add Import Cost</h4>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-items:end;margin-bottom:10px;">
               <div><label style="font-size:12px;color:#555;" id="lblAddIcType">Type</label><select id="fAddIcType" style="width:100%;padding:6px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="vat">VAT</option><option value="other">Other</option></select></div>
-              <div><label style="font-size:12px;color:#555;" id="lblAddIcAmount">Amount</label><input type="number" id="fAddIcAmount" step="0.01" min="0" value="0" style="width:100%;padding:6px;"></div>
+              <div><label style="font-size:12px;color:#555;" id="lblAddIcAmount">Amount (EGP)</label><input type="number" id="fAddIcAmount" step="0.01" min="0" value="0" style="width:100%;padding:6px;"><span id="addIcPreviewEgp" style="font-size:11px;color:#666;display:block;margin-top:2px;"></span></div>
               <div><label style="font-size:12px;color:#555;" id="lblAddIcCurrency">Currency</label><select id="fAddIcCurrency" style="width:100%;padding:6px;"><option value="EGP">EGP</option><option value="USD">USD</option></select></div>
-              <div><label style="font-size:12px;color:#555;" id="lblAddIcRate">Exchange rate</label><input type="number" id="fAddIcRate" step="0.01" min="0" placeholder="1" style="width:100%;padding:6px;"></div>
+              <div><label style="font-size:12px;color:#555;" id="lblAddIcRate">Exchange rate (USD→EGP)</label><input type="number" id="fAddIcRate" step="0.01" min="0" placeholder="1" style="width:100%;padding:6px;"></div>
               <div><label style="font-size:12px;color:#555;" id="lblAddIcPayFrom">Pay from</label><select id="fAddIcPayFrom" style="width:100%;padding:6px;"><option value="1000">Cash (1000)</option></select></div>
               <div><label style="font-size:12px;color:#555;" id="lblAddIcDate">Date</label><input type="date" id="fAddIcDate" style="width:100%;padding:6px;"></div>
               <div><button type="button" class="btn btn-save" id="btnAddImportCostInModal" style="padding:8px 14px;">Add</button></div>
@@ -536,6 +541,8 @@ container:
             setText('lblPayInFull', t('Paid in full (settlement)', 'تسوية كاملة'));
             setText('lblPayDate', t('Date', 'التاريخ'));
             setText('lblPayMethod', t('Payment method (Cash / Bank)', 'طريقة الدفع (كاش / بنك)'));
+            setText('lblPayBankFee', t('Bank fees (EGP)', 'رسوم البنك (ج.م)'));
+            var feeHint = document.getElementById('payBankFeeHint'); if (feeHint) feeHint.textContent = t('Added to cost from bank; does not reduce supplier balance.', 'تضاف على التكلفة من البنك ولا تؤثر على رصيد المورد.');
             setText('lblPayNotes', t('Notes', 'ملاحظات'));
             setText('detailsTitle', t('Invoice Details', 'تفاصيل الفاتورة'));
             setText('importCostsPayTitle', t('Pay Import Costs', 'دفع تكاليف الاستيراد'));
@@ -1144,11 +1151,12 @@ container:
                 html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.amount_egp) + egpSuffix + '</td>';
                 html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.paid_amount) + egpSuffix + '</td>';
                 html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;font-weight:600;">' + fmt(rem) + egpSuffix + '</td>';
-                html += '<td style="padding:8px;border:1px solid #ddd;"><input type="number" class="ic-pay-amount" step="0.01" min="0" max="' + rem + '" placeholder="' + fmt(rem) + '" style="width:100px;padding:6px;text-align:right;"></td></tr>';
+                html += '<td style="padding:8px;border:1px solid #ddd;"><input type="number" class="ic-pay-amount" step="0.01" min="0" max="' + rem + '" value="' + (rem || 0) + '" placeholder="' + fmt(rem) + '" style="width:100px;padding:6px;text-align:right;"></td></tr>';
               });
               tbody.innerHTML = html;
               populateAddIcPayFrom(bankRes);
               setAddIcDateToday();
+              if (typeof updateAddIcAmountLabelAndPreview === 'function') updateAddIcAmountLabelAndPreview();
               document.getElementById('importCostsAddSection').style.display = 'block';
               document.getElementById('importCostsPayHint').textContent = t('Enter amount to pay per row (partial or full). You can add more costs below.', 'أدخل المبلغ المراد دفعه لكل بند. يمكنك إضافة تكاليف أخرى من الأسفل.');
             } catch (err) {
@@ -1177,6 +1185,29 @@ container:
             var el = document.getElementById('fAddIcDate');
             if (el) el.value = new Date().toISOString().substring(0, 10);
           }
+          function updateAddIcAmountLabelAndPreview() {
+            var cur = document.getElementById('fAddIcCurrency');
+            var amt = document.getElementById('fAddIcAmount');
+            var rate = document.getElementById('fAddIcRate');
+            var lbl = document.getElementById('lblAddIcAmount');
+            var preview = document.getElementById('addIcPreviewEgp');
+            if (!cur || !lbl) return;
+            var currency = (cur.value || 'EGP').toUpperCase();
+            lbl.textContent = currency === 'USD' ? (t('Amount (USD)', 'المبلغ (دولار)')) : (t('Amount (EGP)', 'المبلغ (جنيه)'));
+            if (preview) {
+              var a = parseFloat(amt && amt.value) || 0;
+              var r = parseFloat(rate && rate.value) || 0;
+              if (currency === 'USD' && r > 0 && a > 0) preview.textContent = '= ' + (a * r).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' EGP';
+              else if (currency === 'EGP' && a > 0) preview.textContent = '= ' + a.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' EGP';
+              else preview.textContent = '';
+            }
+          }
+          (function setupAddIcCurrencyPreview() {
+            ['fAddIcCurrency', 'fAddIcAmount', 'fAddIcRate'].forEach(function(id) {
+              var el = document.getElementById(id);
+              if (el) { el.addEventListener('change', updateAddIcAmountLabelAndPreview); el.addEventListener('input', updateAddIcAmountLabelAndPreview); }
+            });
+          })();
           window.addImportCostInModal = async function() {
             var invoiceId = document.getElementById('importCostsInvoiceId').value;
             var costType = document.getElementById('fAddIcType').value;
@@ -1206,7 +1237,7 @@ container:
                   var html = '';
                   costs.forEach(function(c) {
                     var rem = parseFloat(c.remaining_egp) || 0;
-                    html += '<tr data-ic-id="' + (c.id || '') + '" data-remaining="' + rem + '"><td style="padding:8px;border:1px solid #ddd;">' + (c.cost_type || '') + (c.description ? ': ' + c.description : '') + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.amount_egp) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.paid_amount) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;font-weight:600;">' + fmt(rem) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;"><input type="number" class="ic-pay-amount" step="0.01" min="0" max="' + rem + '" placeholder="' + fmt(rem) + '" style="width:100px;padding:6px;text-align:right;"></td></tr>';
+                    html += '<tr data-ic-id="' + (c.id || '') + '" data-remaining="' + rem + '"><td style="padding:8px;border:1px solid #ddd;">' + (c.cost_type || '') + (c.description ? ': ' + c.description : '') + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.amount_egp) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.paid_amount) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;font-weight:600;">' + fmt(rem) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;"><input type="number" class="ic-pay-amount" step="0.01" min="0" max="' + rem + '" value="' + (rem || 0) + '" placeholder="' + fmt(rem) + '" style="width:100px;padding:6px;text-align:right;"></td></tr>';
                   });
                   tbody.innerHTML = html;
                 }
@@ -1278,6 +1309,9 @@ container:
             var exchangeRate = currencyCode === 'EGP' ? null : (parseFloat(document.getElementById('fPayExchangeRate').value) || null);
             var notes = document.getElementById('fPayNotes').value.trim();
             var isPaidInFull = document.getElementById('fPayInFull').checked;
+            var bankFeeEl = document.getElementById('fPayBankFee');
+            var bankFeeEgp = bankFeeEl ? (parseFloat(bankFeeEl.value) || 0) : 0;
+            if (bankFeeEgp < 0) bankFeeEgp = 0;
             if (!paymentDate) {
               if (window.showNotification) window.showNotification('error', '', t('Select date', 'اختر التاريخ'));
               return;
@@ -1293,7 +1327,7 @@ container:
               return;
             }
             try {
-              var res = await window.pyRecordSupplierPayment(invoiceId, sendAmount, method, paymentDate, currencyCode, exchangeRate, notes, sendPct, isPaidInFull);
+              var res = await window.pyRecordSupplierPayment(invoiceId, sendAmount, method, paymentDate, currencyCode, exchangeRate, notes, sendPct, isPaidInFull, bankFeeEgp);
               if (res && res.success) {
                 if (window.showNotification) window.showNotification('success', '', t('Payment recorded', 'تم تسجيل الدفع'));
                 closePaymentModal();
@@ -1460,18 +1494,29 @@ container:
               w.document.write('<style>body{font-family:Segoe UI,sans-serif;padding:40px;color:#333}h1{color:#667eea;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:8px 12px;border:1px solid #ddd;text-align:left;font-size:13px}th{background:#f5f5f5;font-weight:600}.total-row{font-weight:700;background:#f0f4ff}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}.logo-area{font-size:24px;font-weight:700;color:#667eea}@media print{body{padding:20px}}</style></head><body>');
               w.document.write('<div class="header"><div class="logo-area">HELWAN PLAST<br><span style="font-size:12px;color:#666;">Purchase Invoice</span></div><div style="text-align:right;font-size:13px;">Invoice #: <strong>' + d.invoice_number + '</strong><br>Date: ' + d.date + '<br>Due: ' + d.due_date + '<br>Status: <strong>' + d.status + '</strong></div></div>');
               w.document.write('<table><tr><th colspan="2">Supplier Information</th></tr><tr><td>Name</td><td>' + d.supplier.name + '</td></tr><tr><td>Contact</td><td>' + d.supplier.contact + '</td></tr><tr><td>Email</td><td>' + d.supplier.email + '</td></tr><tr><td>Country</td><td>' + d.supplier.country + '</td></tr></table>');
-              w.document.write('<table><tr><th>Description</th><th style="text-align:right">Amount</th></tr>');
-              w.document.write('<tr><td>Subtotal (FOB + Cylinders)</td><td style="text-align:right">' + d.subtotal + '</td></tr>');
-              w.document.write('<tr><td>Tax</td><td style="text-align:right">' + d.tax + '</td></tr>');
-              w.document.write('<tr class="total-row"><td>Invoice Total</td><td style="text-align:right">' + d.total + '</td></tr>');
+              w.document.write('<table><tr><th>Description</th><th style="text-align:right">Amount (EGP)</th><th style="text-align:center">Currency</th><th style="text-align:center">Rate</th></tr>');
+              w.document.write('<tr><td>Subtotal (FOB + Cylinders)</td><td style="text-align:right">' + d.subtotal + '</td><td style="text-align:center">' + (d.invoice_currency || 'EGP') + '</td><td style="text-align:center">' + (d.invoice_exchange_rate || '1') + '</td></tr>');
+              w.document.write('<tr><td>Tax</td><td style="text-align:right">' + d.tax + '</td><td style="text-align:center">' + (d.invoice_currency || 'EGP') + '</td><td style="text-align:center">' + (d.invoice_exchange_rate || '1') + '</td></tr>');
+              w.document.write('<tr class="total-row"><td>Invoice Total (supplier)</td><td style="text-align:right">' + d.total + '</td><td style="text-align:center">' + (d.invoice_currency || 'EGP') + '</td><td style="text-align:center">' + (d.invoice_exchange_rate || '1') + '</td></tr>');
               if (d.import_costs && d.import_costs.length > 0) {
-                d.import_costs.forEach(function(c) { w.document.write('<tr><td>Import: ' + c.type + (c.description ? ' (' + c.description + ')' : '') + '</td><td style="text-align:right">' + c.amount + '</td></tr>'); });
-                w.document.write('<tr class="total-row"><td>Import Costs Total</td><td style="text-align:right">' + d.import_total + '</td></tr>');
+                d.import_costs.forEach(function(c) { w.document.write('<tr><td>Import: ' + c.type + (c.description ? ' (' + c.description + ')' : '') + '</td><td style="text-align:right">' + c.amount + '</td><td style="text-align:center">' + (c.currency || 'EGP') + '</td><td style="text-align:center">' + (c.exchange_rate || '1') + '</td></tr>'); });
+                w.document.write('<tr class="total-row"><td>Import Costs Total</td><td style="text-align:right">' + d.import_total + '</td><td colspan="2" style="text-align:center">EGP</td></tr>');
               }
-              w.document.write('<tr class="total-row" style="background:#e8f5e9;"><td>Landed Cost</td><td style="text-align:right;font-size:16px;">' + d.landed_cost + '</td></tr>');
-              w.document.write('<tr><td>Paid</td><td style="text-align:right;color:#2e7d32;">' + d.paid + '</td></tr>');
-              w.document.write('<tr><td>Remaining</td><td style="text-align:right;color:#c62828;font-weight:700;">' + d.remaining + '</td></tr>');
+              w.document.write('<tr class="total-row" style="background:#e8f5e9;"><td>Landed Cost</td><td style="text-align:right;font-size:16px;">' + d.landed_cost + '</td><td colspan="2"></td></tr>');
+              w.document.write('<tr><td>Paid</td><td style="text-align:right;color:#2e7d32;">' + d.paid + '</td><td colspan="2"></td></tr>');
+              w.document.write('<tr><td>Remaining</td><td style="text-align:right;color:#c62828;font-weight:700;">' + d.remaining + '</td><td colspan="2"></td></tr>');
               w.document.write('</table>');
+              if (d.payment_history && d.payment_history.length > 0) {
+                w.document.write('<h4 style="margin-top:20px;margin-bottom:8px;">Payment details / تفاصيل الدفعات</h4><table><tr><th>Date</th><th style="text-align:right">Amount (EGP)</th><th>Currency</th><th>Rate</th><th>Description</th></tr>');
+                d.payment_history.forEach(function(p) { w.document.write('<tr><td>' + p.date + '</td><td style="text-align:right">' + p.amount + '</td><td>' + (p.currency || 'EGP') + '</td><td>' + (p.exchange_rate || '1') + '</td><td>' + (p.description || '') + '</td></tr>'); });
+                w.document.write('</table>');
+              }
+              if (d.summary) {
+                w.document.write('<div style="margin-top:20px;padding:14px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;"><h4 style="margin:0 0 10px;">Summary / تجميع</h4>');
+                w.document.write('<p style="margin:4px 0;"><strong>Supplier amount (فلوس المورد):</strong> ' + d.summary.supplier_total_egp + ' EGP</p>');
+                w.document.write('<p style="margin:4px 0;"><strong>Import costs total (التكاليف):</strong> ' + d.summary.import_costs_total_egp + ' EGP</p>');
+                w.document.write('<p style="margin:8px 0 0;font-size:16px;font-weight:700;"><strong>Total cost (اجمالي التكلفة):</strong> ' + d.summary.landed_cost_egp + ' EGP</p></div>');
+              }
               if (d.notes) w.document.write('<p style="margin-top:16px;font-size:12px;color:#666;">Notes: ' + d.notes + '</p>');
               w.document.write('<p style="margin-top:24px;font-size:11px;color:#999;text-align:center;">Printed: ' + d.print_date + ' | Helwan Plast ERP</p>');
               w.document.write('</body></html>');

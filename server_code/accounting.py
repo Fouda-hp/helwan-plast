@@ -1555,7 +1555,7 @@ def get_supplier_remaining_egp(invoice_id, token_or_email=None):
 @anvil.server.callable
 def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
                             currency_code='EGP', exchange_rate=None, notes='', token_or_email=None,
-                            percentage=None, is_paid_in_full=False):
+                            percentage=None, is_paid_in_full=False, bank_fee_egp=None):
     """
     Record a payment against a purchase invoice. FX is recognized on EVERY payment (partial or full).
 
@@ -1564,8 +1564,10 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
     2) payment_egp = actual amount paid converted at payment rate.
     3) fx_diff = liability_slice_egp - payment_egp → CR 4110 (gain) or DR 6110 (loss).
     4) Post: DR 2000 = liability_slice_egp, CR Bank = payment_egp; then 4110/6110 if fx_diff != 0.
+    5) If bank_fee_egp > 0: DR 6090 (Bank/Other fees), CR Bank = bank_fee_egp. Does NOT affect supplier (2000).
 
     - amount: payment amount in currency_code (actual cash paid).
+    - bank_fee_egp: optional; bank fees in EGP. Added to total debited from bank but does not reduce supplier balance.
     - percentage: optional; liability_slice_egp = remaining_egp * (pct/100). If amount also given, payment_egp from amount+rate.
     - is_paid_in_full: liability_slice_egp = remaining_egp (clear all). payment_egp from amount+rate.
     - exchange_rate: سعر الصرف عند الدفع (payment rate). Invoice rate used for liability_slice when paying in foreign currency by amount.
@@ -1654,6 +1656,9 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
 
         # 3) FX difference per payment
         fx_diff = _round2(liability_slice_egp - payment_egp)
+        bank_fee = _round2(float(bank_fee_egp or 0))
+        if bank_fee < 0:
+            bank_fee = 0
 
         cash_account = _resolve_payment_account(payment_method)
         if not _validate_account_exists(cash_account):
@@ -1667,10 +1672,12 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
             desc += " (تسوية كاملة)"
         if currency_code != 'EGP':
             desc += f" — {amount_in:,.2f} {currency_code} @ {payment_rate} = {payment_egp:,.2f} EGP"
+        if bank_fee > 0:
+            desc += f" — Bank fee: {bank_fee:,.2f} EGP"
         if notes:
             desc += f" — {notes}"
 
-        # 4) Entries: DR 2000 = liability_slice_egp, CR Bank = payment_egp; then 4110/6110 if fx_diff != 0
+        # 4) Entries: DR 2000 = liability_slice_egp, CR Bank = payment_egp; then 4110/6110 if fx_diff != 0; then bank fee if any
         entries = [
             {'account_code': '2000', 'debit': liability_slice_egp, 'credit': 0},
             {'account_code': cash_account, 'debit': 0, 'credit': payment_egp},
@@ -1683,6 +1690,11 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
             if not _validate_account_exists('6110'):
                 return {'success': False, 'message': 'Account 6110 (Exchange Loss) not found. Run seed_default_accounts.'}
             entries.append({'account_code': '6110', 'debit': -fx_diff, 'credit': 0})
+        if bank_fee > 0:
+            if not _validate_account_exists('6090'):
+                return {'success': False, 'message': 'Account 6090 (Other Expenses) not found for bank fees. Run seed_default_accounts.'}
+            entries.append({'account_code': '6090', 'debit': bank_fee, 'credit': 0})
+            entries.append({'account_code': cash_account, 'debit': 0, 'credit': bank_fee})
 
         result = post_journal_entry(
             parsed_date, entries, desc,
@@ -4809,7 +4821,7 @@ def _create_notification_for_admins(notification_type, message, data=None):
 # ---------------------------------------------------------------------------
 @anvil.server.callable
 def get_purchase_invoice_pdf_data(invoice_id, token_or_email=None):
-    """Get PDF-ready data for a purchase invoice."""
+    """Get PDF-ready data for a purchase invoice (official document with currency, rate, payments, summary)."""
     is_valid, user_email, error = _require_authenticated(token_or_email)
     if not is_valid:
         return {'success': False, 'message': error}
@@ -4828,8 +4840,23 @@ def get_purchase_invoice_pdf_data(invoice_id, token_or_email=None):
                 import_costs.append(dict(c))
         except Exception:
             pass
+        payment_history = []
+        try:
+            for entry in app_tables.ledger.search(reference_id=invoice_id, reference_type='payment'):
+                if entry.get('account_code') == '2000' and _round2(entry.get('debit', 0) or 0) > 0:
+                    payment_history.append({
+                        'date': entry.get('date'),
+                        'amount_egp': _round2(entry.get('debit', 0) or 0),
+                        'currency_code': 'EGP',
+                        'exchange_rate': 1,
+                        'description': _safe_str(entry.get('description', '')),
+                    })
+        except Exception:
+            pass
+        payment_history.sort(key=lambda x: (x.get('date') or '',))
         data = pdf_reports.build_purchase_invoice_pdf_data(
-            dict(inv), dict(supplier) if supplier else {}, import_costs
+            dict(inv), dict(supplier) if supplier else {}, import_costs,
+            line_items=None, payment_history=payment_history
         )
         return {'success': True, 'data': data}
     except Exception as e:

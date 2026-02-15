@@ -19,9 +19,10 @@ def format_number(num):
         return str(num)
 
 
-def build_purchase_invoice_pdf_data(invoice_row, supplier_row, import_costs, line_items=None):
+def build_purchase_invoice_pdf_data(invoice_row, supplier_row, import_costs, line_items=None, payment_history=None):
     """
-    Build PDF-ready data for a single purchase invoice.
+    Build PDF-ready data for a single purchase invoice (official document).
+    Each amount has currency and exchange_rate; summary separates supplier vs costs; includes payment details.
     """
     inv = invoice_row or {}
     sup = supplier_row or {}
@@ -29,21 +30,49 @@ def build_purchase_invoice_pdf_data(invoice_row, supplier_row, import_costs, lin
     tax = float(inv.get('tax_amount', 0) or 0)
     total = float(inv.get('total', 0) or 0)
     paid = float(inv.get('paid_amount', 0) or 0)
-    # If subtotal was never set (e.g. old or contract-created invoice) but total is set, show total as subtotal so print is consistent
     if subtotal == 0 and total > 0:
         subtotal = total
 
+    inv_currency = (inv.get('currency_code') or 'EGP').upper()[:3]
+    inv_rate = float(inv.get('exchange_rate_usd_to_egp') or 0) if inv_currency == 'USD' else 1.0
+    if inv_currency == 'EGP':
+        inv_rate = 1.0
+
     costs_list = []
-    import_total = 0
+    import_total = 0.0
     for c in (import_costs or []):
-        amt = float(c.get('amount', 0) or 0)
-        import_total += amt
+        amt_egp = float(c.get('amount_egp') or c.get('amount', 0) or 0)
+        import_total += amt_egp
+        curr = (c.get('original_currency') or c.get('currency') or 'EGP').upper()[:3]
+        rate = float(c.get('exchange_rate') or 0) if curr != 'EGP' else 1.0
+        if curr == 'EGP':
+            rate = 1.0
         costs_list.append({
             'type': c.get('cost_type', ''),
-            'amount': format_number(amt),
+            'amount': format_number(amt_egp),
+            'amount_egp': amt_egp,
+            'currency': curr,
+            'exchange_rate': format_number(rate) if rate else '1',
             'description': c.get('description', ''),
             'date': str(c.get('cost_date', '')),
         })
+
+    payments_list = []
+    for p in (payment_history or []):
+        amt = float(p.get('amount_egp', p.get('amount', 0)) or 0)
+        curr = (p.get('currency_code') or 'EGP').upper()[:3]
+        rate = float(p.get('exchange_rate') or 1) if curr != 'EGP' else 1.0
+        payments_list.append({
+            'date': str(p.get('date', '')),
+            'amount': format_number(amt),
+            'amount_egp': amt,
+            'currency': curr,
+            'exchange_rate': format_number(rate) if rate else '1',
+            'description': p.get('description', ''),
+        })
+
+    supplier_total_egp = total  # invoice total in EGP (stored/converted)
+    landed_egp = supplier_total_egp + import_total
 
     return {
         'invoice_number': inv.get('invoice_number', ''),
@@ -60,6 +89,8 @@ def build_purchase_invoice_pdf_data(invoice_row, supplier_row, import_costs, lin
             'phone': sup.get('phone', ''),
             'country': sup.get('country', ''),
         },
+        'invoice_currency': inv_currency,
+        'invoice_exchange_rate': format_number(inv_rate) if inv_rate else '1',
         'subtotal': format_number(subtotal),
         'tax': format_number(tax),
         'total': format_number(total),
@@ -67,7 +98,13 @@ def build_purchase_invoice_pdf_data(invoice_row, supplier_row, import_costs, lin
         'remaining': format_number(total - paid),
         'import_costs': costs_list,
         'import_total': format_number(import_total),
-        'landed_cost': format_number(total + import_total),
+        'landed_cost': format_number(landed_egp),
+        'payment_history': payments_list,
+        'summary': {
+            'supplier_total_egp': format_number(supplier_total_egp),
+            'import_costs_total_egp': format_number(import_total),
+            'landed_cost_egp': format_number(landed_egp),
+        },
         'print_date': datetime.now().strftime('%Y-%m-%d %H:%M'),
     }
 

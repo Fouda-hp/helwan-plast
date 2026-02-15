@@ -195,6 +195,19 @@ container:
         .hp-code-loader span{display:inline-flex}
         .hp-code-loader span:nth-child(2){letter-spacing:-1em;overflow:hidden;animation:hp-code-reveal 2500ms cubic-bezier(0.645,0.045,0.355,1) infinite alternate}
         @keyframes hp-code-reveal{0%,100%{opacity:0.5;letter-spacing:-1em}50%{opacity:1;letter-spacing:0em}}
+
+        @media (max-width: 768px) {
+          .cl-wrapper { padding: 16px 10px; }
+          .cl-header h1 { font-size: 22px; }
+          .search-row { gap: 8px; }
+          .search-input, .tag-filter-select, .action-btn { width: 100%; max-width: 100%; }
+          .action-btn { padding: 11px 14px; font-size: 13px; }
+          .table-scroll { overflow-x: auto; }
+          .data-table { min-width: 900px; }
+          .pagination { gap: 8px; padding: 12px; flex-wrap: wrap; }
+          .pagination button { padding: 8px 12px; font-size: 12px; }
+          .page-info { width: 100%; text-align: center; }
+        }
       </style>
       <div class="cl-wrapper">
         <div class="cl-header">
@@ -202,7 +215,7 @@ container:
         </div>
 
         <div class="search-row">
-          <input type="search" class="search-input"
+          <input type="search" class="search-input" id="searchInput" placeholder="Search clients...">
           <select class="tag-filter-select" id="tagFilter" onchange="filterByTag()">
             <option value="">All Tags</option>
           </select>

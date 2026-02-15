@@ -972,6 +972,8 @@ container:
             });
             cashbankAccountsPopulated = true;
           }
+          window.populateCashBankAccounts = populateCashBankAccounts;
+
           window.loadCashBankStatement = async function() {
             var tbody = document.getElementById('cashbankBody');
             var fromEl = document.getElementById('cashbankFrom');
@@ -1050,6 +1052,8 @@ container:
             });
             openingAccountsPopulated = true;
           }
+          window.populateOpeningBalanceAccounts = populateOpeningBalanceAccounts;
+
           window.setOpeningBalance = async function() {
             var name = document.getElementById('obName').value.trim();
             var amount = parseFloat(document.getElementById('obAmount').value) || 0;

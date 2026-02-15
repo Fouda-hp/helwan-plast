@@ -773,10 +773,30 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
     except Exception as e:
         logger.exception("get_all_quotations params/permission: %s", e)
         return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
+    # حاول فلترة البحث على مستوى الداتابيز لتسريع الأداء، مع fallback آمن
+    search_args = {} if include_deleted else {'is_deleted': False}
+    apply_python_search = bool(search_lower)
     try:
-        q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by(sort_col, sort_asc)]) if not include_deleted else app_tables.quotations.search(order_by=[anvil_order_by(sort_col, sort_asc)])
+        import anvil.tables.query as q
+        if search_lower:
+            db_text_filter = q.any_of(
+                **{"Client Name": q.ilike(f"%{search_lower}%")},
+                **{"Company": q.ilike(f"%{search_lower}%")},
+                **{"Phone": q.ilike(f"%{search_lower}%")},
+                **{"Country": q.ilike(f"%{search_lower}%")},
+                **{"Model": q.ilike(f"%{search_lower}%")},
+                **{"Notes": q.ilike(f"%{search_lower}%")}
+            )
+            q_iter = app_tables.quotations.search(db_text_filter, order_by=[anvil_order_by(sort_col, sort_asc)], **search_args)
+        else:
+            q_iter = app_tables.quotations.search(order_by=[anvil_order_by(sort_col, sort_asc)], **search_args)
+            apply_python_search = False
     except Exception:
-        q_iter = app_tables.quotations.search(is_deleted=False) if not include_deleted else app_tables.quotations.search()
+        # fallback كامل لو query/ordering مش مدعوم في بيئة Anvil الحالية
+        try:
+            q_iter = app_tables.quotations.search(order_by=[anvil_order_by(sort_col, sort_asc)], **search_args)
+        except Exception:
+            q_iter = app_tables.quotations.search(**search_args)
 
     try:
         clients_cache = {}
@@ -794,7 +814,7 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
         page_rows = []
         skip = (page - 1) * per_page
         for r in q_iter:
-            if not _quotation_matches_search(r, search_lower, get_client):
+            if apply_python_search and (not _quotation_matches_search(r, search_lower, get_client)):
                 continue
             total += 1
             if total > MAX_PAGINATION_SCAN:
@@ -908,16 +928,35 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
         logger.exception("get_all_clients params/permission: %s", e)
         return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
     try:
+        search_args = {} if include_deleted else {'is_deleted': False}
+        apply_python_search = False
+
         try:
-            c_iter = app_tables.clients.search(is_deleted=False, order_by=[anvil_order_by(sort_col, sort_asc)]) if not include_deleted else app_tables.clients.search(order_by=[anvil_order_by(sort_col, sort_asc)])
+            import anvil.tables.query as q
+            if search_lower:
+                db_search = q.any_of(
+                    **{"Client Name": q.ilike(f"%{search_lower}%")},
+                    **{"Company": q.ilike(f"%{search_lower}%")},
+                    **{"Phone": q.ilike(f"%{search_lower}%")},
+                    **{"Email": q.ilike(f"%{search_lower}%")},
+                    **{"Address": q.ilike(f"%{search_lower}%")},
+                    **{"Client Code": q.ilike(f"%{search_lower}%")}
+                )
+                c_iter = app_tables.clients.search(db_search, order_by=[anvil_order_by(sort_col, sort_asc)], **search_args)
+            else:
+                c_iter = app_tables.clients.search(order_by=[anvil_order_by(sort_col, sort_asc)], **search_args)
         except Exception:
-            c_iter = app_tables.clients.search(is_deleted=False) if not include_deleted else app_tables.clients.search()
+            try:
+                c_iter = app_tables.clients.search(order_by=[anvil_order_by(sort_col, sort_asc)], **search_args)
+            except Exception:
+                c_iter = app_tables.clients.search(**search_args)
+                apply_python_search = bool(search_lower)
 
         total = 0
         page_rows = []
         skip = (page - 1) * per_page
         for r in c_iter:
-            if not _client_matches_search(r, search_lower):
+            if apply_python_search and (not _client_matches_search(r, search_lower)):
                 continue
             total += 1
             if total > MAX_PAGINATION_SCAN:

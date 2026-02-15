@@ -342,6 +342,7 @@ container:
           <div class="form-group">
             <label id="lblPayAmount">Amount *</label>
             <input type="number" id="fPayAmount" step="0.01" value="0" placeholder="">
+            <small id="payAmountHint" style="display:none;color:#666;margin-top:4px;"></small>
           </div>
           <div class="form-group">
             <label id="lblPayCurrency">Currency</label>
@@ -547,7 +548,8 @@ container:
                 html += '<button class="btn-sm" style="background:#2196f3;color:#fff;" onclick="withButtonLock(this, function(){ return postInvoice(\'' + inv.id + '\'); })" data-loading-text="...">' + t('Post', 'ترحيل') + '</button> ';
               }
               if (statusKey !== 'paid' && userPerms.can_edit) {
-                html += '<button class="btn-sm btn-pay" onclick="withButtonLock(this, function(){ openPaymentModal(\'' + inv.id + '\', ' + balance + '); })">' + t('Pay', 'دفع') + '</button> ';
+                var invRate = parseFloat(inv.exchange_rate_usd_to_egp) || rate || 0;
+                html += '<button class="btn-sm btn-pay" onclick="withButtonLock(this, function(){ openPaymentModal(\'' + inv.id + '\', ' + balance + ', ' + (invRate || 0) + '); })">' + t('Pay', 'دفع') + '</button> ';
               }
               html += '<button class="btn-sm" style="background:#9c27b0;color:#fff;" onclick="withButtonLock(this, function(){ return printInvoicePDF(\'' + inv.id + '\'); })" data-loading-text="...">' + t('PDF', 'PDF') + '</button> ';
               if (userPerms.can_delete) {
@@ -929,6 +931,10 @@ container:
               var currSel = document.getElementById('fPayCurrency');
               if (rateRes && rateRes.success && currSel) {
                 var ratesList = rateRes.data || rateRes.rates || [];
+                var usdRow = ratesList.find(function(r) { return (r.currency_code || r.code || '').toUpperCase() === 'USD'; });
+                if (usdRow && usdRow.rate_to_egp != null) {
+                  window.usdRateToEgp = parseFloat(usdRow.rate_to_egp) || 0;
+                }
                 currSel.innerHTML = '';
                 var hasEgp = ratesList.some(function(r) { return (r.currency_code || r.code || '') === 'EGP'; });
                 if (!hasEgp) {
@@ -946,15 +952,29 @@ container:
             } catch (e) { /* ignore */ }
           }
 
-          window.openPaymentModal = async function(id, balance) {
+          window.openPaymentModal = async function(id, balance, rateUsdToEgp) {
             await ensurePaymentDropdowns();
             document.getElementById('payInvoiceId').value = id;
-            document.getElementById('fPayAmount').value = (balance > 0 ? balance.toFixed(2) : '0');
+            var rate = parseFloat(rateUsdToEgp) || parseFloat(window.usdRateToEgp) || 0;
+            var payCurrency = 'EGP';
+            document.getElementById('fPayCurrency').value = payCurrency;
+            document.getElementById('payExchangeRateGroup').style.display = 'none';
+            var amountToShow = balance;
+            var hintEl = document.getElementById('payAmountHint');
+            if (hintEl) hintEl.style.display = 'none';
+            if (payCurrency === 'EGP' && rate > 0) {
+              amountToShow = Math.round(balance * rate * 100) / 100;
+              document.getElementById('fPayAmount').value = amountToShow > 0 ? amountToShow.toFixed(2) : '0';
+              if (hintEl) {
+                hintEl.textContent = (isAr ? 'المتبقي بالدولار: ' + fmt(balance) + ' $ = ' + fmt(amountToShow) + ' ج.م (سعر ' + rate + ')' : 'Outstanding: ' + fmt(balance) + ' USD = ' + fmt(amountToShow) + ' EGP (rate ' + rate + ')');
+                hintEl.style.display = 'block';
+              }
+            } else {
+              document.getElementById('fPayAmount').value = (balance > 0 ? balance.toFixed(2) : '0');
+            }
+            document.getElementById('fPayExchangeRate').value = rate > 0 ? rate.toFixed(2) : '1';
             var today = new Date().toISOString().slice(0, 10);
             document.getElementById('fPayDate').value = today;
-            document.getElementById('fPayCurrency').value = 'EGP';
-            document.getElementById('payExchangeRateGroup').style.display = 'none';
-            document.getElementById('fPayExchangeRate').value = '1';
             document.getElementById('fPayNotes').value = '';
             document.getElementById('paymentModal').classList.add('show');
           };
@@ -1052,14 +1072,25 @@ container:
                   });
                   html += '</tbody></table>';
                 }
+                var importTotalEgp = 0;
                 if (inv.import_costs && inv.import_costs.length > 0) {
                   html += '<h4 style="margin:10px 0 5px;color:#f57f17;">' + t('Import Costs', 'تكاليف الاستيراد') + ' (' + (isAr ? 'ج.م' : 'EGP') + ')</h4>';
                   inv.import_costs.forEach(function(ic) {
-                    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>' + (ic.cost_type || '') + '</span><span>' + fmt(toEgp(ic.amount)) + egpSuffix + '</span></div>';
+                    var amtEgp = parseFloat(ic.amount_egp) || (ic.original_currency === 'EGP' || ic.currency === 'EGP' ? parseFloat(ic.amount) : toEgp(ic.amount)) || 0;
+                    importTotalEgp += amtEgp;
+                    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>' + (ic.cost_type || ic.cost_type_id || '') + (ic.description ? ': ' + ic.description : '') + '</span><span>' + fmt(amtEgp) + egpSuffix + '</span></div>';
                   });
                 }
+                var purchaseCostEgp = toEgp(inv.total);
+                var landedCostEgp = purchaseCostEgp + importTotalEgp;
+                html += '<div style="margin-top:12px;padding:10px;background:#e8f5e9;border-radius:8px;border:1px solid #a5d6a7;">';
+                html += '<h4 style="margin:0 0 8px;color:#2e7d32;">' + (isAr ? 'ملخص التكلفة (ج.م)' : 'Cost Summary (EGP)') + '</h4>';
+                html += '<div style="display:flex;justify-content:space-between;"><span>' + (isAr ? 'تكلفة الشراء (المورد فقط)' : 'Purchase Cost (supplier only)') + '</span><span>' + fmt(purchaseCostEgp) + egpSuffix + '</span></div>';
+                html += '<div style="display:flex;justify-content:space-between;"><span>' + (isAr ? 'إجمالي تكاليف الاستيراد' : 'Total Import Costs') + '</span><span>' + fmt(importTotalEgp) + egpSuffix + '</span></div>';
+                html += '<div style="display:flex;justify-content:space-between;font-weight:700;margin-top:6px;"><span>' + (isAr ? 'التكلفة الكلية (Landed Cost)' : 'Landed Cost') + '</span><span>' + fmt(landedCostEgp) + egpSuffix + '</span></div>';
+                html += '</div>';
                 html += '<div style="margin-top:15px;padding:10px;background:#f8f9fa;border-radius:8px;">';
-                html += '<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;"><span>' + t('Total', 'الاجمالي') + ' (' + (isAr ? 'ج.م' : 'EGP') + ')</span><span>' + fmt(toEgp(inv.total)) + egpSuffix + '</span></div>';
+                html += '<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;"><span>' + t('Total', 'الاجمالي') + ' (' + (isAr ? 'ج.م' : 'EGP') + ') ' + (isAr ? '(مستحق المورد)' : '(supplier payable)') + '</span><span>' + fmt(toEgp(inv.total)) + egpSuffix + '</span></div>';
                 html += '<div style="display:flex;justify-content:space-between;"><span>' + t('Paid', 'المدفوع') + '</span><span style="color:#2e7d32;">' + fmt(toEgp(inv.paid)) + egpSuffix + '</span></div>';
                 html += '<div style="display:flex;justify-content:space-between;"><span>' + t('Balance', 'المتبقي') + '</span><span style="color:#c62828;">' + fmt(toEgp((inv.total || 0) - (inv.paid || 0))) + egpSuffix + '</span></div>';
                 html += '</div>';
@@ -1340,6 +1371,7 @@ container:
               var list = (res && (res.data || res.rates)) ? (res.data || res.rates) : [];
               var usd = list.find(function(r) { return (r.currency_code || r.code || '').toUpperCase() === 'USD'; });
               if (usd && (usd.rate_to_egp != null)) usdRateToEgp = parseFloat(usd.rate_to_egp) || 0;
+              window.usdRateToEgp = usdRateToEgp;
               if (allInvoices.length > 0) { renderSummary(allInvoices); renderTable(allInvoices); }
             } catch (e) { }
           }

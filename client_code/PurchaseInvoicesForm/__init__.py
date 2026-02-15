@@ -58,6 +58,7 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
         anvil.js.window.pyGetExchangeRates = self.get_exchange_rates
         anvil.js.window.pyGetContractPayableStatus = self.get_contract_payable_status
         anvil.js.window.pyGetImportCosts = self.get_import_costs
+        anvil.js.window.pyGetImportCostTypes = self.get_import_cost_types
         anvil.js.window.pyGetLandedCost = self.get_landed_cost
         anvil.js.window.pyCreateContractPurchase = self.create_contract_purchase
         anvil.js.window.pyGetContractsList = self.get_contracts_list
@@ -115,9 +116,13 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
         return anvil.server.call('add_import_cost', invoice_id, cost_type, amount,
                                  description, cost_date, payment_method, None, self._auth())
 
-    def get_import_costs(self, invoice_id):
-        """Get all import costs for a purchase invoice."""
-        return anvil.server.call('get_import_costs', invoice_id, self._auth())
+    def get_import_costs(self, invoice_id, inventory_id=None):
+        """Get import costs for a purchase invoice or inventory item."""
+        return anvil.server.call('get_import_costs', invoice_id, inventory_id, self._auth())
+
+    def get_import_cost_types(self):
+        """Get extensible import cost types (from table or built-in)."""
+        return anvil.server.call('get_import_cost_types', self._auth())
 
     def get_landed_cost(self, purchase_invoice_id):
         """Calculate landed cost = FOB + Cylinders + all import costs."""

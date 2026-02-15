@@ -81,9 +81,19 @@ class AdminPanel(AdminPanelTemplate):
         self._inject_admin_panel_enhancements()
         register_notif_bridges()
 
-        # بعد الجاهزية، فعّل التوجيه والـ hash listener
+        # بعد الجاهزية، فعّل التوجيه والـ hash listener (مع منع تكرار listeners القديمة)
         self.check_route()
-        anvil.js.window.addEventListener("hashchange", self.on_hash_change)
+        try:
+            old_handler = getattr(anvil.js.window, '__hpAdminHashHandler', None)
+            if old_handler:
+                anvil.js.window.removeEventListener("hashchange", old_handler)
+        except Exception:
+            pass
+        try:
+            anvil.js.window.__hpAdminHashHandler = self.on_hash_change
+            anvil.js.window.addEventListener("hashchange", anvil.js.window.__hpAdminHashHandler)
+        except Exception:
+            pass
 
     def _load_user_info(self):
         """تحميل معلومات المستخدم الحالي"""
@@ -2111,20 +2121,19 @@ class AdminPanel(AdminPanelTemplate):
 
     def check_route(self):
         try:
-            # استعادة آخر صفحة من localStorage عند الـ refresh فقط (نفس التاب)
             h = str(anvil.js.window.location.hash or '')
-            if not h or h == '#':
-                has_session = anvil.js.window.sessionStorage.getItem('auth_token')
-                if has_session:
-                    saved = str(anvil.js.window.localStorage.getItem('hp_last_page') or '')
-                    if saved and saved.startswith('#') and saved != '#admin':
-                        anvil.js.window.location.hash = saved
-                        h = saved
             hash_val = h or ""
         except Exception:
             hash_val = ""
+
+        # في الأدمن: الافتراضي يكون #admin (بدل التحويل للّانشر الذي يسبب بطء/ارتباك بعد Back)
         if not hash_val or hash_val == "#":
-            hash_val = "#launcher"
+            hash_val = "#admin"
+            try:
+                anvil.js.window.location.hash = '#admin'
+            except Exception:
+                pass
+
         if hash_val == "#launcher":
             open_form('LauncherForm')
         elif hash_val == "#calculator":
@@ -2136,7 +2145,11 @@ class AdminPanel(AdminPanelTemplate):
         elif hash_val == "#admin":
             pass  # نبقى على الأدمن
         else:
-            open_form('LauncherForm')
+            # hash غير معروف أثناء وجودنا في الأدمن => ثبّت على الأدمن بدل التنطيط بين صفحات
+            try:
+                anvil.js.window.location.hash = '#admin'
+            except Exception:
+                pass
 
     # =========================================================
     # معلومات المستخدم

@@ -229,6 +229,21 @@ def mark_notification_read(notification_id, token_or_email):
 
 
 @anvil.server.callable
+def mark_notification_unread(notification_id, token_or_email):
+    """تعليم إشعار كغير مقروء."""
+    user_email = _user_email_from_token(token_or_email)
+    if not user_email:
+        return {'success': False, 'message': 'Authentication required'}
+    try:
+        row = app_tables.notifications.get(id=notification_id, user_email=user_email)
+        if row:
+            row.update(read_at=None)
+        return {'success': True}
+    except Exception as e:
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
 def clear_all_notifications(token_or_email):
     """تفريغ قائمة الإشعارات (تعليم الكل كمقروء للاحتفاظ بالسجل)."""
     user_email = _user_email_from_token(token_or_email)

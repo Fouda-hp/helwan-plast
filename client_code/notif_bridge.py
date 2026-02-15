@@ -109,6 +109,13 @@ def _mark_notification_read(notification_id):
     return anvil.server.call('mark_notification_read', notification_id, token)
 
 
+def _mark_notification_unread(notification_id):
+    token = _get_token()
+    if not token:
+        return {'success': False}
+    return anvil.server.call('mark_notification_unread', notification_id, token)
+
+
 def register_notif_bridges():
     """Register JS bridges and fire event so notification-bell.js can fetch.
 
@@ -121,6 +128,7 @@ def register_notif_bridges():
         anvil.js.window.__hpNotifDeleteOne = _delete_one_notification
         anvil.js.window.__hpNotifDeleteAll = _delete_all_notifications
         anvil.js.window.__hpNotifMarkRead = _mark_notification_read
+        anvil.js.window.__hpNotifMarkUnread = _mark_notification_unread
         # Only fire the ready event once per page to avoid duplicate fetches
         if not getattr(anvil.js.window, '__hpNotifBridgeReady', False):
             anvil.js.window.__hpNotifBridgeReady = True

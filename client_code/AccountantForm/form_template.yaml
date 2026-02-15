@@ -401,16 +401,17 @@ container:
           function t(en, ar) { return isAr ? ar : en; }
           function fmt(n) { return (n || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
           function fmtCurr(n) { return fmt(n) + (isAr ? ' ج.م' : ' EGP'); }
+          function setText(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
 
           function applyI18n() {
-            document.getElementById('pageTitle').textContent = t('Accountant Dashboard', 'لوحة المحاسب');
-            document.getElementById('btnBack').textContent = t('Back', 'رجوع');
-            document.getElementById('btnSeed').textContent = t('Setup Accounts', 'تهيئة الحسابات');
-            document.getElementById('navSuppliers').textContent = t('Suppliers', 'الموردين');
-            document.getElementById('navInventory').textContent = t('Inventory', 'المخازن');
-            document.getElementById('navInvoices').textContent = t('Purchase Invoices', 'فواتير الشراء');
-            document.getElementById('navCustomerAccounts').textContent = t('Customer Accounts', 'حسابات العملاء');
-            document.getElementById('navSupplierAccounts').textContent = t('Supplier Accounts', 'حسابات الموردين');
+            setText('pageTitle', t('Accountant Dashboard', 'لوحة المحاسب'));
+            setText('btnBack', t('Back', 'رجوع'));
+            setText('btnSeed', t('Setup Accounts', 'تهيئة الحسابات'));
+            setText('navSuppliers', t('Suppliers', 'الموردين'));
+            setText('navInventory', t('Inventory', 'المخازن'));
+            setText('navInvoices', t('Purchase Invoices', 'فواتير الشراء'));
+            setText('navCustomerAccounts', t('Customer Accounts', 'حسابات العملاء'));
+            setText('navSupplierAccounts', t('Supplier Accounts', 'حسابات الموردين'));
             var tabLabels = {
               trial: t('Trial Balance', 'ميزان المراجعة'),
               income: t('Income Statement', 'قائمة الدخل'),
@@ -426,7 +427,7 @@ container:
               var key = tab.getAttribute('data-tab');
               if (tabLabels[key]) tab.textContent = tabLabels[key];
             });
-            if (isAr) document.querySelector('.acc-wrapper').style.direction = 'rtl';
+            var wrapper = document.querySelector('.acc-wrapper'); if (wrapper && isAr) wrapper.style.direction = 'rtl';
             /* Treasury & Opening Balances i18n */
             var el;
             el = document.getElementById('btnLoadTreasury'); if (el) el.textContent = t('Load Treasury', 'تحميل الخزينة');
@@ -506,9 +507,11 @@ container:
 
           /* === Trial Balance === */
           window.loadTrialBalance = async function() {
-            var from = document.getElementById('trialFrom').value;
-            var to = document.getElementById('trialTo').value;
             var tbody = document.getElementById('trialBody');
+            if (!tbody) return;
+            if (typeof window.pyGetTrialBalance !== 'function') { if (window.showNotification) window.showNotification('error', '', t('App not ready. Go back and open again.', 'التطبيق غير جاهز. ارجع وافتح مرة أخرى.')); return; }
+            var from = (document.getElementById('trialFrom') && document.getElementById('trialFrom').value) || '';
+            var to = (document.getElementById('trialTo') && document.getElementById('trialTo').value) || '';
             tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
               var res = await window.pyGetTrialBalance(from, to);
@@ -528,15 +531,17 @@ container:
                 tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
               }
             } catch (err) {
-              tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + err + '</td></tr>';
+              if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
             }
           };
 
           /* === Income Statement === */
           window.loadIncomeStatement = async function() {
-            var from = document.getElementById('incomeFrom').value;
-            var to = document.getElementById('incomeTo').value;
             var tbody = document.getElementById('incomeBody');
+            if (!tbody) return;
+            if (typeof window.pyGetIncomeStatement !== 'function') { if (window.showNotification) window.showNotification('error', '', t('App not ready. Go back and open again.', 'التطبيق غير جاهز. ارجع وافتح مرة أخرى.')); return; }
+            var from = (document.getElementById('incomeFrom') && document.getElementById('incomeFrom').value) || '';
+            var to = (document.getElementById('incomeTo') && document.getElementById('incomeTo').value) || '';
             tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
               var res = await window.pyGetIncomeStatement(from, to);
@@ -551,7 +556,7 @@ container:
                 summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Revenue', 'اجمالي الايرادات') + '</div><div class="value text-green">' + fmtCurr(totalRevenue) + '</div></div>';
                 summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Expenses', 'اجمالي المصروفات') + '</div><div class="value text-red">' + fmtCurr(totalExpense) + '</div></div>';
                 summaryHtml += '<div class="summary-box"><div class="label">' + t('Net Income', 'صافي الدخل') + '</div><div class="value" style="color:' + (netIncome >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmtCurr(netIncome) + '</div></div>';
-                document.getElementById('incomeSummary').innerHTML = summaryHtml;
+                var sumEl = document.getElementById('incomeSummary'); if (sumEl) sumEl.innerHTML = summaryHtml;
                 var html = '';
                 if (revenues.length > 0) {
                   revenues.forEach(function(r) { html += '<tr><td>' + t('Revenue', 'ايرادات') + '</td><td>' + (r.account_name || '') + '</td><td class="text-right text-green">' + fmtCurr(r.amount) + '</td></tr>'; });
@@ -567,14 +572,16 @@ container:
                 tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
               }
             } catch (err) {
-              tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + err + '</td></tr>';
+              if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
             }
           };
 
           /* === Balance Sheet === */
           window.loadBalanceSheet = async function() {
-            var asOf = document.getElementById('balanceDate').value;
             var tbody = document.getElementById('balanceBody');
+            if (!tbody) return;
+            if (typeof window.pyGetBalanceSheet !== 'function') { if (window.showNotification) window.showNotification('error', '', t('App not ready. Go back and open again.', 'التطبيق غير جاهز. ارجع وافتح مرة أخرى.')); return; }
+            var asOf = (document.getElementById('balanceDate') && document.getElementById('balanceDate').value) || '';
             tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
               var res = await window.pyGetBalanceSheet(asOf);
@@ -603,13 +610,15 @@ container:
                 tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
               }
             } catch (err) {
-              tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + err + '</td></tr>';
+              if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
             }
           };
 
           /* === Contract Profitability === */
           window.loadProfitability = async function() {
             var tbody = document.getElementById('profitBody');
+            if (!tbody) return;
+            if (typeof window.pyGetContractProfitability !== 'function') { if (window.showNotification) window.showNotification('error', '', t('App not ready. Go back and open again.', 'التطبيق غير جاهز. ارجع وافتح مرة أخرى.')); return; }
             tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
               var res = await window.pyGetContractProfitability();
@@ -641,12 +650,12 @@ container:
                 summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Costs', 'اجمالي التكاليف') + '</div><div class="value text-red">' + fmtCurr(totalCost) + '</div></div>';
                 summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Profit', 'اجمالي الربح') + '</div><div class="value" style="color:' + (totalProfit >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmtCurr(totalProfit) + '</div></div>';
                 summaryHtml += '<div class="summary-box"><div class="label">' + t('Avg Margin', 'متوسط الهامش') + '</div><div class="value">' + totalMargin + '%</div></div>';
-                document.getElementById('profitSummary').innerHTML = summaryHtml;
+                var sumEl = document.getElementById('profitSummary'); if (sumEl) sumEl.innerHTML = summaryHtml;
               } else {
                 tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
               }
             } catch (err) {
-              tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + err + '</td></tr>';
+              if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
             }
           };
 
@@ -676,10 +685,12 @@ container:
           };
 
           window.loadExpenses = async function() {
-            var from = document.getElementById('expFrom').value;
-            var to = document.getElementById('expTo').value;
-            var cat = document.getElementById('expFilterCat').value;
             var tbody = document.getElementById('expBody');
+            if (!tbody) return;
+            if (typeof window.pyGetExpenses !== 'function') { if (window.showNotification) window.showNotification('error', '', t('App not ready. Go back and open again.', 'التطبيق غير جاهز. ارجع وافتح مرة أخرى.')); return; }
+            var from = (document.getElementById('expFrom') && document.getElementById('expFrom').value) || '';
+            var to = (document.getElementById('expTo') && document.getElementById('expTo').value) || '';
+            var cat = (document.getElementById('expFilterCat') && document.getElementById('expFilterCat').value) || '';
             tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
               var res = await window.pyGetExpenses(from, to, cat);
@@ -695,12 +706,12 @@ container:
                 });
                 html += '<tr class="total-row"><td colspan="3"><strong>' + t('Total', 'الاجمالي') + '</strong></td><td class="text-right"><strong>' + fmt(total) + '</strong></td><td></td></tr>';
                 tbody.innerHTML = html;
-                document.getElementById('expSummary').innerHTML = '<div class="summary-box"><div class="label">' + t('Total Expenses', 'اجمالي المصروفات') + '</div><div class="value text-red">' + fmt(total) + '</div></div><div class="summary-box"><div class="label">' + t('Count', 'العدد') + '</div><div class="value">' + data.length + '</div></div>';
+                var expSum = document.getElementById('expSummary'); if (expSum) expSum.innerHTML = '<div class="summary-box"><div class="label">' + t('Total Expenses', 'اجمالي المصروفات') + '</div><div class="value text-red">' + fmt(total) + '</div></div><div class="summary-box"><div class="label">' + t('Count', 'العدد') + '</div><div class="value">' + data.length + '</div></div>';
               } else {
                 tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
               }
             } catch (err) {
-              tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">' + err + '</td></tr>';
+              if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
             }
           };
 
@@ -722,10 +733,12 @@ container:
 
           /* === General Ledger === */
           window.loadLedger = async function() {
-            var accountId = document.getElementById('ledgerAccount').value;
-            var from = document.getElementById('ledgerFrom').value;
-            var to = document.getElementById('ledgerTo').value;
             var tbody = document.getElementById('ledgerBody');
+            if (!tbody) return;
+            if (typeof window.pyGetLedgerEntries !== 'function') { if (window.showNotification) window.showNotification('error', '', t('App not ready. Go back and open again.', 'التطبيق غير جاهز. ارجع وافتح مرة أخرى.')); return; }
+            var accountId = (document.getElementById('ledgerAccount') && document.getElementById('ledgerAccount').value) || '';
+            var from = (document.getElementById('ledgerFrom') && document.getElementById('ledgerFrom').value) || '';
+            var to = (document.getElementById('ledgerTo') && document.getElementById('ledgerTo').value) || '';
             tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
               var res = await window.pyGetLedgerEntries(accountId, from, to);
@@ -756,7 +769,7 @@ container:
                 tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + msg + '</td></tr>';
               }
             } catch (err) {
-              tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + err + '</td></tr>';
+              if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
             }
           };
 
@@ -819,19 +832,20 @@ container:
             } catch (err) { /* ignore */ }
           }
 
-          // Set default dates
+          // Set default dates (only if elements exist)
           var today = new Date().toISOString().substring(0, 10);
           var yearStart = new Date().getFullYear() + '-01-01';
-          document.getElementById('trialFrom').value = yearStart;
-          document.getElementById('trialTo').value = today;
-          document.getElementById('incomeFrom').value = yearStart;
-          document.getElementById('incomeTo').value = today;
-          document.getElementById('balanceDate').value = today;
-          document.getElementById('expDate').value = today;
-          document.getElementById('expFrom').value = yearStart;
-          document.getElementById('expTo').value = today;
-          document.getElementById('ledgerFrom').value = yearStart;
-          document.getElementById('ledgerTo').value = today;
+          function setDateIfExists(id, val) { var el = document.getElementById(id); if (el) el.value = val; }
+          setDateIfExists('trialFrom', yearStart);
+          setDateIfExists('trialTo', today);
+          setDateIfExists('incomeFrom', yearStart);
+          setDateIfExists('incomeTo', today);
+          setDateIfExists('balanceDate', today);
+          setDateIfExists('expDate', today);
+          setDateIfExists('expFrom', yearStart);
+          setDateIfExists('expTo', today);
+          setDateIfExists('ledgerFrom', yearStart);
+          setDateIfExists('ledgerTo', today);
 
           /* === Currency / Exchange Rates === */
           window.saveCurrRate = async function() {
@@ -857,6 +871,8 @@ container:
 
           window.loadCurrencyRates = async function() {
             var tbody = document.getElementById('currBody');
+            if (!tbody) return;
+            if (typeof window.pyGetExchangeRates !== 'function') return;
             tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
               var res = await window.pyGetExchangeRates();
@@ -875,7 +891,7 @@ container:
                 tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
               }
             } catch (err) {
-              tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + err + '</td></tr>';
+              if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
             }
           };
 
@@ -899,6 +915,8 @@ container:
           /* === Treasury === */
           window.loadTreasury = async function() {
             var tbody = document.getElementById('treasuryBody');
+            if (!tbody) return;
+            if (typeof window.pyGetTreasurySummary !== 'function') return;
             tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
               var res = await window.pyGetTreasurySummary();
@@ -923,12 +941,12 @@ container:
                 summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Opening', 'اجمالي الافتتاحي') + '</div><div class="value">' + fmt(totalOpen) + '</div></div>';
                 summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Ledger', 'اجمالي الدفتر') + '</div><div class="value">' + fmt(totalLedger) + '</div></div>';
                 summaryHtml += '<div class="summary-box"><div class="label">' + t('Total Current', 'اجمالي الحالي') + '</div><div class="value" style="color:' + (totalCurr >= 0 ? '#2e7d32' : '#c62828') + ';">' + fmt(totalCurr) + '</div></div>';
-                document.getElementById('treasurySummary').innerHTML = summaryHtml;
+                var ts = document.getElementById('treasurySummary'); if (ts) ts.innerHTML = summaryHtml;
               } else {
                 tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
               }
             } catch (err) {
-              tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + err + '</td></tr>';
+              if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
             }
           };
 
@@ -991,6 +1009,8 @@ container:
 
           window.loadCashBankStatement = async function() {
             var tbody = document.getElementById('cashbankBody');
+            if (!tbody) return;
+            if (typeof window.pyGetCashBankStatement !== 'function') { if (window.showNotification) window.showNotification('error', '', t('App not ready. Go back and open again.', 'التطبيق غير جاهز. ارجع وافتح مرة أخرى.')); return; }
             var fromEl = document.getElementById('cashbankFrom');
             var toEl = document.getElementById('cashbankTo');
             if (fromEl && !fromEl.value) {
@@ -1025,7 +1045,7 @@ container:
                 tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
               }
             } catch (err) {
-              tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + String(err) + '</td></tr>';
+              if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
             }
           };
 
@@ -1094,6 +1114,8 @@ container:
 
           window.loadOpeningBalances = async function() {
             var tbody = document.getElementById('openingBody');
+            if (!tbody) return;
+            if (typeof window.pyGetOpeningBalances !== 'function') return;
             tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
               var res = await window.pyGetOpeningBalances();
@@ -1113,7 +1135,7 @@ container:
                 tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
               }
             } catch (err) {
-              tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + err + '</td></tr>';
+              if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
             }
           };
 

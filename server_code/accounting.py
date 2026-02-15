@@ -142,6 +142,7 @@ DEFAULT_ACCOUNTS = [
     # Revenue
     ('4000', 'Sales Revenue',      'إيرادات المبيعات',  'revenue',  None),
     ('4100', 'Other Revenue',      'إيرادات أخرى',      'revenue',  None),
+    ('4110', 'Exchange Gain',      'أرباح فروق العملة',  'revenue',  '4100'),
     # COGS / Import
     ('5000', 'Cost of Goods Sold', 'تكلفة البضاعة المباعة', 'expense', None),
     # 5100 DEPRECATED for new posting: import costs post to 1200 (Inventory) only. Kept for migration reclassification.
@@ -154,6 +155,7 @@ DEFAULT_ACCOUNTS = [
     ('6040', 'Travel',             'السفر',             'expense',  None),
     ('6050', 'Maintenance',        'الصيانة',           'expense',  None),
     ('6090', 'Other Expenses',     'مصروفات أخرى',      'expense',  None),
+    ('6110', 'Exchange Loss',      'خسائر فروق العملة',  'expense',  None),
 ]
 
 # Map bank names to account codes
@@ -907,11 +909,16 @@ def create_purchase_invoice(data, token_or_email=None):
         except Exception:
             pass
 
-        # Save import costs if provided
+        # Save import costs if provided (amount_egp + paid_amount for pay screen)
+        inv_rate = ex_rate
+        if inv_rate is None or _round2(float(inv_rate or 0)) <= 0:
+            inv_rate = _get_rate_to_egp('USD')
         import_costs = data.get('import_costs', [])
         for ic in import_costs:
             ic_amount = _round2(ic.get('amount', 0))
             if ic_amount > 0:
+                curr = _safe_str(ic.get('currency') or 'USD').upper()[:3]
+                amount_egp = _round2(ic_amount * (float(inv_rate) if curr == 'USD' else 1))
                 ic_row = dict(
                     id=_uuid(),
                     purchase_invoice_id=inv_id,
@@ -922,13 +929,16 @@ def create_purchase_invoice(data, token_or_email=None):
                     payment_method=_safe_str(ic.get('payment_method', 'cash')),
                     payment_account=_resolve_payment_account(ic.get('payment_method', 'cash')),
                     created_at=now,
+                    amount_egp=amount_egp,
+                    paid_amount=0.0,
                 )
-                if ic.get('currency'):
-                    ic_row['currency'] = _safe_str(ic.get('currency', 'USD')).upper()[:3]
+                if curr:
+                    ic_row['currency'] = curr
                 try:
                     app_tables.import_costs.add_row(**ic_row)
                 except Exception as ic_err:
-                    ic_row.pop('currency', None)
+                    for k in ('currency', 'amount_egp', 'paid_amount'):
+                        ic_row.pop(k, None)
                     try:
                         app_tables.import_costs.add_row(**ic_row)
                     except Exception:
@@ -1343,23 +1353,65 @@ def get_contract_payable_status(contract_number=None, token_or_email=None):
         return {'success': False, 'message': str(e)}
 
 
+def _get_supplier_remaining_egp(invoice_id):
+    """Return remaining AP (2000) liability for this invoice from ledger (credits - debits)."""
+    posted = 0.0
+    paid = 0.0
+    for entry in app_tables.ledger.search(account_code='2000', reference_id=invoice_id, reference_type='purchase_invoice'):
+        posted += _round2(entry.get('credit', 0))
+    for entry in app_tables.ledger.search(account_code='2000', reference_id=invoice_id, reference_type='payment'):
+        paid += _round2(entry.get('debit', 0))
+    return _round2(posted - paid)
+
+
+@anvil.server.callable
+def get_supplier_remaining_egp(invoice_id, token_or_email=None):
+    """Return remaining payable (EGP) for a purchase invoice from ledger. For payment modal (amount/percentage)."""
+    is_valid, _, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        remaining = _get_supplier_remaining_egp(invoice_id)
+        return {'success': True, 'remaining_egp': remaining}
+    except Exception as e:
+        logger.exception("get_supplier_remaining_egp error")
+        return {'success': False, 'message': str(e)}
+
+
 @anvil.server.callable
 def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
-                            currency_code='EGP', exchange_rate=None, notes='', token_or_email=None):
+                            currency_code='EGP', exchange_rate=None, notes='', token_or_email=None,
+                            percentage=None, is_paid_in_full=False):
     """
-    Record a payment against a purchase invoice. أي مبلغ مسموح (أكثر أو أقل من المستحق).
-    DR Accounts Payable (2000)
-    CR Cash (1000) or Bank (1010/1011/1012/1013)
-    currency_code: EGP (افتراضي) أو USD أو غيرها — إن لم تكن EGP يُحوَّل المبلغ إلى EGP حسب سعر الصرف.
-    exchange_rate: اختياري؛ إن لم يُمرَّر يُؤخذ من جدول أسعار الصرف.
+    Record a payment against a purchase invoice. FX is recognized on EVERY payment (partial or full).
+
+    Policy:
+    1) liability_slice_egp = portion of remaining being cleared (book value).
+    2) payment_egp = actual amount paid converted at payment rate.
+    3) fx_diff = liability_slice_egp - payment_egp → CR 4110 (gain) or DR 6110 (loss).
+    4) Post: DR 2000 = liability_slice_egp, CR Bank = payment_egp; then 4110/6110 if fx_diff != 0.
+
+    - amount: payment amount in currency_code (actual cash paid).
+    - percentage: optional; liability_slice_egp = remaining_egp * (pct/100). If amount also given, payment_egp from amount+rate.
+    - is_paid_in_full: liability_slice_egp = remaining_egp (clear all). payment_egp from amount+rate.
+    - exchange_rate: سعر الصرف عند الدفع (payment rate). Invoice rate used for liability_slice when paying in foreign currency by amount.
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
         return error
 
-    amount_in = _round2(amount)
-    if amount_in <= 0:
-        return {'success': False, 'message': 'Payment amount must be greater than zero'}
+    amount_in = _round2(amount) if amount is not None else 0
+    pct = None
+    if percentage is not None:
+        try:
+            pct = _round2(float(percentage))
+            if pct < 0 or pct > 100:
+                return {'success': False, 'message': 'Percentage must be between 0 and 100'}
+        except (TypeError, ValueError):
+            return {'success': False, 'message': 'Invalid percentage'}
+
+    if not is_paid_in_full and pct is None and amount_in <= 0:
+        return {'success': False, 'message': 'Payment amount must be greater than zero (or use percentage / paid in full)'}
 
     try:
         row = app_tables.purchase_invoices.get(id=invoice_id)
@@ -1368,30 +1420,96 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
         if row.get('status') in ('draft', 'cancelled'):
             return {'success': False, 'message': f"Cannot record payment for invoice with status '{row.get('status')}'"}
 
-        # تحويل المبلغ إلى EGP إن كانت العملة غير EGP
+        remaining_egp = _get_supplier_remaining_egp(invoice_id)
+        if remaining_egp <= 0:
+            return {'success': False, 'message': 'No remaining balance to pay for this invoice'}
+        if is_paid_in_full and amount_in <= 0:
+            return {'success': False, 'message': 'For settlement in full, enter the actual payment amount'}
+
         currency_code = _safe_str(currency_code or 'EGP').upper()
+        # Payment rate (سعر الصرف عند الدفع)
         if currency_code == 'EGP':
-            amount_egp = amount_in
-            rate_used = 1.0
+            payment_rate = 1.0
         else:
-            rate_used = _round2(exchange_rate) if exchange_rate is not None and float(exchange_rate) > 0 else _get_rate_to_egp(currency_code)
-            if rate_used <= 0:
+            payment_rate = _round2(exchange_rate) if exchange_rate is not None and float(exchange_rate or 0) > 0 else _get_rate_to_egp(currency_code)
+            if payment_rate <= 0:
                 return {'success': False, 'message': f'سعر صرف غير صالح لعملة {currency_code} | Invalid exchange rate for {currency_code}'}
-            amount_egp = _round2(amount_in * rate_used)
+
+        # FIX 2: Percentage + foreign currency — require amount (no silent EGP treatment)
+        if currency_code != 'EGP' and pct is not None and amount_in <= 0:
+            return {'success': False, 'message': 'Amount is required when paying in foreign currency with percentage.'}
+
+        # Invoice rate (for liability_slice when paying in foreign currency by amount)
+        try:
+            invoice_rate = _round2(float(row.get('exchange_rate_usd_to_egp') or 0)) if (row.get('exchange_rate_usd_to_egp') is not None and row.get('exchange_rate_usd_to_egp') != '') else 0.0
+        except (TypeError, ValueError):
+            invoice_rate = 0.0
+        # FIX 1: Foreign-currency payment by amount — require valid invoice rate (no 1.0 fallback)
+        if currency_code != 'EGP' and pct is None and not is_paid_in_full:
+            if invoice_rate <= 0:
+                return {'success': False, 'message': 'Invoice exchange rate is required for foreign-currency payment by amount.'}
+
+        # 1) liability_slice_egp = portion of remaining being cleared (book value)
+        if is_paid_in_full:
+            liability_slice_egp = remaining_egp
+        elif pct is not None:
+            liability_slice_egp = _round2(remaining_egp * (pct / 100.0))
+            if liability_slice_egp <= 0:
+                return {'success': False, 'message': 'Resulting payment amount is zero'}
+            liability_slice_egp = min(liability_slice_egp, remaining_egp)
+        else:
+            # Pay by amount
+            if currency_code == 'EGP':
+                liability_slice_egp = _round2(amount_in)
+            else:
+                # Book value of this payment = amount in foreign * invoice rate
+                liability_slice_egp = _round2(amount_in * invoice_rate)
+            liability_slice_egp = min(liability_slice_egp, remaining_egp)
+            if liability_slice_egp <= 0:
+                return {'success': False, 'message': 'Payment amount must be greater than zero'}
+
+        # 2) payment_egp = actual amount paid at payment rate
+        if is_paid_in_full or (pct is not None and amount_in > 0):
+            payment_egp = amount_in * payment_rate if currency_code != 'EGP' else amount_in
+            payment_egp = _round2(payment_egp)
+        elif pct is not None:
+            payment_egp = liability_slice_egp
+        else:
+            payment_egp = amount_in * payment_rate if currency_code != 'EGP' else amount_in
+            payment_egp = _round2(payment_egp)
+
+        # 3) FX difference per payment
+        fx_diff = _round2(liability_slice_egp - payment_egp)
 
         cash_account = _resolve_payment_account(payment_method)
-        parsed_date = _safe_date(payment_date) or date.today()
+        if not _validate_account_exists(cash_account):
+            return {'success': False, 'message': f'Payment account {cash_account} not found or inactive'}
+        if not _validate_account_exists('2000'):
+            return {'success': False, 'message': 'Account 2000 not found'}
 
-        desc = f"Payment for purchase invoice {row.get('invoice_number', invoice_id)} ({payment_method})"
+        parsed_date = _safe_date(payment_date) or date.today()
+        desc = f"Payment for purchase invoice {row.get('invoice_number', invoice_id)}"
+        if is_paid_in_full:
+            desc += " (تسوية كاملة)"
         if currency_code != 'EGP':
-            desc += f" — {amount_in:,.2f} {currency_code} @ {rate_used} = {amount_egp:,.2f} EGP"
+            desc += f" — {amount_in:,.2f} {currency_code} @ {payment_rate} = {payment_egp:,.2f} EGP"
         if notes:
             desc += f" — {notes}"
 
+        # 4) Entries: DR 2000 = liability_slice_egp, CR Bank = payment_egp; then 4110/6110 if fx_diff != 0
         entries = [
-            {'account_code': '2000', 'debit': amount_egp, 'credit': 0},
-            {'account_code': cash_account, 'debit': 0, 'credit': amount_egp},
+            {'account_code': '2000', 'debit': liability_slice_egp, 'credit': 0},
+            {'account_code': cash_account, 'debit': 0, 'credit': payment_egp},
         ]
+        if fx_diff > 0:
+            if not _validate_account_exists('4110'):
+                return {'success': False, 'message': 'Account 4110 (Exchange Gain) not found. Run seed_default_accounts.'}
+            entries.append({'account_code': '4110', 'debit': 0, 'credit': fx_diff})
+        elif fx_diff < 0:
+            if not _validate_account_exists('6110'):
+                return {'success': False, 'message': 'Account 6110 (Exchange Loss) not found. Run seed_default_accounts.'}
+            entries.append({'account_code': '6110', 'debit': -fx_diff, 'credit': 0})
+
         result = post_journal_entry(
             parsed_date, entries, desc,
             'payment', invoice_id, user_email,
@@ -1400,13 +1518,16 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
             return result
 
         current_paid = _round2(row.get('paid_amount', 0))
-        total = _round2(row.get('total', 0))
-        new_paid = _round2(current_paid + amount_egp)
-        new_status = 'paid' if new_paid >= total - 0.005 else 'partial'
+        new_paid = _round2(current_paid + liability_slice_egp)
+        new_remaining = remaining_egp - liability_slice_egp
+        # FIX 3: Rounding tolerance — treat residual < 0.01 as zero
+        if abs(new_remaining) < 0.01:
+            new_remaining = 0.0
+        new_status = 'paid' if _round2(new_remaining) <= 0 else 'partial'
         row.update(paid_amount=new_paid, status=new_status, updated_at=get_utc_now())
 
-        logger.info("Supplier payment %.2f EGP (%.2f %s) for %s by %s", amount_egp, amount_in, currency_code, row.get('invoice_number'), user_email)
-        return {'success': True, 'paid_amount': new_paid, 'status': new_status, 'transaction_id': result['transaction_id'], 'amount_egp': amount_egp}
+        logger.info("Supplier payment liability_slice=%.2f payment_egp=%.2f fx_diff=%.2f for %s by %s", liability_slice_egp, payment_egp, fx_diff, row.get('invoice_number'), user_email)
+        return {'success': True, 'paid_amount': new_paid, 'status': new_status, 'transaction_id': result['transaction_id'], 'amount_egp': liability_slice_egp}
     except Exception as e:
         logger.exception("record_supplier_payment error")
         return {'success': False, 'message': str(e)}
@@ -1674,6 +1795,111 @@ def get_import_costs(purchase_invoice_id=None, inventory_id=None, token_or_email
         return {'success': True, 'costs': costs, 'total': total}
     except Exception as e:
         logger.exception("get_import_costs error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_import_costs_for_payment(purchase_invoice_id, token_or_email=None):
+    """Return import cost rows for the Pay Import Costs screen: id, cost_type, description, amount_egp, paid_amount, remaining_egp, payment_account."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    if not purchase_invoice_id:
+        return {'success': False, 'message': 'purchase_invoice_id is required'}
+    try:
+        inv = app_tables.purchase_invoices.get(id=purchase_invoice_id)
+        if not inv:
+            return {'success': False, 'message': 'Purchase invoice not found'}
+        try:
+            inv_rate = _round2(float(inv.get('exchange_rate_usd_to_egp') or 0)) if inv.get('exchange_rate_usd_to_egp') else _get_rate_to_egp('USD')
+        except (TypeError, ValueError):
+            inv_rate = _get_rate_to_egp('USD')
+        if not inv_rate or inv_rate <= 0:
+            inv_rate = _get_rate_to_egp('USD')
+        rows = list(app_tables.import_costs.search(purchase_invoice_id=purchase_invoice_id))
+        result = []
+        for r in rows:
+            amt_egp = r.get('amount_egp')
+            if amt_egp is None or _round2(amt_egp) <= 0:
+                amt = _round2(r.get('amount', 0))
+                curr = _safe_str(r.get('currency') or 'EGP').upper()
+                amt_egp = _round2(amt * (inv_rate if curr == 'USD' else 1))
+            else:
+                amt_egp = _round2(amt_egp)
+            paid = _round2(r.get('paid_amount') or 0)
+            remaining = _round2(amt_egp - paid)
+            result.append({
+                'id': r.get('id'),
+                'cost_type': r.get('cost_type', ''),
+                'description': _safe_str(r.get('description', '')),
+                'amount_egp': amt_egp,
+                'paid_amount': paid,
+                'remaining_egp': remaining,
+                'payment_account': r.get('payment_account') or _resolve_payment_account('cash'),
+            })
+        return {'success': True, 'costs': result}
+    except Exception as e:
+        logger.exception("get_import_costs_for_payment error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, token_or_email=None):
+    """
+    Pay (part or all) of an import cost. Posts DR 1200 (Inventory), CR cash/bank.
+    amount_egp: amount in EGP to pay (partial or full).
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+    amount_egp = _round2(float(amount_egp or 0))
+    if amount_egp <= 0:
+        return {'success': False, 'message': 'Amount must be greater than zero'}
+    payment_date = _safe_date(payment_date) or date.today()
+    try:
+        row = app_tables.import_costs.get(id=import_cost_id)
+        if not row:
+            return {'success': False, 'message': 'Import cost not found'}
+        amt_egp = row.get('amount_egp')
+        if amt_egp is None or _round2(amt_egp) <= 0:
+            inv_id = row.get('purchase_invoice_id')
+            inv = app_tables.purchase_invoices.get(id=inv_id) if inv_id else None
+            rate = _round2(float(inv.get('exchange_rate_usd_to_egp') or 0)) if inv and inv.get('exchange_rate_usd_to_egp') else _get_rate_to_egp('USD')
+            amt = _round2(row.get('amount', 0))
+            curr = _safe_str(row.get('currency') or 'EGP').upper()
+            amt_egp = _round2(amt * (rate if curr == 'USD' else 1))
+        else:
+            amt_egp = _round2(amt_egp)
+        paid = _round2(row.get('paid_amount') or 0)
+        remaining = _round2(amt_egp - paid)
+        if amount_egp > remaining:
+            return {'success': False, 'message': f'Pay amount ({amount_egp}) cannot exceed remaining ({remaining})'}
+        credit_account = _resolve_payment_account(payment_method)
+        if not _validate_account_exists(credit_account):
+            return {'success': False, 'message': f'Payment account {credit_account} not found or inactive'}
+        if not _validate_account_exists('1200'):
+            return {'success': False, 'message': 'Account 1200 (Inventory) not found'}
+        cost_type_name = row.get('cost_type', 'import cost')
+        desc = f"Import cost payment ({cost_type_name}): {_safe_str(row.get('description', ''))}"
+        entries = [
+            {'account_code': '1200', 'debit': amount_egp, 'credit': 0},
+            {'account_code': credit_account, 'debit': 0, 'credit': amount_egp},
+        ]
+        je_result = post_journal_entry(
+            payment_date, entries, desc, 'import_cost_payment', import_cost_id, user_email,
+        )
+        if not je_result.get('success'):
+            return je_result
+        new_paid = _round2(paid + amount_egp)
+        try:
+            row.update(paid_amount=new_paid)
+        except Exception as upd_err:
+            logger.warning("Could not update import_costs.paid_amount: %s", upd_err)
+        _update_inventory_import_totals(purchase_invoice_id=row.get('purchase_invoice_id'))
+        logger.info("Import cost %s paid %.2f EGP by %s [CR %s]", import_cost_id, amount_egp, user_email, credit_account)
+        return {'success': True, 'transaction_id': je_result.get('transaction_id'), 'paid_amount': new_paid}
+    except Exception as e:
+        logger.exception("pay_import_cost error")
         return {'success': False, 'message': str(e)}
 
 
@@ -2987,7 +3213,7 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
             updates.pop('machine_config_json', None)
             row.update(**updates)
 
-        # Update import costs if provided - delete old ones and re-add
+        # Update import costs if provided - delete old ones and re-add (with amount_egp, paid_amount=0)
         if 'import_costs' in data:
             try:
                 old_ics = app_tables.import_costs.search(purchase_invoice_id=invoice_id)
@@ -2995,10 +3221,18 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
                     old_ic.delete()
             except Exception:
                 pass
+            inv_row = app_tables.purchase_invoices.get(id=invoice_id)
+            inv_rate = (inv_row.get('exchange_rate_usd_to_egp') or _get_rate_to_egp('USD')) if inv_row else _get_rate_to_egp('USD')
+            try:
+                inv_rate = _round2(float(inv_rate)) if inv_rate else _get_rate_to_egp('USD')
+            except (TypeError, ValueError):
+                inv_rate = _get_rate_to_egp('USD')
             now = get_utc_now()
             for ic in data.get('import_costs', []):
                 ic_amount = _round2(ic.get('amount', 0))
                 if ic_amount > 0:
+                    curr = _safe_str(ic.get('currency') or 'USD').upper()[:3]
+                    amount_egp = _round2(ic_amount * (inv_rate if curr == 'USD' else 1))
                     ic_row = dict(
                         id=_uuid(),
                         purchase_invoice_id=invoice_id,
@@ -3009,13 +3243,16 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
                         payment_method=_safe_str(ic.get('payment_method', 'cash')),
                         payment_account=_resolve_payment_account(ic.get('payment_method', 'cash')),
                         created_at=now,
+                        amount_egp=amount_egp,
+                        paid_amount=0.0,
                     )
-                    if ic.get('currency'):
-                        ic_row['currency'] = _safe_str(ic.get('currency', 'USD')).upper()[:3]
+                    if curr:
+                        ic_row['currency'] = curr
                     try:
                         app_tables.import_costs.add_row(**ic_row)
                     except Exception as ic_err:
-                        ic_row.pop('currency', None)
+                        for k in ('currency', 'amount_egp', 'paid_amount'):
+                            ic_row.pop(k, None)
                         try:
                             app_tables.import_costs.add_row(**ic_row)
                         except Exception:

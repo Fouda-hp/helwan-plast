@@ -54,10 +54,13 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
         # JS Bridges — new (multiple banks, posting, payable status, contract purchase)
         anvil.js.window.pyPostPurchaseInvoice = self.post_purchase_invoice
         anvil.js.window.pyRecordSupplierPayment = self.record_supplier_payment
+        anvil.js.window.pyGetSupplierRemainingEgp = self.get_supplier_remaining_egp
         anvil.js.window.pyGetBankAccounts = self.get_bank_accounts
         anvil.js.window.pyGetExchangeRates = self.get_exchange_rates
         anvil.js.window.pyGetContractPayableStatus = self.get_contract_payable_status
         anvil.js.window.pyGetImportCosts = self.get_import_costs
+        anvil.js.window.pyGetImportCostsForPayment = self.get_import_costs_for_payment
+        anvil.js.window.pyPayImportCost = self.pay_import_cost
         anvil.js.window.pyGetImportCostTypes = self.get_import_cost_types
         anvil.js.window.pyGetLandedCost = self.get_landed_cost
         anvil.js.window.pyCreateContractPurchase = self.create_contract_purchase
@@ -94,12 +97,18 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
         return anvil.server.call('record_invoice_payment', invoice_id, amount, method, notes, self._auth())
 
     def record_supplier_payment(self, invoice_id, amount, payment_method, payment_date,
-                               currency_code='EGP', exchange_rate=None, notes=''):
-        """تسجيل دفعة للمورد — أي مبلغ، عملة اختيارية، طريقة دفع (كاش/بنك)."""
+                               currency_code='EGP', exchange_rate=None, notes='',
+                               percentage=None, is_paid_in_full=False):
+        """تسجيل دفعة للمورد — مبلغ أو نسبة، سعر صرف عند الدفع، تسوية كاملة (فروق عملة 4110/6110)."""
         return anvil.server.call(
             'record_supplier_payment', invoice_id, amount, payment_method, payment_date,
-            currency_code=currency_code, exchange_rate=exchange_rate, notes=notes, token_or_email=self._auth()
+            currency_code=currency_code, exchange_rate=exchange_rate, notes=notes,
+            percentage=percentage, is_paid_in_full=is_paid_in_full, token_or_email=self._auth()
         )
+
+    def get_supplier_remaining_egp(self, invoice_id):
+        """المتبقي للمورد بالجنيه من الدفتر (لشاشة الدفع)."""
+        return anvil.server.call('get_supplier_remaining_egp', invoice_id, self._auth())
 
     def get_bank_accounts(self):
         """Get list of cash/bank accounts for payment dropdown."""
@@ -119,6 +128,14 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
     def get_import_costs(self, invoice_id, inventory_id=None):
         """Get import costs for a purchase invoice or inventory item."""
         return anvil.server.call('get_import_costs', invoice_id, inventory_id, self._auth())
+
+    def get_import_costs_for_payment(self, purchase_invoice_id):
+        """Get import cost rows for Pay Import Costs screen (amount_egp, paid_amount, remaining_egp)."""
+        return anvil.server.call('get_import_costs_for_payment', purchase_invoice_id, self._auth())
+
+    def pay_import_cost(self, import_cost_id, amount_egp, payment_method, payment_date):
+        """Pay (partial or full) an import cost. DR 1200, CR cash/bank."""
+        return anvil.server.call('pay_import_cost', import_cost_id, amount_egp, payment_method, payment_date, self._auth())
 
     def get_import_cost_types(self):
         """Get extensible import cost types (from table or built-in)."""

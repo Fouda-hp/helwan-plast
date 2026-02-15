@@ -394,6 +394,15 @@ db_schema:
     - admin_ui: {width: 120}
       name: payment_account
       type: string
+    - admin_ui: {width: 120}
+      name: amount_egp
+      type: number
+    - admin_ui: {width: 120}
+      name: paid_amount
+      type: number
+    - admin_ui: {width: 80}
+      name: currency
+      type: string
     server: full
     title: IMPORT_COSTS
   inventory:

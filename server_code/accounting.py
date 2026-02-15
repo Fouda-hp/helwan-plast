@@ -396,17 +396,23 @@ def get_ledger_entries(account_code=None, date_from=None, date_to=None, ref_type
 
         d_from = _safe_date(date_from)
         d_to = _safe_date(date_to)
-        results = []
+        
+        # Add date filtering to search_kwargs if present
+        if d_from or d_to:
+            import anvil.tables.query as q
+            date_constraints = []
+            if d_from:
+                date_constraints.append(q.greater_than_or_equal_to(d_from))
+            if d_to:
+                date_constraints.append(q.less_than_or_equal_to(d_to))
+            
+            if len(date_constraints) == 1:
+                search_kwargs['date'] = date_constraints[0]
+            elif len(date_constraints) > 1:
+                search_kwargs['date'] = q.all_of(*date_constraints)
 
+        results = []
         for r in app_tables.ledger.search(**search_kwargs):
-            if d_from or d_to:
-                row_date = r.get('date')
-                if isinstance(row_date, datetime):
-                    row_date = row_date.date()
-                if d_from and row_date and row_date < d_from:
-                    continue
-                if d_to and row_date and row_date > d_to:
-                    continue
             results.append(_row_to_dict(r, LEDGER_COLS))
 
         results.sort(key=lambda x: (x.get('date', ''), x.get('created_at', '')))
@@ -479,21 +485,31 @@ def get_suppliers(search='', token_or_email=None):
     if not is_valid:
         return error
     try:
-        rows = list(app_tables.suppliers.search(is_active=True))
+        import anvil.tables.query as q
+        # Filter at DB level
+        base_query = {'is_active': True}
+        search_query = None
+        search_lower = _safe_str(search).strip().lower()
+
+        if search_lower:
+             search_query = q.any_of(
+                name=q.ilike(f"%{search_lower}%"),
+                company=q.ilike(f"%{search_lower}%"),
+                phone=q.ilike(f"%{search_lower}%"),
+                email=q.ilike(f"%{search_lower}%"),
+                country=q.ilike(f"%{search_lower}%")
+             )
+        
+        if search_query:
+            rows = app_tables.suppliers.search(search_query, **base_query)
+        else:
+            rows = app_tables.suppliers.search(**base_query)
+
         results = []
-        search_lower = _safe_str(search).lower()
+        # Iterating
         for r in rows:
-            if search_lower:
-                searchable = ' '.join([
-                    _safe_str(r.get('name')),
-                    _safe_str(r.get('company')),
-                    _safe_str(r.get('phone')),
-                    _safe_str(r.get('email')),
-                    _safe_str(r.get('country')),
-                ]).lower()
-                if search_lower not in searchable:
-                    continue
             results.append(_row_to_dict(r, SUPPLIER_COLS))
+            
         results.sort(key=lambda s: s.get('name', ''))
         return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
@@ -613,23 +629,34 @@ def get_purchase_invoices(status=None, search='', token_or_email=None):
     if not is_valid:
         return error
     try:
+        import anvil.tables.query as q
         # Filter at DB level when status is provided, stream instead of list()
         search_kwargs = {}
         if status:
             search_kwargs['status'] = status
-        rows = app_tables.purchase_invoices.search(**search_kwargs)
+        
+        search_lower = _safe_str(search).strip().lower()
+        search_query = None
+        if search_lower:
+             # Search invoice_number, supplier_id (exact?), machine_code, notes
+             search_query = q.any_of(
+                invoice_number=q.ilike(f"%{search_lower}%"),
+                supplier_id=q.ilike(f"%{search_lower}%"), # ID usually exact, but ilike matches string
+                machine_code=q.ilike(f"%{search_lower}%"),
+                notes=q.ilike(f"%{search_lower}%")
+             )
+
+        if search_query:
+            rows = app_tables.purchase_invoices.search(search_query, **search_kwargs)
+        else:
+            rows = app_tables.purchase_invoices.search(**search_kwargs)
+
         results = []
-        search_lower = _safe_str(search).lower()
+        
         for r in rows:
-            if search_lower:
-                searchable = ' '.join([
-                    _safe_str(r.get('invoice_number')),
-                    _safe_str(r.get('supplier_id')),
-                    _safe_str(r.get('machine_code')),
-                    _safe_str(r.get('notes')),
-                ]).lower()
-                if search_lower not in searchable:
-                    continue
+            # Manual filtering removed as DB does it
+            # if search_lower: ... continue
+
             d = _row_to_dict(r, PURCHASE_INVOICE_COLS)
             # Parse items_json for convenience
             try:

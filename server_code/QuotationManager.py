@@ -776,7 +776,6 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
     try:
         q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by(sort_col, sort_asc)]) if not include_deleted else app_tables.quotations.search(order_by=[anvil_order_by(sort_col, sort_asc)])
     except Exception:
-        # Fallback: بعض بيئات Anvil ترفض order_by (مثل "No such column 'order_by'")
         q_iter = app_tables.quotations.search(is_deleted=False) if not include_deleted else app_tables.quotations.search()
 
     try:
@@ -811,13 +810,9 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
         for r in page_rows:
             client_code = r.get('Client Code') or ''
             client = get_client(client_code)
-
-            # استخدام اسم العميل من العرض أو من جدول العملاء
             client_name = r.get('Client Name') or ''
             if not client_name and client:
                 client_name = client.get('Client Name', '')
-
-            # استخدام البيانات من الـ quotation أو من جدول العملاء
             company = r.get('Company') or (client.get('Company', '') if client else '')
             phone = r.get('Phone') or (client.get('Phone', '') if client else '')
             country = r.get('Country') or (client.get('Country', '') if client else '')
@@ -868,21 +863,13 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
                 "follow_up_date": r.get("follow_up_date", ""),
                 "follow_up_status": r.get("follow_up_status", ""),
             }
-
             for i in range(1, 13):
                 row_data[f"Size in CM{i}"] = r.get(f"Size in CM{i}", "")
                 row_data[f"Count{i}"] = r.get(f"Count{i}", "")
                 row_data[f"Cost{i}"] = r.get(f"Cost{i}", "")
-
             rows.append(row_data)
 
-        return {
-            "data": rows,
-            "page": page,
-            "per_page": per_page,
-            "total": total,
-            "total_pages": total_pages
-        }
+        return {"data": rows, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}
     except Exception as e:
         logger.exception("get_all_quotations: %s", e)
         return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
@@ -924,7 +911,6 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
         try:
             c_iter = app_tables.clients.search(is_deleted=False, order_by=[anvil_order_by(sort_col, sort_asc)]) if not include_deleted else app_tables.clients.search(order_by=[anvil_order_by(sort_col, sort_asc)])
         except Exception:
-            # Fallback: بعض بيئات Anvil ترفض order_by (مثل "No such column 'order_by'")
             c_iter = app_tables.clients.search(is_deleted=False) if not include_deleted else app_tables.clients.search()
 
         total = 0
@@ -960,13 +946,7 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
                 "tags_json": r.get("tags_json", "[]"),
             })
 
-        return {
-            "data": rows,
-            "page": page,
-            "per_page": per_page,
-            "total": total,
-            "total_pages": total_pages
-        }
+        return {"data": rows, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}
     except Exception as e:
         logger.exception("get_all_clients: %s", e)
         return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}

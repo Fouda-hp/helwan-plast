@@ -107,4 +107,10 @@ class DataImportForm(DataImportFormTemplate):
 
     def go_back(self):
         """Navigate back to AdminPanel"""
+        try:
+            anvil.js.window.location.hash = '#admin'
+            anvil.js.window.localStorage.setItem('hp_last_page', '#admin')
+        except Exception:
+            pass
         open_form('AdminPanel')
+        return True

@@ -118,4 +118,10 @@ class InventoryForm(InventoryFormTemplate):
                     'can_edit': False, 'can_delete': False, 'is_admin': False, 'role': 'viewer'}
 
     def go_back(self):
+        try:
+            anvil.js.window.location.hash = '#admin'
+            anvil.js.window.localStorage.setItem('hp_last_page', '#admin')
+        except Exception:
+            pass
         open_form('AdminPanel')
+        return True

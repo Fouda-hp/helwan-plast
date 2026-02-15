@@ -57,4 +57,10 @@ class SuppliersForm(SuppliersFormTemplate):
         return anvil.server.call('delete_supplier', supplier_id, self._auth())
 
     def go_back(self):
+        try:
+            anvil.js.window.location.hash = '#admin'
+            anvil.js.window.localStorage.setItem('hp_last_page', '#admin')
+        except Exception:
+            pass
         open_form('AdminPanel')
+        return True

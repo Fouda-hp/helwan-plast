@@ -77,4 +77,11 @@ class CustomerSummaryForm(CustomerSummaryFormTemplate):
         return anvil.server.call('get_contract_total', contract_number, self._auth())
 
     def go_back(self):
-        open_form('AccountantForm')
+        token = self._auth()
+        try:
+            if token:
+                anvil.js.window.sessionStorage.setItem('auth_token', token)
+        except Exception:
+            pass
+        open_form('AccountantForm', auth_token=token)
+        return True

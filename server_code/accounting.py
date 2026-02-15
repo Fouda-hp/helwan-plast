@@ -1722,7 +1722,7 @@ DEFAULT_IMPORT_COST_TYPES = [
     {'id': 'OTHER', 'name': 'Other', 'default_account': None, 'is_active': True},
 ]
 
-VALID_COST_TYPES = ('shipping', 'customs', 'insurance', 'clearance', 'transport', 'other')
+VALID_COST_TYPES = ('shipping', 'customs', 'insurance', 'clearance', 'transport', 'vat', 'other')
 
 
 def _get_import_cost_types_table():
@@ -1865,31 +1865,39 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
         if not _validate_account_exists(credit_account):
             return {'success': False, 'message': f'Payment account {credit_account} not found or inactive'}
 
-        # Transit model: DR 1210 if not yet received, DR 1200 if already moved to inventory
-        inv_row = app_tables.purchase_invoices.get(id=pi_id) if pi_id else None
-        inventory_moved = bool(inv_row and inv_row.get('inventory_moved'))
-        if inventory_moved:
-            if not _validate_account_exists('1200'):
-                return {'success': False, 'message': 'Account 1200 (Inventory) not found or inactive'}
-            debit_account = '1200'
-        else:
-            if not _validate_account_exists('1210'):
-                return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found or inactive'}
-            debit_account = '1210'
-
         parsed_date = _safe_date(cost_date) or date.today()
         cost_id = _uuid()
         desc_text = _safe_str(description) or f"Import cost ({cost_type_name})"
+
+        # VAT: separate account 2110 (VAT Input Recoverable). Not part of inventory cost.
+        is_vat = (cost_type or '').lower().strip() == 'vat' or (cost_type_name or '').lower().strip() == 'vat'
+        if is_vat:
+            if not _validate_account_exists('2110'):
+                return {'success': False, 'message': 'Account 2110 (VAT Input Recoverable) not found. Run seed_default_accounts or add it.'}
+            debit_account = '2110'
+            ref_id = cost_id  # link JE to this cost row
+        else:
+            # Transit model: DR 1210 if not yet received, DR 1200 if already moved to inventory
+            inv_row = app_tables.purchase_invoices.get(id=pi_id) if pi_id else None
+            inventory_moved = bool(inv_row and inv_row.get('inventory_moved'))
+            if inventory_moved:
+                if not _validate_account_exists('1200'):
+                    return {'success': False, 'message': 'Account 1200 (Inventory) not found or inactive'}
+                debit_account = '1200'
+            else:
+                if not _validate_account_exists('1210'):
+                    return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found or inactive'}
+                debit_account = '1210'
+            ref_id = pi_id  # so move_purchase_to_inventory can sum 1210 by invoice
 
         entries = [
             {'account_code': debit_account, 'debit': amount_egp, 'credit': 0},
             {'account_code': credit_account, 'debit': 0, 'credit': amount_egp},
         ]
-        # reference_id=invoice_id so move_purchase_to_inventory can sum 1210 by invoice in one place
         je_result = post_journal_entry(
             parsed_date, entries,
             f"Import cost ({cost_type_name}): {desc_text}",
-            'import_cost', pi_id, user_email,
+            'import_cost', ref_id, user_email,
         )
         if not je_result.get('success'):
             return je_result
@@ -2064,16 +2072,23 @@ def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, to
             return {'success': False, 'message': f'Payment account {credit_account} not found or inactive'}
 
         pi_id = row.get('purchase_invoice_id')
-        inv_row = app_tables.purchase_invoices.get(id=pi_id) if pi_id else None
-        inventory_moved = bool(inv_row and inv_row.get('inventory_moved'))
-        if inventory_moved:
-            if not _validate_account_exists('1200'):
-                return {'success': False, 'message': 'Account 1200 (Inventory) not found'}
-            debit_account = '1200'
+        cost_type_raw = (row.get('cost_type') or '').lower().strip()
+        is_vat = cost_type_raw == 'vat'
+        if is_vat:
+            if not _validate_account_exists('2110'):
+                return {'success': False, 'message': 'Account 2110 (VAT Input Recoverable) not found'}
+            debit_account = '2110'
         else:
-            if not _validate_account_exists('1210'):
-                return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found'}
-            debit_account = '1210'
+            inv_row = app_tables.purchase_invoices.get(id=pi_id) if pi_id else None
+            inventory_moved = bool(inv_row and inv_row.get('inventory_moved'))
+            if inventory_moved:
+                if not _validate_account_exists('1200'):
+                    return {'success': False, 'message': 'Account 1200 (Inventory) not found'}
+                debit_account = '1200'
+            else:
+                if not _validate_account_exists('1210'):
+                    return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found'}
+                debit_account = '1210'
 
         cost_type_name = row.get('cost_type', 'import cost')
         desc = f"Import cost payment ({cost_type_name}): {_safe_str(row.get('description', ''))}"
@@ -2102,8 +2117,15 @@ def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, to
 def _update_inventory_import_totals(purchase_invoice_id=None, inventory_id=None):
     """
     Recalculate import_costs_total and total_cost (EGP). Guarantee: total_cost = purchase_cost + import_costs_total.
+    VAT (cost_type='vat') is excluded from inventory cost — it is posted to 2110 only.
     Call with either purchase_invoice_id (legacy) or inventory_id (new).
     """
+    def _amt(r):
+        return _round2(r.get('amount_egp') or r.get('amount', 0))
+
+    def _is_vat(r):
+        return (r.get('cost_type') or '').lower().strip() == 'vat'
+
     try:
         if inventory_id:
             try:
@@ -2112,7 +2134,7 @@ def _update_inventory_import_totals(purchase_invoice_id=None, inventory_id=None)
                 inv_item = app_tables.inventory.get(id=inventory_id)
                 purchase_invoice_id = inv_item.get('purchase_invoice_id') if inv_item else None
                 cost_rows = list(app_tables.import_costs.search(purchase_invoice_id=purchase_invoice_id)) if purchase_invoice_id else []
-            import_total = _round2(sum(_round2(r.get('amount_egp') or r.get('amount', 0)) for r in cost_rows))
+            import_total = _round2(sum(_amt(r) for r in cost_rows if not _is_vat(r)))
             item = app_tables.inventory.get(id=inventory_id)
             if item:
                 purchase_cost = _round2(item.get('purchase_cost', 0))
@@ -2124,7 +2146,7 @@ def _update_inventory_import_totals(purchase_invoice_id=None, inventory_id=None)
             return
         if purchase_invoice_id:
             cost_rows = list(app_tables.import_costs.search(purchase_invoice_id=purchase_invoice_id))
-            import_total = _round2(sum(_round2(r.get('amount_egp') or r.get('amount', 0)) for r in cost_rows))
+            import_total = _round2(sum(_amt(r) for r in cost_rows if not _is_vat(r)))
             for item in app_tables.inventory.search(purchase_invoice_id=purchase_invoice_id):
                 purchase_cost = _round2(item.get('purchase_cost', 0))
                 item.update(
@@ -2134,6 +2156,163 @@ def _update_inventory_import_totals(purchase_invoice_id=None, inventory_id=None)
                 )
     except Exception as e:
         logger.warning("_update_inventory_import_totals error: %s", e)
+
+
+# VAT report: account 2110 (input) and 2100 (output)
+VAT_INPUT_ACCOUNT = '2110'   # VAT Input Recoverable — ضريبة مدخلات قابلة للاسترداد (ليك)
+VAT_OUTPUT_ACCOUNT = '2100'  # VAT Payable — ضريبة مخرجات مستحقة (عليك)
+DEFAULT_VAT_RATE = 14.0      # 14% VAT-inclusive: vat_amount = price * rate / (100 + rate)
+
+
+def _get_vat_rate():
+    """Return VAT rate (e.g. 14 for 14%). From settings if available, else DEFAULT_VAT_RATE."""
+    try:
+        tbl = getattr(app_tables, 'settings', None)
+        if tbl:
+            row = tbl.get(setting_key='vat_rate') if hasattr(tbl, 'get') else None
+            if row and row.get('setting_value') is not None:
+                return _round2(float(row.get('setting_value')))
+    except Exception:
+        pass
+    return DEFAULT_VAT_RATE
+
+
+def _vat_balance(account_code, as_of_date=None):
+    """Sum (debit - credit) for account up to as_of_date (inclusive). Ledger only."""
+    total = 0.0
+    for entry in app_tables.ledger.search(account_code=account_code):
+        ed = entry.get('date')
+        if as_of_date and ed and ed > as_of_date:
+            continue
+        total += _round2(entry.get('debit', 0) or 0) - _round2(entry.get('credit', 0) or 0)
+    return _round2(total)
+
+
+@anvil.server.callable
+def get_vat_report(as_of_date=None, date_from=None, date_to=None, token_or_email=None):
+    """
+    VAT position report. ليك و عليك عند الضرائب.
+    - input_vat (2110): ضريبة مدخلات قابلة للاسترداد — ما ليك (رصيد مدين).
+    - output_vat (2100): ضريبة مخرجات مستحقة — ما عليك للدولة (رصيد دائن).
+    - net: input_vat - output_vat. موجب = ليك أكثر من عليك؛ سالب = عليك أكثر.
+    Optional date_from/date_to: list movements in that period for detail.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        as_of = _safe_date(as_of_date)
+        input_balance = _vat_balance(VAT_INPUT_ACCOUNT, as_of)
+        output_balance_raw = _vat_balance(VAT_OUTPUT_ACCOUNT, as_of)
+        # 2100 is liability: credit - debit = payable. Our _vat_balance returns debit - credit, so for 2100 "balance" as payable = -output_balance_raw.
+        output_vat_payable = _round2(-output_balance_raw)  # positive = عليك
+        net = _round2(input_balance - output_vat_payable)   # ليك - عليك
+
+        detail = []
+        if date_from is not None or date_to is not None:
+            d_from = _safe_date(date_from)
+            d_to = _safe_date(date_to)
+            for acc, label in [(VAT_INPUT_ACCOUNT, 'Input VAT (2110)'), (VAT_OUTPUT_ACCOUNT, 'Output VAT (2100)')]:
+                for entry in app_tables.ledger.search(account_code=acc):
+                    ed = entry.get('date')
+                    if ed is None:
+                        continue
+                    if d_from and ed < d_from:
+                        continue
+                    if d_to and ed > d_to:
+                        continue
+                    dr = _round2(entry.get('debit', 0) or 0)
+                    cr = _round2(entry.get('credit', 0) or 0)
+                    detail.append({
+                        'date': str(ed),
+                        'account': acc,
+                        'account_label': label,
+                        'debit': dr,
+                        'credit': cr,
+                        'description': _safe_str(entry.get('description', '')),
+                    })
+        detail.sort(key=lambda x: (x['date'], x['account']))
+
+        return {
+            'success': True,
+            'as_of_date': str(as_of) if as_of else None,
+            'input_vat_balance': input_balance,
+            'output_vat_balance': output_vat_payable,  # alias: 2100 payable
+            'output_vat_payable': output_vat_payable,
+            'net_position': net,
+            'detail': detail,
+        }
+    except Exception as e:
+        logger.exception("get_vat_report error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def settle_vat_for_period(date_from, date_to, settlement_account=None, token_or_email=None):
+    """
+    Monthly VAT settlement. Manual action only; period lock applies.
+    Uses balances as of date_to (end of period).
+    - If output_vat > input_vat: remit net_due to tax authority.
+      Post: DR 2100 (output_vat), CR 2110 (input_vat), CR Bank (net_due).
+    - If input_vat >= output_vat: clear output with input; remainder stays in 2110 (carry forward).
+      Post: DR 2100 (output_vat), CR 2110 (output_vat).
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+    d_from = _safe_date(date_from)
+    d_to = _safe_date(date_to)
+    if not d_to:
+        return {'success': False, 'message': 'date_to is required'}
+    settlement_account = (settlement_account or '1000').strip()
+    if not _validate_account_exists(settlement_account):
+        return {'success': False, 'message': f'Settlement account {settlement_account} not found or inactive'}
+    if not _validate_account_exists(VAT_INPUT_ACCOUNT) or not _validate_account_exists(VAT_OUTPUT_ACCOUNT):
+        return {'success': False, 'message': 'VAT accounts 2110/2100 not found. Run seed_default_accounts.'}
+    try:
+        input_vat = _vat_balance(VAT_INPUT_ACCOUNT, d_to)
+        output_balance_raw = _vat_balance(VAT_OUTPUT_ACCOUNT, d_to)
+        output_vat = _round2(-output_balance_raw)  # payable = credit - debit
+
+        if abs(output_vat) < RESIDUAL_TOLERANCE and abs(input_vat) < RESIDUAL_TOLERANCE:
+            return {'success': True, 'message': 'No VAT to settle; balances are zero.', 'settled': False}
+
+        # Settlement entry date = date_to (month-end)
+        if output_vat > input_vat:
+            net_due = _round2(output_vat - input_vat)
+            entries = [
+                {'account_code': VAT_OUTPUT_ACCOUNT, 'debit': output_vat, 'credit': 0},
+                {'account_code': VAT_INPUT_ACCOUNT, 'debit': 0, 'credit': input_vat},
+                {'account_code': settlement_account, 'debit': 0, 'credit': net_due},
+            ]
+            desc = f"VAT settlement: remit {net_due:.2f} EGP to tax authority (output {output_vat:.2f} − input {input_vat:.2f})"
+        else:
+            # Clear full output with input; remainder in 2110 carries forward
+            if output_vat <= 0:
+                return {'success': True, 'message': 'Output VAT zero; nothing to clear.', 'settled': False}
+            entries = [
+                {'account_code': VAT_OUTPUT_ACCOUNT, 'debit': output_vat, 'credit': 0},
+                {'account_code': VAT_INPUT_ACCOUNT, 'debit': 0, 'credit': output_vat},
+            ]
+            carry = _round2(input_vat - output_vat)
+            desc = f"VAT settlement: clear output {output_vat:.2f} with input (carry forward 2110: {carry:.2f})"
+
+        ref_id = f"vat_settle_{d_to}_{_uuid()[:8]}"
+        result = post_journal_entry(d_to, entries, desc, 'vat_settlement', ref_id, user_email)
+        if not result.get('success'):
+            return result
+        logger.info("VAT settlement for period ending %s by %s", d_to, user_email)
+        return {
+            'success': True,
+            'settled': True,
+            'transaction_id': result.get('transaction_id'),
+            'input_vat': input_vat,
+            'output_vat': output_vat,
+            'period_to': str(d_to),
+        }
+    except Exception as e:
+        logger.exception("settle_vat_for_period error")
+        return {'success': False, 'message': str(e)}
 
 
 # ===========================================================================
@@ -2739,8 +2918,10 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
             return {'success': False, 'message': 'Account 1200 (Inventory) not found or inactive'}
         if not _validate_account_exists('1100') or not _validate_account_exists('4000'):
             return {'success': False, 'message': 'Account 1100 or 4000 not found or inactive'}
+        if not _validate_account_exists(VAT_OUTPUT_ACCOUNT):
+            return {'success': False, 'message': 'Account 2100 (VAT Output Payable) not found. Run seed_default_accounts.'}
 
-        # Entry 1: Record cost of goods sold (COGS = Landed Cost)
+        # Entry 1: Record cost of goods sold (COGS = Landed Cost). VAT never affects 1200/1210.
         # Always post COGS entry even if total_cost is 0, to record inventory removal
         cogs_entries = [
             {'account_code': '5000', 'debit': total_cost, 'credit': 0},
@@ -2755,14 +2936,18 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
             if not cogs_result.get('success'):
                 return cogs_result
 
-        # Entry 2: Record sales revenue
+        # Entry 2: Record sales — VAT-inclusive price split: DR 1100 full, CR 4000 net + CR 2100 VAT
+        vat_rate = _get_vat_rate()
+        vat_amount = _round2(selling_price * vat_rate / (100 + vat_rate))
+        net_revenue = _round2(selling_price - vat_amount)  # ensure net_revenue + vat_amount = selling_price
         sales_entries = [
             {'account_code': '1100', 'debit': selling_price, 'credit': 0},
-            {'account_code': '4000', 'debit': 0, 'credit': selling_price},
+            {'account_code': '4000', 'debit': 0, 'credit': net_revenue},
+            {'account_code': VAT_OUTPUT_ACCOUNT, 'debit': 0, 'credit': vat_amount},
         ]
         sales_result = post_journal_entry(
             sale_day, sales_entries,
-            f"Sale of {row.get('machine_code', item_id)} — contract {contract_number}",
+            f"Sale of {row.get('machine_code', item_id)} — contract {contract_number} (VAT-incl)",
             'sales_invoice', item_id, user_email,
         )
         if not sales_result.get('success'):

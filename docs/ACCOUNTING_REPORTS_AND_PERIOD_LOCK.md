@@ -137,3 +137,31 @@ All paid_egp, fx_gain, fx_loss from ledger only.
 - Existing FX logic (record_supplier_payment, 4110/6110) is unchanged; reports only read ledger and stored fields.
 - Reports are **read-only**; no posting.
 - Period lock affects only **posting** (journal entries); draft create/update is unaffected.
+
+---
+
+## 8. VAT Report and Settlement
+
+### 8.1 VAT Report (ليك و عليك)
+
+**Function:** `get_vat_report(as_of_date=None, date_from=None, date_to=None)`
+
+**Purpose:** Show VAT position vs tax authority — ما ليك (recoverable) and ما عليك (payable). All balances **ledger-driven**.
+
+**Accounts:**
+- **2110** — VAT Input Recoverable. Import costs of type **VAT** post **DR 2110, CR** Bank (never 1210/1200). VAT is **excluded** from `import_costs_total` and inventory `total_cost`.
+- **2100** — VAT Output Payable. Sales use **VAT-inclusive** split: `vat_amount = selling_price × rate/(100+rate)`, **CR 2100**; **CR 4000** = net revenue. Full price **DR 1100**.
+
+**Output:** `input_vat_balance`, `output_vat_balance` / `output_vat_payable`, `net_position` = input − output, `detail` (if date range given).
+
+### 8.2 Sales VAT (sell_inventory)
+
+When selling, price is VAT-inclusive. Post: **DR 1100** = full price; **CR 4000** = net_revenue; **CR 2100** = vat_amount. VAT rate from `settings.vat_rate` or **DEFAULT_VAT_RATE** (14%).
+
+### 8.3 VAT Settlement (Month-end, Manual)
+
+**Function:** `settle_vat_for_period(date_from, date_to, settlement_account=None)`
+
+**Logic:** Balances as of `date_to`. If output > input: **DR 2100**, **CR 2110**, **CR** Bank (net_due). If input ≥ output: **DR 2100**, **CR 2110** (clear output; remainder in 2110 carries forward). Uses **post_journal_entry**; **period lock** applies. Do not auto-settle.
+
+**UI:** Accountant dashboard → **VAT Report** tab.

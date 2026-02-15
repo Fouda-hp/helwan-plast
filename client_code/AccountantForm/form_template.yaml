@@ -135,6 +135,7 @@ container:
           <button class="sub-tab" data-tab="currency" onclick="switchTab(this)">Currency</button>
           <button class="sub-tab" data-tab="treasury" onclick="switchTab(this)">Treasury</button>
           <button class="sub-tab" data-tab="cashbank" onclick="switchTab(this)">Cash/Bank Statement</button>
+          <button class="sub-tab" data-tab="vat" onclick="switchTab(this)">VAT Report</button>
           <button class="sub-tab" data-tab="opening" onclick="switchTab(this)">Opening Balances</button>
         </div>
 
@@ -346,6 +347,29 @@ container:
         </div>
       </div>
 
+      <!-- VAT Report Panel -->
+      <div class="tab-panel" id="panel-vat">
+        <div class="date-filter">
+          <label id="lblVatAsOf">As of</label>
+          <input type="date" id="vatAsOf">
+          <label>From</label>
+          <input type="date" id="vatFrom" placeholder="">
+          <label>To</label>
+          <input type="date" id="vatTo">
+          <button onclick="withButtonLock(this, function(){ return loadVatReport(); })" id="btnLoadVat" data-loading-text="...">Load</button>
+          <label id="lblVatSettleAccount" style="margin-left:8px;">Settle to</label>
+          <select id="vatSettleAccount" style="padding:6px;"><option value="1000">Cash (1000)</option><option value="1010">Bank (1010)</option></select>
+          <button type="button" class="btn btn-save" id="btnSettleVat" onclick="withButtonLock(this, function(){ return settleVatForPeriod(); })" data-loading-text="..." style="margin-left:8px;">Settle VAT (month-end)</button>
+        </div>
+        <div class="summary-row" id="vatSummary" style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px;"></div>
+        <div class="report-card">
+          <h3 id="vatTitle">VAT Report — ليك و عليك</h3>
+          <div class="table-wrap">
+            <table><thead><tr><th>Date</th><th>Account</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead><tbody id="vatDetailBody"><tr><td colspan="5" class="empty-msg">Select date and click Load</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+
       <!-- Opening Balances Panel -->
       <div class="tab-panel" id="panel-opening">
         <div class="expense-form">
@@ -421,6 +445,7 @@ container:
               ledger: t('General Ledger', 'دفتر الاستاذ'),
               treasury: t('Treasury', 'الخزينة'),
               cashbank: t('Cash/Bank Statement', 'كشف النقدية والبنك'),
+              vat: t('VAT Report', 'تقرير الضريبة'),
               opening: t('Opening Balances', 'ارصدة افتتاحية')
             };
             document.querySelectorAll('.sub-tab').forEach(function(tab) {
@@ -1104,6 +1129,59 @@ container:
                 document.getElementById('obName').value = '';
                 document.getElementById('obAmount').value = '0';
                 loadOpeningBalances();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.loadVatReport = async function() {
+            var summaryEl = document.getElementById('vatSummary');
+            var tbody = document.getElementById('vatDetailBody');
+            if (!summaryEl || !tbody) return;
+            if (typeof window.pyGetVatReport !== 'function') { if (window.showNotification) window.showNotification('error', '', 'VAT report not available'); return; }
+            summaryEl.innerHTML = ''; summaryEl.style.display = 'flex';
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            var asOf = document.getElementById('vatAsOf') ? document.getElementById('vatAsOf').value : '';
+            var from = document.getElementById('vatFrom') ? document.getElementById('vatFrom').value : '';
+            var to = document.getElementById('vatTo') ? document.getElementById('vatTo').value : '';
+            try {
+              var res = await window.pyGetVatReport(asOf || null, from || null, to || null);
+              if (res && res.success) {
+                var inputVat = parseFloat(res.input_vat_balance || 0);
+                var outputVat = parseFloat(res.output_vat_payable || 0);
+                var net = parseFloat(res.net_position || 0);
+                summaryEl.innerHTML = '<div style="padding:12px 20px;background:#e8f5e9;border-radius:8px;"><strong>' + t('Input VAT (recoverable)', 'ضريبة مدخلات - ليك') + ':</strong> ' + fmtCurr(inputVat) + '</div>' +
+                  '<div style="padding:12px 20px;background:#ffebee;border-radius:8px;"><strong>' + t('Output VAT (payable)', 'ضريبة مخرجات - عليك') + ':</strong> ' + fmtCurr(outputVat) + '</div>' +
+                  '<div style="padding:12px 20px;background:#e3f2fd;border-radius:8px;"><strong>' + t('Net position', 'الرصيد الصافي') + ':</strong> ' + fmtCurr(net) + (net >= 0 ? ' (' + t('recoverable', 'قابل للاسترداد') + ')' : ' (' + t('payable', 'مستحق') + ')') + '</div>';
+                var detail = res.detail || [];
+                if (detail.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">' + t('No movements in selected period', 'لا توجد حركات في الفترة المحددة') + '</td></tr>'; return; }
+                var html = '';
+                detail.forEach(function(row) {
+                  html += '<tr><td>' + (row.date || '') + '</td><td>' + (row.account_label || row.account || '') + '</td><td>' + (row.description || '') + '</td><td class="text-right">' + fmt(row.debit) + '</td><td class="text-right">' + fmt(row.credit) + '</td></tr>';
+                });
+                tbody.innerHTML = html;
+              } else {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
+            }
+          };
+
+          window.settleVatForPeriod = async function() {
+            var fromEl = document.getElementById('vatFrom');
+            var toEl = document.getElementById('vatTo');
+            var accEl = document.getElementById('vatSettleAccount');
+            if (!fromEl || !toEl || !toEl.value) { if (window.showNotification) window.showNotification('error', '', t('Set From and To dates for the period to settle.', 'حدد تاريخ From و To لفترة التسوية.')); return; }
+            if (typeof window.pySettleVatForPeriod !== 'function') { if (window.showNotification) window.showNotification('error', '', 'Settle VAT not available'); return; }
+            try {
+              var res = await window.pySettleVatForPeriod(fromEl.value, toEl.value, accEl ? accEl.value : null);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', res.message || (res.settled ? t('VAT settled.', 'تمت تسوية الضريبة.') : 'OK'));
+                if (window.loadVatReport) loadVatReport();
               } else {
                 if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
               }

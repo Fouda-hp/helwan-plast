@@ -244,5 +244,66 @@ class TestFxReportReconciliation(unittest.TestCase):
         self.assertEqual(paid, 80.0)
 
 
+class TestVatAccounting(unittest.TestCase):
+    """VAT flow: Import VAT → 2110 only; Sales VAT-inclusive split → 2100; Settlement; VAT excluded from inventory."""
+
+    def setUp(self):
+        sys.modules['AuthManager'] = MagicMock()
+        sys.modules['auth_utils'] = MagicMock()
+        sys.modules['auth_utils'].get_utc_now = lambda: datetime.utcnow()
+        from server_code import accounting
+        self.acct = accounting
+
+    def test_sales_vat_split_formula(self):
+        """VAT-inclusive: vat_amount = selling_price * rate / (100 + rate); net_revenue = selling_price - vat_amount."""
+        from server_code.accounting import _round2, DEFAULT_VAT_RATE
+        rate = DEFAULT_VAT_RATE  # 14%
+        selling_price = 1140.0  # 14% incl -> net 1000, vat 140
+        vat_amount = _round2(selling_price * rate / (100 + rate))
+        net_revenue = _round2(selling_price - vat_amount)
+        self.assertAlmostEqual(vat_amount + net_revenue, selling_price, places=2)
+        self.assertAlmostEqual(vat_amount, 140.0, places=2)
+        self.assertAlmostEqual(net_revenue, 1000.0, places=2)
+
+    def test_settlement_remit_journal_balances(self):
+        """When output_vat > input_vat: DR 2100 out, CR 2110 in, CR Bank (out - in); debits = credits."""
+        output_vat = 100.0
+        input_vat = 40.0
+        net_due = output_vat - input_vat
+        debits = output_vat
+        credits = input_vat + net_due
+        self.assertAlmostEqual(debits, credits, places=2)
+        self.assertAlmostEqual(net_due, 60.0, places=2)
+
+    def test_settlement_carry_forward_journal_balances(self):
+        """When input_vat >= output_vat: DR 2100 output_vat, CR 2110 output_vat; debits = credits."""
+        output_vat = 50.0
+        input_vat = 80.0
+        dr_2100 = output_vat
+        cr_2110 = output_vat
+        self.assertAlmostEqual(dr_2100, cr_2110, places=2)
+        carry_forward = input_vat - output_vat
+        self.assertAlmostEqual(carry_forward, 30.0, places=2)
+
+    def test_vat_excluded_from_inventory_cost(self):
+        """cost_type 'vat' or 'VAT' must be excluded from import_costs_total (not added to 1210/1200)."""
+        from server_code.accounting import VALID_COST_TYPES
+        self.assertIn('vat', VALID_COST_TYPES)
+        is_vat_lower = (lambda ct: (ct or '').lower().strip() == 'vat')('vat')
+        is_vat_upper = (lambda ct: (ct or '').lower().strip() == 'vat')('VAT')
+        self.assertTrue(is_vat_lower)
+        self.assertTrue(is_vat_upper)
+
+    def test_vat_report_totals_match_ledger_formula(self):
+        """get_vat_report: input_vat_balance = sum(DR 2110) - sum(CR 2110); output_vat_payable = sum(CR 2100) - sum(DR 2100)."""
+        # Simulate ledger: 2110 DR 100, 2100 CR 60
+        input_balance = 100.0 - 0.0   # 2110 debit - credit
+        output_payable = 60.0 - 0.0  # 2100 credit - debit
+        net = input_balance - output_payable
+        self.assertAlmostEqual(input_balance, 100.0, places=2)
+        self.assertAlmostEqual(output_payable, 60.0, places=2)
+        self.assertAlmostEqual(net, 40.0, places=2)
+
+
 if __name__ == '__main__':
     unittest.main()

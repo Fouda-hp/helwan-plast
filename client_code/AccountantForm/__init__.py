@@ -101,6 +101,8 @@ class AccountantForm(AccountantFormTemplate):
         anvil.js.window.pyGetOpeningBalances = self.get_opening_balances
         anvil.js.window.pySetOpeningBalance = self.set_opening_balance
         anvil.js.window.pyGetCashBankStatement = self.get_cash_bank_statement
+        anvil.js.window.pyGetVatReport = self.get_vat_report
+        anvil.js.window.pySettleVatForPeriod = self.settle_vat_for_period
 
         register_notif_bridges()
         self.add_event_handler('show', self._on_show)
@@ -227,6 +229,18 @@ class AccountantForm(AccountantFormTemplate):
         """كشف حساب النقدية والبنك — كل الحركات بالمبالغ والتواريخ."""
         return anvil.server.call(
             'get_cash_bank_statement', account_code, date_from, date_to, self._auth()
+        )
+
+    def get_vat_report(self, as_of_date=None, date_from=None, date_to=None):
+        """تقرير الضريبة: ليك (2110) وعليك (2100) والرصيد الصافي."""
+        return anvil.server.call(
+            'get_vat_report', as_of_date, date_from, date_to, self._auth()
+        )
+
+    def settle_vat_for_period(self, date_from, date_to, settlement_account=None):
+        """تسوية الضريبة لفترة (يدوي). يلتزم بقفل الفترة."""
+        return anvil.server.call(
+            'settle_vat_for_period', date_from, date_to, settlement_account, self._auth()
         )
 
     # --- Navigation ---

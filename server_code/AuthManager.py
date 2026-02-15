@@ -1,3 +1,12 @@
+# Workaround: posixpath has no getcwd (it lives on os). Some environments call posixpath.getcwd().
+try:
+    import os
+    import posixpath
+    if not hasattr(posixpath, 'getcwd'):
+        posixpath.getcwd = os.getcwd
+except Exception:
+    pass
+
 import anvil.users
 # anvil.files not needed for auth; removed to avoid posixpath.getcwd() errors in some environments
 """

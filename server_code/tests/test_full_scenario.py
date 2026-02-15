@@ -259,10 +259,10 @@ class TestFullScenario(unittest.TestCase):
         print("   Reports aggregate debit/credit directly (single currency)")
 
     # ================================================================
-    # 3) 1200 vs 1210 usage
+    # 3) 1200 vs 1210 usage (Transit Inventory Model)
     # ================================================================
     def test_03_inventory_account_usage(self):
-        """Verify 1210 exists but is NOT used in postings."""
+        """Verify Transit Model: post/contract use 1210; move uses 1200/1210; add_import_cost uses 1210 or 1200; sell uses 1200."""
         codes = [a[0] for a in accounting.DEFAULT_ACCOUNTS]
         self.assertIn('1210', codes)
         self.assertIn('1200', codes)
@@ -272,37 +272,41 @@ class TestFullScenario(unittest.TestCase):
         with open(src_path, 'r', encoding='utf-8') as f:
             source = f.read()
 
-        # create_contract_purchase uses 1200
-        # Find the function and check it
         import re
+        # create_contract_purchase uses 1210 (Transit model)
         ccp_match = re.search(r'def create_contract_purchase\(.*?\n(?=\n@|\ndef )', source, re.DOTALL)
         self.assertIsNotNone(ccp_match, "create_contract_purchase not found")
         ccp_src = ccp_match.group(0)
-        self.assertIn("'1200'", ccp_src, "create_contract_purchase should use 1200")
-        self.assertNotIn("'1210'", ccp_src, "create_contract_purchase should NOT use 1210")
+        self.assertIn("'1210'", ccp_src, "create_contract_purchase should use 1210 (Transit model)")
+        self.assertIn("'2000'", ccp_src)
 
-        # add_import_cost uses 1200
+        # add_import_cost uses 1210 or 1200 (debit_account by inventory_moved)
         aic_match = re.search(r'def add_import_cost\(.*?\n(?=\n@|\ndef )', source, re.DOTALL)
         self.assertIsNotNone(aic_match, "add_import_cost not found")
         aic_src = aic_match.group(0)
-        self.assertIn("inventory_account = '1200'", aic_src)
-        self.assertNotIn("'1210'", aic_src)
+        self.assertIn("'1210'", aic_src)
+        self.assertIn("'1200'", aic_src)
+        self.assertIn("debit_account", aic_src)
 
-        # sell_inventory uses 1200
+        # sell_inventory: COGS side uses 1200 only
         si_match = re.search(r'def sell_inventory\(.*?\n(?=\n@|\ndef )', source, re.DOTALL)
         self.assertIsNotNone(si_match, "sell_inventory not found")
         si_src = si_match.group(0)
         self.assertIn("'1200'", si_src)
-        self.assertNotIn("'1210'", si_src)
+        self.assertTrue("inventory_moved" in si_src or "1210" in si_src, "sell_inventory should validate transit/move")
 
-        print("\n[PASS] 3) Inventory account usage:")
-        print("   - 1200 (Inventory): Used for ALL postings")
-        print("     * create_contract_purchase: DR 1200, CR 2000")
-        print("     * add_import_cost: DR 1200, CR Cash/Bank")
+        # move_purchase_to_inventory exists
+        self.assertIn("def move_purchase_to_inventory(", source)
+
+        print("\n[PASS] 3) Inventory account usage (Transit Model):")
+        print("   - 1210 (Inventory in Transit): Post invoice, import costs before arrival")
+        print("     * post_purchase_invoice: DR 1210, CR 2000")
+        print("     * create_contract_purchase: DR 1210, CR 2000")
+        print("     * add_import_cost (in_transit): DR 1210, CR Cash/Bank")
+        print("   - move_purchase_to_inventory: DR 1200, CR 1210")
+        print("   - 1200 (Inventory): After move; import costs after arrival; COGS")
+        print("     * add_import_cost (received): DR 1200, CR Cash/Bank")
         print("     * sell_inventory: DR 5000, CR 1200")
-        print("   - 1210 (Purchase in Transit): Defined in chart of accounts ONLY")
-        print("     * Available for future manual journal entries")
-        print("     * NOT used by any automated posting function")
 
     # ================================================================
     # 4) Full scenario with actual numbers
@@ -317,12 +321,12 @@ class TestFullScenario(unittest.TestCase):
         # STEP 1: Create Contract Purchase (FOB 60,000)
         print("\n--- STEP 1: Create Contract Purchase (FOB 60,000) ---")
         result = accounting.create_contract_purchase(
-            'C - Q2026-001 / 1 - 2026', 60000.00, 0.00, 'SUP-001', 'USD', 'test@helwan.com')
+            'C - Q2026-001 / 1 - 2026', 60000.00, 0.00, 'SUP-001', 'USD', 'test@helwan.com', exchange_rate=1.0)
         self.assertTrue(result['success'], f"create_contract_purchase failed: {result}")
         invoice_id = result['invoice_id']
         inventory_id = result['inventory_id']
-        print(f"   Invoice: {result['invoice_number']}, Total: {result['total']:,.2f}")
-        print(f"   Journal: DR 1200 Inventory 60,000 / CR 2000 AP 60,000")
+        print(f"   Invoice: {result['invoice_number']}, Total (EGP): {result.get('total_egp', result.get('total', 0)):,.2f}")
+        print(f"   Journal: DR 1210 Inventory in Transit 60,000 / CR 2000 AP 60,000")
 
         inv_item = tables['inventory'].get(id=inventory_id)
         self.assertEqual(inv_item.get('status'), 'in_transit')
@@ -337,7 +341,7 @@ class TestFullScenario(unittest.TestCase):
             invoice_id, 'shipping', 5000.00, 'Ocean freight Shanghai-Alexandria',
             '2026-02-10', 'cash', None, 'test@helwan.com')
         self.assertTrue(result['success'], f"add_import_cost shipping failed: {result}")
-        print(f"   Journal: DR 1200 Inventory 5,000 / CR 1000 Cash 5,000")
+        print(f"   Journal: DR 1210 Inventory in Transit 5,000 / CR 1000 Cash 5,000")
         inv_item = tables['inventory'].get(id=inventory_id)
         self.assertEqual(inv_item.get('import_costs_total'), 5000.00)
         self.assertEqual(inv_item.get('total_cost'), 65000.00)
@@ -351,7 +355,7 @@ class TestFullScenario(unittest.TestCase):
             invoice_id, 'customs', 3000.00, 'Customs clearance fees',
             '2026-02-11', 'nbe', None, 'test@helwan.com')
         self.assertTrue(result['success'], f"add_import_cost customs failed: {result}")
-        print(f"   Journal: DR 1200 Inventory 3,000 / CR 1012 NBE 3,000")
+        print(f"   Journal: DR 1210 Inventory in Transit 3,000 / CR 1012 NBE 3,000")
         inv_item = tables['inventory'].get(id=inventory_id)
         self.assertEqual(inv_item.get('import_costs_total'), 8000.00)
         self.assertEqual(inv_item.get('total_cost'), 68000.00)
@@ -370,17 +374,23 @@ class TestFullScenario(unittest.TestCase):
         print(f"   Invoice status: {result['status']}, paid: {result['paid_amount']:,.2f}")
         self._print_ledger("After Step 4")
 
-        # STEP 5: Receive Inventory (no journal entry)
-        print("\n--- STEP 5: Receive Inventory (in_transit -> in_stock) ---")
+        # STEP 5a: Move purchase to inventory (Transit model: 1210 -> 1200)
+        print("\n--- STEP 5a: Move to inventory (DR 1200, CR 1210 = 68,000) ---")
+        result = accounting.move_purchase_to_inventory(invoice_id, 'test@helwan.com')
+        self.assertTrue(result['success'], f"move_purchase_to_inventory failed: {result}")
+        self.assertEqual(result.get('total_transit_cost'), 68000.00)
+        print(f"   Journal: DR 1200 Inventory 68,000 / CR 1210 Inventory in Transit 68,000")
+        print(f"   total_transit_cost: {result.get('total_transit_cost'):,.2f}")
+
+        # STEP 5b: Receive Inventory item status (no journal entry)
+        print("\n--- STEP 5b: Receive Inventory (in_transit -> in_stock) ---")
         ledger_before = len(tables['ledger']._rows)
         result = accounting.receive_inventory(inventory_id, 'Alexandria Warehouse', 'test@helwan.com')
         self.assertTrue(result['success'], f"receive_inventory failed: {result}")
         self.assertEqual(result['status'], 'in_stock')
         ledger_after = len(tables['ledger']._rows)
         self.assertEqual(ledger_before, ledger_after, "receive should NOT create ledger entries")
-        print(f"   Status: in_transit -> in_stock")
-        print(f"   NO journal entry (no P&L impact)")
-        print(f"   Ledger entries unchanged: {ledger_after}")
+        print(f"   Status: in_transit -> in_stock (no P&L impact)")
 
         # STEP 6: Sell at 90,000
         print("\n--- STEP 6: Sell at 90,000 ---")

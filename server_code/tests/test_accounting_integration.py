@@ -190,15 +190,16 @@ class TestAccountingFlowDocumentation(unittest.TestCase):
 
     def test_contract_purchase_entries(self):
         """
-        When contract is created with FOB + Cylinder costs:
-          DR 1200 Inventory     (FOB + Cylinders)
-          CR 2000 Accounts Payable  (FOB + Cylinders)
+        When contract is created with FOB + Cylinder costs (Transit model):
+          DR 1210 Inventory in Transit  (FOB + Cylinders)
+          CR 2000 Accounts Payable     (FOB + Cylinders)
+        Later: move_purchase_to_inventory moves 1210 → 1200.
         """
         fob = 50000.00
         cylinders = 10000.00
         total = fob + cylinders
         entries = [
-            {'account_code': '1200', 'debit': total, 'credit': 0},
+            {'account_code': '1210', 'debit': total, 'credit': 0},
             {'account_code': '2000', 'debit': 0, 'credit': total},
         ]
         self.assertEqual(sum(e['debit'] for e in entries), sum(e['credit'] for e in entries))
@@ -218,16 +219,17 @@ class TestAccountingFlowDocumentation(unittest.TestCase):
 
     def test_import_cost_entries(self):
         """
-        When adding import cost (shipping, customs, etc.):
-          DR 1200 Inventory     (cost amount) — increases landed cost
-          CR 1000/1011/etc.     (cost amount) — reduces cash/bank
+        When adding import cost (Transit model):
+          If not yet received: DR 1210 Inventory in Transit, CR Bank/Cash.
+          If already received (inventory_moved): DR 1200 Inventory, CR Bank/Cash.
         NOT DR 5100 (expense) — import costs are capitalized!
         """
         amount = 5000.00
-        entries = [
-            {'account_code': '1200', 'debit': amount, 'credit': 0},
+        entries_in_transit = [
+            {'account_code': '1210', 'debit': amount, 'credit': 0},
             {'account_code': '1000', 'debit': 0, 'credit': amount},
         ]
+        entries = entries_in_transit
         self.assertEqual(sum(e['debit'] for e in entries), sum(e['credit'] for e in entries))
         # Verify NOT debiting expense
         for e in entries:

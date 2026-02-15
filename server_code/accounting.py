@@ -131,7 +131,7 @@ DEFAULT_ACCOUNTS = [
     ('1013', 'Bank - QNB',         'بنك QNB',          'asset',    '1010'),
     ('1100', 'Accounts Receivable','ذمم مدينة',         'asset',    None),
     ('1200', 'Inventory',          'المخزون',           'asset',    None),
-    ('1210', 'Purchase in Transit','مشتريات في الطريق', 'asset',    '1200'),
+    ('1210', 'Inventory in Transit', 'مخزون في الطريق', 'asset',    '1200'),
     # Liabilities
     ('2000', 'Accounts Payable',   'ذمم دائنة',         'liability', None),
     ('2100', 'VAT Payable',         'ضريبة مخرجات مستحقة', 'liability', None),   # Output VAT (sales)
@@ -315,7 +315,11 @@ def seed_default_accounts(token_or_email=None):
 # create_contract_purchase: USD->EGP at entry; posts EGP only.
 # sell_inventory: total_cost & selling_price assumed EGP; balanced.
 # add_expense: Optional currency; converted to EGP before post.
-# Account 5100 (Import Costs): DEPRECATED for new posting; import costs post to 1200 only.
+# Account 5100 (Import Costs): DEPRECATED for new posting; import costs post to 1200 or 1210.
+# TRANSIT MODEL: New post_purchase_invoice posts to 1210 (Inventory in Transit). When received,
+# move_purchase_to_inventory moves 1210 → 1200. import costs: DR 1210 if not received, DR 1200 if received.
+# purchase_invoices table: add column inventory_moved (boolean, default False). False = in transit, True = moved to inventory.
+# Legacy: Invoices already posted to 1200 are NOT auto-migrated; they remain as-is. Only new postings use 1210.
 # ===========================================================================
 
 # ===========================================================================
@@ -956,10 +960,11 @@ def post_purchase_invoice(invoice_id, token_or_email=None):
     """
     Post a draft purchase invoice: only the supplier (machine) portion goes to AP.
     All amounts are converted to EGP before posting (ledger is EGP-only).
-    Import costs are posted separately when added (add_import_cost → DR 1200, CR Bank/Cash).
-    DR Inventory (1200) — supplier cost (total minus import costs minus tax) in EGP
-    CR Accounts Payable (2000) — supplier amount only in EGP
-    If tax (VAT input): DR 2110 VAT Input Recoverable — tax_amount in EGP
+    Transit model: machine not yet received → DR 1210 (Inventory in Transit), not 1200.
+    Import costs are posted separately (add_import_cost → DR 1210 or 1200 per inventory_moved).
+    DR 1210 Inventory in Transit — supplier cost (total minus import costs minus tax) in EGP
+    DR 2110 VAT Input Recoverable — tax_amount in EGP (if exists)
+    CR 2000 Accounts Payable — supplier_amount_egp (unchanged).
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
@@ -1033,8 +1038,8 @@ def post_purchase_invoice(invoice_id, token_or_email=None):
         _ensure_vat_accounts()
         if not _validate_account_exists('2110'):
             return {'success': False, 'message': 'Account 2110 (VAT Input Recoverable) not found. Run seed_default_accounts or add it.'}
-        if not _validate_account_exists('1200'):
-            return {'success': False, 'message': 'Account 1200 (Inventory) not found.'}
+        if not _validate_account_exists('1210'):
+            return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found. Run seed_default_accounts or add it.'}
         if not _validate_account_exists('2000'):
             return {'success': False, 'message': 'Account 2000 (Accounts Payable) not found.'}
 
@@ -1047,7 +1052,7 @@ def post_purchase_invoice(invoice_id, token_or_email=None):
 
         cost_to_inventory_egp = _round2(supplier_amount_egp - tax_egp)
         if cost_to_inventory_egp > 0:
-            entries.append({'account_code': '1200', 'debit': cost_to_inventory_egp, 'credit': 0})
+            entries.append({'account_code': '1210', 'debit': cost_to_inventory_egp, 'credit': 0})
         if tax_egp > 0:
             entries.append({'account_code': '2110', 'debit': tax_egp, 'credit': 0})
         entries.append({'account_code': '2000', 'debit': 0, 'credit': supplier_amount_egp})
@@ -1070,12 +1075,101 @@ def post_purchase_invoice(invoice_id, token_or_email=None):
                 row.update(status='posted', updated_at=update_data['updated_at'])
             else:
                 raise
-        logger.info("Purchase invoice %s posted (EGP) by %s", inv_number, user_email)
+        # inventory_moved: optional column (default False). Do not set here; legacy invoices have no column.
+        try:
+            row.update(inventory_moved=False)
+        except Exception:
+            pass
+        logger.info("Purchase invoice %s posted (EGP) to 1210 by %s", inv_number, user_email)
         return {'success': True, 'transaction_id': result['transaction_id']}
     except ValueError as ve:
         return {'success': False, 'message': str(ve)}
     except Exception as e:
         logger.exception("post_purchase_invoice error")
+        return {'success': False, 'message': str(e)}
+
+
+def _sum_1210_balance_for_invoice(invoice_id):
+    """
+    Sum (debit - credit) on account 1210 for this purchase invoice = net transit balance.
+    Uses balance per entry (not debit only) so reversals/adjustments are correct.
+    Includes:
+    - post_purchase_invoice: reference_type=purchase_invoice, reference_id=invoice_id
+    - add_import_cost: reference_type=import_cost, reference_id=invoice_id (so included in first loop)
+    - pay_import_cost: reference_type=import_cost_payment, reference_id=cost_id (per-cost loop)
+    """
+    total = 0.0
+    # All 1210 entries with reference_id=invoice_id (purchase_invoice post + import_cost entries)
+    for entry in app_tables.ledger.search(account_code='1210', reference_id=invoice_id):
+        total += _round2(entry.get('debit', 0)) - _round2(entry.get('credit', 0))
+    # pay_import_cost uses reference_id=cost_id; include those for this invoice's costs
+    for ic in app_tables.import_costs.search(purchase_invoice_id=invoice_id):
+        cost_id = ic.get('id')
+        if not cost_id:
+            continue
+        for entry in app_tables.ledger.search(account_code='1210', reference_type='import_cost_payment', reference_id=cost_id):
+            total += _round2(entry.get('debit', 0)) - _round2(entry.get('credit', 0))
+    return _round2(total)
+
+
+@anvil.server.callable
+def move_purchase_to_inventory(invoice_id, token_or_email=None):
+    """
+    Move a posted purchase from 1210 (Inventory in Transit) to 1200 (Inventory).
+    Validates: invoice status is posted, inventory_moved is False.
+    total_transit_cost = sum(debit - credit) on 1210 for this invoice (purchase_invoice + import_cost + import_cost_payment refs).
+    Posts: DR 1200 = total_transit_cost, CR 1210 = total_transit_cost.
+    Sets purchase_invoices.inventory_moved = True.
+    Idempotent: second call returns error (invoice already moved); no duplicate journal entries possible.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+    try:
+        row = app_tables.purchase_invoices.get(id=invoice_id)
+        if not row:
+            return {'success': False, 'message': 'Purchase invoice not found'}
+        if row.get('status') != 'posted':
+            return {'success': False, 'message': f"Invoice must be posted. Current status: '{row.get('status')}'."}
+        # Idempotency: second call must return error; no duplicate JEs
+        if row.get('inventory_moved'):
+            return {'success': False, 'message': 'Invoice already moved to inventory. Duplicate move is not allowed.'}
+
+        total_transit_cost = _sum_1210_balance_for_invoice(invoice_id)
+        if total_transit_cost <= 0:
+            return {'success': False, 'message': 'No transit balance (1210) found for this invoice. Cannot move.'}
+
+        if not _validate_account_exists('1200'):
+            return {'success': False, 'message': 'Account 1200 (Inventory) not found.'}
+        if not _validate_account_exists('1210'):
+            return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found.'}
+
+        inv_date = row.get('date') or date.today()
+        inv_number = row.get('invoice_number', invoice_id)
+        entries = [
+            {'account_code': '1200', 'debit': total_transit_cost, 'credit': 0},
+            {'account_code': '1210', 'debit': 0, 'credit': total_transit_cost},
+        ]
+        result = post_journal_entry(
+            inv_date, entries,
+            f"Move to inventory: {inv_number} (transit → stock)",
+            'purchase_invoice', invoice_id, user_email,
+        )
+        if not result.get('success'):
+            return result
+
+        try:
+            row.update(inventory_moved=True, updated_at=get_utc_now())
+        except Exception as col_err:
+            if 'inventory_moved' in str(col_err):
+                logger.warning("purchase_invoices.inventory_moved column missing: %s", col_err)
+            else:
+                raise
+
+        logger.info("Purchase invoice %s moved to inventory (1200) by %s, amount %.2f EGP", inv_number, user_email, total_transit_cost)
+        return {'success': True, 'transaction_id': result['transaction_id'], 'total_transit_cost': total_transit_cost}
+    except Exception as e:
+        logger.exception("move_purchase_to_inventory error")
         return {'success': False, 'message': str(e)}
 
 
@@ -1087,7 +1181,7 @@ def create_contract_purchase(contract_number, fob_cost, cylinder_cost, supplier_
     When a contract is created with pricing mode "New Order", call this to:
     1) Convert FOB costs (USD) to EGP using the quotation's exchange rate
     2) Create a Purchase Invoice with separate Machine & Cylinder line items
-    3) Post journal: DR Inventory (1200), CR Accounts Payable (2000)  — in EGP
+    3) Post journal: DR 1210 (Inventory in Transit), CR Accounts Payable (2000) — in EGP
     4) Create inventory item linked to the contract
     5) Link purchase invoice back to the contract
 
@@ -1193,9 +1287,16 @@ def create_contract_purchase(contract_number, fob_cost, cylinder_cost, supplier_
                 pass
             return {'success': False, 'message': 'Duplicate posting not allowed.'}
 
-        # Post the invoice immediately (DR Inventory, CR AP) — in EGP; CR 2000 = supplier_amount_egp
+        # Post the invoice immediately: Transit model — DR 1210 (Inventory in Transit), CR 2000
+        if not _validate_account_exists('1210'):
+            _unregister_posted_purchase_invoice(inv_id)
+            try:
+                app_tables.purchase_invoices.get(id=inv_id).delete()
+            except Exception:
+                pass
+            return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found. Run seed_default_accounts.'}
         entries = [
-            {'account_code': '1200', 'debit': subtotal_egp, 'credit': 0},
+            {'account_code': '1210', 'debit': subtotal_egp, 'credit': 0},
             {'account_code': '2000', 'debit': 0, 'credit': subtotal_egp},
         ]
         je_result = post_journal_entry(
@@ -1224,6 +1325,10 @@ def create_contract_purchase(contract_number, fob_cost, cylinder_cost, supplier_
                     inv_row.update(status='posted', updated_at=update_data['updated_at'])
                 else:
                     raise
+            try:
+                inv_row.update(inventory_moved=False)
+            except Exception:
+                pass
 
         # Create inventory item linked to this purchase — starts as in_transit
         inv_item_id = _uuid()
@@ -1611,9 +1716,9 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
                     inventory_id=None, cost_type_id=None, original_amount=None, payment_account=None):
     """
     Add an import cost attached to an inventory item (machine). EGP-only ledger.
-    DR 1200 Inventory (amount_egp), CR payment_account (amount_egp).
-    Recalculates landed cost: total_cost_egp = purchase_cost_egp + SUM(import_costs.amount_egp).
-
+    Transit model: if invoice.inventory_moved is False → DR 1210 (Inventory in Transit), CR payment_account.
+    If invoice.inventory_moved is True → DR 1200 (Inventory), CR payment_account.
+    Never post import cost to 2000. Recalculates landed cost on inventory row.
     Legacy (positional): add_import_cost(purchase_invoice_id, cost_type, amount, description=..., ...).
     New (keywords): inventory_id, cost_type_id, description, original_amount, payment_account.
     """
@@ -1690,21 +1795,32 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
             credit_account = _resolve_payment_account(payment_method)
         if not _validate_account_exists(credit_account):
             return {'success': False, 'message': f'Payment account {credit_account} not found or inactive'}
-        if not _validate_account_exists('1200'):
-            return {'success': False, 'message': 'Inventory account 1200 not found or inactive'}
+
+        # Transit model: DR 1210 if not yet received, DR 1200 if already moved to inventory
+        inv_row = app_tables.purchase_invoices.get(id=pi_id) if pi_id else None
+        inventory_moved = bool(inv_row and inv_row.get('inventory_moved'))
+        if inventory_moved:
+            if not _validate_account_exists('1200'):
+                return {'success': False, 'message': 'Account 1200 (Inventory) not found or inactive'}
+            debit_account = '1200'
+        else:
+            if not _validate_account_exists('1210'):
+                return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found or inactive'}
+            debit_account = '1210'
 
         parsed_date = _safe_date(cost_date) or date.today()
         cost_id = _uuid()
         desc_text = _safe_str(description) or f"Import cost ({cost_type_name})"
 
         entries = [
-            {'account_code': '1200', 'debit': amount_egp, 'credit': 0},
+            {'account_code': debit_account, 'debit': amount_egp, 'credit': 0},
             {'account_code': credit_account, 'debit': 0, 'credit': amount_egp},
         ]
+        # reference_id=invoice_id so move_purchase_to_inventory can sum 1210 by invoice in one place
         je_result = post_journal_entry(
             parsed_date, entries,
             f"Import cost ({cost_type_name}): {desc_text}",
-            'import_cost', cost_id, user_email,
+            'import_cost', pi_id, user_email,
         )
         if not je_result.get('success'):
             return je_result
@@ -1756,7 +1872,7 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
 
         _update_inventory_import_totals(inventory_id=inv_id, purchase_invoice_id=pi_id)
 
-        logger.info("Import cost %s (%.2f EGP) added by %s [DR 1200, CR %s]", cost_type_name, amount_egp, user_email, credit_account)
+        logger.info("Import cost %s (%.2f EGP) added by %s [DR %s, CR %s]", cost_type_name, amount_egp, user_email, debit_account, credit_account)
         return {'success': True, 'id': cost_id, 'transaction_id': je_result['transaction_id'], 'amount_egp': amount_egp}
     except ValueError as ve:
         return {'success': False, 'message': str(ve)}
@@ -1846,7 +1962,7 @@ def get_import_costs_for_payment(purchase_invoice_id, token_or_email=None):
 @anvil.server.callable
 def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, token_or_email=None):
     """
-    Pay (part or all) of an import cost. Posts DR 1200 (Inventory), CR cash/bank.
+    Pay (part or all) of an import cost. Transit model: DR 1210 if invoice not yet received, DR 1200 if received. CR cash/bank.
     amount_egp: amount in EGP to pay (partial or full).
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
@@ -1877,12 +1993,23 @@ def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, to
         credit_account = _resolve_payment_account(payment_method)
         if not _validate_account_exists(credit_account):
             return {'success': False, 'message': f'Payment account {credit_account} not found or inactive'}
-        if not _validate_account_exists('1200'):
-            return {'success': False, 'message': 'Account 1200 (Inventory) not found'}
+
+        pi_id = row.get('purchase_invoice_id')
+        inv_row = app_tables.purchase_invoices.get(id=pi_id) if pi_id else None
+        inventory_moved = bool(inv_row and inv_row.get('inventory_moved'))
+        if inventory_moved:
+            if not _validate_account_exists('1200'):
+                return {'success': False, 'message': 'Account 1200 (Inventory) not found'}
+            debit_account = '1200'
+        else:
+            if not _validate_account_exists('1210'):
+                return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found'}
+            debit_account = '1210'
+
         cost_type_name = row.get('cost_type', 'import cost')
         desc = f"Import cost payment ({cost_type_name}): {_safe_str(row.get('description', ''))}"
         entries = [
-            {'account_code': '1200', 'debit': amount_egp, 'credit': 0},
+            {'account_code': debit_account, 'debit': amount_egp, 'credit': 0},
             {'account_code': credit_account, 'debit': 0, 'credit': amount_egp},
         ]
         je_result = post_journal_entry(
@@ -1896,7 +2023,7 @@ def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, to
         except Exception as upd_err:
             logger.warning("Could not update import_costs.paid_amount: %s", upd_err)
         _update_inventory_import_totals(purchase_invoice_id=row.get('purchase_invoice_id'))
-        logger.info("Import cost %s paid %.2f EGP by %s [CR %s]", import_cost_id, amount_egp, user_email, credit_account)
+        logger.info("Import cost %s paid %.2f EGP by %s [DR %s, CR %s]", import_cost_id, amount_egp, user_email, debit_account, credit_account)
         return {'success': True, 'transaction_id': je_result.get('transaction_id'), 'paid_amount': new_paid}
     except Exception as e:
         logger.exception("pay_import_cost error")
@@ -2524,6 +2651,15 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
         if row.get('status') == 'in_transit':
             return {'success': False, 'message': 'Item is still in transit. Receive it first before selling.'}
 
+        # Transit model: COGS comes from 1200 only. Sale allowed only after move to inventory.
+        pi_id = row.get('purchase_invoice_id')
+        if pi_id:
+            inv_row = app_tables.purchase_invoices.get(id=pi_id)
+            if inv_row and not inv_row.get('inventory_moved'):
+                transit_balance = _sum_1210_balance_for_invoice(pi_id)
+                if transit_balance > 0:
+                    return {'success': False, 'message': 'Machine not yet received into inventory.'}
+
         # Landed cost = purchase_cost + import_costs_total (both EGP)
         total_cost = _round2(row.get('total_cost', 0))
         sale_day = _safe_date(sale_date) or date.today()
@@ -3063,10 +3199,33 @@ def delete_inventory_item(item_id, token_or_email=None):
 
 
 @anvil.server.callable
+def get_transit_balance(token_or_email=None):
+    """
+    Reporting: total balance of account 1210 (Inventory in Transit).
+    Sum of debits minus sum of credits. Represents cost of machines not yet received into inventory.
+    Supplier balance remains ledger-based from 2000 only. Landed cost = supplier_amount_egp + import_costs.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        debits = 0.0
+        credits = 0.0
+        for entry in app_tables.ledger.search(account_code='1210'):
+            debits += _round2(entry.get('debit', 0))
+            credits += _round2(entry.get('credit', 0))
+        balance = _round2(debits - credits)
+        return {'success': True, 'transit_balance_egp': balance}
+    except Exception as e:
+        logger.exception("get_transit_balance error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
 def get_landed_cost(purchase_invoice_id=None, contract_number=None, token_or_email=None):
     """
     Calculate landed cost for a specific purchase invoice or contract.
-    Landed Cost = FOB + Cylinders + All Import Expenses
+    Landed Cost = supplier_amount_egp (or FOB+Cylinders in EGP) + All Import Costs (EGP).
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'read')
     if not is_valid:

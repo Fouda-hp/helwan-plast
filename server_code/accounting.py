@@ -3106,34 +3106,34 @@ def link_inventory_to_contract(item_id, contract_number, selling_price, token_or
 
 def _get_all_balances(as_of_date=None, date_from=None):
     """
-    Internal helper: compute balances for all accounts (used by balance sheet and trial balance).
+    Compute balances for all accounts from ledger (balance sheet and trial balance).
     If date_from is given, only entries between date_from and as_of_date are included.
     If only as_of_date is given, all entries up to as_of_date are included.
     Returns dict: {account_code: {'total_debit', 'total_credit', 'balance', 'type', ...}}.
 
-    Natural balance type per category (sign convention for balance):
-    - ASSET / expense: balance = (debit - credit). Positive = debit balance (normal for assets).
-    - LIABILITY / equity / revenue: balance = (credit - debit). Positive = credit balance (normal).
-    Balance sheet presentation may further normalize (e.g. show asset overdraft as liability).
+    Natural balance (strict):
+    - ASSET / expense: natural_balance = total_debit - total_credit. Overdraft only if < 0.
+    - LIABILITY / equity / revenue: natural_balance = total_credit - total_debit.
     """
     cutoff = _safe_date(as_of_date)
     start = _safe_date(date_from)
     accounts = {}
 
-    # Load chart of accounts
+    # Load chart of accounts; normalize account_type to lowercase for consistent balance sign
     for acct in app_tables.chart_of_accounts.search(is_active=True):
         code = acct.get('code')
+        raw_type = (acct.get('account_type') or '').strip()
         accounts[code] = {
             'code': code,
             'name_en': acct.get('name_en', ''),
             'name_ar': acct.get('name_ar', ''),
-            'type': acct.get('account_type', ''),
+            'type': raw_type.lower() if raw_type else '',
             'total_debit': 0.0,
             'total_credit': 0.0,
             'balance': 0.0,
         }
 
-    # Sum ledger entries (iterate, don't load all into memory)
+    # Aggregate from ledger: sum(debit) and sum(credit) per account within date range
     try:
         for entry in app_tables.ledger.search():
             code = entry.get('account_code')
@@ -3146,12 +3146,14 @@ def _get_all_balances(as_of_date=None, date_from=None):
                 continue
             if start and row_date and row_date < start:
                 continue
-            accounts[code]['total_debit'] += _round2(entry.get('debit', 0))
-            accounts[code]['total_credit'] += _round2(entry.get('credit', 0))
+            d_val = _round2(entry.get('debit', 0))
+            c_val = _round2(entry.get('credit', 0))
+            accounts[code]['total_debit'] += d_val
+            accounts[code]['total_credit'] += c_val
     except Exception as e:
         logger.warning("_get_all_balances ledger scan error: %s", e)
 
-    # Calculate balances based on account type
+    # Natural balance by category: assets/expenses = debit - credit; rest = credit - debit
     for code, info in accounts.items():
         d = info['total_debit']
         c = info['total_credit']
@@ -3186,12 +3188,14 @@ def get_trial_balance(date_from=None, date_to=None, token_or_email=None):
             if info['total_debit'] == 0 and info['total_credit'] == 0:
                 continue  # Skip zero-activity accounts
             bal = info['balance']
-            # In trial balance, show debit/credit balance columns
+            if bal == 0:
+                continue  # Do not show as debit or credit when natural balance is zero
+            # Trial balance: one column debit, one column credit (never both)
             if info['type'] in ('asset', 'expense'):
-                tb_debit = bal if bal >= 0 else 0
+                tb_debit = bal if bal > 0 else 0
                 tb_credit = abs(bal) if bal < 0 else 0
             else:
-                tb_credit = bal if bal >= 0 else 0
+                tb_credit = bal if bal > 0 else 0
                 tb_debit = abs(bal) if bal < 0 else 0
 
             rows.append({

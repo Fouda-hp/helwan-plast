@@ -1415,7 +1415,8 @@ container:
                   a.click();
                 } else if ((format === 'pdf' || format === 'excel') && typeof res.content === 'string' && res.content.length > 0) {
                   try {
-                    var bin = atob(res.content);
+                    var b64 = res.content.replace(/\s/g, '');
+                    var bin = atob(b64);
                     var arr = new Uint8Array(bin.length);
                     for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
                     var mime = format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';

@@ -3914,11 +3914,8 @@ def export_report(report_name, filters, format='csv', token_or_email=None):
             wb.save(buf)
             buf.seek(0)
             blob = buf.getvalue()
-            try:
-                content = anvil.BlobMedia('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', blob)
-            except AttributeError:
-                import base64
-                content = base64.b64encode(blob).decode('ascii')
+            import base64
+            content = base64.b64encode(blob).decode('ascii')
             return {'success': True, 'format': 'excel', 'content': content, 'filename': f"{report_name}_{_safe_date(filters.get('date_to') or filters.get('as_of_date') or '')}.xlsx"}
         elif fmt == 'pdf':
             try:
@@ -3936,11 +3933,8 @@ def export_report(report_name, filters, format='csv', token_or_email=None):
             doc.build([t])
             buf.seek(0)
             blob = buf.getvalue()
-            try:
-                content = anvil.BlobMedia('application/pdf', blob)
-            except AttributeError:
-                import base64
-                content = base64.b64encode(blob).decode('ascii')
+            import base64
+            content = base64.b64encode(blob).decode('ascii')
             return {'success': True, 'format': 'pdf', 'content': content, 'filename': f"{report_name}.pdf"}
         else:
             return {'success': False, 'message': f'Unsupported format: {format}. Use pdf, excel, or csv.'}

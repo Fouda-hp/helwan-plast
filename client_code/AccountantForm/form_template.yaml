@@ -617,7 +617,8 @@ container:
               treasury: t('Treasury', 'الخزينة'),
               cashbank: t('Cash/Bank Statement', 'كشف النقدية والبنك'),
               vat: t('VAT Report', 'تقرير الضريبة'),
-              opening: t('Opening Balances', 'ارصدة افتتاحية')
+              opening: t('Opening Balances', 'ارصدة افتتاحية'),
+              advstmt: t('Advanced Statement', 'كشف حساب متقدم')
             };
             document.querySelectorAll('.sub-tab').forEach(function(tab) {
               var key = tab.getAttribute('data-tab');
@@ -1456,15 +1457,19 @@ container:
             var agingEl = document.getElementById('advStmtAging');
             if (!tbody || typeof window.pyGetAdvancedAccountStatement !== 'function') return;
             tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
-            var filters = {
-              entity_type: entityType ? entityType.value : 'customer',
-              entity_id: entitySelect && entitySelect.value ? entitySelect.value : null,
-              date_from: fromEl && fromEl.value ? fromEl.value : null,
-              date_to: toEl && toEl.value ? toEl.value : null,
-              invoice_id: invoiceEl && invoiceEl.value ? invoiceEl.value : null,
-              transaction_type: txTypeEl && txTypeEl.value ? txTypeEl.value : null,
-              include_aging: agingEl ? agingEl.checked : false
-            };
+            var filters = {};
+            filters['entity_type'] = entityType ? entityType.value : 'customer';
+            filters['entity_id'] = entitySelect && entitySelect.value ? entitySelect.value : null;
+            filters['date_from'] = fromEl && fromEl.value ? fromEl.value : null;
+            filters['date_to'] = toEl && toEl.value ? toEl.value : null;
+            filters['invoice_id'] = invoiceEl && invoiceEl.value ? invoiceEl.value : null;
+            filters['transaction_type'] = txTypeEl && txTypeEl.value ? txTypeEl.value : null;
+            filters['include_aging'] = agingEl ? agingEl.checked : false;
+            function esc(s) {
+              if (s == null || s === undefined) return '';
+              var x = String(s);
+              return x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
             try {
               var res = await window.pyGetAdvancedAccountStatement(filters);
               if (res && res.success) {
@@ -1489,7 +1494,7 @@ container:
                 if (res.summary && res.summary.length) {
                   var html = '';
                   res.summary.forEach(function(r) {
-                    html += '<tr><td></td><td></td><td>' + (r.entity_name || '') + '</td><td>Summary</td>';
+                    html += '<tr><td></td><td></td><td>' + esc(r.entity_name) + '</td><td>Summary</td>';
                     html += '<td class="text-right">' + fmt(r.period_debit) + '</td><td class="text-right">' + fmt(r.period_credit) + '</td>';
                     html += '<td class="text-right">' + fmt(r.closing_balance) + '</td></tr>';
                   });
@@ -1501,18 +1506,18 @@ container:
                   } else {
                     var html = '';
                     rows.forEach(function(r) {
-                      var d = r.date ? (typeof r.date === 'string' ? r.date : (r.date.year + '-' + String(r.date.month).padStart(2,'0') + '-' + String(r.date.day).padStart(2,'0')) : '';
-                      html += '<tr><td>' + d + '</td><td>' + (r.reference_type || '') + '</td><td>' + (r.reference_id || '') + '</td><td>' + (r.description || '') + '</td>';
+                      var d = r.date ? (typeof r.date === 'string' ? r.date : (r.date.year + '-' + String(r.date.month).padStart(2,'0') + '-' + String(r.date.day).padStart(2,'0')) : '');
+                      html += '<tr><td>' + esc(d) + '</td><td>' + esc(r.reference_type) + '</td><td>' + esc(r.reference_id) + '</td><td>' + esc(r.description) + '</td>';
                       html += '<td class="text-right">' + fmt(r.debit) + '</td><td class="text-right">' + fmt(r.credit) + '</td><td class="text-right">' + fmt(r.balance_after_transaction) + '</td></tr>';
                     });
                     tbody.innerHTML = html;
                   }
                 }
               } else {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + esc(res ? res.message : 'Error') + '</td></tr>';
               }
             } catch (err) {
-              tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
+              tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + esc(err && err.message ? err.message : String(err)) + '</td></tr>';
             }
           };
 

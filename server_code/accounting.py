@@ -3899,20 +3899,19 @@ def export_report(report_name, filters, format='csv', token_or_email=None):
             return {'success': True, 'format': 'csv', 'content': buf.getvalue(), 'filename': f"{report_name}_{_safe_date(filters.get('date_to') or filters.get('as_of_date') or '')}.csv"}
         elif fmt == 'excel':
             try:
-                import openpyxl
-                from openpyxl import Workbook
+                import xlsxwriter
+                import io
             except ImportError:
-                return {'success': False, 'message': 'openpyxl not installed. Use csv or install openpyxl.'}
-            wb = Workbook()
-            ws = wb.active
-            ws.title = title[:31]
-            ws.append(columns)
-            for r in rows:
-                ws.append([r.get(col, '') for col in columns])
-            import io
+                return {'success': False, 'message': 'xlsxwriter not installed. Use csv or install xlsxwriter.'}
             buf = io.BytesIO()
-            wb.save(buf)
-            buf.seek(0)
+            wb = xlsxwriter.Workbook(buf, {'in_memory': True})
+            ws = wb.add_worksheet(title[:31])
+            for c, col in enumerate(columns):
+                ws.write(0, c, col)
+            for r, row in enumerate(rows):
+                for c, col in enumerate(columns):
+                    ws.write(r + 1, c, row.get(col, ''))
+            wb.close()
             blob = buf.getvalue()
             import base64
             content = base64.b64encode(blob).decode('ascii')

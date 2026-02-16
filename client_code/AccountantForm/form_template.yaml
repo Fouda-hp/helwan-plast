@@ -1302,7 +1302,8 @@ container:
               if (window.showNotification) window.showNotification('error', '', t('Select an account', 'اختر حساباً'));
               return;
             }
-            var type = 'bank';
+            var code = String(name);
+            var type = (code === '1000') ? 'cash' : 'bank';
             try {
               var res = await window.pySetOpeningBalance(name, type, amount);
               if (res && res.success) {

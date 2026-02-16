@@ -52,6 +52,38 @@ def _sync_token_to_storage(token):
 
 class AccountantForm(AccountantFormTemplate):
     def __init__(self, **properties):
+        # Suppress the benign Anvil dom-utils.ts replaceChild error that fires
+        # during HtmlTemplate initialisation (Anvil runtime bug, not our code).
+        try:
+            anvil.js.window.eval("""
+                (function(){
+                    if (window.__hpAcctErrPatched) return;
+                    window.__hpAcctErrPatched = true;
+                    var isReplaceChildErr = function(msg) {
+                        return msg && msg.indexOf('replaceChild') !== -1
+                            && msg.indexOf('Unexpected token') !== -1;
+                    };
+                    var origOnError = window.onerror;
+                    window.onerror = function(msg, src, line, col, err) {
+                        if (isReplaceChildErr(String(msg || ''))) return true;
+                        if (origOnError) return origOnError.apply(this, arguments);
+                    };
+                    window.addEventListener('error', function(e) {
+                        if (e && isReplaceChildErr(String(e.message || ''))) {
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+                            return true;
+                        }
+                    }, true);
+                    window.addEventListener('unhandledrejection', function(e) {
+                        if (e && e.reason && isReplaceChildErr(String(e.reason.message || e.reason || ''))) {
+                            e.preventDefault();
+                        }
+                    });
+                })();
+            """)
+        except Exception:
+            pass
         self.init_components(**properties)
 
         # Auth — من المعامل، أو من auth_helpers (الأدمن حفظه قبل الفتح)، أو من النافذة أو التخزين

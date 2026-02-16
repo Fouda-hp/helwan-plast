@@ -400,6 +400,12 @@ container:
         <div class="date-filter">
           <button onclick="withButtonLock(this, function(){ return loadOpeningBalances(); })" id="btnLoadOb" data-loading-text="...">Load Balances</button>
         </div>
+        <div class="expense-form" style="margin-top:16px; padding:12px; background:#e3f2fd; border-radius:8px;">
+          <p id="obPostHint" style="margin:0 0 10px 0; color:#1565c0;">Post opening balances to the General Ledger (one journal entry dated 1 Jan). After posting, they appear in Ledger, Trial Balance, and Cash &amp; Bank Statement.</p>
+          <label id="lblObYear">Financial year</label>
+          <input type="number" id="obYear" min="2020" max="2030" step="1" value="2025" style="width:100px; margin-right:12px;">
+          <button class="btn btn-save" id="btnPostOb" onclick="withButtonLock(this, function(){ return postOpeningBalancesToLedger(); })" data-loading-text="...">Post to Ledger</button>
+        </div>
         <div class="report-card">
           <h3 id="openingTitle">Opening Balances</h3>
           <div class="table-wrap">
@@ -476,6 +482,9 @@ container:
             el = document.getElementById('obThName'); if (el) el.textContent = t('Name', 'الاسم');
             el = document.getElementById('obThType'); if (el) el.textContent = t('Type', 'النوع');
             el = document.getElementById('obThAmount'); if (el) el.textContent = t('Opening Balance', 'الرصيد الافتتاحي');
+            el = document.getElementById('obPostHint'); if (el) el.textContent = t('Post opening balances to the General Ledger (one journal entry dated 1 Jan). After posting, they appear in Ledger, Trial Balance, and Cash & Bank Statement.', 'ترحيل الأرصدة الافتتاحية إلى دفتر الأستاذ (قيد واحد بتاريخ 1 يناير). بعد الترحيل تظهر في الليدجر والميزان المراجع وكشف البنك.');
+            el = document.getElementById('lblObYear'); if (el) el.textContent = t('Financial year', 'السنة المالية');
+            el = document.getElementById('btnPostOb'); if (el) el.textContent = t('Post to Ledger', 'ترحيل إلى الدفتر');
           }
 
           var cashbankAccountsPopulated = false;
@@ -1187,6 +1196,29 @@ container:
               }
             } catch (err) {
               if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.postOpeningBalancesToLedger = async function() {
+            var yearEl = document.getElementById('obYear');
+            var year = yearEl ? parseInt(yearEl.value, 10) : new Date().getFullYear();
+            if (!year || year < 2020 || year > 2030) {
+              if (window.showNotification) window.showNotification('error', '', t('Enter a valid year (2020–2030)', 'أدخل سنة صحيحة (2020–2030)'));
+              return;
+            }
+            if (typeof window.pyPostOpeningBalances !== 'function') {
+              if (window.showNotification) window.showNotification('error', '', t('Post Opening Balances not available', 'ترحيل الأرصدة الافتتاحية غير متاح'));
+              return;
+            }
+            try {
+              var res = await window.pyPostOpeningBalances(year);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', res.message || t('Opening balances posted to ledger. They will now appear in General Ledger and Cash & Bank Statement.', 'تم ترحيل الأرصدة الافتتاحية إلى الدفتر. ستظهر في دفتر الأستاذ وكشف البنك.'));
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err && err.message ? err.message : err));
             }
           };
 

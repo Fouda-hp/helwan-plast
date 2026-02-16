@@ -76,4 +76,6 @@ unique_ids:
     tests.test_accounting_integration: RJHLUH5Z2BCM4BKQAHMHWXYADXC7THO6
     tests.test_enterprise: IE3ABR4LPDJK5J2D6XGLSQ3YWFMREN3F
     tests.test_full_scenario: OZP7ZCZQE3GKDISWUYXCJDVWSJDTU3GE
+    tests.test_opening_balances: RXIIIXN3TYOUG2PGS6LL5CI4SO5URNFG
     tests.test_transit_inventory: OOUAERA6FFZ3HUKLCUPTQ5Q7ALCAFEDT
+    tests.test_treasury_period: MH5PRP37CIHNZ5GXOAXSAZZKXMQCTIF5

@@ -1223,7 +1223,7 @@ package_name: Helwan_Plast
 runtime_options:
   client_version: '3'
   legacy_features: {__dict__: true, bootstrap3: true, class_names: true, root_container: true}
-  server_spec: {base: python310-minimal}
+  server_spec: {base: python310-standard}
   version: 3
 secrets:
   new_secret:
@@ -1234,7 +1234,7 @@ secrets:
     value: {O5XPEYEXWJG4ZLHG: dV4qUWpb5zwUGS/6Eg7BRXSq2RTV5DmiBmOq8WfTmzHmnH7QpKxBdCG/5O5wv+ExLrV6lV44fa/0xlWtHADJ428lo8vJw8LfkZ6lzqx4q8vtqMTw9HNFRRRcRXUx9adre+nWBHdnzXDTw7rYVBhRY65J0XbOc+sx1NjdUH4V0rba4Q==}
 services:
 - client_config: {enable_v2: true}
-  server_config: {auto_create_missing_columns: false}
+  server_config: {auto_create_missing_columns: true}
   source: /runtime/services/tables.yml
 - client_config: {}
   server_config: {custom_smtp: false, test_mode: false}

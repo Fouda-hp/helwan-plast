@@ -108,6 +108,9 @@ class AccountantForm(AccountantFormTemplate):
         anvil.js.window.pyGetCashFlowReport = self.get_cash_flow_report
         anvil.js.window.pyGenerateReport = self.generate_report
         anvil.js.window.pyExportReport = self.export_report
+        anvil.js.window.pyGetAdvancedAccountStatement = self.get_advanced_account_statement
+        anvil.js.window.pyGetCustomerSummary = self.get_customer_summary
+        anvil.js.window.pyGetSupplierSummary = self.get_supplier_summary
         anvil.js.window.pyGetPeriodLocks = self.get_period_locks
         anvil.js.window.pyClosePeriod = self.close_period
         anvil.js.window.pyReopenPeriod = self.reopen_period
@@ -269,6 +272,27 @@ class AccountantForm(AccountantFormTemplate):
 
     def export_report(self, report_name, filters, format='csv'):
         return anvil.server.call('export_report', report_name, filters, format, self._auth())
+
+    def get_advanced_account_statement(self, filters):
+        """Ledger-only advanced account statement. filters: entity_type, entity_id, date_from, date_to, invoice_id, transaction_type, include_aging."""
+        filters = filters or {}
+        return anvil.server.call(
+            'get_advanced_account_statement',
+            filters.get('entity_type', 'customer'),
+            filters.get('entity_id'),
+            filters.get('date_from'),
+            filters.get('date_to'),
+            filters.get('invoice_id'),
+            filters.get('transaction_type'),
+            bool(filters.get('include_aging')),
+            self._auth(),
+        )
+
+    def get_customer_summary(self):
+        return anvil.server.call('get_customer_summary', self._auth())
+
+    def get_supplier_summary(self):
+        return anvil.server.call('get_supplier_summary', self._auth())
 
     def get_period_locks(self, year=None):
         return anvil.server.call('get_period_locks', year, self._auth())

@@ -3950,8 +3950,59 @@ def generate_report(report_name, filters, token_or_email=None):
             columns = ['Name', 'Type', 'Opening Balance', 'Updated At']
             rows = [{'Name': r.get('name', ''), 'Type': r.get('type', ''), 'Opening Balance': _round2(r.get('opening_balance', 0)), 'Updated At': str(r.get('updated_at', ''))} for r in data_list]
             out = {'title': 'Opening Balances', 'columns': columns, 'rows': rows, 'summary': {'count': data.get('count', 0)}}
+        elif report_name == 'advanced_account_statement':
+            data = get_advanced_account_statement(
+                entity_type=filters.get('entity_type', 'customer'),
+                entity_id=filters.get('entity_id'),
+                date_from=filters.get('date_from'),
+                date_to=filters.get('date_to'),
+                invoice_id=filters.get('invoice_id'),
+                transaction_type=filters.get('transaction_type'),
+                include_aging=bool(filters.get('include_aging')),
+                token_or_email=token_or_email,
+            )
+            if not data.get('success'):
+                return {'success': False, 'message': data.get('message', '')}
+            summary = {
+                'opening_balance': data.get('opening_balance', 0),
+                'closing_balance': data.get('closing_balance', 0),
+            }
+            aging = data.get('aging')
+            if aging:
+                summary['aging_current'] = aging.get('current', 0)
+                summary['aging_30'] = aging.get('30', 0)
+                summary['aging_60'] = aging.get('60', 0)
+                summary['aging_90_plus'] = aging.get('90+', 0)
+                summary['total_outstanding'] = aging.get('total_outstanding', 0)
+            if data.get('summary'):
+                columns = ['Entity', 'Opening Balance', 'Period Debit', 'Period Credit', 'Closing Balance']
+                rows = [
+                    {
+                        'Entity': r.get('entity_name', ''),
+                        'Opening Balance': _round2(r.get('opening_balance', 0)),
+                        'Period Debit': _round2(r.get('period_debit', 0)),
+                        'Period Credit': _round2(r.get('period_credit', 0)),
+                        'Closing Balance': _round2(r.get('closing_balance', 0)),
+                    }
+                    for r in data['summary']
+                ]
+            else:
+                columns = ['Date', 'Ref Type', 'Ref ID', 'Description', 'Debit', 'Credit', 'Running Balance']
+                rows = [
+                    {
+                        'Date': str(r.get('date', '')) if r.get('date') else '',
+                        'Ref Type': r.get('reference_type', ''),
+                        'Ref ID': r.get('reference_id', ''),
+                        'Description': r.get('description', ''),
+                        'Debit': _round2(r.get('debit', 0)),
+                        'Credit': _round2(r.get('credit', 0)),
+                        'Running Balance': _round2(r.get('balance_after_transaction', 0)),
+                    }
+                    for r in data.get('rows', [])
+                ]
+            out = {'title': 'Advanced Account Statement - ' + (data.get('entity_name', '') or 'Statement'), 'columns': columns, 'rows': rows, 'summary': summary}
         else:
-            return {'success': False, 'message': f'Unknown report: {report_name}. Supported: trial_balance, income_statement, balance_sheet, cash_flow, treasury_summary, contract_profitability, expenses, general_ledger, exchange_rates, cash_bank_statement, vat_report, opening_balances'}
+            return {'success': False, 'message': f'Unknown report: {report_name}. Supported: trial_balance, income_statement, balance_sheet, cash_flow, treasury_summary, contract_profitability, expenses, general_ledger, exchange_rates, cash_bank_statement, vat_report, opening_balances, advanced_account_statement'}
         if out is None:
             return {'success': False, 'message': 'Report returned no data'}
         return {'success': True, 'report_name': report_name, 'title': out['title'], 'columns': out['columns'], 'rows': out['rows'], 'summary': out.get('summary', {})}
@@ -4031,6 +4082,15 @@ def _export_summary_lines(report_name, summary):
         out.append(('Investing', _round2(summary.get('investing', 0))))
         out.append(('Financing', _round2(summary.get('financing', 0))))
         out.append(('Net Change', _round2(summary.get('net_change', 0))))
+    elif report_name == 'advanced_account_statement':
+        out.append(('Opening Balance', _round2(summary.get('opening_balance', 0))))
+        out.append(('Closing Balance', _round2(summary.get('closing_balance', 0))))
+        if 'total_outstanding' in summary:
+            out.append(('Total Outstanding', _round2(summary.get('total_outstanding', 0))))
+            out.append(('Aging 0-30 days', _round2(summary.get('aging_current', 0))))
+            out.append(('Aging 31-60 days', _round2(summary.get('aging_30', 0))))
+            out.append(('Aging 61-90 days', _round2(summary.get('aging_60', 0))))
+            out.append(('Aging 90+ days', _round2(summary.get('aging_90_plus', 0))))
     else:
         for k, v in summary.items():
             if v is not None and k not in ('is_balanced',):
@@ -6203,6 +6263,326 @@ def get_supplier_summary(token_or_email=None):
         }
     except Exception as e:
         logger.exception("get_supplier_summary error")
+        return {'success': False, 'message': str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Advanced Account Statement (ledger-only, read-only)
+# ---------------------------------------------------------------------------
+def _get_customer_entity_ref_ids(client_name):
+    """Return set of reference_ids that belong to this customer (client_name) for ledger 1100."""
+    ref_ids = {_safe_str(client_name)}
+    client_contracts = []
+    for c in app_tables.contracts.search():
+        if _safe_str(c.get('client_name')) == _safe_str(client_name):
+            cnum = c.get('contract_number', '')
+            if cnum:
+                client_contracts.append(cnum)
+                ref_ids.add(cnum)
+    for item in app_tables.inventory.search():
+        if item.get('contract_number', '') in client_contracts:
+            iid = item.get('id', '')
+            if iid:
+                ref_ids.add(iid)
+    return ref_ids
+
+
+def _get_supplier_entity_ref_ids(entity_id):
+    """
+    entity_id can be supplier_id or supplier name.
+    Return (supplier_name, set of reference_ids for this supplier for ledger 2000).
+    """
+    suppliers = {s.get('id', ''): s.get('name', '') for s in app_tables.suppliers.search()}
+    name_to_id = {n: sid for sid, n in suppliers.items() if n}
+    invoice_ids = []
+    sname = None
+    if entity_id in suppliers:
+        sname = suppliers[entity_id]
+        invoice_ids = [inv.get('id', '') for inv in app_tables.purchase_invoices.search(supplier_id=entity_id) if inv.get('id')]
+    elif entity_id in name_to_id:
+        sid = name_to_id[entity_id]
+        sname = entity_id
+        invoice_ids = [inv.get('id', '') for inv in app_tables.purchase_invoices.search(supplier_id=sid) if inv.get('id')]
+    else:
+        sname = _safe_str(entity_id)
+        for inv in app_tables.purchase_invoices.search():
+            sid = inv.get('supplier_id', '')
+            if suppliers.get(sid) == sname:
+                invoice_ids.append(inv.get('id', ''))
+    ref_ids = {sname} if sname else set()
+    ref_ids.update(invoice_ids)
+    return sname, ref_ids
+
+
+@anvil.server.callable
+def get_advanced_account_statement(
+    entity_type,
+    entity_id=None,
+    date_from=None,
+    date_to=None,
+    invoice_id=None,
+    transaction_type=None,
+    include_aging=False,
+    token_or_email=None,
+):
+    """
+    Advanced Account Statement: ledger-only, read-only.
+    entity_type: 'customer' | 'supplier'
+    entity_id: specific client/supplier or None for consolidated.
+    date_from / date_to: optional period (None = from beginning / to today).
+    invoice_id: optional filter by reference_id.
+    transaction_type: optional filter by reference_type.
+    include_aging: if True, return aging buckets (current, 30, 60, 90+, total_outstanding).
+    Returns: success, entity_name, opening_balance, closing_balance, rows, aging?, summary?
+    """
+    is_valid, _, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    entity_type = _safe_str(entity_type or '').strip().lower()
+    if entity_type not in ('customer', 'supplier'):
+        return {'success': False, 'message': "entity_type must be 'customer' or 'supplier'"}
+
+    account_code = '1100' if entity_type == 'customer' else '2000'
+    is_customer = entity_type == 'customer'
+    d_from = _safe_date(date_from)
+    d_to = _safe_date(date_to)
+
+    try:
+        # ---- Entity filter: which reference_ids belong to this entity ----
+        entity_name = None
+        allowed_ref_ids = None  # None = all (consolidated); set = filter by ref_id
+        if entity_id:
+            eid = _safe_str(entity_id)
+            if is_customer:
+                entity_name = eid
+                allowed_ref_ids = _get_customer_entity_ref_ids(eid)
+            else:
+                entity_name, allowed_ref_ids = _get_supplier_entity_ref_ids(eid)
+                if not entity_name:
+                    entity_name = eid
+
+        # ---- Load all ledger rows for this account (we filter in Python for date/entity) ----
+        all_entries = []
+        for entry in app_tables.ledger.search(account_code=account_code):
+            ref_id = _safe_str(entry.get('reference_id', ''))
+            ref_type = _safe_str(entry.get('reference_type', ''))
+            if allowed_ref_ids is not None and ref_id not in allowed_ref_ids:
+                continue
+            if invoice_id is not None and _safe_str(invoice_id) and ref_id != _safe_str(invoice_id):
+                continue
+            if transaction_type is not None and _safe_str(transaction_type) and ref_type != _safe_str(transaction_type):
+                continue
+            dt = entry.get('date')
+            d = float(entry.get('debit', 0) or 0)
+            c = float(entry.get('credit', 0) or 0)
+            all_entries.append({
+                'id': entry.get('id'),
+                'date': dt,
+                'reference_type': ref_type,
+                'reference_id': ref_id,
+                'description': _safe_str(entry.get('description', '')),
+                'debit': d,
+                'credit': c,
+                'created_at': entry.get('created_at'),
+            })
+
+        # Sort by date ASC, id ASC
+        all_entries.sort(key=lambda x: (x['date'] or '', str(x.get('id') or '')))
+
+        # ---- Opening balance (Mode A: no date_from => 0; Mode B: sum from beginning to date_from - 1) ----
+        opening_balance = 0.0
+        if d_from is not None:
+            for e in all_entries:
+                ed = e['date']
+                ed_date = ed.date() if hasattr(ed, 'date') else ed
+                if ed_date is None:
+                    continue
+                if ed_date >= d_from:
+                    break
+                if is_customer:
+                    opening_balance += e['debit'] - e['credit']
+                else:
+                    opening_balance += e['credit'] - e['debit']
+        opening_balance = _round2(opening_balance)
+
+        # ---- Period rows: from date_from to date_to (or all if not specified) ----
+        period_entries = []
+        for e in all_entries:
+            ed = e['date']
+            ed_date = ed.date() if hasattr(ed, 'date') else ed
+            if d_from is not None and ed_date is not None and ed_date < d_from:
+                continue
+            if d_to is not None and ed_date is not None and ed_date > d_to:
+                continue
+            period_entries.append(e)
+
+        # ---- Running balance and row output (opening balance row first) ----
+        running = opening_balance
+        rows = []
+        # Opening balance row before transactions (PART 10). Customer: positive = debit; Supplier: positive = credit.
+        if is_customer:
+            ob_dr = _round2(opening_balance) if opening_balance > 0 else 0
+            ob_cr = _round2(-opening_balance) if opening_balance < 0 else 0
+        else:
+            ob_dr = _round2(-opening_balance) if opening_balance < 0 else 0
+            ob_cr = _round2(opening_balance) if opening_balance > 0 else 0
+        rows.append({
+            'date': None,
+            'reference_type': 'opening_balance',
+            'reference_id': '',
+            'description': 'Opening Balance',
+            'debit': ob_dr,
+            'credit': ob_cr,
+            'balance_after_transaction': opening_balance,
+        })
+        for e in period_entries:
+            if is_customer:
+                running += (e['debit'] - e['credit'])
+            else:
+                running += (e['credit'] - e['debit'])
+            running = _round2(running)
+            rows.append({
+                'date': e['date'],
+                'reference_type': e['reference_type'],
+                'reference_id': e['reference_id'],
+                'description': e['description'],
+                'debit': _round2(e['debit']),
+                'credit': _round2(e['credit']),
+                'balance_after_transaction': running,
+            })
+        closing_balance = _round2(running) if period_entries else opening_balance
+
+        # ---- Aging (optional): outstanding by invoice date vs today ----
+        aging = None
+        if include_aging and not (invoice_id or transaction_type):
+            # By reference_id (document): outstanding = for customer sum(debit)-sum(credit), for supplier sum(credit)-sum(debit)
+            today = date.today()
+            by_ref = {}
+            for e in all_entries:
+                rid = e['reference_id']
+                if rid not in by_ref:
+                    by_ref[rid] = {'debit': 0, 'credit': 0, 'date': e['date']}
+                by_ref[rid]['debit'] += e['debit']
+                by_ref[rid]['credit'] += e['credit']
+                ed = e['date']
+                if ed and (rid not in by_ref or by_ref[rid].get('date') is None or (ed.date() if hasattr(ed, 'date') else ed) < (by_ref[rid]['date'].date() if hasattr(by_ref[rid]['date'], 'date') else by_ref[rid]['date'])):
+                    by_ref[rid]['date'] = ed
+            current = _round2(0)
+            b30 = _round2(0)
+            b60 = _round2(0)
+            b90 = _round2(0)
+            for rid, v in by_ref.items():
+                if is_customer:
+                    out = _round2(v['debit'] - v['credit'])
+                else:
+                    out = _round2(v['credit'] - v['debit'])
+                if out <= 0:
+                    continue
+                ed = v['date']
+                ed_date = ed.date() if hasattr(ed, 'date') else ed if isinstance(ed, date) else None
+                if not ed_date:
+                    current = _round2(current + out)
+                    continue
+                days = (today - ed_date).days
+                if days <= 30:
+                    current = _round2(current + out)
+                elif days <= 60:
+                    b30 = _round2(b30 + out)
+                elif days <= 90:
+                    b60 = _round2(b60 + out)
+                else:
+                    b90 = _round2(b90 + out)
+            total_outstanding = _round2(current + b30 + b60 + b90)
+            aging = {
+                'current': current,
+                '30': b30,
+                '60': b60,
+                '90+': b90,
+                'total_outstanding': total_outstanding,
+            }
+
+        # ---- Consolidated: summary per entity ----
+        summary = None
+        if entity_id is None:
+            if is_customer:
+                client_contracts = {}
+                for c in app_tables.contracts.search():
+                    cname = c.get('client_name', '').strip()
+                    cnum = c.get('contract_number', '')
+                    if cname and cnum:
+                        client_contracts.setdefault(cname, []).append(cnum)
+                contract_items = {}
+                for item in app_tables.inventory.search():
+                    cn = item.get('contract_number', '')
+                    if cn:
+                        contract_items.setdefault(cn, []).append(item.get('id'))
+                entities = [(name, _get_customer_entity_ref_ids(name)) for name in sorted(client_contracts.keys())]
+            else:
+                suppliers = {}
+                for s in app_tables.suppliers.search():
+                    sid = s.get('id', '')
+                    sname = s.get('name', '')
+                    if sid and sname:
+                        suppliers[sid] = sname
+                supplier_invoices = {}
+                for inv in app_tables.purchase_invoices.search():
+                    sid = inv.get('supplier_id', '')
+                    iid = inv.get('id', '')
+                    if sid and iid:
+                        supplier_invoices.setdefault(sid, []).append(iid)
+                entities = [(suppliers[sid], {suppliers[sid]} | set(supplier_invoices.get(sid, []))) for sid in sorted(suppliers.keys(), key=lambda k: suppliers[k])]
+
+            summary = []
+            for ent_name, ref_ids in entities:
+                op = 0.0
+                period_dr = 0.0
+                period_cr = 0.0
+                for e in all_entries:
+                    if e['reference_id'] not in ref_ids:
+                        continue
+                    ed = e['date']
+                    ed_date = ed.date() if hasattr(ed, 'date') else ed
+                    if d_from and ed_date is not None and ed_date < d_from:
+                        if is_customer:
+                            op += e['debit'] - e['credit']
+                        else:
+                            op += e['credit'] - e['debit']
+                    elif (d_from is None or (ed_date is not None and ed_date >= d_from)) and (d_to is None or (ed_date is not None and ed_date <= d_to)):
+                        period_dr += e['debit']
+                        period_cr += e['credit']
+                op = _round2(op)
+                period_dr = _round2(period_dr)
+                period_cr = _round2(period_cr)
+                if is_customer:
+                    closing = _round2(op + period_dr - period_cr)
+                else:
+                    closing = _round2(op + period_cr - period_dr)
+                summary.append({
+                    'entity_id': ent_name,
+                    'entity_name': ent_name,
+                    'opening_balance': op,
+                    'period_debit': period_dr,
+                    'period_credit': period_cr,
+                    'closing_balance': closing,
+                })
+            rows = []
+            opening_balance = _round2(sum(s['opening_balance'] for s in summary))
+            closing_balance = _round2(sum(s['closing_balance'] for s in summary))
+
+        out = {
+            'success': True,
+            'entity_name': entity_name or (entity_type.capitalize() + ' (Consolidated)'),
+            'opening_balance': opening_balance,
+            'closing_balance': closing_balance,
+            'rows': rows,
+        }
+        if aging is not None:
+            out['aging'] = aging
+        if summary is not None:
+            out['summary'] = summary
+        return out
+    except Exception as e:
+        logger.exception("get_advanced_account_statement error")
         return {'success': False, 'message': str(e)}
 
 

@@ -4160,8 +4160,23 @@ def get_invoice_details(invoice_id, token_or_email=None):
         except Exception:
             d['supplier_name'] = ''
 
-        # Alias paid_amount -> paid for frontend consistency
+        # Alias paid_amount -> paid for frontend consistency (cached on invoice row)
         d['paid'] = d.get('paid_amount', 0)
+
+        # Ledger-based totals (EGP): so display matches actual 2000 liability/payments and fixes wrong cached paid_amount
+        try:
+            posted_egp = 0.0
+            for entry in app_tables.ledger.search(account_code='2000', reference_id=invoice_id, reference_type='purchase_invoice'):
+                posted_egp += _round2(entry.get('credit', 0))
+            paid_ledger_egp = 0.0
+            for entry in app_tables.ledger.search(account_code='2000', reference_id=invoice_id, reference_type='payment'):
+                paid_ledger_egp += _round2(entry.get('debit', 0))
+            d['total_egp_ledger'] = _round2(posted_egp)
+            d['paid_ledger'] = _round2(paid_ledger_egp)
+        except Exception as _e:
+            logger.debug("Ledger totals for invoice details: %s", _e)
+            d['total_egp_ledger'] = None
+            d['paid_ledger'] = None
 
         # سعر الصرف: المُحفوظ مع الفاتورة إن وُجد، وإلا سعر الصرف الحالي
         saved_rate = row.get('exchange_rate_usd_to_egp')

@@ -1405,8 +1405,11 @@ container:
                     html += '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>' + (ic.cost_type || ic.cost_type_id || '') + (ic.description ? ': ' + ic.description : '') + '</span><span>' + fmt(amtEgp) + egpSuffix + '</span></div>';
                   });
                 }
-                var purchaseCostEgp = toEgp(inv.total);
+                var totalSupplierEgp = (inv.total_egp_ledger != null) ? parseFloat(inv.total_egp_ledger) : (parseFloat(inv.total_egp) || parseFloat(inv.supplier_amount_egp) || toEgp(inv.total));
+                var purchaseCostEgp = totalSupplierEgp;
                 var landedCostEgp = purchaseCostEgp + importTotalEgp;
+                var paidEgp = (inv.paid_ledger != null) ? parseFloat(inv.paid_ledger) : (parseFloat(inv.paid) || 0);
+                var balanceEgp = totalSupplierEgp - paidEgp;
                 html += '<div style="margin-top:12px;padding:10px;background:#e8f5e9;border-radius:8px;border:1px solid #a5d6a7;">';
                 html += '<h4 style="margin:0 0 8px;color:#2e7d32;">' + (isAr ? 'ملخص التكلفة (ج.م)' : 'Cost Summary (EGP)') + '</h4>';
                 html += '<div style="display:flex;justify-content:space-between;"><span>' + (isAr ? 'تكلفة الشراء (المورد فقط)' : 'Purchase Cost (supplier only)') + '</span><span>' + fmt(purchaseCostEgp) + egpSuffix + '</span></div>';
@@ -1414,9 +1417,9 @@ container:
                 html += '<div style="display:flex;justify-content:space-between;font-weight:700;margin-top:6px;"><span>' + (isAr ? 'التكلفة الكلية (Landed Cost)' : 'Landed Cost') + '</span><span>' + fmt(landedCostEgp) + egpSuffix + '</span></div>';
                 html += '</div>';
                 html += '<div style="margin-top:15px;padding:10px;background:#f8f9fa;border-radius:8px;">';
-                html += '<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;"><span>' + t('Total', 'الاجمالي') + ' (' + (isAr ? 'ج.م' : 'EGP') + ') ' + (isAr ? '(مستحق المورد)' : '(supplier payable)') + '</span><span>' + fmt(toEgp(inv.total)) + egpSuffix + '</span></div>';
-                html += '<div style="display:flex;justify-content:space-between;"><span>' + t('Paid', 'المدفوع') + '</span><span style="color:#2e7d32;">' + fmt(toEgp(inv.paid)) + egpSuffix + '</span></div>';
-                html += '<div style="display:flex;justify-content:space-between;"><span>' + t('Balance', 'المتبقي') + '</span><span style="color:#c62828;">' + fmt(toEgp((inv.total || 0) - (inv.paid || 0))) + egpSuffix + '</span></div>';
+                html += '<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;"><span>' + t('Total', 'الاجمالي') + ' (' + (isAr ? 'ج.م' : 'EGP') + ') ' + (isAr ? '(مستحق المورد)' : '(supplier payable)') + '</span><span>' + fmt(totalSupplierEgp) + egpSuffix + '</span></div>';
+                html += '<div style="display:flex;justify-content:space-between;"><span>' + t('Paid', 'المدفوع') + '</span><span style="color:#2e7d32;">' + fmt(paidEgp) + egpSuffix + '</span></div>';
+                html += '<div style="display:flex;justify-content:space-between;"><span>' + t('Balance', 'المتبقي') + '</span><span style="color:#c62828;">' + fmt(balanceEgp) + egpSuffix + '</span></div>';
                 html += '</div>';
                 if (inv.notes) {
                   html += '<div style="margin-top:10px;"><strong>' + t('Notes', 'ملاحظات') + ':</strong> ' + inv.notes + '</div>';

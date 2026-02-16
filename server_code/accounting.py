@@ -3828,7 +3828,10 @@ def _normalize_income_statement(data):
         rows.append({'Category': 'COGS', 'Account': i.get('name_en', ''), 'Amount': _round2(i.get('amount', 0))})
     for i in data.get('expenses', {}).get('items', []):
         rows.append({'Category': 'Expense', 'Account': i.get('name_en', ''), 'Amount': _round2(i.get('amount', 0))})
-    return {'title': 'Income Statement', 'columns': columns, 'rows': rows, 'summary': {'net_profit': data.get('net_profit', 0), 'total_revenue': data.get('revenue', {}).get('total', 0)}}
+    total_rev = data.get('revenue', {}).get('total', 0)
+    total_exp = _round2(data.get('cogs', {}).get('total', 0) + data.get('expenses', {}).get('total', 0))
+    net = data.get('net_profit', 0)
+    return {'title': 'Income Statement', 'columns': columns, 'rows': rows, 'summary': {'total_revenue': total_rev, 'total_expenses': total_exp, 'net_income': net}}
 
 
 def _normalize_balance_sheet(data):
@@ -4004,6 +4007,37 @@ def _register_pdf_arabic_font():
     return None
 
 
+def _export_summary_lines(report_name, summary):
+    """Build list of (label, value) for report summary to show in PDF/Excel/CSV. Value as number."""
+    if not summary or not isinstance(summary, dict):
+        return []
+    out = []
+    if report_name == 'trial_balance':
+        out.append(('Total Debit', _round2(summary.get('total_debit', 0))))
+        out.append(('Total Credit', _round2(summary.get('total_credit', 0))))
+        if summary.get('is_balanced') is not None:
+            out.append(('Balanced', 'Yes' if summary.get('is_balanced') else 'No'))
+    elif report_name == 'income_statement':
+        out.append(('Total Revenue', _round2(summary.get('total_revenue', 0))))
+        out.append(('Total Expenses', _round2(summary.get('total_expenses', 0))))
+        out.append(('Net Income', _round2(summary.get('net_income', 0))))
+    elif report_name == 'balance_sheet':
+        out.append(('Total Assets', _round2(summary.get('total_assets', 0))))
+        out.append(('Total Liabilities + Equity', _round2(summary.get('total_liabilities_equity', 0))))
+        if summary.get('is_balanced') is not None:
+            out.append(('Balanced', 'Yes' if summary.get('is_balanced') else 'No'))
+    elif report_name == 'cash_flow':
+        out.append(('Operating', _round2(summary.get('operating', 0))))
+        out.append(('Investing', _round2(summary.get('investing', 0))))
+        out.append(('Financing', _round2(summary.get('financing', 0))))
+        out.append(('Net Change', _round2(summary.get('net_change', 0))))
+    else:
+        for k, v in summary.items():
+            if v is not None and k not in ('is_balanced',):
+                out.append((k.replace('_', ' ').title(), _round2(v) if isinstance(v, (int, float)) else v))
+    return out
+
+
 def _pdf_cell_text(val, use_arabic_reshape=True):
     """Prepare cell text for ReportLab: escape XML, optional Arabic reshape for correct display."""
     if val is None:
@@ -4040,6 +4074,8 @@ def export_report(report_name, filters, format='csv', token_or_email=None):
     title = res.get('title', 'Report')
     columns = res.get('columns', [])
     rows = res.get('rows', [])
+    summary = res.get('summary') or {}
+    summary_lines = _export_summary_lines(report_name, summary)
     period_label, filename_slug = _export_period_info(filters)
     base_filename = "{}_{}".format(report_name, filename_slug)
     fmt = _safe_str(format or 'csv').strip().lower()
@@ -4055,6 +4091,11 @@ def export_report(report_name, filters, format='csv', token_or_email=None):
             w.writerow(columns)
             for r in rows:
                 w.writerow([r.get(col, '') for col in columns])
+            if summary_lines:
+                w.writerow([])
+                w.writerow(['Summary', ''])
+                for lbl, val in summary_lines:
+                    w.writerow([lbl, val if isinstance(val, str) else '{:,.2f}'.format(val)])
             return {'success': True, 'format': 'csv', 'content': buf.getvalue(), 'filename': "{}.csv".format(base_filename)}
         elif fmt == 'excel':
             try:
@@ -4072,6 +4113,15 @@ def export_report(report_name, filters, format='csv', token_or_email=None):
             for r, row in enumerate(rows):
                 for c, col in enumerate(columns):
                     ws.write(r + 3, c, row.get(col, ''))
+            row_cur = 3 + len(rows)
+            if summary_lines:
+                row_cur += 1
+                ws.write(row_cur, 0, 'Summary')
+                row_cur += 1
+                for lbl, val in summary_lines:
+                    ws.write(row_cur, 0, lbl)
+                    ws.write(row_cur, 1, val if isinstance(val, str) else val)
+                    row_cur += 1
             wb.close()
             blob = buf.getvalue()
             import base64
@@ -4133,6 +4183,23 @@ def export_report(report_name, filters, format='csv', token_or_email=None):
                 style_list.append(('FONTNAME', (0, 0), (-1, -1), pdf_font))
             t.setStyle(TableStyle(style_list))
             story.append(t)
+            if summary_lines:
+                summary_style = ParagraphStyle(name='ExportSummaryTitle', fontName=cell_font, fontSize=10, spaceBefore=14, spaceAfter=6)
+                story.append(Paragraph('Summary / Totals', summary_style))
+                sum_table_data = [['Label', 'Value']] + [[lbl, str(val) if isinstance(val, str) else '{:,.2f} EGP'.format(val)] for lbl, val in summary_lines]
+                t_sum = Table(sum_table_data, colWidths=[2.5 * inch, 1.5 * inch])
+                sum_style = [
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#37474F')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('FONTSIZE', (0, 0), (-1, -1), 9),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ]
+                if pdf_font:
+                    sum_style.append(('FONTNAME', (0, 0), (-1, -1), pdf_font))
+                t_sum.setStyle(TableStyle(sum_style))
+                story.append(t_sum)
             doc.build(story)
             buf.seek(0)
             blob = buf.getvalue()

@@ -120,7 +120,7 @@ class AccountantForm(AccountantFormTemplate):
         self.add_event_handler('show', self._on_show)
 
     def _on_show(self, **event_args):
-        """عند ظهور النموذج: نسخ التوكن من النافذة الرئيسية/الأب إن وُجد (لعمل لوحة المحاسب داخل iframe)."""
+        """عند ظهور النموذج: نسخ التوكن، وتعرّيف دوال JS عامة (switchTab, navTo, ...) حتى تعمل الأزرار حتى لو لم تُنفَّذ سكربتات القالب."""
         try:
             anvil.js.window.eval("""
                 (function(){
@@ -142,6 +142,62 @@ class AccountantForm(AccountantFormTemplate):
                 })();
             """)
             self._token = get_auth_token() or self._token
+        except Exception:
+            pass
+        self._inject_js_globals()
+
+    def _inject_js_globals(self):
+        """حقن دوال JS عامة (switchTab, navTo, goBack, ...) على window حتى تعمل onclick حتى لو لم تُنفَّذ سكربتات القالب."""
+        try:
+            anvil.js.window.eval("""
+                (function(){
+                    if (typeof window.switchTab !== 'function') {
+                        var cashbankAccountsPopulated = false;
+                        window.switchTab = async function(el) {
+                            if (!el || !el.getAttribute) return;
+                            document.querySelectorAll('.sub-tab').forEach(function(t) { t.classList.remove('active'); });
+                            document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+                            el.classList.add('active');
+                            var tab = el.getAttribute('data-tab');
+                            var panel = document.getElementById('panel-' + tab);
+                            if (panel) panel.classList.add('active');
+                            if (tab === 'cashbank') {
+                                if (!cashbankAccountsPopulated && typeof window.populateCashBankAccounts === 'function') {
+                                    await window.populateCashBankAccounts();
+                                    cashbankAccountsPopulated = true;
+                                }
+                                var toEl = document.getElementById('cashbankTo');
+                                if (toEl && !toEl.value) toEl.value = new Date().toISOString().slice(0, 10);
+                            }
+                            if (tab === 'opening' && typeof window.populateOpeningBalanceAccounts === 'function') {
+                                await window.populateOpeningBalanceAccounts();
+                            }
+                            if (tab === 'advstmt' && typeof window.populateAdvStmtEntities === 'function') {
+                                await window.populateAdvStmtEntities();
+                            }
+                        };
+                    }
+                    if (typeof window.navTo !== 'function') {
+                        window.navTo = function(page) {
+                            if (page === 'suppliers' && window.pyOpenSuppliers) window.pyOpenSuppliers();
+                            else if (page === 'inventory' && window.pyOpenInventory) window.pyOpenInventory();
+                            else if (page === 'invoices' && window.pyOpenPurchaseInvoices) window.pyOpenPurchaseInvoices();
+                        };
+                    }
+                    if (typeof window.openCustomerSummary !== 'function') {
+                        window.openCustomerSummary = function() { if (window.pyOpenCustomerSummary) window.pyOpenCustomerSummary(); };
+                    }
+                    if (typeof window.openSupplierSummary !== 'function') {
+                        window.openSupplierSummary = function() { if (window.pyOpenSupplierSummary) window.pyOpenSupplierSummary(); };
+                    }
+                    if (typeof window.goBack !== 'function') {
+                        window.goBack = function() {
+                            if (window.pyGoBack) window.pyGoBack();
+                            else if (window.location && window.location.hash !== undefined) window.location.hash = '#admin';
+                        };
+                    }
+                })();
+            """)
         except Exception:
             pass
 

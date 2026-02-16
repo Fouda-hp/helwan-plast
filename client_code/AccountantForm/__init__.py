@@ -196,6 +196,132 @@ class AccountantForm(AccountantFormTemplate):
                             else if (window.location && window.location.hash !== undefined) window.location.hash = '#admin';
                         };
                     }
+                    if (typeof window.t !== 'function') {
+                        window.t = function(en, ar) {
+                            try {
+                                var lang = (window.localStorage && window.localStorage.getItem('hp_language')) || 'en';
+                                return lang === 'ar' ? ar : en;
+                            } catch (e) { return en; }
+                        };
+                    }
+                    if (typeof window.fmt !== 'function') {
+                        window.fmt = function(n) {
+                            return (n != null && !isNaN(n)) ? Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+                        };
+                    }
+                    if (typeof window.populateAdvStmtEntities !== 'function') {
+                        window.populateAdvStmtEntities = async function() {
+                            var entityType = document.getElementById('advStmtEntityType');
+                            var entitySelect = document.getElementById('advStmtEntity');
+                            if (!entityType || !entitySelect) return;
+                            entitySelect.innerHTML = '<option value="">All (Consolidated)</option>';
+                            var isCustomer = entityType.value === 'customer';
+                            if (typeof (isCustomer ? window.pyGetCustomerSummary : window.pyGetSupplierSummary) !== 'function') return;
+                            try {
+                                var res = await (isCustomer ? window.pyGetCustomerSummary() : window.pyGetSupplierSummary());
+                                if (res && res.success) {
+                                    var data = res.data || [];
+                                    data.forEach(function(r) {
+                                        var id = isCustomer ? (r.client_name || '') : (r.supplier_id || r.supplier_name || '');
+                                        var name = isCustomer ? (r.client_name || '') : (r.supplier_name || r.supplier_id || '');
+                                        if (id || name) {
+                                            var opt = document.createElement('option');
+                                            opt.value = id;
+                                            opt.textContent = name;
+                                            entitySelect.appendChild(opt);
+                                        }
+                                    });
+                                }
+                            } catch (e) {}
+                        };
+                    }
+                    if (typeof window.loadAdvancedStatement !== 'function') {
+                        window.loadAdvancedStatement = async function() {
+                            var tbody = document.getElementById('advStmtBody');
+                            var entityType = document.getElementById('advStmtEntityType');
+                            var entitySelect = document.getElementById('advStmtEntity');
+                            var fromEl = document.getElementById('advStmtFrom');
+                            var toEl = document.getElementById('advStmtTo');
+                            var invoiceEl = document.getElementById('advStmtInvoice');
+                            var txTypeEl = document.getElementById('advStmtTxType');
+                            var agingEl = document.getElementById('advStmtAging');
+                            if (!tbody || typeof window.pyGetAdvancedAccountStatement !== 'function') return;
+                            var t = window.t || function(en) { return en; };
+                            var fmt = window.fmt || function(n) { return (n != null && !isNaN(n)) ? Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''; };
+                            function esc(s) {
+                                if (s == null || s === undefined) return '';
+                                var x = String(s);
+                                return x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                            }
+                            tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+                            var filters = {};
+                            filters.entity_type = entityType ? entityType.value : 'customer';
+                            filters.entity_id = entitySelect && entitySelect.value ? entitySelect.value : null;
+                            filters.date_from = fromEl && fromEl.value ? fromEl.value : null;
+                            filters.date_to = toEl && toEl.value ? toEl.value : null;
+                            filters.invoice_id = invoiceEl && invoiceEl.value ? invoiceEl.value : null;
+                            filters.transaction_type = txTypeEl && txTypeEl.value ? txTypeEl.value : null;
+                            filters.include_aging = agingEl ? agingEl.checked : false;
+                            try {
+                                var res = await window.pyGetAdvancedAccountStatement(filters);
+                                if (res && res.success) {
+                                    var titleEl = document.getElementById('advStmtTitle');
+                                    if (titleEl) titleEl.textContent = 'Advanced Account Statement - ' + (res.entity_name || '');
+                                    var ob = parseFloat(res.opening_balance) || 0;
+                                    var cb = parseFloat(res.closing_balance) || 0;
+                                    var openEl = document.getElementById('advStmtOpening');
+                                    var closeEl = document.getElementById('advStmtClosing');
+                                    if (openEl) openEl.textContent = fmt(ob);
+                                    if (closeEl) closeEl.textContent = fmt(cb);
+                                    var agingRow = document.getElementById('advStmtAgingRow');
+                                    if (res.aging && agingRow) {
+                                        agingRow.style.display = '';
+                                        var a = res.aging;
+                                        var cur = document.getElementById('advStmtAgingCurrent'); if (cur) cur.textContent = fmt(a.current);
+                                        var a30 = document.getElementById('advStmtAging30'); if (a30) a30.textContent = fmt(a['30']);
+                                        var a60 = document.getElementById('advStmtAging60'); if (a60) a60.textContent = fmt(a['60']);
+                                        var a90 = document.getElementById('advStmtAging90'); if (a90) a90.textContent = fmt(a['90+']);
+                                        var tot = document.getElementById('advStmtAgingTotal'); if (tot) tot.textContent = fmt(a.total_outstanding);
+                                    } else if (agingRow) agingRow.style.display = 'none';
+                                    if (res.summary && res.summary.length) {
+                                        var html = '';
+                                        res.summary.forEach(function(r) {
+                                            html += '<tr><td></td><td></td><td>' + esc(r.entity_name) + '</td><td>Summary</td>';
+                                            html += '<td class="text-right">' + fmt(r.period_debit) + '</td><td class="text-right">' + fmt(r.period_credit) + '</td>';
+                                            html += '<td class="text-right">' + fmt(r.closing_balance) + '</td></tr>';
+                                        });
+                                        tbody.innerHTML = html;
+                                    } else {
+                                        var rows = res.rows || [];
+                                        if (rows.length === 0) {
+                                            tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">No transactions in period</td></tr>';
+                                        } else {
+                                            var html = '';
+                                            rows.forEach(function(r) {
+                                                var d = r.date ? (typeof r.date === 'string' ? r.date : (r.date.year + '-' + String(r.date.month).padStart(2,'0') + '-' + String(r.date.day).padStart(2,'0'))) : '';
+                                                html += '<tr><td>' + esc(d) + '</td><td>' + esc(r.reference_type) + '</td><td>' + esc(r.reference_id) + '</td><td>' + esc(r.description) + '</td>';
+                                                html += '<td class="text-right">' + fmt(r.debit) + '</td><td class="text-right">' + fmt(r.credit) + '</td><td class="text-right">' + fmt(r.balance_after_transaction) + '</td></tr>';
+                                            });
+                                            tbody.innerHTML = html;
+                                        }
+                                    }
+                                } else {
+                                    tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + esc(res ? res.message : 'Error') + '</td></tr>';
+                                }
+                            } catch (err) {
+                                tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + esc(err && err.message ? err.message : String(err)) + '</td></tr>';
+                            }
+                        };
+                    }
+                    setTimeout(function() {
+                        var advStmtEntityTypeEl = document.getElementById('advStmtEntityType');
+                        if (advStmtEntityTypeEl && !advStmtEntityTypeEl._advStmtListener) {
+                            advStmtEntityTypeEl._advStmtListener = true;
+                            advStmtEntityTypeEl.addEventListener('change', function() {
+                                if (window.populateAdvStmtEntities) window.populateAdvStmtEntities();
+                            });
+                        }
+                    }, 300);
                 })();
             """)
         except Exception:

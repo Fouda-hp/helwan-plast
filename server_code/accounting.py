@@ -1880,6 +1880,37 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
             return {'success': False, 'message': f'Payment account {credit_account} not found or inactive'}
 
         parsed_date = _safe_date(cost_date) or date.today()
+        cost_type_normalized = (cost_type or cost_type_name or '').lower().strip()[:20]
+        # Avoid duplicate: same invoice, same type, same amount, same date (within last 10 min)
+        try:
+            cutoff = get_utc_now() - timedelta(minutes=10)
+            for existing in app_tables.import_costs.search(purchase_invoice_id=pi_id):
+                if _round2(existing.get('amount_egp') or existing.get('amount', 0)) != amount_egp:
+                    continue
+                if (existing.get('cost_type') or '').lower().strip()[:20] != cost_type_normalized:
+                    continue
+                ex_date = existing.get('date')
+                if ex_date is not None and hasattr(ex_date, 'strftime'):
+                    if ex_date != parsed_date:
+                        continue
+                else:
+                    try:
+                        if str(ex_date)[:10] != str(parsed_date)[:10]:
+                            continue
+                    except Exception:
+                        continue
+                ex_created = existing.get('created_at')
+                if ex_created is not None and ex_created >= cutoff:
+                    return {
+                        'success': True,
+                        'id': existing.get('id'),
+                        'transaction_id': None,
+                        'amount_egp': amount_egp,
+                        'duplicate_skipped': True,
+                    }
+        except Exception as dup_err:
+            logger.debug("Duplicate check: %s", dup_err)
+
         cost_id = _uuid()
         desc_text = _safe_str(description) or f"Import cost ({cost_type_name})"
 
@@ -2087,6 +2118,8 @@ def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, to
             amt_egp = _round2(amt_egp)
         paid = _round2(row.get('paid_amount') or 0)
         remaining = _round2(amt_egp - paid)
+        if remaining <= 0:
+            return {'success': False, 'message': 'هذه التكلفة مدفوعة بالكامل بالفعل | This cost is already fully paid.'}
         if amount_egp > remaining:
             return {'success': False, 'message': f'Pay amount ({amount_egp}) cannot exceed remaining ({remaining})'}
         credit_account = _resolve_payment_account(payment_method)

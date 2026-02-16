@@ -1236,6 +1236,73 @@ def move_purchase_to_inventory(invoice_id, token_or_email=None):
             else:
                 raise
 
+        # Ensure inventory table has an item for this invoice (create if missing, else set in_stock)
+        inv_items = list(app_tables.inventory.search(purchase_invoice_id=invoice_id))
+        purchase_cost_egp = _round2(row.get('supplier_amount_egp') or row.get('total_egp') or 0)
+        if not purchase_cost_egp and row.get('total') and row.get('exchange_rate_usd_to_egp'):
+            try:
+                purchase_cost_egp = _round2(float(row.get('total') or 0) * float(row.get('exchange_rate_usd_to_egp') or 0))
+            except (TypeError, ValueError):
+                pass
+        import_total_egp = 0.0
+        for ic in app_tables.import_costs.search(purchase_invoice_id=invoice_id):
+            if (ic.get('cost_type') or '').lower().strip() == 'vat':
+                continue
+            import_total_egp += _round2(ic.get('amount_egp') or ic.get('amount', 0))
+        import_total_egp = _round2(import_total_egp)
+        now = get_utc_now()
+        if inv_items:
+            for item in inv_items:
+                try:
+                    item.update(status='in_stock', updated_at=now)
+                except Exception as e:
+                    logger.warning("Update inventory item status: %s", e)
+            _update_inventory_import_totals(purchase_invoice_id=invoice_id)
+        else:
+            inv_item_id = _uuid()
+            machine_code = _safe_str(row.get('machine_code') or row.get('invoice_number') or invoice_id)[:64]
+            description = _safe_str(row.get('notes') or f"Machine from {inv_number}")[:500]
+            try:
+                app_tables.inventory.add_row(
+                    id=inv_item_id,
+                    machine_code=machine_code,
+                    description=description or machine_code,
+                    purchase_invoice_id=invoice_id,
+                    contract_number=_safe_str(row.get('contract_number')) or None,
+                    purchase_cost=purchase_cost_egp,
+                    import_costs_total=import_total_egp,
+                    total_cost=_round2(purchase_cost_egp + import_total_egp),
+                    selling_price=0.0,
+                    status='in_stock',
+                    location='',
+                    notes=f"Moved from transit: {inv_number}",
+                    created_at=now,
+                    updated_at=now,
+                )
+            except Exception as col_err:
+                if 'machine_config_json' in str(col_err) or 'contract_number' in str(col_err):
+                    try:
+                        app_tables.inventory.add_row(
+                            id=inv_item_id,
+                            machine_code=machine_code,
+                            description=description or machine_code,
+                            purchase_invoice_id=invoice_id,
+                            purchase_cost=purchase_cost_egp,
+                            import_costs_total=import_total_egp,
+                            total_cost=_round2(purchase_cost_egp + import_total_egp),
+                            selling_price=0.0,
+                            status='in_stock',
+                            location='',
+                            notes=f"Moved from transit: {inv_number}",
+                            created_at=now,
+                            updated_at=now,
+                        )
+                    except Exception:
+                        raise
+                else:
+                    raise
+            logger.info("Created inventory item %s for invoice %s (move to inventory)", inv_item_id, inv_number)
+
         logger.info("Purchase invoice %s moved to inventory (1200) by %s, amount %.2f EGP", inv_number, user_email, total_transit_cost)
         return {'success': True, 'transaction_id': result['transaction_id'], 'total_transit_cost': total_transit_cost}
     except Exception as e:

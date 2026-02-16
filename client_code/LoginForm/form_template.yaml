@@ -459,9 +459,9 @@ container:
         }
       </style>
 
-      <!-- Disable global hand loader on login page (login has its own button loaders) -->
+      <div aria-hidden="true" data-note="disable-hand-loader" style="display:none"></div>
       <script>window.__hpLoadingInit = true;</scr&#105;pt>
-      <!-- Load i18n Script with fallback -->
+      <div aria-hidden="true" data-note="i18n-script" style="display:none"></div>
       <script>
         // Inline i18n to avoid 404 issues
         (function(){
@@ -474,7 +474,7 @@ container:
         })();
       </scr&#105;pt>
 
-      <!-- Full-page loading overlay - المحتوى في منتصف الصفحة -->
+      <div aria-hidden="true" data-note="loading-overlay" style="display:none"></div>
       <div class="login-loading-overlay" id="pageLoadingOverlay">
         <div class="login-loading-overlay-inner">
           <div class="hp-code-loader" style="font-size:2.2em;font-weight:900;">
@@ -791,6 +791,7 @@ container:
         </div>
       </div>
 
+      <div aria-hidden="true" data-note="login-main-script" style="display:none"></div>
       <script>
         (function() {
 

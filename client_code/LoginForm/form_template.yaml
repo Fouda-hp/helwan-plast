@@ -459,9 +459,9 @@ container:
         }
       </style>
 
-      <div aria-hidden="true" data-note="disable-hand-loader" style="display:none"></div>
+      <div aria-hidden='true' data-note='disable-hand-loader' style='display:none'></div>
       <script>window.__hpLoadingInit = true;</scr&#105;pt>
-      <div aria-hidden="true" data-note="i18n-script" style="display:none"></div>
+      <div aria-hidden='true' data-note='i18n-script' style='display:none'></div>
       <script>
         // Inline i18n to avoid 404 issues
         (function(){
@@ -474,60 +474,60 @@ container:
         })();
       </scr&#105;pt>
 
-      <div aria-hidden="true" data-note="loading-overlay" style="display:none"></div>
-      <div class="login-loading-overlay" id="pageLoadingOverlay">
-        <div class="login-loading-overlay-inner">
-          <div class="hp-code-loader" style="font-size:2.2em;font-weight:900;">
+      <div aria-hidden='true' data-note='loading-overlay' style='display:none'></div>
+      <div class='login-loading-overlay' id='pageLoadingOverlay'>
+        <div class='login-loading-overlay-inner'>
+          <div class='hp-code-loader' style='font-size:2.2em;font-weight:900;'>
             <span>&lt;</span><span>LOADING...</span><span>/&gt;</span>
           </div>
-          <div class="loading-text" id="loadingText">Loading...</div>
+          <div class='loading-text' id='loadingText'>Loading...</div>
         </div>
       </div>
 
-      <div class="login-wrapper">
+      <div class='login-wrapper'>
         <!-- Language Switcher -->
-        <div class="login-lang-switcher">
-          <button class="lang-btn" id="langSwitchBtn" onclick="toggleLanguage()">
-            <span class="lang-flag" id="loginLangFlag">🇸🇦</span>
-            <span id="langBtnText">العربية</span>
+        <div class='login-lang-switcher'>
+          <button class='lang-btn' id='langSwitchBtn' onclick='toggleLanguage()'>
+            <span class='lang-flag' id='loginLangFlag'>🇸🇦</span>
+            <span id='langBtnText'>العربية</span>
           </button>
         </div>
 
-        <div class="login-box">
+        <div class='login-box'>
 
-          <div class="logo">
-            <img src="_/theme/helwan_logo.png" alt="Helwan Plast">
-            <h2 id="logoTitle">Helwan Plast</h2>
-            <p id="logoSubtitle">Secure Authentication</p>
+          <div class='logo'>
+            <img src='_/theme/helwan_logo.png' alt='Helwan Plast'>
+            <h2 id='logoTitle'>Helwan Plast</h2>
+            <p id='logoSubtitle'>Secure Authentication</p>
           </div>
 
           <!-- Auth Tabs -->
-          <div class="auth-tabs">
-            <button class="auth-tab active" data-tab="login" id="tabLogin">Login</button>
-            <button class="auth-tab" data-tab="register" id="tabRegister">Register</button>
+          <div class='auth-tabs'>
+            <button class='auth-tab active' data-tab='login' id='tabLogin'>Login</button>
+            <button class='auth-tab' data-tab='register' id='tabRegister'>Register</button>
           </div>
 
           <!-- Login Form -->
-          <div id="loginForm" class="auth-form active">
-            <div id="loginMessage" class="message"></div>
+          <div id='loginForm' class='auth-form active'>
+            <div id='loginMessage' class='message'></div>
 
-            <div class="field">
-              <label id="lblLoginEmail">Email Address</label>
-              <input type="email" id="loginEmail" placeholder="Enter your email">
+            <div class='field'>
+              <label id='lblLoginEmail'>Email Address</label>
+              <input type='email' id='loginEmail' placeholder='Enter your email'>
             </div>
 
-            <div class="field">
-              <label id="lblLoginPassword">Password</label>
-              <input type="password" id="loginPassword" placeholder="Enter your password">
+            <div class='field'>
+              <label id='lblLoginPassword'>Password</label>
+              <input type='password' id='loginPassword' placeholder='Enter your password'>
             </div>
 
-            <button class="auth-btn" id="loginBtn">
-              <span class="btn-text" id="btnLoginText">LOGIN</span>
-              <div class="btn-loader"><div class="btn-spinner"></div></div>
+            <button class='auth-btn' id='loginBtn'>
+              <span class='btn-text' id='btnLoginText'>LOGIN</span>
+              <div class='btn-loader'><div class='btn-spinner'></div></div>
             </button>
 
-            <div class="setup-link">
-              <a id="forgotPasswordLink">Forgot Password?</a>
+            <div class='setup-link'>
+              <a id='forgotPasswordLink'>Forgot Password?</a>
             </div>
 
 
@@ -535,263 +535,263 @@ container:
           </div>
 
           <!-- Register Form -->
-          <div id="registerForm" class="auth-form">
-            <div id="registerMessage" class="message"></div>
+          <div id='registerForm' class='auth-form'>
+            <div id='registerMessage' class='message'></div>
 
-            <div class="field">
-              <label id="lblRegName">Full Name</label>
-              <input type="text" id="regName" placeholder="Enter your full name">
+            <div class='field'>
+              <label id='lblRegName'>Full Name</label>
+              <input type='text' id='regName' placeholder='Enter your full name'>
             </div>
 
-            <div class="field">
-              <label id="lblRegEmail">Email Address</label>
-              <input type="email" id="regEmail" placeholder="Enter your email">
+            <div class='field'>
+              <label id='lblRegEmail'>Email Address</label>
+              <input type='email' id='regEmail' placeholder='Enter your email'>
             </div>
 
-            <div class="field">
-              <label id="lblRegPhone">Phone Number (Optional)</label>
-              <input type="tel" id="regPhone" placeholder="Enter your phone number">
+            <div class='field'>
+              <label id='lblRegPhone'>Phone Number (Optional)</label>
+              <input type='tel' id='regPhone' placeholder='Enter your phone number'>
             </div>
 
-            <div class="field">
-              <label id="lblRegPassword">Password</label>
-              <input type="password" id="regPassword" placeholder="Min 8 characters">
-              <div class="password-strength">
-                <div class="password-strength-bar" id="strengthBar"></div>
+            <div class='field'>
+              <label id='lblRegPassword'>Password</label>
+              <input type='password' id='regPassword' placeholder='Min 8 characters'>
+              <div class='password-strength'>
+                <div class='password-strength-bar' id='strengthBar'></div>
               </div>
             </div>
 
-            <div class="field">
-              <label id="lblRegConfirm">Confirm Password</label>
-              <input type="password" id="regConfirm" placeholder="Confirm your password">
+            <div class='field'>
+              <label id='lblRegConfirm'>Confirm Password</label>
+              <input type='password' id='regConfirm' placeholder='Confirm your password'>
             </div>
 
-            <button class="auth-btn" id="registerBtn">
-              <span class="btn-text" id="btnRegisterText">CREATE ACCOUNT</span>
-              <div class="btn-loader"><div class="btn-spinner"></div></div>
+            <button class='auth-btn' id='registerBtn'>
+              <span class='btn-text' id='btnRegisterText'>CREATE ACCOUNT</span>
+              <div class='btn-loader'><div class='btn-spinner'></div></div>
             </button>
           </div>
 
           <!-- OTP Verification Form (for 2FA Login) -->
-          <div id="otpLoginForm" class="auth-form">
-            <div id="otpLoginMessage" class="message"></div>
+          <div id='otpLoginForm' class='auth-form'>
+            <div id='otpLoginMessage' class='message'></div>
 
-            <div style="text-align:center;margin-bottom:20px;">
-              <div style="font-size:48px;margin-bottom:10px;">🔐</div>
-              <h3 style="color:#1976d2;margin:0 0 8px;" id="otpLoginTitle">Two-Factor Authentication</h3>
-              <p style="color:#666;font-size:14px;" id="otpLoginSubtitle">Enter the verification code sent to your email</p>
+            <div style='text-align:center;margin-bottom:20px;'>
+              <div style='font-size:48px;margin-bottom:10px;'>🔐</div>
+              <h3 style='color:#1976d2;margin:0 0 8px;' id='otpLoginTitle'>Two-Factor Authentication</h3>
+              <p style='color:#666;font-size:14px;' id='otpLoginSubtitle'>Enter the verification code sent to your email</p>
             </div>
 
-            <div class="field">
-              <label id="lblOtpLoginCode">Verification Code</label>
-              <input type="text" id="otpLoginCode" placeholder="000000" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:8px;font-weight:bold;">
+            <div class='field'>
+              <label id='lblOtpLoginCode'>Verification Code</label>
+              <input type='text' id='otpLoginCode' placeholder='000000' maxlength='6' style='text-align:center;font-size:24px;letter-spacing:8px;font-weight:bold;'>
             </div>
 
-            <button class="auth-btn" id="verifyOtpLoginBtn">
-              <span class="btn-text" id="btnVerifyOtpLogin">VERIFY & LOGIN</span>
-              <div class="btn-loader"><div class="btn-spinner"></div></div>
+            <button class='auth-btn' id='verifyOtpLoginBtn'>
+              <span class='btn-text' id='btnVerifyOtpLogin'>VERIFY & LOGIN</span>
+              <div class='btn-loader'><div class='btn-spinner'></div></div>
             </button>
 
-            <div class="setup-link">
-              <a id="resendOtpLogin">Didn't receive code? Resend</a>
+            <div class='setup-link'>
+              <a id='resendOtpLogin'>Didn't receive code? Resend</a>
             </div>
 
-            <div class="setup-link" style="margin-top:10px;">
-              <a id="backFromOtpLogin">← Back to Login</a>
+            <div class='setup-link' style='margin-top:10px;'>
+              <a id='backFromOtpLogin'>← Back to Login</a>
             </div>
           </div>
 
           <!-- OTP Verification Form (for Registration) -->
-          <div id="otpRegForm" class="auth-form">
-            <div id="otpRegMessage" class="message"></div>
+          <div id='otpRegForm' class='auth-form'>
+            <div id='otpRegMessage' class='message'></div>
 
-            <div style="text-align:center;margin-bottom:20px;">
-              <div style="font-size:48px;margin-bottom:10px;">📧</div>
-              <h3 style="color:#1976d2;margin:0 0 8px;" id="otpRegTitle">Verify Your Email</h3>
-              <p style="color:#666;font-size:14px;" id="otpRegSubtitle">Enter the verification code sent to your email</p>
+            <div style='text-align:center;margin-bottom:20px;'>
+              <div style='font-size:48px;margin-bottom:10px;'>📧</div>
+              <h3 style='color:#1976d2;margin:0 0 8px;' id='otpRegTitle'>Verify Your Email</h3>
+              <p style='color:#666;font-size:14px;' id='otpRegSubtitle'>Enter the verification code sent to your email</p>
             </div>
 
-            <div class="field">
-              <label id="lblOtpRegCode">Verification Code</label>
-              <input type="text" id="otpRegCode" placeholder="000000" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:8px;font-weight:bold;">
+            <div class='field'>
+              <label id='lblOtpRegCode'>Verification Code</label>
+              <input type='text' id='otpRegCode' placeholder='000000' maxlength='6' style='text-align:center;font-size:24px;letter-spacing:8px;font-weight:bold;'>
             </div>
 
-            <button class="auth-btn" id="verifyOtpRegBtn" style="background:linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);">
-              <span class="btn-text" id="btnVerifyOtpReg">VERIFY EMAIL</span>
-              <div class="btn-loader"><div class="btn-spinner"></div></div>
+            <button class='auth-btn' id='verifyOtpRegBtn' style='background:linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);'>
+              <span class='btn-text' id='btnVerifyOtpReg'>VERIFY EMAIL</span>
+              <div class='btn-loader'><div class='btn-spinner'></div></div>
             </button>
 
-            <div class="setup-link">
-              <a id="resendOtpReg">Didn't receive code? Resend</a>
+            <div class='setup-link'>
+              <a id='resendOtpReg'>Didn't receive code? Resend</a>
             </div>
 
-            <div class="setup-link" style="margin-top:10px;">
-              <a id="backFromOtpReg">← Back to Registration</a>
+            <div class='setup-link' style='margin-top:10px;'>
+              <a id='backFromOtpReg'>← Back to Registration</a>
             </div>
           </div>
 
           <!-- Setup Admin Form (Hidden) -->
-          <div id="setupForm" class="auth-form">
-            <div id="setupMessage" class="message"></div>
+          <div id='setupForm' class='auth-form'>
+            <div id='setupMessage' class='message'></div>
 
-            <div class="field">
+            <div class='field'>
               <label>Admin Full Name</label>
-              <input type="text" id="adminName" placeholder="Administrator name">
+              <input type='text' id='adminName' placeholder='Administrator name'>
             </div>
 
-            <div class="field">
+            <div class='field'>
               <label>Admin Email</label>
-              <input type="email" id="adminEmail" placeholder="admin@company.com">
+              <input type='email' id='adminEmail' placeholder='admin@company.com'>
             </div>
 
-            <div class="field">
+            <div class='field'>
               <label>Admin Phone (Optional)</label>
-              <input type="tel" id="adminPhone" placeholder="Admin phone number">
+              <input type='tel' id='adminPhone' placeholder='Admin phone number'>
             </div>
 
-            <div class="field">
+            <div class='field'>
               <label>Admin Password</label>
-              <input type="password" id="adminPassword" placeholder="Strong password (min 6 chars)">
+              <input type='password' id='adminPassword' placeholder='Strong password (min 6 chars)'>
             </div>
 
-            <button class="auth-btn" id="setupBtn">
-              <span class="btn-text">CREATE ADMIN ACCOUNT</span>
-              <div class="btn-loader"><div class="btn-spinner"></div></div>
+            <button class='auth-btn' id='setupBtn'>
+              <span class='btn-text'>CREATE ADMIN ACCOUNT</span>
+              <div class='btn-loader'><div class='btn-spinner'></div></div>
             </button>
 
-            <div class="setup-link">
-              <a id="backToLogin">Back to Login</a>
+            <div class='setup-link'>
+              <a id='backToLogin'>Back to Login</a>
             </div>
           </div>
 
           <!-- Forgot Password Form (Step 1 - Enter Email) -->
-          <div id="forgotPasswordForm" class="auth-form">
-            <div id="forgotMessage" class="message"></div>
+          <div id='forgotPasswordForm' class='auth-form'>
+            <div id='forgotMessage' class='message'></div>
 
-            <div style="text-align:center;margin-bottom:20px;">
-              <div style="font-size:48px;margin-bottom:10px;">🔑</div>
-              <h3 style="color:#1976d2;margin:0 0 8px;" id="forgotTitle">Reset Password</h3>
-              <p style="color:#666;font-size:14px;" id="forgotSubtitle">Enter your email to receive a verification code</p>
+            <div style='text-align:center;margin-bottom:20px;'>
+              <div style='font-size:48px;margin-bottom:10px;'>🔑</div>
+              <h3 style='color:#1976d2;margin:0 0 8px;' id='forgotTitle'>Reset Password</h3>
+              <p style='color:#666;font-size:14px;' id='forgotSubtitle'>Enter your email to receive a verification code</p>
             </div>
 
-            <div class="field">
-              <label id="lblForgotEmail">Email Address</label>
-              <input type="email" id="forgotEmail" placeholder="Enter your email">
+            <div class='field'>
+              <label id='lblForgotEmail'>Email Address</label>
+              <input type='email' id='forgotEmail' placeholder='Enter your email'>
             </div>
 
-            <button class="auth-btn" id="sendResetCodeBtn">
-              <span class="btn-text" id="btnSendResetCode">SEND VERIFICATION CODE</span>
-              <div class="btn-loader"><div class="btn-spinner"></div></div>
+            <button class='auth-btn' id='sendResetCodeBtn'>
+              <span class='btn-text' id='btnSendResetCode'>SEND VERIFICATION CODE</span>
+              <div class='btn-loader'><div class='btn-spinner'></div></div>
             </button>
 
-            <div class="setup-link">
-              <a id="backFromForgot">← Back to Login</a>
+            <div class='setup-link'>
+              <a id='backFromForgot'>← Back to Login</a>
             </div>
           </div>
 
           <!-- Forgot Password OTP Form (Step 2 - Enter OTP) -->
-          <div id="forgotOtpForm" class="auth-form">
-            <div id="forgotOtpMessage" class="message"></div>
+          <div id='forgotOtpForm' class='auth-form'>
+            <div id='forgotOtpMessage' class='message'></div>
 
-            <div style="text-align:center;margin-bottom:20px;">
-              <div style="font-size:48px;margin-bottom:10px;">🔐</div>
-              <h3 style="color:#1976d2;margin:0 0 8px;" id="forgotOtpTitle">Enter Verification Code</h3>
-              <p style="color:#666;font-size:14px;" id="forgotOtpSubtitle">Enter the code sent to your email</p>
+            <div style='text-align:center;margin-bottom:20px;'>
+              <div style='font-size:48px;margin-bottom:10px;'>🔐</div>
+              <h3 style='color:#1976d2;margin:0 0 8px;' id='forgotOtpTitle'>Enter Verification Code</h3>
+              <p style='color:#666;font-size:14px;' id='forgotOtpSubtitle'>Enter the code sent to your email</p>
             </div>
 
-            <div class="field">
-              <label id="lblForgotOtp">Verification Code</label>
-              <input type="text" id="forgotOtpCode" placeholder="000000" maxlength="6" style="text-align:center;font-size:24px;letter-spacing:8px;font-weight:bold;">
+            <div class='field'>
+              <label id='lblForgotOtp'>Verification Code</label>
+              <input type='text' id='forgotOtpCode' placeholder='000000' maxlength='6' style='text-align:center;font-size:24px;letter-spacing:8px;font-weight:bold;'>
             </div>
 
-            <button class="auth-btn" id="verifyForgotOtpBtn">
-              <span class="btn-text" id="btnVerifyForgotOtp">VERIFY CODE</span>
-              <div class="btn-loader"><div class="btn-spinner"></div></div>
+            <button class='auth-btn' id='verifyForgotOtpBtn'>
+              <span class='btn-text' id='btnVerifyForgotOtp'>VERIFY CODE</span>
+              <div class='btn-loader'><div class='btn-spinner'></div></div>
             </button>
 
-            <div class="setup-link">
-              <a id="resendForgotOtp">Didn't receive code? Resend</a>
+            <div class='setup-link'>
+              <a id='resendForgotOtp'>Didn't receive code? Resend</a>
             </div>
 
-            <div class="setup-link" style="margin-top:10px;">
-              <a id="backFromForgotOtp">← Back</a>
+            <div class='setup-link' style='margin-top:10px;'>
+              <a id='backFromForgotOtp'>← Back</a>
             </div>
           </div>
 
           <!-- Set New Password Form (Step 3) -->
-          <div id="newPasswordForm" class="auth-form">
-            <div id="newPasswordMessage" class="message"></div>
+          <div id='newPasswordForm' class='auth-form'>
+            <div id='newPasswordMessage' class='message'></div>
 
-            <div style="text-align:center;margin-bottom:20px;">
-              <div style="font-size:48px;margin-bottom:10px;">🔒</div>
-              <h3 style="color:#1976d2;margin:0 0 8px;" id="newPasswordTitle">Set New Password</h3>
-              <p style="color:#666;font-size:14px;" id="newPasswordSubtitle">Enter your new password</p>
+            <div style='text-align:center;margin-bottom:20px;'>
+              <div style='font-size:48px;margin-bottom:10px;'>🔒</div>
+              <h3 style='color:#1976d2;margin:0 0 8px;' id='newPasswordTitle'>Set New Password</h3>
+              <p style='color:#666;font-size:14px;' id='newPasswordSubtitle'>Enter your new password</p>
             </div>
 
-            <div class="field">
-              <label id="lblNewPassword">New Password</label>
-              <input type="password" id="newPassword" placeholder="Min 8 characters">
-              <div class="password-strength">
-                <div class="password-strength-bar" id="newPasswordStrengthBar"></div>
+            <div class='field'>
+              <label id='lblNewPassword'>New Password</label>
+              <input type='password' id='newPassword' placeholder='Min 8 characters'>
+              <div class='password-strength'>
+                <div class='password-strength-bar' id='newPasswordStrengthBar'></div>
               </div>
             </div>
 
-            <div class="field">
-              <label id="lblConfirmNewPassword">Confirm New Password</label>
-              <input type="password" id="confirmNewPassword" placeholder="Confirm your password">
+            <div class='field'>
+              <label id='lblConfirmNewPassword'>Confirm New Password</label>
+              <input type='password' id='confirmNewPassword' placeholder='Confirm your password'>
             </div>
 
-            <button class="auth-btn" id="setNewPasswordBtn" style="background:linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);">
-              <span class="btn-text" id="btnSetNewPassword">SET NEW PASSWORD</span>
-              <div class="btn-loader"><div class="btn-spinner"></div></div>
+            <button class='auth-btn' id='setNewPasswordBtn' style='background:linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);'>
+              <span class='btn-text' id='btnSetNewPassword'>SET NEW PASSWORD</span>
+              <div class='btn-loader'><div class='btn-spinner'></div></div>
             </button>
 
-            <div class="setup-link">
-              <a id="backFromNewPassword">← Back to Login</a>
+            <div class='setup-link'>
+              <a id='backFromNewPassword'>← Back to Login</a>
             </div>
           </div>
 
           <!-- Emergency Password Reset Form (Hidden) -->
-          <div id="resetForm" class="auth-form">
-            <div id="resetMessage" class="message"></div>
+          <div id='resetForm' class='auth-form'>
+            <div id='resetMessage' class='message'></div>
 
-            <div style="background:#fff3cd;padding:12px;border-radius:8px;margin-bottom:20px;font-size:13px;color:#856404;">
+            <div style='background:#fff3cd;padding:12px;border-radius:8px;margin-bottom:20px;font-size:13px;color:#856404;'>
               ⚠️ This is for emergency admin password reset only. You need the secret key.
             </div>
 
-            <div class="field">
+            <div class='field'>
               <label>Admin Email</label>
-              <input type="email" id="resetEmail" placeholder="admin@company.com">
+              <input type='email' id='resetEmail' placeholder='admin@company.com'>
             </div>
 
-            <div class="field">
+            <div class='field'>
               <label>New Password</label>
-              <input type="password" id="resetNewPassword" placeholder="New password (min 6 chars)">
+              <input type='password' id='resetNewPassword' placeholder='New password (min 6 chars)'>
             </div>
 
-            <div class="field">
+            <div class='field'>
               <label>Secret Key</label>
-              <input type="password" id="resetSecretKey" placeholder="Enter emergency secret key">
+              <input type='password' id='resetSecretKey' placeholder='Enter emergency secret key'>
             </div>
 
-            <button class="auth-btn" id="resetBtn" style="background:linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
-              <span class="btn-text">RESET PASSWORD</span>
-              <div class="btn-loader"><div class="btn-spinner"></div></div>
+            <button class='auth-btn' id='resetBtn' style='background:linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);'>
+              <span class='btn-text'>RESET PASSWORD</span>
+              <div class='btn-loader'><div class='btn-spinner'></div></div>
             </button>
 
-            <div class="setup-link">
-              <a id="backFromReset">Back to Login</a>
+            <div class='setup-link'>
+              <a id='backFromReset'>Back to Login</a>
             </div>
           </div>
 
-          <div class="footer">
+          <div class='footer'>
             Design And Developed By Helwan Plast
           </div>
 
         </div>
       </div>
 
-      <div aria-hidden="true" data-note="login-main-script" style="display:none"></div>
+      <div aria-hidden='true' data-note='login-main-script' style='display:none'></div>
       <script>
         (function() {
 
@@ -1108,7 +1108,7 @@ container:
             if (resetBtnText) resetBtnText.textContent = t('btnResetPassword');
 
             // Update emergency warning
-            var warningDiv = document.querySelector('#resetForm div[style*="fff3cd"]');
+            var warningDiv = document.querySelector('#resetForm div[style*=\'fff3cd\']');
             if (warningDiv) warningDiv.innerHTML = '\u26a0\ufe0f ' + t('emergencyWarning');
 
             // Update footer
@@ -1308,7 +1308,7 @@ container:
               } else {
                 // Check if rate limit error and offer to clear
                 if (result.message && result.message.indexOf('Too many') !== -1) {
-                  showMessage('loginMessage', 'error', result.message + ' <a href="#" onclick="clearRateLimitAndRetry(); return false;" style="color:#667eea;text-decoration:underline;">Click here to reset</a>', true);
+                  showMessage('loginMessage', 'error', result.message + ' <a href=\'#\' onclick=\'clearRateLimitAndRetry(); return false;\' style=\'color:#667eea;text-decoration:underline;\'>Click here to reset</a>', true);
                 } else {
                   showMessage('loginMessage', 'error', result.message);
                 }

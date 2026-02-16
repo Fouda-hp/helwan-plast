@@ -271,7 +271,7 @@ container:
         </div>
       </div>
 
-      <script src="_/theme/i18n.js"></script>
+      <script src="_/theme/i18n.js"></scr&#105;pt>
       <script>
         (function() {
           if (!window.withButtonLock) { window.withButtonLock = function(btn, fn) { if (!btn || btn.disabled) return Promise.resolve(); var o = btn.textContent || btn.value || ''; var loading = (btn.getAttribute && btn.getAttribute('data-loading-text')) || '...'; btn.disabled = true; if (btn.textContent !== undefined) btn.textContent = loading; else if (btn.value !== undefined) btn.value = loading; var p = Promise.resolve(typeof fn === 'function' ? fn() : fn); return p.finally(function() { btn.disabled = false; if (btn.textContent !== undefined) btn.textContent = o; else if (btn.value !== undefined) btn.value = o; }); }; }
@@ -830,6 +830,6 @@ container:
           }
           setTimeout(waitForBridge, 300);
         })();
-      </script>
+      </scr&#105;pt>
   type: HtmlTemplate
 is_package: true

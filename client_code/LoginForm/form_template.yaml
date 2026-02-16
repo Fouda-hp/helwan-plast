@@ -460,7 +460,7 @@ container:
       </style>
 
       <!-- Disable global hand loader on login page (login has its own button loaders) -->
-      <script>window.__hpLoadingInit = true;</script>
+      <script>window.__hpLoadingInit = true;</scr&#105;pt>
       <!-- Load i18n Script with fallback -->
       <script>
         // Inline i18n to avoid 404 issues
@@ -472,7 +472,7 @@ container:
           window.i18n=new I18n();
           if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>window.i18n.init())}else{window.i18n.init()}
         })();
-      </script>
+      </scr&#105;pt>
 
       <!-- Full-page loading overlay - المحتوى في منتصف الصفحة -->
       <div class="login-loading-overlay" id="pageLoadingOverlay">
@@ -1972,6 +1972,6 @@ container:
           }
 
         })();
-      </script>
+      </scr&#105;pt>
   type: HtmlTemplate
 is_package: true

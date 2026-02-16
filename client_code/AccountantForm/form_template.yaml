@@ -198,6 +198,8 @@ container:
         <div class="tab-panel" id="panel-profitability">
           <div class="date-filter">
             <button onclick="withButtonLock(this, function(){ return loadProfitability(); })" data-loading-text="...">Load</button>
+            <button class="btn-export" onclick="exportReport('contract_profitability', 'pdf');" style="margin-left:8px;">Export PDF</button>
+            <button class="btn-export" onclick="exportReport('contract_profitability', 'excel');" style="margin-left:4px;">Export Excel</button>
           </div>
           <div class="summary-row" id="profitSummary"></div>
           <div class="report-card">
@@ -257,6 +259,8 @@ container:
               <option value="other">Other</option>
             </select>
             <button onclick="withButtonLock(this, function(){ return loadExpenses(); })" data-loading-text="...">Load</button>
+            <button class="btn-export" onclick="exportReport('expenses', 'pdf');" style="margin-left:8px;">Export PDF</button>
+            <button class="btn-export" onclick="exportReport('expenses', 'excel');" style="margin-left:4px;">Export Excel</button>
           </div>
           <div class="summary-row" id="expSummary"></div>
           <div class="report-card">
@@ -269,6 +273,10 @@ container:
 
         <!-- Currency / Exchange Rates Panel -->
         <div class="tab-panel" id="panel-currency">
+          <div class="date-filter" style="margin-bottom:12px;">
+            <button class="btn-export" onclick="exportReport('exchange_rates', 'pdf');" style="margin-right:8px;">Export PDF</button>
+            <button class="btn-export" onclick="exportReport('exchange_rates', 'excel');" style="margin-right:4px;">Export Excel</button>
+          </div>
           <div class="expense-form">
             <h3 id="currFormTitle">Set Exchange Rate</h3>
             <div class="expense-grid">
@@ -309,6 +317,8 @@ container:
             <label>From:</label><input type="date" id="ledgerFrom">
             <label>To:</label><input type="date" id="ledgerTo">
             <button onclick="withButtonLock(this, function(){ return loadLedger(); })" data-loading-text="...">Load</button>
+            <button class="btn-export" onclick="exportReport('general_ledger', 'pdf');" style="margin-left:8px;">Export PDF</button>
+            <button class="btn-export" onclick="exportReport('general_ledger', 'excel');" style="margin-left:4px;">Export Excel</button>
           </div>
           <div class="report-card">
             <h3 id="ledgerTitle">General Ledger</h3>
@@ -323,6 +333,8 @@ container:
       <div class="tab-panel" id="panel-treasury">
         <div class="date-filter">
           <button onclick="withButtonLock(this, function(){ return loadTreasury(); })" id="btnLoadTreasury" data-loading-text="...">Load Treasury</button>
+          <button class="btn-export" onclick="exportReport('treasury_summary', 'pdf');" style="margin-left:8px;">Export PDF</button>
+          <button class="btn-export" onclick="exportReport('treasury_summary', 'excel');" style="margin-left:4px;">Export Excel</button>
         </div>
         <div class="summary-row" id="treasurySummary"></div>
         <div class="report-card">
@@ -338,6 +350,7 @@ container:
         <div class="expense-form">
           <h3 id="transfersTitle">Internal Transfer (Cash / Bank)</h3>
           <p id="transfersHint" style="margin:0 0 10px 0; color:#555;">From and To must be different. Sufficient balance validated from ledger.</p>
+          <p id="transfersDescHint" style="margin:0 0 10px 0; color:#1565c0;">أضف وصفاً للمعاملة لظهوره في الدفتر (مثال: تحويل من الصندوق إلى البنك).</p>
           <div class="expense-grid">
             <div class="form-group">
               <label id="lblTransferFrom">From</label>
@@ -368,8 +381,8 @@ container:
               <input type="date" id="transferDate">
             </div>
             <div class="form-group">
-              <label id="lblTransferDesc">Description</label>
-              <input type="text" id="transferDesc" placeholder="Internal transfer">
+              <label id="lblTransferDesc">Description (وصف المعاملة)</label>
+              <input type="text" id="transferDesc" placeholder="e.g. Internal transfer / تحويل من الصندوق إلى البنك">
             </div>
           </div>
           <button class="btn btn-save" id="btnTransfer" onclick="withButtonLock(this, function(){ return submitInternalTransfer(); })" data-loading-text="...">Transfer</button>
@@ -407,6 +420,8 @@ container:
           <label>To</label>
           <input type="date" id="cashbankTo">
           <button onclick="withButtonLock(this, function(){ return loadCashBankStatement(); })" id="btnLoadCashBank" data-loading-text="...">Load</button>
+          <button class="btn-export" onclick="exportReport('cash_bank_statement', 'pdf');" style="margin-left:8px;">Export PDF</button>
+          <button class="btn-export" onclick="exportReport('cash_bank_statement', 'excel');" style="margin-left:4px;">Export Excel</button>
         </div>
         <div class="report-card">
           <h3 id="cashbankTitle">Cash &amp; Bank Statement</h3>
@@ -425,6 +440,7 @@ container:
         </div>
         <div class="report-card">
           <h3 id="periodTitle">Period Status (Lock / Unlock)</h3>
+          <p id="periodMonthHint" style="margin:0 0 10px 0; color:#1565c0;">يمكنك قفل أو فتح كل شهر على حدة (زر Lock / Unlock بجانب كل شهر).</p>
           <div class="table-wrap">
             <table><thead><tr><th>Year</th><th>Month</th><th>Status</th><th>Action</th></tr></thead><tbody id="periodBody"><tr><td colspan="4" class="empty-msg">Select year and Load</td></tr></tbody></table>
           </div>
@@ -444,6 +460,8 @@ container:
           <label>To</label>
           <input type="date" id="vatTo">
           <button onclick="withButtonLock(this, function(){ return loadVatReport(); })" id="btnLoadVat" data-loading-text="...">Load</button>
+          <button class="btn-export" onclick="exportReport('vat_report', 'pdf');" style="margin-left:8px;">Export PDF</button>
+          <button class="btn-export" onclick="exportReport('vat_report', 'excel');" style="margin-left:4px;">Export Excel</button>
           <label id="lblVatSettleAccount" style="margin-left:8px;">Settle to</label>
           <select id="vatSettleAccount" style="padding:6px;"><option value="1000">Cash (1000)</option><option value="1010">Bank (1010)</option></select>
           <button type="button" class="btn btn-save" id="btnSettleVat" onclick="withButtonLock(this, function(){ return settleVatForPeriod(); })" data-loading-text="..." style="margin-left:8px;">Settle VAT (month-end)</button>
@@ -459,6 +477,10 @@ container:
 
       <!-- Opening Balances Panel -->
       <div class="tab-panel" id="panel-opening">
+        <div class="date-filter" style="margin-bottom:12px;">
+          <button class="btn-export" onclick="exportReport('opening_balances', 'pdf');" style="margin-right:8px;">Export PDF</button>
+          <button class="btn-export" onclick="exportReport('opening_balances', 'excel');" style="margin-right:4px;">Export Excel</button>
+        </div>
         <div class="expense-form">
           <h3 id="openingFormTitle">Set Opening Balance</h3>
           <div class="expense-grid">
@@ -571,6 +593,9 @@ container:
             el = document.getElementById('obThAmount'); if (el) el.textContent = t('Opening Balance', 'الرصيد الافتتاحي');
             el = document.getElementById('obPostHint'); if (el) el.textContent = t('Post opening balances to the General Ledger (one journal entry dated 1 Jan). After posting, they appear in Ledger, Trial Balance, and Cash & Bank Statement.', 'ترحيل الأرصدة الافتتاحية إلى دفتر الأستاذ (قيد واحد بتاريخ 1 يناير). بعد الترحيل تظهر في الليدجر والميزان المراجع وكشف البنك.');
             el = document.getElementById('lblObYear'); if (el) el.textContent = t('Financial year', 'السنة المالية');
+            el = document.getElementById('transfersDescHint'); if (el) el.textContent = t('Add a description for the transaction so it appears in the ledger (e.g. transfer from cash to bank).', 'أضف وصفاً للمعاملة لظهوره في الدفتر (مثال: تحويل من الصندوق إلى البنك).');
+            el = document.getElementById('lblTransferDesc'); if (el) el.textContent = t('Description (transaction)', 'وصف المعاملة');
+            el = document.getElementById('periodMonthHint'); if (el) el.textContent = t('You can lock or unlock each month individually (Lock / Unlock button next to each month).', 'يمكنك قفل أو فتح كل شهر على حدة (زر Lock / Unlock بجانب كل شهر).');
             el = document.getElementById('btnPostOb'); if (el) el.textContent = t('Post to Ledger', 'ترحيل إلى الدفتر');
           }
 
@@ -1402,6 +1427,24 @@ container:
             } else if (reportName === 'balance_sheet') {
               var d = document.getElementById('balanceDate');
               if (d) filters.as_of_date = d.value;
+            } else if (reportName === 'contract_profitability') {
+              filters = {};
+            } else if (reportName === 'expenses') {
+              var fromEl = document.getElementById('expFrom'); var toEl = document.getElementById('expTo'); var catEl = document.getElementById('expFilterCat');
+              if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value; if (catEl && catEl.value) filters.category = catEl.value;
+            } else if (reportName === 'general_ledger') {
+              var accEl = document.getElementById('ledgerAccount'); var fromEl = document.getElementById('ledgerFrom'); var toEl = document.getElementById('ledgerTo');
+              if (accEl && accEl.value) filters.account_code = accEl.value; if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value;
+            } else if (reportName === 'exchange_rates' || reportName === 'treasury_summary') {
+              filters = {};
+            } else if (reportName === 'cash_bank_statement') {
+              var accEl = document.getElementById('cashbankAccount'); var fromEl = document.getElementById('cashbankFrom'); var toEl = document.getElementById('cashbankTo');
+              if (accEl && accEl.value) filters.account_code = accEl.value; if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value;
+            } else if (reportName === 'vat_report') {
+              var asOf = document.getElementById('vatAsOf'); var fromEl = document.getElementById('vatFrom'); var toEl = document.getElementById('vatTo');
+              if (asOf && asOf.value) filters.as_of_date = asOf.value; if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value;
+            } else if (reportName === 'opening_balances') {
+              filters = {};
             }
             if (typeof window.pyExportReport !== 'function') { if (window.showNotification) window.showNotification('error', '', 'Export not available'); return; }
             try {

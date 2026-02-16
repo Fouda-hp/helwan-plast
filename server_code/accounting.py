@@ -3861,8 +3861,64 @@ def generate_report(report_name, filters, token_or_email=None):
             columns = ['Account', 'Current Balance']
             rows = [{'Account': a.get('account_name', ''), 'Current Balance': _round2(a.get('current_balance', 0))} for a in (data.get('data') or data.get('accounts') or [])]
             out = {'title': 'Treasury Summary', 'columns': columns, 'rows': rows, 'summary': {'grand_total': data.get('grand_total', 0)}}
+        elif report_name == 'contract_profitability':
+            data = get_contract_profitability(contract_number=filters.get('contract_number'), token_or_email=token_or_email)
+            if not data.get('success'):
+                return {'success': False, 'message': data.get('message', '')}
+            data_list = data.get('data', [])
+            columns = ['Contract #', 'Client', 'Revenue', 'Costs', 'Profit', 'Margin %']
+            rows = [{'Contract #': r.get('contract_number', ''), 'Client': r.get('client_name', ''), 'Revenue': _round2(r.get('revenue', 0)), 'Costs': _round2(r.get('costs', 0)), 'Profit': _round2(r.get('profit', 0)), 'Margin %': _round2(r.get('margin', 0))} for r in data_list]
+            out = {'title': 'Contract Profitability', 'columns': columns, 'rows': rows, 'summary': {'total_revenue': data.get('grand_revenue', 0), 'total_cost': data.get('grand_cost', 0), 'grand_profit': data.get('grand_profit', 0)}}
+        elif report_name == 'expenses':
+            data = get_expenses(date_from=filters.get('date_from'), date_to=filters.get('date_to'), category=filters.get('category'), token_or_email=token_or_email)
+            if not data.get('success'):
+                return {'success': False, 'message': data.get('message', '')}
+            data_list = data.get('data', [])
+            columns = ['Date', 'Category', 'Description', 'Amount']
+            rows = [{'Date': str(r.get('date', '')), 'Category': r.get('category', ''), 'Description': r.get('description', ''), 'Amount': _round2(r.get('amount', 0))} for r in data_list]
+            out = {'title': 'Expenses', 'columns': columns, 'rows': rows, 'summary': {'total_amount': data.get('total_amount', 0), 'count': data.get('count', 0)}}
+        elif report_name == 'general_ledger':
+            data = get_ledger_entries(account_code=filters.get('account_code'), date_from=filters.get('date_from'), date_to=filters.get('date_to'), token_or_email=token_or_email)
+            if not data.get('success'):
+                return {'success': False, 'message': data.get('message', '')}
+            data_list = data.get('data', [])
+            columns = ['Date', 'Account', 'Description', 'Debit', 'Credit']
+            rows = [{'Date': str(r.get('date', '')), 'Account': r.get('account_code', ''), 'Description': r.get('description', ''), 'Debit': _round2(r.get('debit', 0)), 'Credit': _round2(r.get('credit', 0))} for r in data_list]
+            out = {'title': 'General Ledger', 'columns': columns, 'rows': rows, 'summary': {'count': data.get('count', 0)}}
+        elif report_name == 'exchange_rates':
+            data = get_exchange_rates(token_or_email=token_or_email)
+            if not data.get('success'):
+                return {'success': False, 'message': data.get('message', '')}
+            data_list = data.get('data', [])
+            columns = ['Currency', 'Rate to EGP', 'Last Updated']
+            rows = [{'Currency': r.get('currency_code', ''), 'Rate to EGP': _round2(r.get('rate_to_egp', 0)), 'Last Updated': str(r.get('updated_at', ''))} for r in data_list]
+            out = {'title': 'Exchange Rates', 'columns': columns, 'rows': rows, 'summary': {}}
+        elif report_name == 'cash_bank_statement':
+            data = get_cash_bank_statement(account_code=filters.get('account_code'), date_from=filters.get('date_from'), date_to=filters.get('date_to'), token_or_email=token_or_email)
+            if not data.get('success'):
+                return {'success': False, 'message': data.get('message', '')}
+            data_list = data.get('data', [])
+            columns = ['Date', 'Account', 'Description', 'Debit', 'Credit', 'Balance']
+            rows = [{'Date': str(r.get('date', '')), 'Account': r.get('account_name', r.get('account_code', '')), 'Description': r.get('description', ''), 'Debit': _round2(r.get('debit', 0)), 'Credit': _round2(r.get('credit', 0)), 'Balance': _round2(r.get('balance', 0))} for r in data_list]
+            out = {'title': 'Cash & Bank Statement', 'columns': columns, 'rows': rows, 'summary': {'count': data.get('count', 0)}}
+        elif report_name == 'vat_report':
+            data = get_vat_report(as_of_date=filters.get('as_of_date'), date_from=filters.get('date_from'), date_to=filters.get('date_to'), token_or_email=token_or_email)
+            if not data.get('success'):
+                return {'success': False, 'message': data.get('message', '')}
+            detail = data.get('detail', [])
+            columns = ['Date', 'Account', 'Description', 'Debit', 'Credit']
+            rows = [{'Date': r.get('date', ''), 'Account': r.get('account_label', r.get('account', '')), 'Description': r.get('description', ''), 'Debit': _round2(r.get('debit', 0)), 'Credit': _round2(r.get('credit', 0))} for r in detail]
+            out = {'title': 'VAT Report', 'columns': columns, 'rows': rows, 'summary': {'input_vat': data.get('input_vat_balance', 0), 'output_vat': data.get('output_vat_payable', 0), 'net': data.get('net_position', 0)}}
+        elif report_name == 'opening_balances':
+            data = get_opening_balances(entity_type=filters.get('entity_type', ''), token_or_email=token_or_email)
+            if not data.get('success'):
+                return {'success': False, 'message': data.get('message', '')}
+            data_list = data.get('data', [])
+            columns = ['Name', 'Type', 'Opening Balance', 'Updated At']
+            rows = [{'Name': r.get('name', ''), 'Type': r.get('type', ''), 'Opening Balance': _round2(r.get('opening_balance', 0)), 'Updated At': str(r.get('updated_at', ''))} for r in data_list]
+            out = {'title': 'Opening Balances', 'columns': columns, 'rows': rows, 'summary': {'count': data.get('count', 0)}}
         else:
-            return {'success': False, 'message': f'Unknown report: {report_name}. Supported: trial_balance, income_statement, balance_sheet, cash_flow, vat_report, supplier_aging, inventory_valuation, fx_report, treasury_summary'}
+            return {'success': False, 'message': f'Unknown report: {report_name}. Supported: trial_balance, income_statement, balance_sheet, cash_flow, treasury_summary, contract_profitability, expenses, general_ledger, exchange_rates, cash_bank_statement, vat_report, opening_balances'}
         if out is None:
             return {'success': False, 'message': 'Report returned no data'}
         return {'success': True, 'report_name': report_name, 'title': out['title'], 'columns': out['columns'], 'rows': out['rows'], 'summary': out.get('summary', {})}

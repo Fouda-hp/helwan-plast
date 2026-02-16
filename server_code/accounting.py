@@ -403,6 +403,60 @@ def unlock_period(year, month, token_or_email=None):
         return {'success': False, 'message': str(e)}
 
 
+@anvil.server.callable
+def close_period(year, month, token_or_email=None):
+    """Close (lock) an accounting period. No posting allowed for that month."""
+    return lock_period(year, month, token_or_email)
+
+
+@anvil.server.callable
+def reopen_period(year, month, token_or_email=None):
+    """Reopen (unlock) an accounting period."""
+    return unlock_period(year, month, token_or_email)
+
+
+@anvil.server.callable
+def close_financial_year(year, token_or_email=None):
+    """Lock all 12 months of the given year. Prevents any posting to prior year."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+    try:
+        y = int(year)
+        tbl = app_tables.accounting_period_locks
+        now = get_utc_now()
+        for month in range(1, 13):
+            existing = list(tbl.search(year=y, month=month))
+            if existing:
+                existing[0].update(locked=True, locked_at=now, locked_by=_safe_str(user_email))
+            else:
+                tbl.add_row(year=y, month=month, locked=True, locked_at=now, locked_by=_safe_str(user_email))
+        logger.info("Financial year %s closed (all 12 months locked) by %s", year, user_email)
+        return {'success': True, 'message': f'Year {year} closed. All months locked.'}
+    except Exception as e:
+        logger.exception("close_financial_year error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_period_locks(year=None, token_or_email=None):
+    """Return list of locked periods. If year given, only that year."""
+    is_valid, _, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        tbl = app_tables.accounting_period_locks
+        if year is not None:
+            rows = list(tbl.search(year=int(year)))
+        else:
+            rows = list(tbl.search())
+        result = [{'year': r.get('year'), 'month': r.get('month'), 'locked': bool(r.get('locked')), 'locked_at': str(r.get('locked_at', '')), 'locked_by': r.get('locked_by', '')} for r in rows]
+        return {'success': True, 'data': result}
+    except Exception as e:
+        logger.exception("get_period_locks error")
+        return {'success': False, 'message': str(e)}
+
+
 def _ensure_vat_accounts():
     """Ensure VAT accounts 2100 (Output) and 2110 (Input) exist. Auto-create if missing."""
     for code, name_en, name_ar, acct_type, parent in [
@@ -607,6 +661,202 @@ def get_account_balance(account_code, as_of_date=None, token_or_email=None):
     except Exception as e:
         logger.exception("get_account_balance error")
         return {'success': False, 'message': str(e)}
+
+
+def _get_account_balance_internal(account_code, as_of_date=None):
+    """Internal: ledger-only balance for account (no auth). For validation e.g. transfer sufficient balance."""
+    acct = app_tables.chart_of_accounts.get(code=account_code)
+    if not acct:
+        return None
+    cutoff = _safe_date(as_of_date)
+    total_debit = 0.0
+    total_credit = 0.0
+    for r in app_tables.ledger.search(account_code=account_code):
+        row_date = r.get('date')
+        if isinstance(row_date, datetime):
+            row_date = row_date.date()
+        if cutoff and row_date and row_date > cutoff:
+            continue
+        total_debit += _round2(r.get('debit', 0))
+        total_credit += _round2(r.get('credit', 0))
+    acct_type = (acct.get('account_type') or '').strip().lower()
+    if acct_type in ('asset', 'expense'):
+        return _round2(total_debit - total_credit)
+    return _round2(total_credit - total_debit)
+
+
+# ===========================================================================
+# TREASURY TRANSACTIONS (all via post_journal_entry; no direct ledger writes)
+# ===========================================================================
+LOAN_LIABILITY_ACCOUNT = '2500'
+OTHER_INCOME_ACCOUNT = '4800'
+
+
+def _ensure_loan_account():
+    """Ensure account 2500 (Loans / Loan Liability) exists for loan_received transactions."""
+    if _validate_account_exists(LOAN_LIABILITY_ACCOUNT):
+        return True
+    try:
+        app_tables.chart_of_accounts.add_row(
+            code=LOAN_LIABILITY_ACCOUNT,
+            name_en='Loans Payable',
+            name_ar='قروض مستحقة',
+            account_type='liability',
+            parent_code=None,
+            is_active=True,
+            created_at=get_utc_now(),
+        )
+        logger.info("Loan account %s auto-created", LOAN_LIABILITY_ACCOUNT)
+        return True
+    except Exception as e:
+        logger.warning("Could not create loan account %s: %s", LOAN_LIABILITY_ACCOUNT, e)
+        return False
+
+
+def _ensure_other_income_account():
+    """Ensure account 4800 (Other Income) exists for other_income transactions."""
+    if _validate_account_exists(OTHER_INCOME_ACCOUNT):
+        return True
+    try:
+        app_tables.chart_of_accounts.add_row(
+            code=OTHER_INCOME_ACCOUNT,
+            name_en='Other Income',
+            name_ar='إيرادات أخرى',
+            account_type='revenue',
+            parent_code=None,
+            is_active=True,
+            created_at=get_utc_now(),
+        )
+        logger.info("Other income account %s auto-created", OTHER_INCOME_ACCOUNT)
+        return True
+    except Exception as e:
+        logger.warning("Could not create other income account %s: %s", OTHER_INCOME_ACCOUNT, e)
+        return False
+
+
+def _is_cash_or_bank_account(account_code):
+    """Return True if account is cash (1000) or bank (1010-1013)."""
+    c = _safe_str(account_code or '').strip()
+    if c == '1000':
+        return True
+    if len(c) == 4 and c.startswith('101'):
+        return True
+    return False
+
+
+@anvil.server.callable
+def create_treasury_transaction(transaction_type, amount, transaction_date, description, from_account=None, to_account=None, token_or_email=None):
+    """
+    Create a treasury transaction. All entries via post_journal_entry(); no direct ledger writes.
+    transaction_type: capital_injection | loan_received | other_income | internal_transfer | cash_withdrawal | bank_deposit
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+    amount = _round2(float(amount or 0))
+    if amount <= 0:
+        return {'success': False, 'message': 'Amount must be greater than zero'}
+    transaction_date = _safe_date(transaction_date)
+    if not transaction_date:
+        return {'success': False, 'message': 'Valid transaction date required'}
+    if is_period_locked(transaction_date):
+        return {'success': False, 'message': 'Accounting period is locked for this date.'}
+    desc = _safe_str(description or '').strip() or transaction_type.replace('_', ' ').title()
+
+    tx_type = _safe_str(transaction_type or '').strip().lower()
+    entries = []
+    ref_id = f"treasury-{_uuid()[:8]}"
+
+    if tx_type == 'capital_injection':
+        to_account = _resolve_payment_account(to_account or 'bank')
+        if not _validate_account_exists(to_account):
+            return {'success': False, 'message': f'Account {to_account} not found'}
+        if not _validate_account_exists('3000'):
+            return {'success': False, 'message': 'Account 3000 (Equity) not found'}
+        entries = [
+            {'account_code': to_account, 'debit': amount, 'credit': 0},
+            {'account_code': '3000', 'debit': 0, 'credit': amount},
+        ]
+        desc = f"Capital injection: {desc}"
+    elif tx_type == 'loan_received':
+        to_account = _resolve_payment_account(to_account or 'bank')
+        if not _validate_account_exists(to_account):
+            return {'success': False, 'message': f'Account {to_account} not found'}
+        if not _ensure_loan_account():
+            return {'success': False, 'message': f'Account {LOAN_LIABILITY_ACCOUNT} (Loans) not found and could not be created'}
+        entries = [
+            {'account_code': to_account, 'debit': amount, 'credit': 0},
+            {'account_code': LOAN_LIABILITY_ACCOUNT, 'debit': 0, 'credit': amount},
+        ]
+        desc = f"Loan received: {desc}"
+    elif tx_type == 'other_income':
+        to_account = _resolve_payment_account(to_account or 'bank')
+        if not _validate_account_exists(to_account):
+            return {'success': False, 'message': f'Account {to_account} not found'}
+        if not _ensure_other_income_account():
+            return {'success': False, 'message': f'Account {OTHER_INCOME_ACCOUNT} (Other Income) not found and could not be created'}
+        entries = [
+            {'account_code': to_account, 'debit': amount, 'credit': 0},
+            {'account_code': OTHER_INCOME_ACCOUNT, 'debit': 0, 'credit': amount},
+        ]
+        desc = f"Other income: {desc}"
+    elif tx_type == 'internal_transfer':
+        from_account = _resolve_payment_account(from_account)
+        to_account = _resolve_payment_account(to_account)
+        if from_account == to_account:
+            return {'success': False, 'message': 'From and To account cannot be the same'}
+        if not _validate_account_exists(from_account) or not _validate_account_exists(to_account):
+            return {'success': False, 'message': 'From or To account not found'}
+        bal = _get_account_balance_internal(from_account, transaction_date)
+        if bal is None:
+            return {'success': False, 'message': f'Could not get balance for {from_account}'}
+        if not _is_cash_or_bank_account(from_account) or not _is_cash_or_bank_account(to_account):
+            return {'success': False, 'message': 'Internal transfer only between cash/bank accounts'}
+        if bal < amount:
+            return {'success': False, 'message': f'Insufficient balance in {from_account}. Available: {_round2(bal)}'}
+        entries = [
+            {'account_code': from_account, 'debit': 0, 'credit': amount},
+            {'account_code': to_account, 'debit': amount, 'credit': 0},
+        ]
+        desc = f"Internal transfer {from_account} → {to_account}: {desc}"
+    elif tx_type == 'cash_withdrawal':
+        from_account = _resolve_payment_account(from_account or 'bank')
+        if not _validate_account_exists(from_account):
+            return {'success': False, 'message': f'Account {from_account} not found'}
+        if not _validate_account_exists('6090'):
+            return {'success': False, 'message': 'Account 6090 (Other Expenses) not found'}
+        bal = _get_account_balance_internal(from_account, transaction_date)
+        if bal is not None and bal < amount:
+            return {'success': False, 'message': f'Insufficient balance. Available: {_round2(bal)}'}
+        entries = [
+            {'account_code': '6090', 'debit': amount, 'credit': 0},
+            {'account_code': from_account, 'debit': 0, 'credit': amount},
+        ]
+        desc = f"Cash withdrawal: {desc}"
+    elif tx_type == 'bank_deposit':
+        from_account = _resolve_payment_account(from_account or 'cash')
+        to_account = _resolve_payment_account(to_account or 'bank')
+        if from_account == to_account:
+            return {'success': False, 'message': 'From and To account cannot be the same'}
+        if not _is_cash_or_bank_account(from_account) or not _is_cash_or_bank_account(to_account):
+            return {'success': False, 'message': 'Bank deposit must be Cash → Bank'}
+        if not _validate_account_exists(from_account) or not _validate_account_exists(to_account):
+            return {'success': False, 'message': 'From or To account not found'}
+        bal = _get_account_balance_internal(from_account, transaction_date)
+        if bal is not None and bal < amount:
+            return {'success': False, 'message': f'Insufficient cash balance. Available: {_round2(bal)}'}
+        entries = [
+            {'account_code': from_account, 'debit': 0, 'credit': amount},
+            {'account_code': to_account, 'debit': amount, 'credit': 0},
+        ]
+        desc = f"Bank deposit {from_account} → {to_account}: {desc}"
+    else:
+        return {'success': False, 'message': f'Invalid transaction_type: {transaction_type}. Allowed: capital_injection, loan_received, other_income, internal_transfer, cash_withdrawal, bank_deposit'}
+
+    result = post_journal_entry(transaction_date, entries, desc, 'treasury', ref_id, user_email)
+    if result.get('success'):
+        logger.info("Treasury %s %.2f posted by %s", tx_type, amount, user_email)
+    return result
 
 
 # ===========================================================================
@@ -3346,6 +3596,67 @@ def get_income_statement(date_from, date_to, token_or_email=None):
 
 
 @anvil.server.callable
+def get_cash_flow_report(date_from, date_to, token_or_email=None):
+    """
+    Cash flow from ledger only. Operating: supplier payments (DR 2000), customer receipts (CR 1100), expenses (DR 6xxx).
+    Investing: inventory (DR 1200, DR 1210). Financing: capital (CR 3000), loans (CR 2500).
+    """
+    is_valid, _, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    if not date_from or not date_to:
+        return {'success': False, 'message': 'date_from and date_to required'}
+    try:
+        d_from = _safe_date(date_from)
+        d_to = _safe_date(date_to)
+        op_totals = {'Supplier payments': 0.0, 'Customer receipts': 0.0, 'Expenses': 0.0}
+        inv_totals = {'Inventory (1200)': 0.0, 'Inventory (1210)': 0.0}
+        fin_totals = {'Capital / Equity': 0.0, 'Loans received': 0.0}
+        for entry in app_tables.ledger.search():
+            row_date = entry.get('date')
+            if isinstance(row_date, datetime):
+                row_date = row_date.date()
+            if row_date is None or row_date < d_from or row_date > d_to:
+                continue
+            code = _safe_str(entry.get('account_code', ''))
+            d = _round2(entry.get('debit', 0))
+            c = _round2(entry.get('credit', 0))
+            if code == '2000' and d > 0:
+                op_totals['Supplier payments'] -= d
+            elif code == '1100' and c > 0:
+                op_totals['Customer receipts'] += c
+            elif code.startswith('6') and d > 0:
+                op_totals['Expenses'] -= d
+            elif code == '1200' and d > 0:
+                inv_totals['Inventory (1200)'] -= d
+            elif code == '1210' and d > 0:
+                inv_totals['Inventory (1210)'] -= d
+            elif code == '3000' and c > 0:
+                fin_totals['Capital / Equity'] += c
+            elif code == LOAN_LIABILITY_ACCOUNT and c > 0:
+                fin_totals['Loans received'] += c
+        operating = [{'label': k, 'amount': _round2(v)} for k, v in op_totals.items() if _round2(v) != 0]
+        investing = [{'label': k, 'amount': _round2(v)} for k, v in inv_totals.items() if _round2(v) != 0]
+        financing = [{'label': k, 'amount': _round2(v)} for k, v in fin_totals.items() if _round2(v) != 0]
+        sum_op = _round2(sum(x['amount'] for x in operating))
+        sum_inv = _round2(sum(x['amount'] for x in investing))
+        sum_fin = _round2(sum(x['amount'] for x in financing))
+        out = {
+            'success': True,
+            'date_from': str(d_from),
+            'date_to': str(d_to),
+            'operating': {'items': operating, 'total': sum_op},
+            'investing': {'items': investing, 'total': sum_inv},
+            'financing': {'items': financing, 'total': sum_fin},
+            'net_change': _round2(sum_op + sum_inv + sum_fin),
+        }
+        return out
+    except Exception as e:
+        logger.exception("get_cash_flow_report error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
 def get_balance_sheet(as_of_date, token_or_email=None):
     """
     Balance sheet as of a given date. Presentation layer only; no ledger or posting changes.
@@ -3456,6 +3767,185 @@ def get_balance_sheet(as_of_date, token_or_email=None):
         }
     except Exception as e:
         logger.exception("get_balance_sheet error")
+        return {'success': False, 'message': str(e)}
+
+
+# ===========================================================================
+# UNIFIED REPORTING ENGINE (ledger-only; no HTML in report logic)
+# ===========================================================================
+def _normalize_trial_balance(data):
+    if not data.get('success') or not data.get('rows'):
+        return None
+    columns = ['Account', 'Debit', 'Credit']
+    rows = []
+    for r in data.get('rows', []):
+        rows.append({
+            'Account': (r.get('name_en') or r.get('name_ar') or r.get('code', '')),
+            'Debit': _round2(r.get('debit', 0)),
+            'Credit': _round2(r.get('credit', 0)),
+        })
+    return {'title': 'Trial Balance', 'columns': columns, 'rows': rows, 'summary': {'total_debit': data.get('total_debit', 0), 'total_credit': data.get('total_credit', 0), 'is_balanced': data.get('is_balanced', False)}}
+
+
+def _normalize_income_statement(data):
+    if not data.get('success'):
+        return None
+    columns = ['Category', 'Account', 'Amount']
+    rows = []
+    for i in data.get('revenue', {}).get('items', []):
+        rows.append({'Category': 'Revenue', 'Account': i.get('name_en', ''), 'Amount': _round2(i.get('amount', 0))})
+    for i in data.get('cogs', {}).get('items', []):
+        rows.append({'Category': 'COGS', 'Account': i.get('name_en', ''), 'Amount': _round2(i.get('amount', 0))})
+    for i in data.get('expenses', {}).get('items', []):
+        rows.append({'Category': 'Expense', 'Account': i.get('name_en', ''), 'Amount': _round2(i.get('amount', 0))})
+    return {'title': 'Income Statement', 'columns': columns, 'rows': rows, 'summary': {'net_profit': data.get('net_profit', 0), 'total_revenue': data.get('revenue', {}).get('total', 0)}}
+
+
+def _normalize_balance_sheet(data):
+    if not data.get('success'):
+        return None
+    columns = ['Category', 'Account', 'Amount']
+    rows = []
+    for i in data.get('assets', {}).get('items', []):
+        rows.append({'Category': 'Assets', 'Account': i.get('name_en', ''), 'Amount': _round2(i.get('balance', 0))})
+    for i in data.get('liabilities', {}).get('items', []):
+        rows.append({'Category': 'Liabilities', 'Account': i.get('name_en', ''), 'Amount': _round2(i.get('balance', 0))})
+    for i in data.get('equity', {}).get('items', []):
+        rows.append({'Category': 'Equity', 'Account': i.get('name_en', ''), 'Amount': _round2(i.get('balance', 0))})
+    return {'title': 'Balance Sheet', 'columns': columns, 'rows': rows, 'summary': {'total_assets': data.get('assets', {}).get('total', 0), 'total_liabilities_equity': data.get('total_liabilities_equity', 0), 'is_balanced': data.get('is_balanced', False)}}
+
+
+def _normalize_cash_flow(data):
+    if not data.get('success'):
+        return None
+    columns = ['Section', 'Label', 'Amount']
+    rows = []
+    for i in data.get('operating', {}).get('items', []):
+        rows.append({'Section': 'Operating', 'Label': i.get('label', ''), 'Amount': _round2(i.get('amount', 0))})
+    for i in data.get('investing', {}).get('items', []):
+        rows.append({'Section': 'Investing', 'Label': i.get('label', ''), 'Amount': _round2(i.get('amount', 0))})
+    for i in data.get('financing', {}).get('items', []):
+        rows.append({'Section': 'Financing', 'Label': i.get('label', ''), 'Amount': _round2(i.get('amount', 0))})
+    return {'title': 'Cash Flow', 'columns': columns, 'rows': rows, 'summary': {'operating': data.get('operating', {}).get('total', 0), 'investing': data.get('investing', {}).get('total', 0), 'financing': data.get('financing', {}).get('total', 0), 'net_change': data.get('net_change', 0)}}
+
+
+@anvil.server.callable
+def generate_report(report_name, filters, token_or_email=None):
+    """
+    Central reporting: returns { title, columns, rows, summary }. No HTML. All from ledger.
+    report_name: trial_balance | income_statement | balance_sheet | cash_flow | vat_report | supplier_aging | inventory_valuation | fx_report | treasury_summary
+    filters: dict with date_from, date_to, as_of_date, etc. as required by each report.
+    """
+    is_valid, _, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    filters = filters or {}
+    report_name = _safe_str(report_name or '').strip().lower()
+    try:
+        if report_name == 'trial_balance':
+            data = get_trial_balance(date_from=filters.get('date_from'), date_to=filters.get('date_to'), token_or_email=token_or_email)
+            out = _normalize_trial_balance(data)
+        elif report_name == 'income_statement':
+            data = get_income_statement(filters.get('date_from'), filters.get('date_to'), token_or_email=token_or_email)
+            out = _normalize_income_statement(data)
+        elif report_name == 'balance_sheet':
+            data = get_balance_sheet(filters.get('as_of_date'), token_or_email=token_or_email)
+            out = _normalize_balance_sheet(data)
+        elif report_name == 'cash_flow':
+            data = get_cash_flow_report(filters.get('date_from'), filters.get('date_to'), token_or_email=token_or_email)
+            out = _normalize_cash_flow(data)
+        elif report_name == 'treasury_summary':
+            data = get_treasury_summary(token_or_email=token_or_email)
+            if not data.get('success'):
+                return {'success': False, 'message': data.get('message', '')}
+            columns = ['Account', 'Current Balance']
+            rows = [{'Account': a.get('account_name', ''), 'Current Balance': _round2(a.get('current_balance', 0))} for a in (data.get('data') or data.get('accounts') or [])]
+            out = {'title': 'Treasury Summary', 'columns': columns, 'rows': rows, 'summary': {'grand_total': data.get('grand_total', 0)}}
+        else:
+            return {'success': False, 'message': f'Unknown report: {report_name}. Supported: trial_balance, income_statement, balance_sheet, cash_flow, vat_report, supplier_aging, inventory_valuation, fx_report, treasury_summary'}
+        if out is None:
+            return {'success': False, 'message': 'Report returned no data'}
+        return {'success': True, 'report_name': report_name, 'title': out['title'], 'columns': out['columns'], 'rows': out['rows'], 'summary': out.get('summary', {})}
+    except Exception as e:
+        logger.exception("generate_report error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def export_report(report_name, filters, format='csv', token_or_email=None):
+    """
+    Export report as csv, excel, or pdf. Uses generate_report for data; same structure for all formats.
+    format: 'pdf' | 'excel' | 'csv'
+    """
+    is_valid, _, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    res = generate_report(report_name, filters or {}, token_or_email=token_or_email)
+    if not res.get('success'):
+        return res
+    title = res.get('title', 'Report')
+    columns = res.get('columns', [])
+    rows = res.get('rows', [])
+    fmt = _safe_str(format or 'csv').strip().lower()
+    try:
+        if fmt == 'csv':
+            import io
+            buf = io.StringIO()
+            import csv
+            w = csv.writer(buf)
+            w.writerow(columns)
+            for r in rows:
+                w.writerow([r.get(col, '') for col in columns])
+            return {'success': True, 'format': 'csv', 'content': buf.getvalue(), 'filename': f"{report_name}_{_safe_date(filters.get('date_to') or filters.get('as_of_date') or '')}.csv"}
+        elif fmt == 'excel':
+            try:
+                import openpyxl
+                from openpyxl import Workbook
+            except ImportError:
+                return {'success': False, 'message': 'openpyxl not installed. Use csv or install openpyxl.'}
+            wb = Workbook()
+            ws = wb.active
+            ws.title = title[:31]
+            ws.append(columns)
+            for r in rows:
+                ws.append([r.get(col, '') for col in columns])
+            import io
+            buf = io.BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            blob = buf.getvalue()
+            try:
+                content = anvil.BlobMedia('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', blob)
+            except AttributeError:
+                import base64
+                content = base64.b64encode(blob).decode('ascii')
+            return {'success': True, 'format': 'excel', 'content': content, 'filename': f"{report_name}_{_safe_date(filters.get('date_to') or filters.get('as_of_date') or '')}.xlsx"}
+        elif fmt == 'pdf':
+            try:
+                from reportlab.lib.pagesizes import letter
+                from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+                from reportlab.lib import colors
+            except ImportError:
+                return {'success': False, 'message': 'reportlab not installed. Use csv/excel or install reportlab.'}
+            import io
+            buf = io.BytesIO()
+            doc = SimpleDocTemplate(buf, pagesize=letter)
+            table_data = [columns] + [[str(r.get(col, '')) for col in columns] for r in rows]
+            t = Table(table_data)
+            t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey), ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke)]))
+            doc.build([t])
+            buf.seek(0)
+            blob = buf.getvalue()
+            try:
+                content = anvil.BlobMedia('application/pdf', blob)
+            except AttributeError:
+                import base64
+                content = base64.b64encode(blob).decode('ascii')
+            return {'success': True, 'format': 'pdf', 'content': content, 'filename': f"{report_name}.pdf"}
+        else:
+            return {'success': False, 'message': f'Unsupported format: {format}. Use pdf, excel, or csv.'}
+    except Exception as e:
+        logger.exception("export_report error")
         return {'success': False, 'message': str(e)}
 
 

@@ -134,7 +134,10 @@ container:
           <button class="sub-tab" data-tab="ledger" onclick="switchTab(this)">General Ledger</button>
           <button class="sub-tab" data-tab="currency" onclick="switchTab(this)">Currency</button>
           <button class="sub-tab" data-tab="treasury" onclick="switchTab(this)">Treasury</button>
+          <button class="sub-tab" data-tab="transfers" onclick="switchTab(this)">Transfers</button>
+          <button class="sub-tab" data-tab="cashflow" onclick="switchTab(this)">Cash Flow</button>
           <button class="sub-tab" data-tab="cashbank" onclick="switchTab(this)">Cash/Bank Statement</button>
+          <button class="sub-tab" data-tab="period" onclick="switchTab(this)">Period Management</button>
           <button class="sub-tab" data-tab="vat" onclick="switchTab(this)">VAT Report</button>
           <button class="sub-tab" data-tab="opening" onclick="switchTab(this)">Opening Balances</button>
         </div>
@@ -145,6 +148,8 @@ container:
             <label>From:</label><input type="date" id="trialFrom">
             <label>To:</label><input type="date" id="trialTo">
             <button onclick="withButtonLock(this, function(){ return loadTrialBalance(); })" data-loading-text="...">Load</button>
+            <button class="btn-export" onclick="exportReport('trial_balance','pdf');" style="margin-left:8px;">Export PDF</button>
+            <button class="btn-export" onclick="exportReport('trial_balance','excel');" style="margin-left:4px;">Export Excel</button>
           </div>
           <div class="report-card">
             <h3 id="trialTitle">Trial Balance</h3>
@@ -160,6 +165,8 @@ container:
             <label>From:</label><input type="date" id="incomeFrom">
             <label>To:</label><input type="date" id="incomeTo">
             <button onclick="withButtonLock(this, function(){ return loadIncomeStatement(); })" data-loading-text="...">Load</button>
+            <button class="btn-export" onclick="exportReport('income_statement','pdf');" style="margin-left:8px;">Export PDF</button>
+            <button class="btn-export" onclick="exportReport('income_statement','excel');" style="margin-left:4px;">Export Excel</button>
           </div>
           <div class="summary-row" id="incomeSummary"></div>
           <div class="report-card">
@@ -175,6 +182,8 @@ container:
           <div class="date-filter">
             <label>As of:</label><input type="date" id="balanceDate">
             <button onclick="withButtonLock(this, function(){ return loadBalanceSheet(); })" data-loading-text="...">Load</button>
+            <button class="btn-export" onclick="exportReport('balance_sheet','pdf');" style="margin-left:8px;">Export PDF</button>
+            <button class="btn-export" onclick="exportReport('balance_sheet','excel');" style="margin-left:4px;">Export Excel</button>
           </div>
           <div class="report-card">
             <h3 id="balanceTitle">Balance Sheet</h3>
@@ -324,6 +333,66 @@ container:
         </div>
       </div>
 
+      <!-- Internal Transfers (Treasury → Transfers) -->
+      <div class="tab-panel" id="panel-transfers">
+        <div class="expense-form">
+          <h3 id="transfersTitle">Internal Transfer (Cash / Bank)</h3>
+          <p id="transfersHint" style="margin:0 0 10px 0; color:#555;">From and To must be different. Sufficient balance validated from ledger.</p>
+          <div class="expense-grid">
+            <div class="form-group">
+              <label id="lblTransferFrom">From</label>
+              <select id="transferFrom">
+                <option value="1000">Cash (1000)</option>
+                <option value="1010">Bank (1010)</option>
+                <option value="1011">Bank - CIB (1011)</option>
+                <option value="1012">Bank - NBE (1012)</option>
+                <option value="1013">Bank - QNB (1013)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label id="lblTransferTo">To</label>
+              <select id="transferTo">
+                <option value="1010">Bank (1010)</option>
+                <option value="1000">Cash (1000)</option>
+                <option value="1011">Bank - CIB (1011)</option>
+                <option value="1012">Bank - NBE (1012)</option>
+                <option value="1013">Bank - QNB (1013)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label id="lblTransferAmount">Amount (EGP)</label>
+              <input type="number" id="transferAmount" step="0.01" min="0.01" value="">
+            </div>
+            <div class="form-group">
+              <label id="lblTransferDate">Date</label>
+              <input type="date" id="transferDate">
+            </div>
+            <div class="form-group">
+              <label id="lblTransferDesc">Description</label>
+              <input type="text" id="transferDesc" placeholder="Internal transfer">
+            </div>
+          </div>
+          <button class="btn btn-save" id="btnTransfer" onclick="withButtonLock(this, function(){ return submitInternalTransfer(); })" data-loading-text="...">Transfer</button>
+        </div>
+      </div>
+
+      <!-- Cash Flow Report -->
+      <div class="tab-panel" id="panel-cashflow">
+        <div class="date-filter">
+          <label>From</label><input type="date" id="cashflowFrom">
+          <label>To</label><input type="date" id="cashflowTo">
+          <button onclick="withButtonLock(this, function(){ return loadCashFlow(); })" data-loading-text="...">Load</button>
+          <button class="btn-export" onclick="exportReport('cash_flow','pdf');" style="margin-left:8px;">Export PDF</button>
+          <button class="btn-export" onclick="exportReport('cash_flow','excel');" style="margin-left:4px;">Export Excel</button>
+        </div>
+        <div class="report-card">
+          <h3 id="cashflowTitle">Cash Flow</h3>
+          <div class="table-wrap">
+            <table><thead><tr><th>Section</th><th>Label</th><th class="text-right">Amount</th></tr></thead><tbody id="cashflowBody"><tr><td colspan="3" class="empty-msg">Click Load to generate</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+
       <!-- Cash/Bank Statement (كشف النقدية والبنك) -->
       <div class="tab-panel" id="panel-cashbank">
         <div class="date-filter cashbank-date-filter">
@@ -344,6 +413,24 @@ container:
           <div class="table-wrap">
             <table><thead><tr><th>Date</th><th>Account</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th><th class="text-right">Balance</th></tr></thead><tbody id="cashbankBody"><tr><td colspan="6" class="empty-msg">Select dates and click Load</td></tr></tbody></table>
           </div>
+        </div>
+      </div>
+
+      <!-- Period Management -->
+      <div class="tab-panel" id="panel-period">
+        <div class="date-filter">
+          <label id="lblPeriodYear">Year</label>
+          <input type="number" id="periodYear" min="2020" max="2030" value="2025" style="width:80px;">
+          <button onclick="withButtonLock(this, function(){ return loadPeriodLocks(); })" id="btnLoadPeriods" data-loading-text="...">Load</button>
+        </div>
+        <div class="report-card">
+          <h3 id="periodTitle">Period Status (Lock / Unlock)</h3>
+          <div class="table-wrap">
+            <table><thead><tr><th>Year</th><th>Month</th><th>Status</th><th>Action</th></tr></thead><tbody id="periodBody"><tr><td colspan="4" class="empty-msg">Select year and Load</td></tr></tbody></table>
+          </div>
+          <p style="margin-top:12px;">
+            <button class="btn btn-save" id="btnCloseYear" onclick="withButtonLock(this, function(){ return closeFinancialYear(); })" data-loading-text="...">Close Full Year (Lock All 12 Months)</button>
+          </p>
         </div>
       </div>
 
@@ -1247,6 +1334,172 @@ container:
             } catch (err) {
               if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + (err && err.message ? err.message : String(err)) + '</td></tr>';
             }
+          };
+
+          window.submitInternalTransfer = async function() {
+            var fromCode = document.getElementById('transferFrom') && document.getElementById('transferFrom').value;
+            var toCode = document.getElementById('transferTo') && document.getElementById('transferTo').value;
+            var amount = parseFloat(document.getElementById('transferAmount') && document.getElementById('transferAmount').value) || 0;
+            var d = document.getElementById('transferDate') && document.getElementById('transferDate').value;
+            var desc = (document.getElementById('transferDesc') && document.getElementById('transferDesc').value) || 'Internal transfer';
+            if (!fromCode || !toCode) { if (window.showNotification) window.showNotification('error', '', t('Select From and To accounts', 'اختر من وحساب الوجهة')); return; }
+            if (fromCode === toCode) { if (window.showNotification) window.showNotification('error', '', t('From and To must be different', 'من والوجهة يجب أن يكونا مختلفين')); return; }
+            if (amount <= 0) { if (window.showNotification) window.showNotification('error', '', t('Enter amount', 'أدخل المبلغ')); return; }
+            if (!d) { if (window.showNotification) window.showNotification('error', '', t('Select date', 'اختر التاريخ')); return; }
+            if (typeof window.pyCreateTreasuryTransaction !== 'function') { if (window.showNotification) window.showNotification('error', '', 'Treasury not available'); return; }
+            try {
+              var res = await window.pyCreateTreasuryTransaction('internal_transfer', amount, d, desc, fromCode, toCode);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Transfer recorded', 'تم تسجيل التحويل'));
+                if (window.loadTreasury) loadTreasury();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err && err.message ? err.message : err));
+            }
+          };
+
+          window.loadCashFlow = async function() {
+            var fromEl = document.getElementById('cashflowFrom');
+            var toEl = document.getElementById('cashflowTo');
+            var tbody = document.getElementById('cashflowBody');
+            if (!tbody || !fromEl || !toEl) return;
+            if (typeof window.pyGetCashFlowReport !== 'function') return;
+            tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetCashFlowReport(fromEl.value, toEl.value);
+              if (res && res.success) {
+                var rows = [];
+                (res.operating && res.operating.items || []).forEach(function(i) { rows.push({ section: 'Operating', label: i.label, amount: i.amount }); });
+                (res.investing && res.investing.items || []).forEach(function(i) { rows.push({ section: 'Investing', label: i.label, amount: i.amount }); });
+                (res.financing && res.financing.items || []).forEach(function(i) { rows.push({ section: 'Financing', label: i.label, amount: i.amount }); });
+                if (rows.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + t('No data in period', 'لا توجد بيانات') + '</td></tr>'; return; }
+                var html = '';
+                rows.forEach(function(r) {
+                  html += '<tr><td>' + (r.section || '') + '</td><td>' + (r.label || '') + '</td><td class="text-right">' + fmt(r.amount) + '</td></tr>';
+                });
+                tbody.innerHTML = html;
+              } else {
+                tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">' + String(err && err.message ? err.message : err) + '</td></tr>';
+            }
+          };
+
+          window.exportReport = async function(reportName, format) {
+            var filters = {};
+            if (reportName === 'trial_balance') {
+              var fromEl = document.getElementById('trialFrom'); var toEl = document.getElementById('trialTo');
+              if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value;
+            } else if (reportName === 'income_statement') {
+              var fromEl = document.getElementById('incomeFrom'); var toEl = document.getElementById('incomeTo');
+              if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value;
+            } else if (reportName === 'cash_flow') {
+              var fromEl = document.getElementById('cashflowFrom'); var toEl = document.getElementById('cashflowTo');
+              if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value;
+            } else if (reportName === 'balance_sheet') {
+              var d = document.getElementById('balanceDate');
+              if (d) filters.as_of_date = d.value;
+            }
+            if (typeof window.pyExportReport !== 'function') { if (window.showNotification) window.showNotification('error', '', 'Export not available'); return; }
+            try {
+              var res = await window.pyExportReport(reportName, filters, format);
+              if (res && res.success && res.content) {
+                var filename = res.filename || reportName + (format === 'pdf' ? '.pdf' : format === 'excel' ? '.xlsx' : '.csv');
+                if (format === 'csv' && typeof res.content === 'string') {
+                  var a = document.createElement('a');
+                  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(res.content);
+                  a.download = filename;
+                  a.click();
+                } else if ((format === 'pdf' || format === 'excel') && typeof res.content === 'string' && res.content.length > 0) {
+                  try {
+                    var bin = atob(res.content);
+                    var arr = new Uint8Array(bin.length);
+                    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+                    var mime = format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                    var blob = new Blob([arr], { type: mime });
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch (e) {
+                    if (window.showNotification) window.showNotification('error', '', 'Download failed: ' + (e && e.message ? e.message : String(e)));
+                  }
+                } else {
+                  if (window.showNotification) window.showNotification('info', '', t('Download may start; check browser.', 'قد يبدأ التحميل؛ تحقق من المتصفح.'));
+                }
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Export failed');
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err && err.message ? err.message : err));
+            }
+          };
+
+          window.loadPeriodLocks = async function() {
+            var yearEl = document.getElementById('periodYear');
+            var tbody = document.getElementById('periodBody');
+            if (!tbody || typeof window.pyGetPeriodLocks !== 'function') return;
+            var year = yearEl ? parseInt(yearEl.value, 10) : new Date().getFullYear();
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetPeriodLocks(year);
+              if (res && res.success) {
+                var data = res.data || [];
+                var months = [1,2,3,4,5,6,7,8,9,10,11,12];
+                var byMonth = {};
+                data.forEach(function(r) {
+                  if (r.year === year) byMonth[r.month] = r.locked;
+                });
+                var html = '';
+                months.forEach(function(m) {
+                  var locked = byMonth[m];
+                  html += '<tr><td>' + year + '</td><td>' + m + '</td><td>' + (locked ? t('Locked', 'مقفل') : t('Open', 'مفتوح')) + '</td><td>';
+                  html += locked
+                    ? '<button class="btn-small" data-y="' + year + '" data-m="' + m + '" onclick="withButtonLock(this, function(){ return reopenPeriod(this.dataset.y, this.dataset.m); })" data-loading-text="...">' + t('Unlock', 'فتح') + '</button>'
+                    : '<button class="btn-small" data-y="' + year + '" data-m="' + m + '" onclick="withButtonLock(this, function(){ return lockPeriod(this.dataset.y, this.dataset.m); })" data-loading-text="...">' + t('Lock', 'قفل') + '</button>';
+                  html += '</td></tr>';
+                });
+                tbody.innerHTML = html;
+              } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + String(err && err.message ? err.message : err) + '</td></tr>';
+            }
+          };
+
+          window.lockPeriod = async function(y, m) {
+            if (typeof window.pyClosePeriod !== 'function') return;
+            try {
+              var res = await window.pyClosePeriod(parseInt(y,10), parseInt(m,10));
+              if (res && res.success) { if (window.showNotification) window.showNotification('success', '', t('Period locked', 'تم قفل الفترة')); if (window.loadPeriodLocks) loadPeriodLocks(); }
+              else { if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error'); }
+            } catch (e) { if (window.showNotification) window.showNotification('error', '', String(e)); }
+          };
+
+          window.reopenPeriod = async function(y, m) {
+            if (typeof window.pyReopenPeriod !== 'function') return;
+            try {
+              var res = await window.pyReopenPeriod(parseInt(y,10), parseInt(m,10));
+              if (res && res.success) { if (window.showNotification) window.showNotification('success', '', t('Period reopened', 'تم فتح الفترة')); if (window.loadPeriodLocks) loadPeriodLocks(); }
+              else { if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error'); }
+            } catch (e) { if (window.showNotification) window.showNotification('error', '', String(e)); }
+          };
+
+          window.closeFinancialYear = async function() {
+            var yearEl = document.getElementById('periodYear');
+            var year = yearEl ? parseInt(yearEl.value, 10) : new Date().getFullYear();
+            if (typeof window.pyCloseFinancialYear !== 'function') return;
+            try {
+              var res = await window.pyCloseFinancialYear(year);
+              if (res && res.success) { if (window.showNotification) window.showNotification('success', '', res.message || t('Year closed', 'تم إقفال السنة')); if (window.loadPeriodLocks) loadPeriodLocks(); }
+              else { if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error'); }
+            } catch (e) { if (window.showNotification) window.showNotification('error', '', String(e)); }
           };
 
           window.delOpeningBalance = async function(name, type) {

@@ -104,6 +104,14 @@ class AccountantForm(AccountantFormTemplate):
         anvil.js.window.pyGetCashBankStatement = self.get_cash_bank_statement
         anvil.js.window.pyGetVatReport = self.get_vat_report
         anvil.js.window.pySettleVatForPeriod = self.settle_vat_for_period
+        anvil.js.window.pyCreateTreasuryTransaction = self.create_treasury_transaction
+        anvil.js.window.pyGetCashFlowReport = self.get_cash_flow_report
+        anvil.js.window.pyGenerateReport = self.generate_report
+        anvil.js.window.pyExportReport = self.export_report
+        anvil.js.window.pyGetPeriodLocks = self.get_period_locks
+        anvil.js.window.pyClosePeriod = self.close_period
+        anvil.js.window.pyReopenPeriod = self.reopen_period
+        anvil.js.window.pyCloseFinancialYear = self.close_financial_year
 
         register_notif_bridges()
         self.add_event_handler('show', self._on_show)
@@ -247,6 +255,32 @@ class AccountantForm(AccountantFormTemplate):
         return anvil.server.call(
             'settle_vat_for_period', date_from, date_to, settlement_account, self._auth()
         )
+
+    def create_treasury_transaction(self, transaction_type, amount, transaction_date, description, from_account=None, to_account=None):
+        return anvil.server.call(
+            'create_treasury_transaction', transaction_type, amount, transaction_date, description, from_account, to_account, self._auth()
+        )
+
+    def get_cash_flow_report(self, date_from, date_to):
+        return anvil.server.call('get_cash_flow_report', date_from, date_to, self._auth())
+
+    def generate_report(self, report_name, filters):
+        return anvil.server.call('generate_report', report_name, filters, self._auth())
+
+    def export_report(self, report_name, filters, format='csv'):
+        return anvil.server.call('export_report', report_name, filters, format, self._auth())
+
+    def get_period_locks(self, year=None):
+        return anvil.server.call('get_period_locks', year, self._auth())
+
+    def close_period(self, year, month):
+        return anvil.server.call('close_period', year, month, self._auth())
+
+    def reopen_period(self, year, month):
+        return anvil.server.call('reopen_period', year, month, self._auth())
+
+    def close_financial_year(self, year):
+        return anvil.server.call('close_financial_year', year, self._auth())
 
     # --- Navigation ---
     def open_suppliers(self):

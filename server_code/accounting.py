@@ -3957,6 +3957,52 @@ def generate_report(report_name, filters, token_or_email=None):
         return {'success': False, 'message': str(e)}
 
 
+def _register_pdf_arabic_font():
+    """
+    Register a font that supports Arabic so PDF export does not show black squares.
+    Tries Arial (Windows), DejaVu Sans (Linux), then falls back to Helvetica.
+    Returns the registered font name or None to use default.
+    """
+    import os
+    try:
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+    except ImportError:
+        return None
+    font_name = 'ExportArabic'
+    try:
+        if pdfmetrics.getFont(font_name):
+            return font_name
+    except Exception:
+        pass
+    candidates = []
+    windir = os.environ.get('WINDIR', os.environ.get('SystemRoot', 'C:\\Windows'))
+    if windir:
+        candidates.append(os.path.join(windir, 'Fonts', 'arial.ttf'))
+        candidates.append(os.path.join(windir, 'Fonts', 'tahoma.ttf'))
+    candidates.extend([
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    ])
+    try:
+        base = os.path.dirname(os.path.abspath(__file__))
+        for name in ('DejaVuSans.ttf', 'arial.ttf', 'Arial.ttf'):
+            p = os.path.join(base, 'fonts', name)
+            if p not in candidates:
+                candidates.append(p)
+    except Exception:
+        pass
+    for path in candidates:
+        if path and os.path.isfile(path):
+            try:
+                pdfmetrics.registerFont(TTFont(font_name, path))
+                return font_name
+            except Exception:
+                continue
+    return None
+
+
 @anvil.server.callable
 def export_report(report_name, filters, format='csv', token_or_email=None):
     """
@@ -4027,10 +4073,15 @@ def export_report(report_name, filters, format='csv', token_or_email=None):
             title_style = ParagraphStyle(name='ExportTitle', parent=styles['Heading1'], fontSize=14, spaceAfter=6)
             period_style = ParagraphStyle(name='ExportPeriod', parent=styles['Normal'], fontSize=10, textColor=colors.grey, spaceAfter=12)
             story = [Paragraph(title or 'Report', title_style), Paragraph(period_label, period_style)]
-            table_data = [columns] + [[str(r.get(col, '')) for col in columns] for r in rows]
+            def _cell_str(val):
+                if val is None:
+                    return ''
+                s = str(val).strip()
+                return s if s else ''
+            table_data = [columns] + [[_cell_str(r.get(col)) for col in columns] for r in rows]
             ncols = len(columns)
             col_width = (letter[0] - 1.0 * inch) / ncols if ncols else 1.0 * inch
-            col_widths = [max(col_width, 0.6 * inch) for _ in range(ncols)]
+            col_widths = [max(col_width, 0.65 * inch) for _ in range(ncols)]
             t = Table(table_data, colWidths=col_widths, repeatRows=1)
             style_list = [
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#37474F')),
@@ -4039,12 +4090,15 @@ def export_report(report_name, filters, format='csv', token_or_email=None):
                 ('FONTSIZE', (0, 0), (-1, 0), 9),
                 ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('LEFTPADDING', (0, 0), (-1, -1), 4),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-                ('TOPPADDING', (0, 0), (-1, -1), 3),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+                ('LEFTPADDING', (0, 0), (-1, -1), 5),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ]
+            pdf_font = _register_pdf_arabic_font()
+            if pdf_font:
+                style_list.append(('FONTNAME', (0, 0), (-1, -1), pdf_font))
             t.setStyle(TableStyle(style_list))
             story.append(t)
             doc.build(story)

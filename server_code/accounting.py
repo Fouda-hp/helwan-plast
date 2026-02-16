@@ -102,6 +102,36 @@ def _safe_date(val):
         return None
 
 
+def _export_period_info(filters):
+    """
+    Build period label and filename slug from filters for export.
+    Returns (period_label, filename_slug).
+    period_label: e.g. "From: 2026-01-01 To: 2026-01-31" or "As of: 2026-01-31" or "All data".
+    filename_slug: e.g. "2026-01-01_to_2026-01-31" or "as_of_2026-01-31" or "all".
+    """
+    filters = filters or {}
+    date_from = _safe_date(filters.get('date_from'))
+    date_to = _safe_date(filters.get('date_to'))
+    as_of = _safe_date(filters.get('as_of_date'))
+    if date_from and date_to:
+        label = "From: {} To: {}".format(date_from.isoformat(), date_to.isoformat())
+        slug = "{}_to_{}".format(date_from.isoformat(), date_to.isoformat())
+        return label, slug
+    if as_of:
+        label = "As of: {}".format(as_of.isoformat())
+        slug = "as_of_{}".format(as_of.isoformat())
+        return label, slug
+    if date_from:
+        label = "From: {}".format(date_from.isoformat())
+        slug = "from_{}".format(date_from.isoformat())
+        return label, slug
+    if date_to:
+        label = "To: {}".format(date_to.isoformat())
+        slug = "to_{}".format(date_to.isoformat())
+        return label, slug
+    return "All data", "all"
+
+
 def _row_to_dict(row, columns):
     """Convert an Anvil table row to a plain dict with the given column names."""
     d = {}
@@ -3930,29 +3960,36 @@ def generate_report(report_name, filters, token_or_email=None):
 @anvil.server.callable
 def export_report(report_name, filters, format='csv', token_or_email=None):
     """
-    Export report as csv, excel, or pdf. Uses generate_report for data; same structure for all formats.
+    Export report as csv, excel, or pdf. Uses generate_report for data.
+    Every export includes report title and period (From/To or As of) in content and in filename.
     format: 'pdf' | 'excel' | 'csv'
     """
     is_valid, _, error = _require_permission(token_or_email, 'read')
     if not is_valid:
         return error
-    res = generate_report(report_name, filters or {}, token_or_email=token_or_email)
+    filters = filters or {}
+    res = generate_report(report_name, filters, token_or_email=token_or_email)
     if not res.get('success'):
         return res
     title = res.get('title', 'Report')
     columns = res.get('columns', [])
     rows = res.get('rows', [])
+    period_label, filename_slug = _export_period_info(filters)
+    base_filename = "{}_{}".format(report_name, filename_slug)
     fmt = _safe_str(format or 'csv').strip().lower()
     try:
         if fmt == 'csv':
             import io
-            buf = io.StringIO()
             import csv
+            buf = io.StringIO()
             w = csv.writer(buf)
+            w.writerow([title])
+            w.writerow([period_label])
+            w.writerow([])
             w.writerow(columns)
             for r in rows:
                 w.writerow([r.get(col, '') for col in columns])
-            return {'success': True, 'format': 'csv', 'content': buf.getvalue(), 'filename': f"{report_name}_{_safe_date(filters.get('date_to') or filters.get('as_of_date') or '')}.csv"}
+            return {'success': True, 'format': 'csv', 'content': buf.getvalue(), 'filename': "{}.csv".format(base_filename)}
         elif fmt == 'excel':
             try:
                 import xlsxwriter
@@ -3961,36 +3998,61 @@ def export_report(report_name, filters, format='csv', token_or_email=None):
                 return {'success': False, 'message': 'xlsxwriter not installed. Use csv or install xlsxwriter.'}
             buf = io.BytesIO()
             wb = xlsxwriter.Workbook(buf, {'in_memory': True})
-            ws = wb.add_worksheet(title[:31])
+            ws = wb.add_worksheet((title or 'Report')[:31])
+            ws.write(0, 0, title or 'Report')
+            ws.write(1, 0, period_label)
             for c, col in enumerate(columns):
-                ws.write(0, c, col)
+                ws.write(2, c, col)
             for r, row in enumerate(rows):
                 for c, col in enumerate(columns):
-                    ws.write(r + 1, c, row.get(col, ''))
+                    ws.write(r + 3, c, row.get(col, ''))
             wb.close()
             blob = buf.getvalue()
             import base64
             content = base64.b64encode(blob).decode('ascii')
-            return {'success': True, 'format': 'excel', 'content': content, 'filename': f"{report_name}_{_safe_date(filters.get('date_to') or filters.get('as_of_date') or '')}.xlsx"}
+            return {'success': True, 'format': 'excel', 'content': content, 'filename': "{}.xlsx".format(base_filename)}
         elif fmt == 'pdf':
             try:
                 from reportlab.lib.pagesizes import letter
-                from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+                from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
                 from reportlab.lib import colors
+                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+                from reportlab.lib.units import inch
             except ImportError:
                 return {'success': False, 'message': 'reportlab not installed. Use csv/excel or install reportlab.'}
             import io
             buf = io.BytesIO()
-            doc = SimpleDocTemplate(buf, pagesize=letter)
+            doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.5 * inch, rightMargin=0.5 * inch, topMargin=0.5 * inch, bottomMargin=0.5 * inch)
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle(name='ExportTitle', parent=styles['Heading1'], fontSize=14, spaceAfter=6)
+            period_style = ParagraphStyle(name='ExportPeriod', parent=styles['Normal'], fontSize=10, textColor=colors.grey, spaceAfter=12)
+            story = [Paragraph(title or 'Report', title_style), Paragraph(period_label, period_style)]
             table_data = [columns] + [[str(r.get(col, '')) for col in columns] for r in rows]
-            t = Table(table_data)
-            t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey), ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke)]))
-            doc.build([t])
+            ncols = len(columns)
+            col_width = (letter[0] - 1.0 * inch) / ncols if ncols else 1.0 * inch
+            col_widths = [max(col_width, 0.6 * inch) for _ in range(ncols)]
+            t = Table(table_data, colWidths=col_widths, repeatRows=1)
+            style_list = [
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#37474F')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('FONTSIZE', (0, 0), (-1, 0), 9),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ]
+            t.setStyle(TableStyle(style_list))
+            story.append(t)
+            doc.build(story)
             buf.seek(0)
             blob = buf.getvalue()
             import base64
             content = base64.b64encode(blob).decode('ascii')
-            return {'success': True, 'format': 'pdf', 'content': content, 'filename': f"{report_name}.pdf"}
+            return {'success': True, 'format': 'pdf', 'content': content, 'filename': "{}.pdf".format(base_filename)}
         else:
             return {'success': False, 'message': f'Unsupported format: {format}. Use pdf, excel, or csv.'}
     except Exception as e:

@@ -1962,6 +1962,12 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
                 app_tables.import_costs.add_row(**row_data)
             except Exception:
                 raise
+        try:
+            ic_row = app_tables.import_costs.get(id=cost_id)
+            if ic_row is not None:
+                ic_row.update(paid_amount=amount_egp, updated_at=get_utc_now())
+        except Exception as upd_err:
+            logger.debug("Set import_costs.paid_amount after add: %s", upd_err)
 
         _update_inventory_import_totals(inventory_id=inv_id, purchase_invoice_id=pi_id)
 
@@ -2127,6 +2133,36 @@ def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, to
         return {'success': True, 'transaction_id': je_result.get('transaction_id'), 'paid_amount': new_paid}
     except Exception as e:
         logger.exception("pay_import_cost error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def sync_import_costs_paid_amount(token_or_email=None):
+    """
+    One-time fix: set paid_amount = amount_egp for import costs that have no paid_amount (or 0).
+    In this system, add_import_cost always posts DR 1210/1200 CR Bank, so the cost is paid at add time.
+    Syncing prevents the UI from showing a remaining amount and avoids recording a duplicate 'pay' later.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'edit')
+    if not is_valid:
+        return error
+    try:
+        updated = 0
+        for row in app_tables.import_costs.search():
+            amt = _round2(row.get('amount_egp') or row.get('amount', 0))
+            if amt <= 0:
+                continue
+            paid = _round2(row.get('paid_amount') or 0)
+            if paid >= amt:
+                continue
+            try:
+                row.update(paid_amount=amt)
+                updated += 1
+            except Exception as e:
+                logger.warning("sync_import_costs_paid_amount row %s: %s", row.get('id'), e)
+        return {'success': True, 'updated': updated}
+    except Exception as e:
+        logger.exception("sync_import_costs_paid_amount error")
         return {'success': False, 'message': str(e)}
 
 

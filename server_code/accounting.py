@@ -1206,27 +1206,26 @@ def move_purchase_to_inventory(invoice_id, token_or_email=None):
             return {'success': False, 'message': 'Invoice already moved to inventory. Duplicate move is not allowed.'}
 
         total_transit_cost = _sum_1210_balance_for_invoice(invoice_id)
-        if total_transit_cost <= 0:
-            return {'success': False, 'message': 'No transit balance (1210) found for this invoice. Cannot move.'}
-
-        if not _validate_account_exists('1200'):
-            return {'success': False, 'message': 'Account 1200 (Inventory) not found.'}
-        if not _validate_account_exists('1210'):
-            return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found.'}
-
-        inv_date = row.get('date') or date.today()
+        no_transit_balance = total_transit_cost <= 0
         inv_number = row.get('invoice_number', invoice_id)
-        entries = [
-            {'account_code': '1200', 'debit': total_transit_cost, 'credit': 0},
-            {'account_code': '1210', 'debit': 0, 'credit': total_transit_cost},
-        ]
-        result = post_journal_entry(
-            inv_date, entries,
-            f"Move to inventory: {inv_number} (transit → stock)",
-            'purchase_invoice', invoice_id, user_email,
-        )
-        if not result.get('success'):
-            return result
+
+        if not no_transit_balance:
+            if not _validate_account_exists('1200'):
+                return {'success': False, 'message': 'Account 1200 (Inventory) not found.'}
+            if not _validate_account_exists('1210'):
+                return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found.'}
+            inv_date = row.get('date') or date.today()
+            entries = [
+                {'account_code': '1200', 'debit': total_transit_cost, 'credit': 0},
+                {'account_code': '1210', 'debit': 0, 'credit': total_transit_cost},
+            ]
+            result = post_journal_entry(
+                inv_date, entries,
+                f"Move to inventory: {inv_number} (transit → stock)",
+                'purchase_invoice', invoice_id, user_email,
+            )
+            if not result.get('success'):
+                return result
 
         try:
             row.update(inventory_moved=True, updated_at=get_utc_now())
@@ -1303,6 +1302,9 @@ def move_purchase_to_inventory(invoice_id, token_or_email=None):
                     raise
             logger.info("Created inventory item %s for invoice %s (move to inventory)", inv_item_id, inv_number)
 
+        if no_transit_balance:
+            logger.info("Purchase invoice %s marked in inventory (no 1210 balance) by %s", inv_number, user_email)
+            return {'success': True, 'transaction_id': None, 'total_transit_cost': 0, 'no_1210_balance': True}
         logger.info("Purchase invoice %s moved to inventory (1200) by %s, amount %.2f EGP", inv_number, user_email, total_transit_cost)
         return {'success': True, 'transaction_id': result['transaction_id'], 'total_transit_cost': total_transit_cost}
     except Exception as e:

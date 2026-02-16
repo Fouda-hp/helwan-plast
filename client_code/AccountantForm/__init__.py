@@ -100,6 +100,7 @@ class AccountantForm(AccountantFormTemplate):
         anvil.js.window.pyGetTreasurySummary = self.get_treasury_summary
         anvil.js.window.pyGetOpeningBalances = self.get_opening_balances
         anvil.js.window.pySetOpeningBalance = self.set_opening_balance
+        anvil.js.window.pyPostOpeningBalances = self.post_opening_balances
         anvil.js.window.pyGetCashBankStatement = self.get_cash_bank_statement
         anvil.js.window.pyGetVatReport = self.get_vat_report
         anvil.js.window.pySettleVatForPeriod = self.settle_vat_for_period
@@ -224,6 +225,10 @@ class AccountantForm(AccountantFormTemplate):
 
     def set_opening_balance(self, name, entity_type, amount):
         return anvil.server.call('set_opening_balance', name, entity_type, amount, self._auth())
+
+    def post_opening_balances(self, financial_year):
+        """Post opening balances from opening_balances table as one JE to ledger (Jan 1 of year). Idempotent: fails if already posted."""
+        return anvil.server.call('post_opening_balances', financial_year, self._auth())
 
     def get_cash_bank_statement(self, account_code=None, date_from=None, date_to=None):
         """كشف حساب النقدية والبنك — كل الحركات بالمبالغ والتواريخ."""

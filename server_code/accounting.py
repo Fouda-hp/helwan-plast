@@ -3959,9 +3959,9 @@ def generate_report(report_name, filters, token_or_email=None):
 
 def _register_pdf_arabic_font():
     """
-    Register a font that supports Arabic so PDF export does not show black squares.
-    Tries Arial (Windows), DejaVu Sans (Linux), then falls back to Helvetica.
-    Returns the registered font name or None to use default.
+    Register the same font used in Contract and Quotation PDFs (Segoe UI / Arial)
+    so accounting export PDFs match and Arabic displays correctly (no black squares).
+    ContractPrintForm & QuotationPrintForm use: font-family 'Segoe UI', 'Arial', 'Helvetica Neue'.
     """
     import os
     try:
@@ -3978,21 +3978,22 @@ def _register_pdf_arabic_font():
     candidates = []
     windir = os.environ.get('WINDIR', os.environ.get('SystemRoot', 'C:\\Windows'))
     if windir:
+        candidates.append(os.path.join(windir, 'Fonts', 'segoeui.ttf'))
+        candidates.append(os.path.join(windir, 'Fonts', 'segoeuil.ttf'))
         candidates.append(os.path.join(windir, 'Fonts', 'arial.ttf'))
         candidates.append(os.path.join(windir, 'Fonts', 'tahoma.ttf'))
-    candidates.extend([
-        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
-        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-    ])
     try:
         base = os.path.dirname(os.path.abspath(__file__))
-        for name in ('DejaVuSans.ttf', 'arial.ttf', 'Arial.ttf'):
+        for name in ('segoeui.ttf', 'DejaVuSans.ttf', 'arial.ttf', 'Arial.ttf'):
             p = os.path.join(base, 'fonts', name)
             if p not in candidates:
                 candidates.append(p)
     except Exception:
         pass
+    candidates.extend([
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+    ])
     for path in candidates:
         if path and os.path.isfile(path):
             try:

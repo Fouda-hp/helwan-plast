@@ -2,7 +2,7 @@ components: []
 container:
   properties:
     html: |
-                                     <style>
+      <style>
         * {
           box-sizing: border-box;
           font-family: 'Segoe UI', Arial, Helvetica, sans-serif;

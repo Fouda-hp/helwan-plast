@@ -1185,7 +1185,7 @@ def _sum_1210_balance_for_invoice(invoice_id):
 def move_purchase_to_inventory(invoice_id, token_or_email=None):
     """
     Move a posted purchase from 1210 (Inventory in Transit) to 1200 (Inventory).
-    Validates: invoice status is posted, inventory_moved is False.
+    Validates: invoice status is posted/paid/partial (already posted to ledger), inventory_moved is False.
     total_transit_cost = sum(debit - credit) on 1210 for this invoice (purchase_invoice + import_cost + import_cost_payment refs).
     Posts: DR 1200 = total_transit_cost, CR 1210 = total_transit_cost.
     Sets purchase_invoices.inventory_moved = True.
@@ -1198,8 +1198,9 @@ def move_purchase_to_inventory(invoice_id, token_or_email=None):
         row = app_tables.purchase_invoices.get(id=invoice_id)
         if not row:
             return {'success': False, 'message': 'Purchase invoice not found'}
-        if row.get('status') != 'posted':
-            return {'success': False, 'message': f"Invoice must be posted. Current status: '{row.get('status')}'."}
+        status = (row.get('status') or '').lower().strip()
+        if status not in ('posted', 'paid', 'partial'):
+            return {'success': False, 'message': f"Invoice must be posted first (then it can be paid). Current status: '{row.get('status')}'."}
         # Idempotency: second call must return error; no duplicate JEs
         if row.get('inventory_moved'):
             return {'success': False, 'message': 'Invoice already moved to inventory. Duplicate move is not allowed.'}

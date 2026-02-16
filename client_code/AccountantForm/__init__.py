@@ -313,6 +313,85 @@ class AccountantForm(AccountantFormTemplate):
                             }
                         };
                     }
+                    if (typeof window.exportReport !== 'function') {
+                        window.exportReport = async function(reportName, format) {
+                            var filters = {};
+                            if (reportName === 'trial_balance') {
+                                var fromEl = document.getElementById('trialFrom'); var toEl = document.getElementById('trialTo');
+                                if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value;
+                            } else if (reportName === 'income_statement') {
+                                var fromEl = document.getElementById('incomeFrom'); var toEl = document.getElementById('incomeTo');
+                                if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value;
+                            } else if (reportName === 'cash_flow') {
+                                var fromEl = document.getElementById('cashflowFrom'); var toEl = document.getElementById('cashflowTo');
+                                if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value;
+                            } else if (reportName === 'balance_sheet') {
+                                var d = document.getElementById('balanceDate'); if (d) filters.as_of_date = d.value;
+                            } else if (reportName === 'contract_profitability' || reportName === 'exchange_rates' || reportName === 'treasury_summary' || reportName === 'opening_balances') {
+                                filters = {};
+                            } else if (reportName === 'expenses') {
+                                var fromEl = document.getElementById('expFrom'); var toEl = document.getElementById('expTo'); var catEl = document.getElementById('expFilterCat');
+                                if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value; if (catEl && catEl.value) filters.category = catEl.value;
+                            } else if (reportName === 'general_ledger') {
+                                var accEl = document.getElementById('ledgerAccount'); var fromEl = document.getElementById('ledgerFrom'); var toEl = document.getElementById('ledgerTo');
+                                if (accEl && accEl.value) filters.account_code = accEl.value; if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value;
+                            } else if (reportName === 'cash_bank_statement') {
+                                var accEl = document.getElementById('cashbankAccount'); var fromEl = document.getElementById('cashbankFrom'); var toEl = document.getElementById('cashbankTo');
+                                if (accEl && accEl.value) filters.account_code = accEl.value; if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value;
+                            } else if (reportName === 'vat_report') {
+                                var asOf = document.getElementById('vatAsOf'); var fromEl = document.getElementById('vatFrom'); var toEl = document.getElementById('vatTo');
+                                if (asOf && asOf.value) filters.as_of_date = asOf.value; if (fromEl) filters.date_from = fromEl.value; if (toEl) filters.date_to = toEl.value;
+                            } else if (reportName === 'advanced_account_statement') {
+                                var et = document.getElementById('advStmtEntityType'); var ent = document.getElementById('advStmtEntity');
+                                var fromEl = document.getElementById('advStmtFrom'); var toEl = document.getElementById('advStmtTo');
+                                var inv = document.getElementById('advStmtInvoice'); var tx = document.getElementById('advStmtTxType'); var aging = document.getElementById('advStmtAging');
+                                if (et) filters.entity_type = et.value;
+                                if (ent && ent.value) filters.entity_id = ent.value;
+                                if (fromEl && fromEl.value) filters.date_from = fromEl.value;
+                                if (toEl && toEl.value) filters.date_to = toEl.value;
+                                if (inv && inv.value) filters.invoice_id = inv.value;
+                                if (tx && tx.value) filters.transaction_type = tx.value;
+                                if (aging) filters.include_aging = aging.checked;
+                            }
+                            if (typeof window.pyExportReport !== 'function') { if (window.showNotification) window.showNotification('error', '', 'Export not available'); return; }
+                            var t = window.t || function(en) { return en; };
+                            try {
+                                var res = await window.pyExportReport(reportName, filters, format);
+                                if (res && res.success && res.content) {
+                                    var filename = res.filename || reportName + (format === 'pdf' ? '.pdf' : format === 'excel' ? '.xlsx' : '.csv');
+                                    if (format === 'csv' && typeof res.content === 'string') {
+                                        var a = document.createElement('a');
+                                        a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(res.content);
+                                        a.download = filename;
+                                        a.click();
+                                    } else if ((format === 'pdf' || format === 'excel') && typeof res.content === 'string' && res.content.length > 0) {
+                                        try {
+                                            var b64 = res.content.replace(/\s/g, '');
+                                            var bin = atob(b64);
+                                            var arr = new Uint8Array(bin.length);
+                                            for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+                                            var mime = format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                                            var blob = new Blob([arr], { type: mime });
+                                            var url = URL.createObjectURL(blob);
+                                            var a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = filename;
+                                            a.click();
+                                            URL.revokeObjectURL(url);
+                                        } catch (e) {
+                                            if (window.showNotification) window.showNotification('error', '', 'Download failed: ' + (e && e.message ? e.message : String(e)));
+                                        }
+                                    } else {
+                                        if (window.showNotification) window.showNotification('info', '', t('Download may start; check browser.', 'قد يبدأ التحميل؛ تحقق من المتصفح.'));
+                                    }
+                                } else {
+                                    if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Export failed');
+                                }
+                            } catch (err) {
+                                if (window.showNotification) window.showNotification('error', '', String(err && err.message ? err.message : err));
+                            }
+                        };
+                    }
                     setTimeout(function() {
                         var advStmtEntityTypeEl = document.getElementById('advStmtEntityType');
                         if (advStmtEntityTypeEl && !advStmtEntityTypeEl._advStmtListener) {

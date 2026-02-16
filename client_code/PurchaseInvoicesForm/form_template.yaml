@@ -569,19 +569,21 @@ container:
           }
 
           function renderSummary(data) {
-            var totalAmt = 0, totalPaid = 0, count = data.length;
-            data.forEach(function(inv) {
-              totalAmt += parseFloat(inv.total || 0);
-              totalPaid += parseFloat(inv.paid || 0);
-            });
             var rate = usdRateToEgp || 0;
             var egpSuffix = (isAr ? ' ج.م' : ' EGP');
-            var dispAmt = function(usd) { return rate > 0 ? fmt(usd * rate) + egpSuffix : fmt(usd) + ' $'; };
+            var totalAmtEgp = 0, totalPaidEgp = 0, count = data.length;
+            data.forEach(function(inv) {
+              var totalEgp = parseFloat(inv.total_egp) || parseFloat(inv.supplier_amount_egp) || (rate > 0 ? (parseFloat(inv.total) || 0) * rate : (parseFloat(inv.total) || 0));
+              var paidEgp = parseFloat(inv.paid) || 0;
+              totalAmtEgp += totalEgp;
+              totalPaidEgp += paidEgp;
+            });
+            var dispEgp = function(egp) { return fmt(egp) + egpSuffix; };
             var html = '';
             html += '<div class="summary-card"><div class="num" style="color:#667eea;">' + count + '</div><div class="lbl">' + t('Total Invoices', 'اجمالي الفواتير') + '</div></div>';
-            html += '<div class="summary-card"><div class="num" style="color:#1565c0;">' + dispAmt(totalAmt) + '</div><div class="lbl">' + t('Total Amount', 'اجمالي المبلغ') + (rate > 0 ? ' (ج.م)' : '') + '</div></div>';
-            html += '<div class="summary-card"><div class="num" style="color:#2e7d32;">' + dispAmt(totalPaid) + '</div><div class="lbl">' + t('Total Paid', 'اجمالي المدفوع') + '</div></div>';
-            html += '<div class="summary-card"><div class="num" style="color:#c62828;">' + dispAmt(totalAmt - totalPaid) + '</div><div class="lbl">' + t('Outstanding', 'المتبقي') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#1565c0;">' + dispEgp(totalAmtEgp) + '</div><div class="lbl">' + t('Total Amount', 'اجمالي المبلغ') + ' (ج.م)' + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#2e7d32;">' + dispEgp(totalPaidEgp) + '</div><div class="lbl">' + t('Total Paid', 'اجمالي المدفوع') + ' (ج.م)' + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#c62828;">' + dispEgp(totalAmtEgp - totalPaidEgp) + '</div><div class="lbl">' + t('Outstanding', 'المتبقي') + ' (ج.م)' + '</div></div>';
             document.getElementById('summaryCards').innerHTML = html;
           }
 
@@ -624,11 +626,11 @@ container:
             var html = '';
             var rate = usdRateToEgp || 0;
             var egpSuffix = isAr ? ' ج.م' : ' EGP';
-            var disp = function(usd) { return rate > 0 ? fmt(parseFloat(usd) * rate) + egpSuffix : fmt(usd) + ' $'; };
             data.forEach(function(inv) {
-              var total = parseFloat(inv.total || 0);
-              var paid = parseFloat(inv.paid || 0);
-              var balance = total - paid;
+              var totalEgp = parseFloat(inv.total_egp) || parseFloat(inv.supplier_amount_egp) || (rate > 0 ? (parseFloat(inv.total) || 0) * rate : (parseFloat(inv.total) || 0));
+              var paidEgp = parseFloat(inv.paid) || 0;
+              var balanceEgp = totalEgp - paidEgp;
+              var dispEgp = function(egp) { return fmt(egp) + egpSuffix; };
               var statusKey = (inv.status || 'draft').toLowerCase();
               var statusLabels = { draft: t('Draft', 'مسودة'), posted: t('Posted', 'مرحلة'), paid: t('Paid', 'مدفوعة'), partial: t('Partial', 'جزئي') };
               html += '<tr>';
@@ -636,9 +638,9 @@ container:
               html += '<td>' + (inv.supplier_name || '') + '</td>';
               html += '<td>' + (inv.date || '').substring(0, 10) + '</td>';
               html += '<td>' + (inv.machine_code || '') + '</td>';
-              html += '<td>' + disp(total) + '</td>';
-              html += '<td>' + disp(paid) + '</td>';
-              html += '<td style="font-weight:600;color:' + (balance > 0 ? '#c62828' : '#2e7d32') + ';">' + disp(balance) + '</td>';
+              html += '<td>' + dispEgp(totalEgp) + '</td>';
+              html += '<td>' + dispEgp(paidEgp) + '</td>';
+              html += '<td style="font-weight:600;color:' + (balanceEgp > 0 ? '#c62828' : '#2e7d32') + ';">' + dispEgp(balanceEgp) + '</td>';
               html += '<td><span class="status-badge status-' + statusKey + '">' + (statusLabels[statusKey] || statusKey) + '</span></td>';
               html += '<td style="white-space:nowrap;">';
               html += '<button class="btn-sm btn-view" onclick="withButtonLock(this, function(){ return viewInvoice(\'' + inv.id + '\'); })" data-loading-text="...">' + t('View', 'عرض') + '</button> ';
@@ -646,12 +648,12 @@ container:
                 html += '<button class="btn-sm" style="background:#ff9800;color:#fff;" onclick="withButtonLock(this, function(){ return editInvoice(\'' + inv.id + '\'); })" data-loading-text="...">' + t('Edit', 'تعديل') + '</button> ';
                 html += '<button class="btn-sm" style="background:#2196f3;color:#fff;" onclick="withButtonLock(this, function(){ return postInvoice(\'' + inv.id + '\'); })" data-loading-text="...">' + t('Post', 'ترحيل') + '</button> ';
               }
-              if (statusKey === 'posted' && !inv.inventory_moved && userPerms.can_edit && window.pyMovePurchaseToInventory) {
+              if ((statusKey === 'posted' || statusKey === 'paid' || statusKey === 'partial') && !inv.inventory_moved && userPerms.can_edit && window.pyMovePurchaseToInventory) {
                 html += '<button class="btn-sm" style="background:#2e7d32;color:#fff;" onclick="withButtonLock(this, function(){ return moveToInventory(\'' + inv.id + '\'); })" data-loading-text="...">' + t('Move to inventory', 'نقل للمخزون') + '</button> ';
               }
               if (statusKey !== 'paid' && userPerms.can_edit) {
                 var invRate = parseFloat(inv.exchange_rate_usd_to_egp) || rate || 0;
-                html += '<button class="btn-sm btn-pay" onclick="withButtonLock(this, function(){ openPaymentModal(\'' + inv.id + '\', ' + balance + ', ' + (invRate || 0) + '); })">' + t('Pay', 'دفع') + '</button> ';
+                html += '<button class="btn-sm btn-pay" onclick="withButtonLock(this, function(){ openPaymentModal(\'' + inv.id + '\', ' + balanceEgp + ', 1); })">' + t('Pay', 'دفع') + '</button> ';
               }
               if (userPerms.can_edit) {
                 html += '<button class="btn-sm" style="background:#00838f;color:#fff;" onclick="withButtonLock(this, function(){ return openImportCostsPayModal(\'' + inv.id + '\'); })" data-loading-text="...">' + t('Import costs', 'تكاليف الاستيراد') + '</button> ';

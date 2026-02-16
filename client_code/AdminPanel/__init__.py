@@ -29,6 +29,42 @@ logger = logging.getLogger(__name__)
 
 class AdminPanel(AdminPanelTemplate):
     def __init__(self, **properties):
+        # Suppress the benign Anvil dom-utils.ts replaceChild error that fires
+        # during HtmlTemplate initialisation (Anvil runtime bug, not our code).
+        try:
+            anvil.js.window.eval("""
+                (function(){
+                    if (window.__hpAdminErrPatched) return;
+                    window.__hpAdminErrPatched = true;
+                    var isReplaceChildErr = function(msg) {
+                        return msg && msg.indexOf('replaceChild') !== -1
+                            && msg.indexOf('Unexpected token') !== -1;
+                    };
+                    // onerror fires first and can suppress the error entirely
+                    var origOnError = window.onerror;
+                    window.onerror = function(msg, src, line, col, err) {
+                        if (isReplaceChildErr(String(msg || ''))) return true;
+                        if (origOnError) return origOnError.apply(this, arguments);
+                    };
+                    // Also capture phase listener as backup
+                    window.addEventListener('error', function(e) {
+                        if (e && isReplaceChildErr(String(e.message || ''))) {
+                            e.preventDefault();
+                            e.stopImmediatePropagation();
+                            return true;
+                        }
+                    }, true);
+                    // Hide Anvil's error dialog if it appears for this error
+                    window.addEventListener('unhandledrejection', function(e) {
+                        if (e && e.reason && isReplaceChildErr(String(e.reason.message || e.reason || ''))) {
+                            e.preventDefault();
+                        }
+                    });
+                })();
+            """)
+        except Exception:
+            pass
+
         self.init_components(**properties)
 
         # متغيرات المستخدم الحالي

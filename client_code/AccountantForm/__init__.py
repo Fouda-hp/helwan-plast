@@ -140,10 +140,14 @@ class AccountantForm(AccountantFormTemplate):
         anvil.js.window.pyGetCashFlowReport = self.get_cash_flow_report
         anvil.js.window.pyGenerateReport = self.generate_report
         anvil.js.window.pyExportReport = self.export_report
+        anvil.js.window.pyGetAdvancedAccountStatement = self.get_advanced_account_statement
+        anvil.js.window.pyGetCustomerSummary = self.get_customer_summary
+        anvil.js.window.pyGetSupplierSummary = self.get_supplier_summary
         anvil.js.window.pyGetPeriodLocks = self.get_period_locks
         anvil.js.window.pyClosePeriod = self.close_period
         anvil.js.window.pyReopenPeriod = self.reopen_period
         anvil.js.window.pyCloseFinancialYear = self.close_financial_year
+        anvil.js.window.pyDeleteOpeningBalance = self.delete_opening_balance
 
         register_notif_bridges()
         self.add_event_handler('show', self._on_show)
@@ -313,6 +317,31 @@ class AccountantForm(AccountantFormTemplate):
 
     def close_financial_year(self, year):
         return anvil.server.call('close_financial_year', year, self._auth())
+
+    # --- Advanced Account Statement ---
+    def get_advanced_account_statement(self, filters):
+        """Ledger-only advanced account statement. filters: entity_type, entity_id, date_from, date_to, invoice_id, transaction_type, include_aging."""
+        filters = filters or {}
+        return anvil.server.call(
+            'get_advanced_account_statement',
+            filters.get('entity_type', 'customer'),
+            filters.get('entity_id'),
+            filters.get('date_from'),
+            filters.get('date_to'),
+            filters.get('invoice_id'),
+            filters.get('transaction_type'),
+            bool(filters.get('include_aging')),
+            self._auth(),
+        )
+
+    def get_customer_summary(self):
+        return anvil.server.call('get_customer_summary', self._auth())
+
+    def get_supplier_summary(self):
+        return anvil.server.call('get_supplier_summary', self._auth())
+
+    def delete_opening_balance(self, name, entity_type):
+        return anvil.server.call('delete_opening_balance', name, entity_type, self._auth())
 
     # --- Navigation ---
     def open_suppliers(self):

@@ -140,6 +140,7 @@ container:
           <button class="sub-tab" data-tab="period" onclick="switchTab(this)">Period Management</button>
           <button class="sub-tab" data-tab="vat" onclick="switchTab(this)">VAT Report</button>
           <button class="sub-tab" data-tab="opening" onclick="switchTab(this)">Opening Balances</button>
+          <button class="sub-tab" data-tab="advstmt" onclick="switchTab(this)">Advanced Statement</button>
         </div>
 
         <!-- Trial Balance Panel -->
@@ -523,6 +524,61 @@ container:
         </div>
       </div>
 
+      <!-- Advanced Account Statement Panel -->
+      <div class="tab-panel" id="panel-advstmt">
+        <div class="date-filter" style="flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:16px;">
+          <label>Entity Type</label>
+          <select id="advStmtEntityType" onchange="if(window.populateAdvStmtEntities) populateAdvStmtEntities();">
+            <option value="customer">Customer</option>
+            <option value="supplier">Supplier</option>
+          </select>
+          <label>Entity (optional)</label>
+          <select id="advStmtEntity">
+            <option value="">All (Consolidated)</option>
+          </select>
+          <label>Date From</label>
+          <input type="date" id="advStmtFrom">
+          <label>Date To</label>
+          <input type="date" id="advStmtTo">
+          <label>Invoice (optional)</label>
+          <input type="text" id="advStmtInvoice" placeholder="Invoice ID" style="width:120px;">
+          <label>Transaction Type (optional)</label>
+          <select id="advStmtTxType">
+            <option value="">All</option>
+            <option value="opening_balance">Opening Balance</option>
+            <option value="sales_invoice">Sales Invoice</option>
+            <option value="purchase_invoice">Purchase Invoice</option>
+            <option value="customer_collection">Customer Collection</option>
+            <option value="payment">Payment</option>
+            <option value="contract_receivable">Contract Receivable</option>
+          </select>
+          <label style="display:inline-flex;align-items:center;gap:6px;"><input type="checkbox" id="advStmtAging"> Include Aging</label>
+        </div>
+        <div class="date-filter">
+          <button onclick="withButtonLock(this, function(){ return loadAdvancedStatement(); })" id="btnLoadAdvStmt" data-loading-text="...">Load</button>
+          <button class="btn-export" onclick="exportReport('advanced_account_statement', 'pdf');" style="margin-left:8px;">Export PDF</button>
+          <button class="btn-export" onclick="exportReport('advanced_account_statement', 'excel');" style="margin-left:4px;">Export Excel</button>
+          <button class="btn-export" onclick="exportReport('advanced_account_statement', 'csv');" style="margin-left:4px;">Export CSV</button>
+        </div>
+        <div class="summary-row" id="advStmtSummary">
+          <div class="summary-box"><div class="label">Opening Balance</div><div class="value" id="advStmtOpening">0</div></div>
+          <div class="summary-box"><div class="label">Closing Balance</div><div class="value" id="advStmtClosing">0</div></div>
+        </div>
+        <div class="summary-row" id="advStmtAgingRow" style="display:none;">
+          <div class="summary-box"><div class="label">0-30 days</div><div class="value" id="advStmtAgingCurrent">0</div></div>
+          <div class="summary-box"><div class="label">31-60 days</div><div class="value" id="advStmtAging30">0</div></div>
+          <div class="summary-box"><div class="label">61-90 days</div><div class="value" id="advStmtAging60">0</div></div>
+          <div class="summary-box"><div class="label">90+ days</div><div class="value" id="advStmtAging90">0</div></div>
+          <div class="summary-box"><div class="label">Total Outstanding</div><div class="value" id="advStmtAgingTotal">0</div></div>
+        </div>
+        <div class="report-card">
+          <h3 id="advStmtTitle">Advanced Account Statement</h3>
+          <div class="table-wrap">
+            <table><thead><tr><th>Date</th><th>Ref Type</th><th>Ref ID</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th><th class="text-right">Running Balance</th></tr></thead><tbody id="advStmtBody"><tr><td colspan="7" class="empty-msg">Select filters and click Load</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+
       <script src="_/theme/i18n.js"></script>
       <script src="_/theme/button-lock.js"></script>
       <script>
@@ -615,6 +671,9 @@ container:
             }
             if (tab === 'opening' && window.populateOpeningBalanceAccounts) {
               await populateOpeningBalanceAccounts();
+            }
+            if (tab === 'advstmt' && window.populateAdvStmtEntities) {
+              await populateAdvStmtEntities();
             }
           };
 
@@ -1236,13 +1295,17 @@ container:
           window.populateOpeningBalanceAccounts = populateOpeningBalanceAccounts;
 
           window.setOpeningBalance = async function() {
-            var name = document.getElementById('obName').value.trim();
+            var sel = document.getElementById('obName');
+            var code = sel ? sel.value.trim() : '';
             var amount = parseFloat(document.getElementById('obAmount').value) || 0;
-            if (!name) {
+            if (!code) {
               if (window.showNotification) window.showNotification('error', '', t('Select an account', 'اختر حساباً'));
               return;
             }
-            var type = 'bank';
+            // Auto-detect type: 1000=cash, 1010/1011/1012/1013=bank, else=other
+            var type = (code === '1000') ? 'cash' : ((code.indexOf('101') === 0) ? 'bank' : 'other');
+            // Use account code as name (server stores it this way)
+            var name = code;
             try {
               var res = await window.pySetOpeningBalance(name, type, amount);
               if (res && res.success) {
@@ -1340,6 +1403,18 @@ container:
             if (typeof window.pyGetOpeningBalances !== 'function') return;
             tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
+              // Build a code->name map from the chart of accounts
+              var acctMap = {};
+              try {
+                if (window.pyGetChartOfAccounts) {
+                  var chartRes = await window.pyGetChartOfAccounts();
+                  if (chartRes && chartRes.success && chartRes.accounts) {
+                    chartRes.accounts.forEach(function(a) {
+                      acctMap[String(a.code || '')] = (a.name_en || a.name_ar || String(a.code || ''));
+                    });
+                  }
+                }
+              } catch (e) {}
               var res = await window.pyGetOpeningBalances();
               if (res && res.success) {
                 var data = res.data || [];
@@ -1347,7 +1422,9 @@ container:
                 var html = '';
                 data.forEach(function(row) {
                   var amt = parseFloat(row.opening_balance || row.amount || 0);
-                  html += '<tr><td>' + (row.name || '') + '</td>';
+                  var code = row.name || '';
+                  var displayName = acctMap[code] ? (acctMap[code] + ' (' + code + ')') : code;
+                  html += '<tr><td>' + displayName + '</td>';
                   html += '<td>' + (row.type || '') + '</td>';
                   html += '<td class="text-right" style="font-weight:600;">' + fmt(amt) + '</td>';
                   html += '<td><button class="btn-delete" data-n="' + (row.name || '') + '" data-t="' + (row.type || '') + '" onclick="withButtonLock(this, function(){ return delOpeningBalance(this.dataset.n, this.dataset.t); })" data-loading-text="...">' + t('Del', 'حذف') + '</button></td></tr>';
@@ -1559,6 +1636,103 @@ container:
               }
             } catch (err) {
               if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          // ======== Advanced Account Statement ========
+          window.populateAdvStmtEntities = async function() {
+            var entityType = document.getElementById('advStmtEntityType');
+            var entitySelect = document.getElementById('advStmtEntity');
+            if (!entityType || !entitySelect) return;
+            entitySelect.innerHTML = '<option value="">' + t('All (Consolidated)', 'الكل (موحد)') + '</option>';
+            var isCustomer = entityType.value === 'customer';
+            if (typeof (isCustomer ? window.pyGetCustomerSummary : window.pyGetSupplierSummary) !== 'function') return;
+            try {
+              var res = await (isCustomer ? window.pyGetCustomerSummary() : window.pyGetSupplierSummary());
+              if (res && res.success) {
+                var data = res.data || [];
+                data.forEach(function(r) {
+                  var id = isCustomer ? (r.client_name || '') : (r.supplier_id || r.supplier_name || '');
+                  var name = isCustomer ? (r.client_name || '') : (r.supplier_name || r.supplier_id || '');
+                  if (id || name) {
+                    var opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = name;
+                    entitySelect.appendChild(opt);
+                  }
+                });
+              }
+            } catch (e) {}
+          };
+
+          window.loadAdvancedStatement = async function() {
+            var tbody = document.getElementById('advStmtBody');
+            var entityType = document.getElementById('advStmtEntityType');
+            var entitySelect = document.getElementById('advStmtEntity');
+            var fromEl = document.getElementById('advStmtFrom');
+            var toEl = document.getElementById('advStmtTo');
+            var invoiceEl = document.getElementById('advStmtInvoice');
+            var txTypeEl = document.getElementById('advStmtTxType');
+            var agingEl = document.getElementById('advStmtAging');
+            if (!tbody || typeof window.pyGetAdvancedAccountStatement !== 'function') return;
+            function esc(s) { if (s == null) return ''; var x = String(s); return x.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            var filters = {};
+            filters.entity_type = entityType ? entityType.value : 'customer';
+            filters.entity_id = entitySelect && entitySelect.value ? entitySelect.value : null;
+            filters.date_from = fromEl && fromEl.value ? fromEl.value : null;
+            filters.date_to = toEl && toEl.value ? toEl.value : null;
+            filters.invoice_id = invoiceEl && invoiceEl.value ? invoiceEl.value : null;
+            filters.transaction_type = txTypeEl && txTypeEl.value ? txTypeEl.value : null;
+            filters.include_aging = agingEl ? agingEl.checked : false;
+            try {
+              var res = await window.pyGetAdvancedAccountStatement(filters);
+              if (res && res.success) {
+                var titleEl = document.getElementById('advStmtTitle');
+                if (titleEl) titleEl.textContent = t('Advanced Account Statement', 'كشف حساب متقدم') + ' - ' + (res.entity_name || '');
+                var ob = parseFloat(res.opening_balance) || 0;
+                var cb = parseFloat(res.closing_balance) || 0;
+                var openEl = document.getElementById('advStmtOpening');
+                var closeEl = document.getElementById('advStmtClosing');
+                if (openEl) openEl.textContent = fmt(ob);
+                if (closeEl) closeEl.textContent = fmt(cb);
+                var agingRow = document.getElementById('advStmtAgingRow');
+                if (res.aging && agingRow) {
+                  agingRow.style.display = '';
+                  var a = res.aging;
+                  var cur = document.getElementById('advStmtAgingCurrent'); if (cur) cur.textContent = fmt(a.current);
+                  var a30 = document.getElementById('advStmtAging30'); if (a30) a30.textContent = fmt(a['30']);
+                  var a60 = document.getElementById('advStmtAging60'); if (a60) a60.textContent = fmt(a['60']);
+                  var a90 = document.getElementById('advStmtAging90'); if (a90) a90.textContent = fmt(a['90+']);
+                  var tot = document.getElementById('advStmtAgingTotal'); if (tot) tot.textContent = fmt(a.total_outstanding);
+                } else if (agingRow) { agingRow.style.display = 'none'; }
+                if (res.summary && res.summary.length) {
+                  var html = '';
+                  res.summary.forEach(function(r) {
+                    html += '<tr><td></td><td></td><td>' + esc(r.entity_name) + '</td><td>Summary</td>';
+                    html += '<td class="text-right">' + fmt(r.period_debit) + '</td><td class="text-right">' + fmt(r.period_credit) + '</td>';
+                    html += '<td class="text-right">' + fmt(r.closing_balance) + '</td></tr>';
+                  });
+                  tbody.innerHTML = html;
+                } else {
+                  var rows = res.rows || [];
+                  if (rows.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + t('No transactions in period', 'لا توجد حركات في الفترة') + '</td></tr>';
+                  } else {
+                    var html = '';
+                    rows.forEach(function(r) {
+                      var d = r.date ? (typeof r.date === 'string' ? r.date : (r.date.year + '-' + String(r.date.month).padStart(2,'0') + '-' + String(r.date.day).padStart(2,'0'))) : '';
+                      html += '<tr><td>' + esc(d) + '</td><td>' + esc(r.reference_type) + '</td><td>' + esc(r.reference_id) + '</td><td>' + esc(r.description) + '</td>';
+                      html += '<td class="text-right">' + fmt(r.debit) + '</td><td class="text-right">' + fmt(r.credit) + '</td><td class="text-right">' + fmt(r.balance_after_transaction) + '</td></tr>';
+                    });
+                    tbody.innerHTML = html;
+                  }
+                }
+              } else {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + esc(res ? res.message : 'Error') + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + esc(err && err.message ? err.message : String(err)) + '</td></tr>';
             }
           };
 

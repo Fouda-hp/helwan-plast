@@ -429,13 +429,13 @@ container:
           </table>
           <div id="importCostsAddSection" style="margin-top:16px;padding:12px;background:#f0f7ff;border:1px solid #90caf9;border-radius:8px;">
             <h4 style="margin:0 0 10px;color:#1565c0;" id="lblAddImportCost">Add Import Cost</h4>
+            <p style="margin:0 0 10px;font-size:12px;color:#555;" id="addIcUseTopHint">Date and payment account above apply when adding a cost.</p>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-items:end;margin-bottom:10px;">
               <div><label style="font-size:12px;color:#555;" id="lblAddIcType">Type</label><select id="fAddIcType" style="width:100%;padding:6px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="vat">VAT</option><option value="other">Other</option></select></div>
+              <div style="grid-column:1/-1;"><label style="font-size:12px;color:#555;" id="lblAddIcDescription">Description</label><input type="text" id="fAddIcDescription" placeholder="" style="width:100%;padding:6px;" maxlength="500"></div>
               <div><label style="font-size:12px;color:#555;" id="lblAddIcAmount">Amount (EGP)</label><input type="number" id="fAddIcAmount" step="0.01" min="0" value="0" style="width:100%;padding:6px;"><span id="addIcPreviewEgp" style="font-size:11px;color:#666;display:block;margin-top:2px;"></span></div>
               <div><label style="font-size:12px;color:#555;" id="lblAddIcCurrency">Currency</label><select id="fAddIcCurrency" style="width:100%;padding:6px;"><option value="EGP">EGP</option><option value="USD">USD</option></select></div>
               <div><label style="font-size:12px;color:#555;" id="lblAddIcRate">Exchange rate (USD→EGP)</label><input type="number" id="fAddIcRate" step="0.01" min="0" placeholder="1" style="width:100%;padding:6px;"></div>
-              <div><label style="font-size:12px;color:#555;" id="lblAddIcPayFrom">Pay from</label><select id="fAddIcPayFrom" style="width:100%;padding:6px;"><option value="1000">Cash (1000)</option></select></div>
-              <div><label style="font-size:12px;color:#555;" id="lblAddIcDate">Date</label><input type="date" id="fAddIcDate" style="width:100%;padding:6px;"></div>
               <div><button type="button" class="btn btn-save" id="btnAddImportCostInModal" style="padding:8px 14px;">Add</button></div>
             </div>
           </div>
@@ -557,11 +557,12 @@ container:
             setText('icThPay', t('Pay (EGP)', 'دفع (ج.م)'));
             setText('lblAddImportCost', t('Add Import Cost', 'إضافة تكلفة استيراد'));
             setText('lblAddIcType', t('Type', 'النوع'));
+            setText('lblAddIcDescription', t('Description', 'الوصف'));
             setText('lblAddIcAmount', t('Amount', 'المبلغ'));
             setText('lblAddIcCurrency', t('Currency', 'العملة'));
             setText('lblAddIcRate', t('Exchange rate', 'سعر الصرف'));
-            setText('lblAddIcPayFrom', t('Pay from', 'الدفع من'));
-            setText('lblAddIcDate', t('Date', 'التاريخ'));
+            var addIcHint = document.getElementById('addIcUseTopHint');
+            if (addIcHint) addIcHint.textContent = t('Date and payment account above apply when adding a cost.', 'التاريخ والدفع من أعلاه ينطبقان عند إضافة التكلفة.');
             var addBtn = document.getElementById('btnAddImportCostInModal');
             if (addBtn) addBtn.textContent = t('Add', 'إضافة');
             var piWrapper = document.querySelector('.pi-wrapper');
@@ -1141,10 +1142,8 @@ container:
               var isAr = (localStorage.getItem('hp_language') || 'en') === 'ar';
               if (costs.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#666;">' + t('No import costs yet. Add one below.', 'لا توجد تكاليف استيراد بعد. أضف من الأسفل.') + '</td></tr>';
-                populateAddIcPayFrom(bankRes);
-                setAddIcDateToday();
                 document.getElementById('importCostsAddSection').style.display = 'block';
-                document.getElementById('importCostsPayHint').textContent = t('Add import costs (currency, rate, pay from) then pay when needed.', 'أضف تكاليف الاستيراد (عملة، سعر صرف، الدفع من) ثم ادفع عند الحاجة.');
+                document.getElementById('importCostsPayHint').textContent = t('Add import costs below. Date and payment account above apply to new costs and to Pay.', 'أضف تكاليف الاستيراد من الأسفل. التاريخ والدفع من أعلاه ينطبقان على الإضافة والدفع.');
                 return;
               }
               var egpSuffix = isAr ? ' ج.م' : ' EGP';
@@ -1152,17 +1151,16 @@ container:
               costs.forEach(function(c) {
                 var rem = parseFloat(c.remaining_egp) || 0;
                 var desc = (c.description || '').trim() || '—';
+                var payCell = rem <= 0 ? ('<span style="color:#2e7d32;">' + (isAr ? 'مدفوعة' : 'Paid') + '</span>') : ('<input type="number" class="ic-pay-amount" step="0.01" min="0" max="' + rem + '" value="0" placeholder="' + fmt(rem) + '" style="width:100px;padding:6px;text-align:right;">');
                 html += '<tr data-ic-id="' + (c.id || '') + '" data-remaining="' + rem + '">';
                 html += '<td style="padding:8px;border:1px solid #ddd;">' + (c.cost_type || '') + '</td>';
                 html += '<td style="padding:8px;border:1px solid #ddd;color:#555;">' + desc + '</td>';
                 html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.amount_egp) + egpSuffix + '</td>';
                 html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.paid_amount) + egpSuffix + '</td>';
                 html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;font-weight:600;">' + fmt(rem) + egpSuffix + '</td>';
-                html += '<td style="padding:8px;border:1px solid #ddd;"><input type="number" class="ic-pay-amount" step="0.01" min="0" max="' + rem + '" value="' + (rem || 0) + '" placeholder="' + fmt(rem) + '" style="width:100px;padding:6px;text-align:right;"></td></tr>';
+                html += '<td style="padding:8px;border:1px solid #ddd;">' + payCell + '</td></tr>';
               });
               tbody.innerHTML = html;
-              populateAddIcPayFrom(bankRes);
-              setAddIcDateToday();
               if (typeof updateAddIcAmountLabelAndPreview === 'function') updateAddIcAmountLabelAndPreview();
               document.getElementById('importCostsAddSection').style.display = 'block';
               document.getElementById('importCostsPayHint').textContent = t('Enter amount to pay per row (partial or full). You can add more costs below.', 'أدخل المبلغ المراد دفعه لكل بند. يمكنك إضافة تكاليف أخرى من الأسفل.');
@@ -1218,18 +1216,19 @@ container:
           window.addImportCostInModal = async function() {
             var invoiceId = document.getElementById('importCostsInvoiceId').value;
             var costType = document.getElementById('fAddIcType').value;
+            var description = (document.getElementById('fAddIcDescription') && document.getElementById('fAddIcDescription').value) ? document.getElementById('fAddIcDescription').value.trim() : '';
             var amount = parseFloat(document.getElementById('fAddIcAmount').value) || 0;
             var currency = document.getElementById('fAddIcCurrency').value || 'EGP';
             var rateInput = document.getElementById('fAddIcRate');
             var exchangeRate = currency === 'EGP' ? null : (parseFloat(rateInput.value) || null);
-            var payFrom = document.getElementById('fAddIcPayFrom').value;
-            var costDate = document.getElementById('fAddIcDate').value;
+            var payFrom = (document.getElementById('fImportPayMethod') && document.getElementById('fImportPayMethod').value) || '1000';
+            var costDate = (document.getElementById('fImportPayDate') && document.getElementById('fImportPayDate').value) || new Date().toISOString().slice(0, 10);
             if (!invoiceId) { if (window.showNotification) window.showNotification('error', '', t('Invoice missing', 'الفاتورة غير محددة')); return; }
             if (amount <= 0) { if (window.showNotification) window.showNotification('error', '', t('Enter amount', 'أدخل المبلغ')); return; }
             if (currency !== 'EGP' && (!exchangeRate || exchangeRate <= 0)) { if (window.showNotification) window.showNotification('error', '', t('Exchange rate required for non-EGP', 'سعر الصرف مطلوب لغير الجنيه')); return; }
             if (!costDate) { if (window.showNotification) window.showNotification('error', '', t('Select date', 'اختر التاريخ')); return; }
             try {
-              var res = await window.pyAddImportCost(invoiceId, costType, amount, '', costDate, null, null, currency, exchangeRate, payFrom);
+              var res = await window.pyAddImportCost(invoiceId, costType, amount, description, costDate, null, null, currency, exchangeRate, payFrom);
               if (res && res.success) {
                 if (window.showNotification) window.showNotification('success', '', t('Import cost added', 'تمت إضافة تكلفة الاستيراد'));
                 var res2 = await window.pyGetImportCostsForPayment(invoiceId);
@@ -1251,6 +1250,8 @@ container:
                   tbody.innerHTML = html;
                 }
                 document.getElementById('fAddIcAmount').value = '0';
+                var descEl = document.getElementById('fAddIcDescription');
+                if (descEl) descEl.value = '';
               } else {
                 if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
               }

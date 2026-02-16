@@ -4004,6 +4004,25 @@ def _register_pdf_arabic_font():
     return None
 
 
+def _pdf_cell_text(val, use_arabic_reshape=True):
+    """Prepare cell text for ReportLab: escape XML, optional Arabic reshape for correct display."""
+    if val is None:
+        return ''
+    s = str(val).strip()
+    if not s:
+        return ''
+    has_arabic = any('\u0600' <= c <= '\u06FF' for c in s)
+    if has_arabic and use_arabic_reshape:
+        try:
+            import arabic_reshaper
+            from bidi.algorithm import get_display
+            s = get_display(arabic_reshaper.reshape(s))
+        except Exception:
+            pass
+    s = s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+    return s
+
+
 @anvil.server.callable
 def export_report(report_name, filters, format='csv', token_or_email=None):
     """
@@ -4061,43 +4080,55 @@ def export_report(report_name, filters, format='csv', token_or_email=None):
         elif fmt == 'pdf':
             try:
                 from reportlab.lib.pagesizes import letter
-                from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+                from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
                 from reportlab.lib import colors
                 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
                 from reportlab.lib.units import inch
             except ImportError:
                 return {'success': False, 'message': 'reportlab not installed. Use csv/excel or install reportlab.'}
             import io
+            pdf_font = _register_pdf_arabic_font()
             buf = io.BytesIO()
             doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.5 * inch, rightMargin=0.5 * inch, topMargin=0.5 * inch, bottomMargin=0.5 * inch)
             styles = getSampleStyleSheet()
             title_style = ParagraphStyle(name='ExportTitle', parent=styles['Heading1'], fontSize=14, spaceAfter=6)
             period_style = ParagraphStyle(name='ExportPeriod', parent=styles['Normal'], fontSize=10, textColor=colors.grey, spaceAfter=12)
+            cell_font = pdf_font or 'Helvetica'
+            cell_style = ParagraphStyle(name='ExportCell', fontName=cell_font, fontSize=8, leading=10, wordWrap='CJK')
+            header_style = ParagraphStyle(name='ExportHeader', fontName=cell_font, fontSize=9, leading=11, alignment=1)
             story = [Paragraph(title or 'Report', title_style), Paragraph(period_label, period_style)]
-            def _cell_str(val):
-                if val is None:
-                    return ''
-                s = str(val).strip()
-                return s if s else ''
-            table_data = [columns] + [[_cell_str(r.get(col)) for col in columns] for r in rows]
+            header_row = [Paragraph(_pdf_cell_text(c), header_style) for c in columns]
+            data_rows = [[Paragraph(_pdf_cell_text(r.get(col)), cell_style) for col in columns] for r in rows]
+            table_data = [header_row] + data_rows
             ncols = len(columns)
-            col_width = (letter[0] - 1.0 * inch) / ncols if ncols else 1.0 * inch
-            col_widths = [max(col_width, 0.65 * inch) for _ in range(ncols)]
+            avail_pt = letter[0] - 1.0 * inch
+            avail_inch = avail_pt / 72.0
+            if ncols <= 2:
+                w = avail_pt / ncols
+                col_widths = [w] * ncols
+            elif ncols == 5:
+                fixed_inch = 0.85 + 0.75 + 0.7 + 0.7
+                desc_inch = max(1.5, avail_inch - fixed_inch)
+                col_widths = [0.85 * inch, 0.75 * inch, desc_inch * inch, 0.7 * inch, 0.7 * inch]
+            elif ncols == 6:
+                fixed_inch = 0.8 + 0.7 + 0.65 * 3
+                desc_inch = max(1.2, avail_inch - fixed_inch)
+                col_widths = [0.8 * inch, 0.7 * inch, desc_inch * inch, 0.65 * inch, 0.65 * inch, 0.65 * inch]
+            else:
+                col_width = avail_pt / ncols if ncols else 1.0 * inch
+                col_widths = [max(col_width, 0.6 * inch) for _ in range(ncols)]
             t = Table(table_data, colWidths=col_widths, repeatRows=1)
             style_list = [
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#37474F')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ('FONTSIZE', (0, 0), (-1, 0), 9),
                 ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
-                ('LEFTPADDING', (0, 0), (-1, -1), 5),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
                 ('TOPPADDING', (0, 0), (-1, -1), 4),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ]
-            pdf_font = _register_pdf_arabic_font()
             if pdf_font:
                 style_list.append(('FONTNAME', (0, 0), (-1, -1), pdf_font))
             t.setStyle(TableStyle(style_list))

@@ -3106,10 +3106,15 @@ def link_inventory_to_contract(item_id, contract_number, selling_price, token_or
 
 def _get_all_balances(as_of_date=None, date_from=None):
     """
-    Internal helper: compute balances for all accounts.
+    Internal helper: compute balances for all accounts (used by balance sheet and trial balance).
     If date_from is given, only entries between date_from and as_of_date are included.
     If only as_of_date is given, all entries up to as_of_date are included.
-    Returns dict: {account_code: {'debit': ..., 'credit': ..., 'balance': ..., 'type': ...}}
+    Returns dict: {account_code: {'total_debit', 'total_credit', 'balance', 'type', ...}}.
+
+    Natural balance type per category (sign convention for balance):
+    - ASSET / expense: balance = (debit - credit). Positive = debit balance (normal for assets).
+    - LIABILITY / equity / revenue: balance = (credit - debit). Positive = credit balance (normal).
+    Balance sheet presentation may further normalize (e.g. show asset overdraft as liability).
     """
     cutoff = _safe_date(as_of_date)
     start = _safe_date(date_from)
@@ -3333,8 +3338,16 @@ def get_income_statement(date_from, date_to, token_or_email=None):
 @anvil.server.callable
 def get_balance_sheet(as_of_date, token_or_email=None):
     """
-    Generate balance sheet as of a given date.
-    Assets = Liabilities + Equity (+ Retained Earnings from P&L)
+    Balance sheet as of a given date. Presentation layer only; no ledger or posting changes.
+
+    For account_type == 'asset':
+    - Natural balance = debit - credit (from _get_all_balances).
+    - If balance >= 0: show under Assets; add to total_assets.
+    - If balance < 0 (credit balance = overdraft): do NOT show under Assets; add one line
+      under Liabilities as "{account_name} (Overdraft)" with amount = abs(balance), and add
+      that amount to total_liabilities so that Total Assets = Total Liabilities + Equity.
+
+    Liabilities and equity: display as returned (credit - debit); no sign change.
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'read')
     if not is_valid:
@@ -3350,8 +3363,8 @@ def get_balance_sheet(as_of_date, token_or_email=None):
         total_liabilities = 0.0
         equity_items = []
         total_equity = 0.0
+        overdrafts = []  # asset accounts with balance < 0: show under Liabilities as (Overdraft)
 
-        # Calculate retained earnings (revenue - expenses up to as_of_date)
         retained = 0.0
 
         for code in sorted(accounts.keys()):
@@ -3360,28 +3373,46 @@ def get_balance_sheet(as_of_date, token_or_email=None):
             if bal == 0 and info['total_debit'] == 0 and info['total_credit'] == 0:
                 continue
 
-            item = {
-                'code': code,
-                'name_en': info['name_en'],
-                'name_ar': info['name_ar'],
-                'balance': bal,
-            }
-
             if info['type'] == 'asset':
-                asset_items.append(item)
-                total_assets += bal
+                # Natural balance for assets = debit - credit (already in info['balance'])
+                if bal >= 0:
+                    asset_items.append({
+                        'code': code,
+                        'name_en': info['name_en'],
+                        'name_ar': info['name_ar'],
+                        'balance': _round2(bal),
+                    })
+                    total_assets += bal
+                else:
+                    overdrafts.append({
+                        'code': code,
+                        'name_en': info['name_en'],
+                        'name_ar': info['name_ar'],
+                        'amount': _round2(abs(bal)),
+                    })
             elif info['type'] == 'liability':
+                item = {'code': code, 'name_en': info['name_en'], 'name_ar': info['name_ar'], 'balance': bal}
                 liability_items.append(item)
                 total_liabilities += bal
             elif info['type'] == 'equity':
+                item = {'code': code, 'name_en': info['name_en'], 'name_ar': info['name_ar'], 'balance': bal}
                 equity_items.append(item)
                 total_equity += bal
             elif info['type'] == 'revenue':
-                retained += bal  # Revenue increases retained earnings
+                retained += bal
             elif info['type'] == 'expense':
-                retained -= bal  # Expenses decrease retained earnings
+                retained -= bal
 
-        # Add retained earnings to equity
+        # Add overdrafts under Liabilities (after regular liabilities)
+        for od in overdrafts:
+            liability_items.append({
+                'code': od['code'] + '_od',
+                'name_en': (od['name_en'] or '') + ' (Overdraft)',
+                'name_ar': (od['name_ar'] or '') + ' (سلفة)',
+                'balance': od['amount'],
+            })
+            total_liabilities += od['amount']
+
         retained = _round2(retained)
         if retained != 0:
             equity_items.append({

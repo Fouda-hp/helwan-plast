@@ -2581,7 +2581,12 @@ class AdminPanel(AdminPanelTemplate):
                 from auth_helpers import set_accountant_token
             token = self.get_auth()
             set_accountant_token(token)
-            open_form("AccountantForm", auth_token=token)
+            try:
+                if token:
+                    anvil.js.window.sessionStorage.setItem('auth_token', token)
+            except Exception:
+                pass
+            open_form("AccountantForm")
         except Exception as e:
             try:
                 anvil.js.window.showNotification('error', 'خطأ', str(e))

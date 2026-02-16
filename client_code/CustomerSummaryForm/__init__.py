@@ -83,5 +83,10 @@ class CustomerSummaryForm(CustomerSummaryFormTemplate):
                 anvil.js.window.sessionStorage.setItem('auth_token', token)
         except Exception:
             pass
-        open_form('AccountantForm', auth_token=token)
+        try:
+            from ..auth_helpers import set_accountant_token
+        except ImportError:
+            from auth_helpers import set_accountant_token
+        set_accountant_token(token)
+        open_form('AccountantForm')
         return True

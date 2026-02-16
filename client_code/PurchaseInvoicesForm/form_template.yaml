@@ -1232,7 +1232,7 @@ container:
             try {
               var res = await window.pyAddImportCost(invoiceId, costType, amount, description, costDate, null, null, currency, exchangeRate, payFrom);
               if (res && res.success) {
-                if (window.showNotification) window.showNotification('success', '', t('Import cost added', 'تمت إضافة تكلفة الاستيراد'));
+                if (window.showNotification) window.showNotification('success', '', t('Import cost added. Enter amount and click Pay to post to ledger.', 'تمت الإضافة. أدخل المبلغ واضغط دفع لتسجيل القيد في الدفتر.'));
                 var res2 = await window.pyGetImportCostsForPayment(invoiceId);
                 var tbody = document.getElementById('importCostsPayBody');
                 var isAr = (localStorage.getItem('hp_language') || 'en') === 'ar';

@@ -1943,11 +1943,10 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
             if inv_item:
                 inv_id = inv_item.get('id')
 
+        # Store payment account for when user pays; no JE here — only pay_import_cost posts to ledger (one JE per cost).
         credit_account = payment_account
         if not credit_account:
             credit_account = _resolve_payment_account(payment_method)
-        if not _validate_account_exists(credit_account):
-            return {'success': False, 'message': f'Payment account {credit_account} not found or inactive'}
 
         parsed_date = _safe_date(cost_date) or date.today()
         cost_type_normalized = (cost_type or cost_type_name or '').lower().strip()[:20]
@@ -1984,39 +1983,6 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
         cost_id = _uuid()
         desc_text = _safe_str(description) or f"Import cost ({cost_type_name})"
 
-        # VAT: separate account 2110 (VAT Input Recoverable). Not part of inventory cost.
-        is_vat = (cost_type or '').lower().strip() == 'vat' or (cost_type_name or '').lower().strip() == 'vat'
-        if is_vat:
-            if not _validate_account_exists('2110'):
-                return {'success': False, 'message': 'Account 2110 (VAT Input Recoverable) not found. Run seed_default_accounts or add it.'}
-            debit_account = '2110'
-            ref_id = cost_id  # link JE to this cost row
-        else:
-            # Transit model: DR 1210 if not yet received, DR 1200 if already moved to inventory
-            inv_row = app_tables.purchase_invoices.get(id=pi_id) if pi_id else None
-            inventory_moved = bool(inv_row and inv_row.get('inventory_moved'))
-            if inventory_moved:
-                if not _validate_account_exists('1200'):
-                    return {'success': False, 'message': 'Account 1200 (Inventory) not found or inactive'}
-                debit_account = '1200'
-            else:
-                if not _validate_account_exists('1210'):
-                    return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found or inactive'}
-                debit_account = '1210'
-            ref_id = pi_id  # so move_purchase_to_inventory can sum 1210 by invoice
-
-        entries = [
-            {'account_code': debit_account, 'debit': amount_egp, 'credit': 0},
-            {'account_code': credit_account, 'debit': 0, 'credit': amount_egp},
-        ]
-        je_result = post_journal_entry(
-            parsed_date, entries,
-            f"Import cost ({cost_type_name}): {desc_text}",
-            'import_cost', ref_id, user_email,
-        )
-        if not je_result.get('success'):
-            return je_result
-
         row_data = dict(
             id=cost_id,
             purchase_invoice_id=pi_id,
@@ -2048,8 +2014,8 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
             row_data['original_amount'] = amount_in
             row_data['exchange_rate'] = _round2(exchange_rate) if exchange_rate is not None else (exchange_rate or _get_rate_to_egp(currency_code or 'EGP'))
             row_data['amount_egp'] = amount_egp
-            # Mark as paid in full: add_import_cost already posted DR 1210/1200, CR Bank — no separate "pay" needed
-            row_data['paid_amount'] = amount_egp
+            # No JE on add; user pays via Pay Import Costs → one JE per cost
+            row_data['paid_amount'] = 0
         except Exception:
             pass
 
@@ -2063,17 +2029,11 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
                 app_tables.import_costs.add_row(**row_data)
             except Exception:
                 raise
-        try:
-            ic_row = app_tables.import_costs.get(id=cost_id)
-            if ic_row is not None:
-                ic_row.update(paid_amount=amount_egp, updated_at=get_utc_now())
-        except Exception as upd_err:
-            logger.debug("Set import_costs.paid_amount after add: %s", upd_err)
 
         _update_inventory_import_totals(inventory_id=inv_id, purchase_invoice_id=pi_id)
 
-        logger.info("Import cost %s (%.2f EGP) added by %s [DR %s, CR %s]", cost_type_name, amount_egp, user_email, debit_account, credit_account)
-        return {'success': True, 'id': cost_id, 'transaction_id': je_result['transaction_id'], 'amount_egp': amount_egp}
+        logger.info("Import cost %s (%.2f EGP) added by %s; pay via Pay Import Costs to post to ledger", cost_type_name, amount_egp, user_email)
+        return {'success': True, 'id': cost_id, 'transaction_id': None, 'amount_egp': amount_egp}
     except ValueError as ve:
         return {'success': False, 'message': str(ve)}
     except Exception as e:

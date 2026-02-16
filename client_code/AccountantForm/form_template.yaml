@@ -522,6 +522,7 @@ container:
             <table><thead><tr><th id="obThName">Name</th><th id="obThType">Type</th><th id="obThAmount" class="text-right">Opening Balance</th><th>Actions</th></tr></thead><tbody id="openingBody"><tr><td colspan="4" class="empty-msg">Click Load to view opening balances</td></tr></tbody></table>
           </div>
         </div>
+        </div>
 
       <!-- Advanced Account Statement Panel -->
       <div class="tab-panel" id="panel-advstmt">

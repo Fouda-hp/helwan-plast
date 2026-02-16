@@ -1302,8 +1302,17 @@ container:
               if (window.showNotification) window.showNotification('error', '', t('Select an account', 'اختر حساباً'));
               return;
             }
-            // Auto-detect type: 1000=cash, 1010/1011/1012/1013=bank, else=other
-            var type = (code === '1000') ? 'cash' : ((code.indexOf('101') === 0) ? 'bank' : 'other');
+            // Auto-detect type based on account code (server accepts: customer, supplier, bank)
+            var type;
+            if (code === '1000' || code.indexOf('101') === 0) {
+              type = 'bank';   // Cash (1000) and all bank sub-accounts (1010-1019) → bank
+            } else if (code === '1100' || code.indexOf('11') === 0) {
+              type = 'customer'; // Accounts Receivable
+            } else if (code === '2000' || code.indexOf('20') === 0) {
+              type = 'supplier'; // Accounts Payable
+            } else {
+              type = 'bank';   // Default to bank for other accounts
+            }
             // Use account code as name (server stores it this way)
             var name = code;
             try {

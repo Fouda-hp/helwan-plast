@@ -2,7 +2,7 @@ components: []
 container:
   properties:
     html: |
-      &#60;style>
+      \u003cstyle>
         * {
           box-sizing: border-box;
           font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
@@ -457,7 +457,7 @@ container:
         body.rtl .footer {
           direction: rtl;
         }
-      </style>
+      \u003c/style>
 
       <div aria-hidden='true' data-note='disable-hand-loader' style='display:none'></div>
       <script>window.__hpLoadingInit = true;</scr&#105;pt>

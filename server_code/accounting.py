@@ -1800,6 +1800,8 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
     Transit model: if invoice.inventory_moved is False → DR 1210 (Inventory in Transit), CR payment_account.
     If invoice.inventory_moved is True → DR 1200 (Inventory), CR payment_account.
     Never post import cost to 2000. Recalculates landed cost on inventory row.
+    Each add posts once (DR inventory, CR bank) and sets paid_amount=amount_egp so the same cost
+    is not paid again via pay_import_cost (avoids double-counting in bank statement).
     Legacy (positional): add_import_cost(purchase_invoice_id, cost_type, amount, description=..., ...).
     New (keywords): inventory_id, cost_type_id, description, original_amount, payment_account.
     """
@@ -1945,6 +1947,8 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
             row_data['original_amount'] = amount_in
             row_data['exchange_rate'] = _round2(exchange_rate) if exchange_rate is not None else (exchange_rate or _get_rate_to_egp(currency_code or 'EGP'))
             row_data['amount_egp'] = amount_egp
+            # Mark as paid in full: add_import_cost already posted DR 1210/1200, CR Bank — no separate "pay" needed
+            row_data['paid_amount'] = amount_egp
         except Exception:
             pass
 
@@ -1952,7 +1956,7 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
             app_tables.import_costs.add_row(**row_data)
         except Exception as col_err:
             err_str = str(col_err).lower()
-            for key in ('currency', 'inventory_id', 'cost_type_id', 'original_currency', 'original_amount', 'exchange_rate', 'amount_egp'):
+            for key in ('currency', 'inventory_id', 'cost_type_id', 'original_currency', 'original_amount', 'exchange_rate', 'amount_egp', 'paid_amount'):
                 row_data.pop(key, None)
             try:
                 app_tables.import_costs.add_row(**row_data)

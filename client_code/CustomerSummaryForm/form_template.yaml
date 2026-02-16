@@ -425,6 +425,6 @@ container:
           }
           setTimeout(waitForBridge, 300);
         })();
-      </scr&#105;pt>
+      </script>
   type: HtmlTemplate
 is_package: true

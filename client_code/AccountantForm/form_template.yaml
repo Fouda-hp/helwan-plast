@@ -328,7 +328,6 @@ container:
             </div>
           </div>
         </div>
-      </div>
 
       <!-- Treasury Panel -->
       <div class="tab-panel" id="panel-treasury">
@@ -580,8 +579,8 @@ container:
       </div>
       </div>
 
-      <script src="_/theme/i18n.js"></scr&#105;pt>
-      <script src="_/theme/button-lock.js"></scr&#105;pt>
+      <script src="_/theme/i18n.js"></script>
+      <script src="_/theme/button-lock.js"></script>
       <script>
         (function() {
           if (!window.withButtonLock) {
@@ -1411,7 +1410,7 @@ container:
                   html += '<tr><td>' + (row.name || '') + '</td>';
                   html += '<td>' + (row.type || '') + '</td>';
                   html += '<td class="text-right" style="font-weight:600;">' + fmt(amt) + '</td>';
-                  html += '<td><button class="btn-delete" data-n="' + (row.name || '') + '" data-t="' + (row.type || '') + '" onclick="withButtonLock(this, function(){ return delOpeningBalance(this.dataset.n, this.dataset.t); })" data-loading-text="...">' + t('Del', 'حذف') + '</button></td></tr>';
+                  html += '<td><button class="btn-delete" data-n="' + (row.name || '') + '" data-t="' + (row.type || '') + '" onclick="var _b=this;withButtonLock(_b, function(){ return delOpeningBalance(_b.dataset.n, _b.dataset.t); })" data-loading-text="...">' + t('Del', 'حذف') + '</button></td></tr>';
                 });
                 tbody.innerHTML = html;
               } else {
@@ -1685,8 +1684,8 @@ container:
                   var locked = byMonth[m];
                   html += '<tr><td>' + year + '</td><td>' + m + '</td><td>' + (locked ? t('Locked', 'مقفل') : t('Open', 'مفتوح')) + '</td><td>';
                   html += locked
-                    ? '<button class="btn-small" data-y="' + year + '" data-m="' + m + '" onclick="withButtonLock(this, function(){ return reopenPeriod(this.dataset.y, this.dataset.m); })" data-loading-text="...">' + t('Unlock', 'فتح') + '</button>'
-                    : '<button class="btn-small" data-y="' + year + '" data-m="' + m + '" onclick="withButtonLock(this, function(){ return lockPeriod(this.dataset.y, this.dataset.m); })" data-loading-text="...">' + t('Lock', 'قفل') + '</button>';
+                    ? '<button class="btn-small" data-y="' + year + '" data-m="' + m + '" onclick="var _b=this;withButtonLock(_b, function(){ return reopenPeriod(_b.dataset.y, _b.dataset.m); })" data-loading-text="...">' + t('Unlock', 'فتح') + '</button>'
+                    : '<button class="btn-small" data-y="' + year + '" data-m="' + m + '" onclick="var _b=this;withButtonLock(_b, function(){ return lockPeriod(_b.dataset.y, _b.dataset.m); })" data-loading-text="...">' + t('Lock', 'قفل') + '</button>';
                   html += '</td></tr>';
                 });
                 tbody.innerHTML = html;
@@ -1758,6 +1757,6 @@ container:
           }
           setTimeout(waitForBridge, 300);
         })();
-      </scr&#105;pt>
+      </script>
   type: HtmlTemplate
 is_package: true

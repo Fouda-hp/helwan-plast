@@ -6969,3 +6969,32 @@ def set_opening_balance(name, entity_type, amount, token_or_email=None):
     except Exception as e:
         logger.exception("set_opening_balance error")
         return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def delete_opening_balance(name, entity_type, token_or_email=None):
+    """Delete an opening balance row from the opening_balances table."""
+    user_email = _require_permission(token_or_email, 'manage_opening_balances', fallback_action='admin')
+    try:
+        deleted = False
+        for r in app_tables.opening_balances.search(name=name, type=entity_type):
+            r.delete()
+            deleted = True
+
+        if not deleted:
+            return {'success': False, 'message': 'Opening balance not found'}
+
+        try:
+            _audit(
+                user_email, 'delete_opening_balance',
+                'opening_balances', name,
+                None, {'type': entity_type}
+            )
+        except Exception:
+            pass
+
+        logger.info("Opening balance deleted: %s (%s) by %s", name, entity_type, user_email)
+        return {'success': True}
+    except Exception as e:
+        logger.exception("delete_opening_balance error")
+        return {'success': False, 'message': str(e)}

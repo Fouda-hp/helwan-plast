@@ -457,7 +457,7 @@ container:
         </div>
       </div>
 
-      <script src="_/theme/i18n.js"></scr&#105;pt>
+      <script src="_/theme/i18n.js"></script>
       <script>
         (function() {
           if (!window.withButtonLock) {
@@ -1752,6 +1752,6 @@ container:
           }
           setTimeout(waitForBridge, 300);
         })();
-      </scr&#105;pt>
+      </script>
   type: HtmlTemplate
 is_package: true

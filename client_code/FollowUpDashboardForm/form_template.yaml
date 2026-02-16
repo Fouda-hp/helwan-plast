@@ -730,6 +730,6 @@ container:
           waitForBridge();
         }
       })();
-      </scr&#105;pt>
+      </script>
   type: HtmlTemplate
 is_package: true

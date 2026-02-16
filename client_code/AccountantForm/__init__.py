@@ -115,6 +115,7 @@ class AccountantForm(AccountantFormTemplate):
         anvil.js.window.pyClosePeriod = self.close_period
         anvil.js.window.pyReopenPeriod = self.reopen_period
         anvil.js.window.pyCloseFinancialYear = self.close_financial_year
+        anvil.js.window.pyDeleteOpeningBalance = self.delete_opening_balance
 
         register_notif_bridges()
         self.add_event_handler('show', self._on_show)
@@ -497,6 +498,9 @@ class AccountantForm(AccountantFormTemplate):
 
     def set_opening_balance(self, name, entity_type, amount):
         return anvil.server.call('set_opening_balance', name, entity_type, amount, self._auth())
+
+    def delete_opening_balance(self, name, entity_type):
+        return anvil.server.call('delete_opening_balance', name, entity_type, self._auth())
 
     def post_opening_balances(self, financial_year):
         """Post opening balances from opening_balances table as one JE to ledger (Jan 1 of year). Idempotent: fails if already posted."""

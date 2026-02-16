@@ -570,11 +570,12 @@ container:
           }
 
           function renderSummary(data) {
-            var rate = usdRateToEgp || 0;
+            var defaultRate = usdRateToEgp || 0;
             var egpSuffix = (isAr ? ' ج.م' : ' EGP');
             var totalAmtEgp = 0, totalPaidEgp = 0, count = data.length;
             data.forEach(function(inv) {
-              var totalEgp = parseFloat(inv.total_egp) || parseFloat(inv.supplier_amount_egp) || (rate > 0 ? (parseFloat(inv.total) || 0) * rate : (parseFloat(inv.total) || 0));
+              var invRate = parseFloat(inv.exchange_rate_usd_to_egp) || defaultRate;
+              var totalEgp = parseFloat(inv.total_egp) || parseFloat(inv.supplier_amount_egp) || (invRate > 0 ? (parseFloat(inv.total) || 0) * invRate : (parseFloat(inv.total) || 0));
               var paidEgp = parseFloat(inv.paid) || 0;
               totalAmtEgp += totalEgp;
               totalPaidEgp += paidEgp;
@@ -625,10 +626,11 @@ container:
               return;
             }
             var html = '';
-            var rate = usdRateToEgp || 0;
+            var defaultRate = usdRateToEgp || 0;
             var egpSuffix = isAr ? ' ج.م' : ' EGP';
             data.forEach(function(inv) {
-              var totalEgp = parseFloat(inv.total_egp) || parseFloat(inv.supplier_amount_egp) || (rate > 0 ? (parseFloat(inv.total) || 0) * rate : (parseFloat(inv.total) || 0));
+              var invRate = parseFloat(inv.exchange_rate_usd_to_egp) || defaultRate;
+              var totalEgp = parseFloat(inv.total_egp) || parseFloat(inv.supplier_amount_egp) || (invRate > 0 ? (parseFloat(inv.total) || 0) * invRate : (parseFloat(inv.total) || 0));
               var paidEgp = parseFloat(inv.paid) || 0;
               var balanceEgp = totalEgp - paidEgp;
               var dispEgp = function(egp) { return fmt(egp) + egpSuffix; };

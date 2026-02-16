@@ -467,7 +467,7 @@ container:
         (function(){
           'use strict';
           if(window.i18n) return;
-          const translations={en:{save:'Save',cancel:'Cancel',delete:'Delete',edit:'Edit',add:'Add',search:'Search',loading:'Loading...',error:'Error',success:'Success',login_title:'Welcome Back',login_subtitle:'Sign in to your account',login_email_placeholder:'Enter your email',login_password_placeholder:'Enter your password',login_button:'Sign In',login_register_link:"Don't have an account? Register",login_forgot_password:'Forgot Password?',register_title:'Create Account',register_subtitle:'Join Helwan Plast System',register_name_placeholder:'Full Name',register_email_placeholder:'Email Address',register_phone_placeholder:'Phone Number (optional)',register_password_placeholder:'Password (min 8 characters)',register_confirm_placeholder:'Confirm Password',register_button:'Create Account',register_login_link:'Already have an account? Sign In'},ar:{save:'حفظ',cancel:'إلغاء',delete:'حذف',edit:'تعديل',add:'إضافة',search:'بحث',loading:'جاري التحميل...',error:'خطأ',success:'نجاح',login_title:'مرحباً بعودتك',login_subtitle:'سجّل دخولك للمتابعة',login_email_placeholder:'أدخل بريدك الإلكتروني',login_password_placeholder:'أدخل كلمة المرور',login_button:'تسجيل الدخول',login_register_link:'ليس لديك حساب؟ سجّل الآن',login_forgot_password:'نسيت كلمة المرور؟',register_title:'إنشاء حساب',register_subtitle:'انضم لنظام حلوان بلاست',register_name_placeholder:'الاسم بالكامل',register_email_placeholder:'البريد الإلكتروني',register_phone_placeholder:'رقم الهاتف (اختياري)',register_password_placeholder:'كلمة المرور (8 أحرف على الأقل)',register_confirm_placeholder:'تأكيد كلمة المرور',register_button:'إنشاء الحساب',register_login_link:'لديك حساب بالفعل؟ سجّل دخولك'}};
+          const translations={en:{save:'Save',cancel:'Cancel',delete:'Delete',edit:'Edit',add:'Add',search:'Search',loading:'Loading...',error:'Error',success:'Success',login_title:'Welcome Back',login_subtitle:'Sign in to your account',login_email_placeholder:'Enter your email',login_password_placeholder:'Enter your password',login_button:'Sign In',login_register_link:'Don\'t have an account? Register',login_forgot_password:'Forgot Password?',register_title:'Create Account',register_subtitle:'Join Helwan Plast System',register_name_placeholder:'Full Name',register_email_placeholder:'Email Address',register_phone_placeholder:'Phone Number (optional)',register_password_placeholder:'Password (min 8 characters)',register_confirm_placeholder:'Confirm Password',register_button:'Create Account',register_login_link:'Already have an account? Sign In'},ar:{save:'حفظ',cancel:'إلغاء',delete:'حذف',edit:'تعديل',add:'إضافة',search:'بحث',loading:'جاري التحميل...',error:'خطأ',success:'نجاح',login_title:'مرحباً بعودتك',login_subtitle:'سجّل دخولك للمتابعة',login_email_placeholder:'أدخل بريدك الإلكتروني',login_password_placeholder:'أدخل كلمة المرور',login_button:'تسجيل الدخول',login_register_link:'ليس لديك حساب؟ سجّل الآن',login_forgot_password:'نسيت كلمة المرور؟',register_title:'إنشاء حساب',register_subtitle:'انضم لنظام حلوان بلاست',register_name_placeholder:'الاسم بالكامل',register_email_placeholder:'البريد الإلكتروني',register_phone_placeholder:'رقم الهاتف (اختياري)',register_password_placeholder:'كلمة المرور (8 أحرف على الأقل)',register_confirm_placeholder:'تأكيد كلمة المرور',register_button:'إنشاء الحساب',register_login_link:'لديك حساب بالفعل؟ سجّل دخولك'}};
           class I18n{constructor(){this.currentLang=localStorage.getItem('hp_language')||'en';this.listeners=[]}getLang(){return this.currentLang}setLang(lang){if(lang!=='en'&&lang!=='ar')return;this.currentLang=lang;localStorage.setItem('hp_language',lang);document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.documentElement.lang=lang;if(lang==='ar'){document.body.classList.add('rtl')}else{document.body.classList.remove('rtl')}this.listeners.forEach(fn=>fn(lang));window.dispatchEvent(new CustomEvent('languageChanged',{detail:{lang}}))}toggleLang(){this.setLang(this.currentLang==='en'?'ar':'en')}t(key,replacements={}){let text=translations[this.currentLang][key]||translations['en'][key]||key;Object.keys(replacements).forEach(k=>{text=text.replace(new RegExp(`\\{${k}\\}`,'g'),replacements[k])});return text}isRTL(){return this.currentLang==='ar'}onLangChange(callback){this.listeners.push(callback)}init(){this.setLang(this.currentLang)}}
           window.i18n=new I18n();
           if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>window.i18n.init())}else{window.i18n.init()}
@@ -838,13 +838,13 @@ container:
               otpLoginSubtitleFallback: 'A new code was sent to your email. Enter it below.',
               lblOtpLoginCode: 'Verification Code',
               btnVerifyOtpLogin: 'VERIFY & LOGIN',
-              resendOtpLogin: "Didn't receive code? Resend",
+              resendOtpLogin: 'Didn\'t receive code? Resend',
               backFromOtpLogin: '\u2190 Back to Login',
               otpRegTitle: 'Verify Your Email',
               otpRegSubtitle: 'Enter the verification code sent to your email',
               lblOtpRegCode: 'Verification Code',
               btnVerifyOtpReg: 'VERIFY EMAIL',
-              resendOtpReg: "Didn't receive code? Resend",
+              resendOtpReg: 'Didn\'t receive code? Resend',
               backFromOtpReg: '\u2190 Back to Registration',
               forgotTitle: 'Reset Password',
               forgotSubtitle: 'Enter your email to receive a verification code',
@@ -855,7 +855,7 @@ container:
               forgotOtpSubtitle: 'Enter the code sent to your email',
               lblForgotOtp: 'Verification Code',
               btnVerifyForgotOtp: 'VERIFY CODE',
-              resendForgotOtp: "Didn't receive code? Resend",
+              resendForgotOtp: 'Didn\'t receive code? Resend',
               backFromForgotOtp: '\u2190 Back',
               newPasswordTitle: 'Set New Password',
               newPasswordSubtitle: 'Enter your new password',

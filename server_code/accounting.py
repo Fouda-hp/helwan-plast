@@ -5505,7 +5505,17 @@ def get_cash_bank_statement(account_code=None, date_from=None, date_to=None, tok
             if c in codes:
                 account_names[c] = acct.get('name_en', '') or acct.get('name_ar', '') or c
 
+        # Load opening balances (أرصدة بداية المدة) for bank/cash — keyed by account code (name)
+        opening_map = {}
+        try:
+            for ob in app_tables.opening_balances.search(type='bank'):
+                opening_map[str(ob.get('name', '')).strip()] = _round2(float(ob.get('opening_balance', 0) or 0))
+        except Exception:
+            pass
+
         rows = []
+        # Ledger entries before date_from (to compute balance at start of period when date_from is set)
+        pre_entries = {}  # account_code -> (total_debit - total_credit)
         for r in app_tables.ledger.search():
             c = str(r.get('account_code', '')).strip()
             if c not in codes:
@@ -5514,6 +5524,7 @@ def get_cash_bank_statement(account_code=None, date_from=None, date_to=None, tok
             if isinstance(row_date, datetime):
                 row_date = row_date.date()
             if d_from and row_date and row_date < d_from:
+                pre_entries[c] = pre_entries.get(c, 0) + _round2((r.get('debit', 0) or 0) - (r.get('credit', 0) or 0))
                 continue
             if d_to and row_date and row_date > d_to:
                 continue
@@ -5529,6 +5540,27 @@ def get_cash_bank_statement(account_code=None, date_from=None, date_to=None, tok
                 'reference_type': r.get('reference_type', ''),
                 'reference_id': r.get('reference_id', ''),
                 'created_at': r.get('created_at').isoformat() if r.get('created_at') else '',
+            })
+
+        # Prepend opening balance row for each account that has a non-zero balance at start of period
+        opening_label = 'رصيد بداية المدة / Opening balance'
+        for c in codes:
+            opening = opening_map.get(c, 0)
+            pre_bal = pre_entries.get(c, 0)
+            balance_start = _round2(opening + pre_bal)
+            if balance_start == 0:
+                continue
+            ob_date = (d_from.isoformat() if d_from and hasattr(d_from, 'isoformat') else str(d_from)) if d_from else '2000-01-01'
+            rows.append({
+                'date': ob_date,
+                'account_code': c,
+                'account_name': account_names.get(c, c),
+                'description': opening_label,
+                'debit': balance_start if balance_start > 0 else 0,
+                'credit': -balance_start if balance_start < 0 else 0,
+                'reference_type': 'opening_balance',
+                'reference_id': '',
+                'created_at': '',
             })
         rows.sort(key=lambda x: (x.get('date', ''), x.get('created_at', '')))
 

@@ -186,21 +186,52 @@ def get_next_number_atomic(counter_key, token_or_email=None):
     return next_val
 
 
+@anvil_tables.in_transaction
+def _get_next_contract_serial_atomic(counter_key):
+    """
+    ذرّي: بذر العداد + زيادة في transaction واحدة لمنع race conditions.
+    لا يستدعي get_next_number_atomic (تجنب transactions متداخلة في Anvil).
+    منطق الزيادة مطابق لـ get_next_number_atomic: max(counter, max_table) + 1.
+    """
+    max_val = _get_max_from_table(counter_key, include_deleted=True)
+    row = app_tables.counters.get(key=counter_key)
+    if row is None:
+        # أول عقد في السنة: بذر بـ 1 ثم الرقم التالي = max(1, max_table) + 1
+        seed = max(1, max_val)
+        next_val = seed + 1
+        app_tables.counters.add_row(key=counter_key, value=next_val)
+        logger.info("Contract serial counter created: key=%s, seed=%s, issued=%s", counter_key, seed, next_val)
+        return next_val
+
+    current = row["value"]
+    if current is None:
+        current = 0
+    try:
+        current = int(current)
+    except (ValueError, TypeError):
+        current = 0
+
+    # ضمان البذر لا يقل عن 1 (أول رقم مُرجع = 2)
+    if current < 1:
+        current = 1
+
+    base = max(current, max_val)
+    next_val = base + 1
+    row["value"] = next_val
+    logger.info("Contract serial generated: key=%s, previous=%s, issued=%s", counter_key, current, next_val)
+    return next_val
+
+
 def get_next_contract_serial():
     """
     المتسلسل السنوي للعقود: يبدأ من 2 ويزيد 1 بعد كل حفظ عقد جديد.
     المفتاح: contracts_serial_YYYY (عدّاد مستقل لكل سنة).
     لو أول عقد في السنة (العداد مش موجود أو = 0): نبذره بـ 1 حتى أول رقم = 2.
+    محمي بـ @in_transaction لمنع race conditions على البذر والزيادة.
     """
     year = datetime.now().year
     counter_key = f"{COUNTER_CONTRACTS_SERIAL_PREFIX}{year}"
-    # تأكد إن العداد يبدأ من 1 على الأقل حتى أول رقم مُرجَع = 2
-    row = app_tables.counters.get(key=counter_key)
-    if row is None:
-        app_tables.counters.add_row(key=counter_key, value=1)
-    elif row["value"] is None or int(row["value"]) < 1:
-        row["value"] = 1
-    return get_next_number_atomic(counter_key)
+    return _get_next_contract_serial_atomic(counter_key)
 
 
 # ==========================================================================

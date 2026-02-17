@@ -78,13 +78,16 @@ class LoginForm(LoginFormTemplate):
                 user_email = anvil.js.window.localStorage.getItem('user_email')
                 if user_email:
                     anvil.js.window.sessionStorage.setItem('user_email', user_email)
+                    anvil.js.window.localStorage.removeItem('user_email')
             if not user_role:
                 user_role = anvil.js.window.localStorage.getItem('user_role')
                 if user_role:
                     anvil.js.window.sessionStorage.setItem('user_role', user_role)
+                    anvil.js.window.localStorage.removeItem('user_role')
             user_name = anvil.js.window.sessionStorage.getItem('user_name') or anvil.js.window.localStorage.getItem('user_name')
             if user_name:
                 anvil.js.window.sessionStorage.setItem('user_name', user_name)
+                anvil.js.window.localStorage.removeItem('user_name')
 
             # Only check if we have saved credentials
             if auth_token and user_email:
@@ -274,12 +277,12 @@ class LoginForm(LoginFormTemplate):
                 ss.setItem('user_role', user_role or '')
                 if auth_token:
                     ss.setItem('auth_token', auth_token)
-            # localStorage: بيانات مساعدة فقط + تنظيف أي token قديم
+            # localStorage: تنظيف كامل — لا نحفظ أي بيانات auth هناك (أمان)
             if ls:
-                ls.setItem('user_email', user_email or '')
-                ls.setItem('user_name', user_name or '')
-                ls.setItem('user_role', user_role or '')
                 ls.removeItem('auth_token')
+                ls.removeItem('user_email')
+                ls.removeItem('user_name')
+                ls.removeItem('user_role')
             # حفظ أيضاً في الإطار الأعلى إن وُجد
             try:
                 if anvil.js.window.top and anvil.js.window.top != anvil.js.window:

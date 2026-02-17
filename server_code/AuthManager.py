@@ -87,6 +87,18 @@ def get_otp_channel(user_email=None):
   return _get_global_otp_channel()
 
 
+_E164_RE = re.compile(r'^\+[1-9]\d{6,14}$')
+
+def _validate_e164(phone):
+  """Validate and normalize phone to E.164 format. Returns cleaned string or None."""
+  if not phone:
+    return None
+  cleaned = re.sub(r'[\s\-\(\)]', '', str(phone).strip())
+  if not cleaned.startswith('+'):
+    cleaned = '+' + cleaned
+  return cleaned if _E164_RE.match(cleaned) else None
+
+
 def send_otp_sms(phone_number, otp, purpose='verification'):
   """
   إرسال OTP عبر SMS (Twilio).
@@ -100,10 +112,11 @@ def send_otp_sms(phone_number, otp, purpose='verification'):
     if not sid or not token or not from_num:
       logger.warning("Twilio secrets not set. OTP SMS skipped.")
       return False
-    # تطبيع رقم الجوال (إضافة + إن لم يكن)
-    to = str(phone_number).strip()
-    if not to.startswith('+'):
-      to = '+' + to
+    # E.164 validation — يرفض الأرقام غير الصالحة قبل استدعاء Twilio
+    to = _validate_e164(phone_number)
+    if not to:
+      logger.warning("Invalid phone for OTP SMS (not E.164): %s", phone_number)
+      return False
     body = f"Helwan Plast: Your verification code is {otp}. Valid for {OTP_EXPIRY_MINUTES} minutes."
     url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
     import base64
@@ -135,13 +148,23 @@ def send_otp(user_email, user_name, otp, purpose='verification', force_channel=N
     if not phone or not str(phone).strip():
       logger.warning(f"No phone for {user_email}, falling back to email for OTP")
       return send_otp_email(user_email, user_name, otp, purpose)
-    return send_otp_sms(phone, otp, purpose)
+    # E.164 validation before Twilio call
+    validated = _validate_e164(phone)
+    if not validated:
+      logger.warning(f"Invalid phone format for {user_email}: {phone}, falling back to email")
+      return send_otp_email(user_email, user_name, otp, purpose)
+    return send_otp_sms(validated, otp, purpose)
   if channel == 'whatsapp':
     # نفس SMS عبر Twilio WhatsApp (رقم From يبدأ بـ whatsapp:)
     user = app_tables.users.get(email=user_email)
     phone = user.get('phone') if user else None
     if not phone or not str(phone).strip():
       logger.warning(f"No phone for {user_email}, falling back to email for OTP")
+      return send_otp_email(user_email, user_name, otp, purpose)
+    # E.164 validation before WhatsApp call
+    validated_wa = _validate_e164(phone)
+    if not validated_wa:
+      logger.warning(f"Invalid phone format for WhatsApp {user_email}: {phone}, falling back to email")
       return send_otp_email(user_email, user_name, otp, purpose)
     try:
       import anvil.http
@@ -150,9 +173,7 @@ def send_otp(user_email, user_name, otp, purpose='verification', force_channel=N
       from_wa = anvil.secrets.get_secret('TWILIO_WHATSAPP_FROM')  # e.g. whatsapp:+14155238886
       if not sid or not token or not from_wa:
         return send_otp_email(user_email, user_name, otp, purpose)
-      to = str(phone).strip()
-      if not to.startswith('whatsapp:'):
-        to = 'whatsapp:+' + to.lstrip('+')
+      to = 'whatsapp:' + validated_wa
       body = f"Helwan Plast: Your code is {otp}. Valid {OTP_EXPIRY_MINUTES} min."
       url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
       import base64

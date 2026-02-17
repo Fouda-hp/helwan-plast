@@ -47,8 +47,8 @@ class LauncherForm(LauncherFormTemplate):
         anvil.js.window.addEventListener("hashchange", self.on_hash_change)
 
     def get_token(self):
-        """Get auth token from sessionStorage (جلسة تنتهي عند إغلاق التاب)"""
-        return anvil.js.window.sessionStorage.getItem('auth_token') or anvil.js.window.localStorage.getItem('auth_token')
+        """Get auth token from sessionStorage only (جلسة تنتهي عند إغلاق التاب)"""
+        return anvil.js.window.sessionStorage.getItem('auth_token')
 
     def _user_is_admin(self):
         """التحقق من السيرفر أن المستخدم الحالي أدمن (مع cache)."""

@@ -343,6 +343,17 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
                 "message": "Given Price and Agreed Price must be valid numbers"
             }
 
+        if given <= 0:
+            return {
+                "success": False,
+                "message": "Given Price must be greater than zero"
+            }
+        if agreed <= 0:
+            return {
+                "success": False,
+                "message": "Agreed Price must be greater than zero"
+            }
+
         if agreed > given:
             return {
                 "success": False,

@@ -1214,6 +1214,9 @@ db_schema:
     - admin_ui: {width: 200}
       name: confirmed_email
       type: bool
+    - admin_ui: {order: 21, width: 200}
+      name: totp_backup_codes
+      type: string
     server: full
     title: USERS
 dependencies: []

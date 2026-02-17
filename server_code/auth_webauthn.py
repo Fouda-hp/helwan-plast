@@ -55,11 +55,10 @@ logger = logging.getLogger(__name__)
 RP_NAME = "Helwan Plast ERP"
 CHALLENGE_EXPIRY_SECONDS = 300  # 5 minutes
 
-# Temporary challenge storage (server memory, per-worker)
-# In production with multiple workers, challenges may not match.
-# For Anvil's single-worker setup, this works fine.
-# Alternative: store challenges in the settings table with TTL.
-_challenges = {}
+# Challenge storage — persistent via webauthn_credentials table (type='challenge').
+# Using the database ensures challenges survive across workers / uplinks.
+# Each challenge row is cleaned up after use or after TTL expiry.
+_challenges = {}  # kept as quick local cache (same-worker fast path)
 
 
 # ── Helper ──────────────────────────────────────────────────────
@@ -85,11 +84,106 @@ def _get_origin():
 
 
 def _cleanup_expired_challenges():
-    """Remove expired challenges from memory."""
+    """Remove expired challenges from memory and database."""
     now = time.time()
+    # Clean memory cache
     expired = [k for k, v in _challenges.items() if now > v.get('expires', 0)]
     for k in expired:
         del _challenges[k]
+    # Clean database challenges (older than 10 minutes)
+    try:
+        cutoff = get_utc_now() - timedelta(minutes=10)
+        for row in app_tables.webauthn_credentials.search(
+            is_active=False, nickname='__challenge__'
+        ):
+            try:
+                if row['created_at'] and row['created_at'] < cutoff:
+                    row.delete()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def _store_challenge(user_email, challenge_bytes, challenge_type):
+    """Store challenge in both memory and database for cross-worker reliability."""
+    import base64
+    challenge_b64 = base64.b64encode(challenge_bytes).decode('ascii')
+    expires = time.time() + CHALLENGE_EXPIRY_SECONDS
+
+    # Memory cache (fast path if same worker)
+    _challenges[user_email] = {
+        'challenge': challenge_bytes,
+        'type': challenge_type,
+        'expires': expires,
+    }
+
+    # Database persistence (cross-worker reliability)
+    try:
+        # Remove any existing challenge for this user
+        for old in app_tables.webauthn_credentials.search(
+            user_email=user_email, nickname='__challenge__', is_active=False
+        ):
+            old.delete()
+
+        app_tables.webauthn_credentials.add_row(
+            credential_id='__challenge__',
+            user_email=user_email,
+            public_key=challenge_b64,           # challenge bytes as base64
+            sign_count=0,
+            created_at=get_utc_now(),
+            last_used=None,
+            transports=json.dumps({'type': challenge_type, 'expires': expires}),
+            nickname='__challenge__',
+            is_active=False,                     # never treated as a real credential
+        )
+    except Exception as e:
+        logger.warning("Failed to persist challenge to DB: %s", e)
+
+
+def _retrieve_challenge(user_email, expected_type):
+    """
+    Retrieve and consume challenge. Tries memory first, then database.
+    Returns challenge bytes or None.
+    """
+    import base64
+
+    # Try memory cache first (fast path)
+    stored = _challenges.pop(user_email, None)
+    if stored and stored.get('type') == expected_type and time.time() <= stored['expires']:
+        # Also clean up DB row
+        try:
+            for row in app_tables.webauthn_credentials.search(
+                user_email=user_email, nickname='__challenge__', is_active=False
+            ):
+                row.delete()
+        except Exception:
+            pass
+        return stored['challenge']
+
+    # Fallback: try database (different worker scenario)
+    try:
+        row = app_tables.webauthn_credentials.get(
+            user_email=user_email, nickname='__challenge__', is_active=False
+        )
+        if row:
+            meta = json.loads(row['transports'] or '{}')
+            challenge_b64 = row['public_key']
+            ch_type = meta.get('type', '')
+            ch_expires = meta.get('expires', 0)
+
+            # Delete the row (consume the challenge)
+            row.delete()
+
+            if ch_type == expected_type and time.time() <= ch_expires:
+                return base64.b64decode(challenge_b64)
+            else:
+                logger.warning("Challenge expired or type mismatch for %s", user_email)
+                return None
+        return None
+    except Exception as e:
+        logger.warning("Failed to retrieve challenge from DB for %s: %s", user_email, e)
+        return None
 
 
 def _require_webauthn():
@@ -179,12 +273,8 @@ def webauthn_register_start(token):
             ),
         )
 
-        # Store challenge for verification (Step 2)
-        _challenges[user_email] = {
-            'challenge': options.challenge,
-            'type': 'register',
-            'expires': time.time() + CHALLENGE_EXPIRY_SECONDS,
-        }
+        # Store challenge for verification (Step 2) — persistent
+        _store_challenge(user_email, options.challenge, 'register')
 
         options_json = options_to_json(options)
         logger.info("WebAuthn registration started for: %s", user_email)
@@ -213,17 +303,15 @@ def webauthn_register_complete(token, credential_json, device_info=None):
 
     user_email = session['email']
 
-    # Retrieve stored challenge
-    stored = _challenges.pop(user_email, None)
-    if not stored or stored.get('type') != 'register':
+    # Retrieve stored challenge (memory or database)
+    challenge_bytes = _retrieve_challenge(user_email, 'register')
+    if not challenge_bytes:
         return {'success': False, 'error': 'No pending registration. Please start again.'}
-    if time.time() > stored['expires']:
-        return {'success': False, 'error': 'Registration timed out. Please try again.'}
 
     try:
         verification = verify_registration_response(
             credential=credential_json,
-            expected_challenge=stored['challenge'],
+            expected_challenge=challenge_bytes,
             expected_rp_id=_get_rp_id(),
             expected_origin=_get_origin(),
         )
@@ -334,11 +422,7 @@ def webauthn_auth_start(email):
             user_verification=UserVerificationRequirement.REQUIRED,
         )
 
-        _challenges[email] = {
-            'challenge': options.challenge,
-            'type': 'authenticate',
-            'expires': time.time() + CHALLENGE_EXPIRY_SECONDS,
-        }
+        _store_challenge(email, options.challenge, 'authenticate')
 
         options_json = options_to_json(options)
         logger.info("WebAuthn authentication started for: %s", email)
@@ -369,12 +453,10 @@ def webauthn_auth_complete(email, assertion_json):
 
     email = str(email).strip().lower()
 
-    # Retrieve stored challenge
-    stored = _challenges.pop(email, None)
-    if not stored or stored.get('type') != 'authenticate':
+    # Retrieve stored challenge (memory or database)
+    challenge_bytes = _retrieve_challenge(email, 'authenticate')
+    if not challenge_bytes:
         return {'success': False, 'error': 'No pending authentication. Please try again.'}
-    if time.time() > stored['expires']:
-        return {'success': False, 'error': 'Authentication timed out. Please try again.'}
 
     # Parse assertion to find credential ID
     try:
@@ -402,7 +484,7 @@ def webauthn_auth_complete(email, assertion_json):
     try:
         verification = verify_authentication_response(
             credential=assertion_json,
-            expected_challenge=stored['challenge'],
+            expected_challenge=challenge_bytes,
             expected_rp_id=_get_rp_id(),
             expected_origin=_get_origin(),
             credential_public_key=base64url_to_bytes(cred_row['public_key']),

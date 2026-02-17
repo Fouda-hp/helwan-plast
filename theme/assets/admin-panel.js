@@ -613,10 +613,9 @@ function renderDashCharts(acct) {
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'passkeyModal';
-      modal.className = 'modal-overlay';
-      modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;';
+      modal.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;';
       modal.innerHTML =
-        '<div class="modal-box" style="max-width:600px;margin:auto;position:relative;">' +
+        '<div style="max-width:600px;width:95%;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">' +
           '<div class="modal-header">' +
             '<h3 id="passkeyModalTitle">🔐 Passkeys</h3>' +
             '<button class="modal-close" onclick="closeModal(\'passkeyModal\')">&times;</button>' +
@@ -639,11 +638,12 @@ function renderDashCharts(acct) {
             '<button class="filter-btn" onclick="closeModal(\'passkeyModal\')">Close</button>' +
           '</div>' +
         '</div>';
+      // Close when clicking overlay background
+      modal.addEventListener('click', function(e) { if (e.target === modal) closeModal('passkeyModal'); });
       document.body.appendChild(modal);
     }
     document.getElementById('passkeyUserInfo').textContent = (userName || '') + ' (' + email + ')';
     modal.style.display = 'flex';
-    modal.classList.add('show');
     loadPasskeyList(email);
   };
 

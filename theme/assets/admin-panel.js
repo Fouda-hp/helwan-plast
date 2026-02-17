@@ -316,7 +316,7 @@ function renderDashCharts(acct) {
   pendingUsersData = {};
   result.users.forEach(function(u) { pendingUsersData[u.user_id] = u; });
 
-  var html = '<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th><th>Actions</th></tr></thead><tbody>';
+  var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th><th>Actions</th></tr></thead><tbody>';
   result.users.forEach(function(u) {
   html += '<tr>';
   html += '<td>' + escapeHtml(u.full_name) + '</td>';
@@ -328,7 +328,7 @@ function renderDashCharts(acct) {
   html += '<button class="btn-sm reject" data-action="reject" data-uid="' + escapeHtml(u.user_id) + '">✕ Reject</button>';
   html += '</td></tr>';
   });
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
   container.innerHTML = html;
   container.querySelectorAll('[data-action]').forEach(function(btn){
     btn.addEventListener('click', function(){
@@ -442,7 +442,7 @@ function renderDashCharts(acct) {
   return;
   }
 
-  var html = '<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>OTP</th><th>Actions</th></tr></thead><tbody>';
+  var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>OTP</th><th>Actions</th></tr></thead><tbody>';
   result.users.forEach(function(u) {
   var status = u.is_approved ? (u.is_active ? 'active' : 'inactive') : 'pending';
   html += '<tr>';
@@ -468,7 +468,7 @@ function renderDashCharts(acct) {
   html += '<button class="btn-sm reject" data-action="deleteuser" data-uid="' + escapeHtml(u.user_id) + '" data-name="' + escapeHtml(u.full_name) + '">Delete</button>';
   html += '</td></tr>';
   });
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
   container.innerHTML = html;
   container.querySelectorAll('[data-action]').forEach(function(btn){
     btn.addEventListener('click', function(){
@@ -624,7 +624,7 @@ function renderDashCharts(acct) {
   return;
   }
 
-  var html = '<table class="data-table"><thead><tr><th>Code</th><th>Name</th><th>Company</th><th>Phone</th><th>Country</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+  var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>Code</th><th>Name</th><th>Company</th><th>Phone</th><th>Country</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
   result.data.forEach(function(c) {
   var status = c.is_deleted ? 'deleted' : 'active';
   html += '<tr>';
@@ -642,7 +642,7 @@ function renderDashCharts(acct) {
   }
   html += '</td></tr>';
   });
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
 
   html += '<div class="pagination">';
   html += '<button ' + (result.page <= 1 ? 'disabled' : '') + ' data-action="pageclients" data-page="' + (result.page - 1) + '">Previous</button>';
@@ -730,7 +730,7 @@ function renderDashCharts(acct) {
   return;
   }
 
-  var html = '<table class="data-table"><thead><tr><th>#</th><th>Date</th><th>Client</th><th>Model</th><th>Agreed Price</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+  var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>#</th><th>Date</th><th>Client</th><th>Model</th><th>Agreed Price</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
   result.data.forEach(function(q) {
   var status = q.is_deleted ? 'deleted' : 'active';
   html += '<tr>';
@@ -748,7 +748,7 @@ function renderDashCharts(acct) {
   }
   html += '</td></tr>';
   });
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
 
   html += '<div class="pagination">';
   html += '<button ' + (result.page <= 1 ? 'disabled' : '') + ' data-action="pagequots" data-page="' + (result.page - 1) + '">Previous</button>';
@@ -854,7 +854,7 @@ function renderDashCharts(acct) {
   }
   var lifecycleBg = {'draft':'#e3f2fd','negotiation':'#fff3e0','signed':'#e8f5e9','in_progress':'#e1f5fe','delivered':'#f3e5f5','closed':'#e0e0e0','cancelled':'#ffebee'};
   var lifecycleColor = {'draft':'#1565c0','negotiation':'#ef6c00','signed':'#2e7d32','in_progress':'#0277bd','delivered':'#7b1fa2','closed':'#616161','cancelled':'#c62828'};
-  var html = '<table class="data-table"><thead><tr><th>Contract #</th><th>Quotation #</th><th>Client</th><th>Total Price</th><th>#</th><th>Payment schedule (date: amount)</th><th>Delivery Date</th><th>Created</th><th>Lifecycle</th><th>Actions</th></tr></thead><tbody>';
+  var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>Contract #</th><th>Quotation #</th><th>Client</th><th>Total Price</th><th>#</th><th>Payment schedule (date: amount)</th><th>Delivery Date</th><th>Created</th><th>Lifecycle</th><th>Actions</th></tr></thead><tbody>';
   result.data.forEach(function(c) {
   var ls = c.lifecycle_status || 'draft';
   html += '<tr>';
@@ -870,7 +870,7 @@ function renderDashCharts(acct) {
   html += '<td class="actions"><button style="padding:4px 10px;border:none;border-radius:4px;cursor:pointer;background:#667eea;color:#fff;font-size:12px;margin-right:4px;" data-action="timeline" data-contract="' + escapeHtml(c.contract_number) + '">Timeline</button><button class="btn-sm delete" data-action="deletecontract" data-quotnum="' + escapeHtml(c.quotation_number != null ? c.quotation_number : '') + '">Delete</button></td>';
   html += '</tr>';
   });
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
   html += '<div class="pagination">';
   var totalPages = result.total_pages != null ? result.total_pages : 1;
   var totalCount = result.total != null ? result.total : 0;
@@ -937,7 +937,7 @@ function renderDashCharts(acct) {
   return;
   }
 
-  var html = '<table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Table</th><th>Record ID</th></tr></thead><tbody>';
+  var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Table</th><th>Record ID</th></tr></thead><tbody>';
   result.logs.forEach(function(l) {
   html += '<tr>';
   html += '<td>' + escapeHtml(l.timestamp.replace('T', ' ').substring(0, 19)) + '</td>';
@@ -947,7 +947,7 @@ function renderDashCharts(acct) {
   html += '<td>' + escapeHtml(l.record_id || '-') + '</td>';
   html += '</tr>';
   });
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
 
   container.innerHTML = html;
   } catch (e) {
@@ -979,7 +979,7 @@ function renderDashCharts(acct) {
 
   var settings = result.settings || {};
 
-  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">';
+  var html = '<div class="settings-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">';
 
   // Exchange Rate Section
   html += '<div style="background:#f8f9fa;padding:20px;border-radius:12px;">';

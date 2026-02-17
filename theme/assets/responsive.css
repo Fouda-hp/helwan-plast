@@ -806,6 +806,11 @@
     flex-wrap: wrap !important;
     gap: 8px !important;
   }
+
+  /* Admin settings grid → single column on mobile */
+  .settings-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* ===== SMALL PHONE (max-width: 480px) ===== */
@@ -1464,6 +1469,82 @@
   background: #f0f0f0;
 }
 
+/* ===== PRINT STYLESHEET ===== */
+@media print {
+  /* Hide non-content elements */
+  .controls-bar,
+  .action-buttons,
+  .search-section,
+  .controls-row,
+  .buttons-row,
+  .admin-header,
+  .header-row-nav,
+  .mobile-menu,
+  #hp-global-notif-bell,
+  .back-btn,
+  .pd-back-btn,
+  .fu-back-btn,
+  .cd-back-btn,
+  .pagination,
+  .pd-pagination,
+  .cl-pagination,
+  .fu-pagination,
+  .tl-pagination,
+  .toolbar,
+  .pd-toolbar,
+  .lang-toggle,
+  .delivery-date-section,
+  .filter-row,
+  .search-row,
+  .modal-overlay,
+  .hp-global-loader,
+  button.btn-sm,
+  .top-buttons,
+  .save { display: none !important; }
+
+  /* Ensure proper rendering */
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Template pages: auto-width, no scroll */
+  .template-page {
+    width: 100% !important;
+    min-width: auto !important;
+    padding: 10px !important;
+  }
+
+  .print-container,
+  .contract-container {
+    overflow: visible !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .template-preview {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Tables: no horizontal scroll in print */
+  .table-scroll,
+  .table-container,
+  .table-wrap {
+    overflow: visible !important;
+  }
+
+  .table-scroll table,
+  .table-container table {
+    min-width: auto !important;
+  }
+
+  /* Avoid page breaks inside rows */
+  tr { page-break-inside: avoid; }
+  thead { display: table-header-group; }
+}
+
 /* ===== PDF EXPORT MODE =====
    When .pdf-export-mode is on the template container, force desktop
    rendering so html2canvas captures the same layout as desktop.
@@ -1530,4 +1611,33 @@
 
 .pdf-export-mode .info-box p {
   font-size: 11px !important;
+}
+
+/* Force desktop rendering for all elements inside pdf-export-mode (mobile safety) */
+.pdf-export-mode .payment-config {
+  flex-direction: row !important;
+  gap: 20px !important;
+}
+
+.pdf-export-mode .payment-method {
+  flex-direction: row !important;
+}
+
+.pdf-export-mode .controls-bar,
+.pdf-export-mode .controls-row,
+.pdf-export-mode .buttons-row {
+  flex-direction: row !important;
+}
+
+.pdf-export-mode .search-section {
+  flex-direction: row !important;
+}
+
+.pdf-export-mode .details-table,
+.pdf-export-mode .tech-table,
+.pdf-export-mode .cylinders-table,
+.pdf-export-mode .payment-table,
+.pdf-export-mode .payment-schedule-table {
+  min-width: auto !important;
+  font-size: 12px !important;
 }

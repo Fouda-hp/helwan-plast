@@ -43,7 +43,7 @@ container:
           .search-row { flex-direction: column; }
           .search-row input, .search-row select, .search-row button, .btn { width: 100%; }
           .table-wrap { overflow-x: auto; }
-          table { min-width: 860px; }
+          table { min-width: 600px; }
         }
       </style>
 

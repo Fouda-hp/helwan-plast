@@ -9,6 +9,7 @@ followup_reminders.py - نظام تذكيرات المتابعة للعروض ا
 
 import anvil.server
 from anvil.tables import app_tables
+import anvil.tables.query as q
 import json
 import logging
 from datetime import datetime, date, timedelta
@@ -251,8 +252,11 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
         completed_count = 0
         data = []
 
-        # Scan all quotations with follow_up_date
-        for row in app_tables.quotations.search(is_deleted=False):
+        # Scan quotations with follow_up_date (DB-level filter to skip None dates)
+        search_kwargs = {'is_deleted': False, 'follow_up_date': q.not_(None)}
+        if filter_status == 'completed':
+            search_kwargs['follow_up_status'] = 'completed'
+        for row in app_tables.quotations.search(**search_kwargs):
             fu_date_str = row.get('follow_up_date', '')
             if not fu_date_str or not str(fu_date_str).strip():
                 continue
@@ -316,6 +320,8 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
                 'days_until': delta,
                 'sales_rep': row.get('Sales Rep', ''),
             })
+            if len(data) >= 500:
+                break  # Cap to avoid unbounded memory
 
         # Sort: overdue first (most overdue), then today, then upcoming (nearest first)
         def sort_key(item):

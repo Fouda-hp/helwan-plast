@@ -702,10 +702,10 @@ DEFAULT_PAGE_SIZE = 20
 MAX_PAGINATION_SCAN = 50000
 
 # Payment dashboard cache
-_payment_dashboard_cache = {'data': None, 'timestamp': 0}
+_payment_dashboard_cache = {'data': None, 'timestamp': 0, 'user': None}
 
 # Admin dashboard cache
-_dashboard_stats_cache = {'data': None, 'timestamp': 0}
+_dashboard_stats_cache = {'data': None, 'timestamp': 0, 'user': None}
 
 _DASHBOARD_CACHE_TTL_SECONDS = 180
 _PAYMENT_DASHBOARD_CACHE_TTL_SECONDS = 180
@@ -1069,7 +1069,7 @@ def export_quotations_data(include_deleted=False, token_or_email=None):
 @anvil.server.callable
 def get_dashboard_stats(token_or_email=None):
     """الحصول على إحصائيات لوحة التحكم - يتطلب صلاحية view"""
-    is_valid, _, error = _require_permission(token_or_email, 'view')
+    is_valid, user_email, error = _require_permission(token_or_email, 'view')
     if not is_valid:
         empty = {"total_clients": 0, "total_quotations": 0, "total_value": 0,
                  "this_month_quotations": 0, "this_month_value": 0,
@@ -1083,7 +1083,9 @@ def get_dashboard_stats(token_or_email=None):
 
     # Short cache to reduce repeated heavy recalculation when user switches panels quickly
     now_ts = _time.time()
-    if _dashboard_stats_cache['data'] is not None and (now_ts - _dashboard_stats_cache['timestamp']) < _DASHBOARD_CACHE_TTL_SECONDS:
+    if (_dashboard_stats_cache['data'] is not None
+        and _dashboard_stats_cache.get('user') == user_email
+        and (now_ts - _dashboard_stats_cache['timestamp']) < _DASHBOARD_CACHE_TTL_SECONDS):
         return _dashboard_stats_cache['data']
 
     now = get_utc_now()
@@ -1230,6 +1232,7 @@ def get_dashboard_stats(token_or_email=None):
     wrapped = {'success': True, 'message': '', 'data': result, **result}
     _dashboard_stats_cache['data'] = wrapped
     _dashboard_stats_cache['timestamp'] = _time.time()
+    _dashboard_stats_cache['user'] = user_email
     return wrapped
 
 
@@ -2056,8 +2059,9 @@ def get_quotations_list(search='', include_deleted=False, token_or_email=None, p
         except Exception:
             q_iter = app_tables.quotations.search(is_deleted=False) if not include_deleted else app_tables.quotations.search()
 
+        # Pass 1: collect page rows (without client lookups)
         total_count = 0
-        data = []
+        page_rows = []  # raw row references
         skip = (page - 1) * page_size
         for r in q_iter:
             if not _quotation_list_matches_search(r, search_lower):
@@ -2068,23 +2072,40 @@ def get_quotations_list(search='', include_deleted=False, token_or_email=None, p
             if skip > 0:
                 skip -= 1
                 continue
-            if len(data) < page_size:
-                company = r.get('Company', '') or ''
-                if not company:
-                    try:
-                        client = app_tables.clients.get(Phone=r.get('Phone'), is_deleted=False) if r.get('Phone') else None
-                        if client:
-                            company = client.get('Company', '') or ''
-                    except Exception as _e:
-                        logger.debug("Suppressed: %s", _e)
-                data.append({
-                    'Quotation#': r.get('Quotation#'),
-                    'Client Name': r.get('Client Name', ''),
-                    'Company': company,
-                    'Model': r.get('Model', ''),
-                    'Date': r.get('Date').isoformat() if r.get('Date') else '',
-                    'Agreed Price': r.get('Agreed Price', 0)
-                })
+            if len(page_rows) < page_size:
+                page_rows.append(r)
+
+        # Pass 2: batch-load clients for rows missing Company
+        phones_needing_lookup = set()
+        for r in page_rows:
+            if not (r.get('Company', '') or ''):
+                phone = r.get('Phone')
+                if phone:
+                    phones_needing_lookup.add(phone)
+        client_by_phone = {}
+        if phones_needing_lookup:
+            try:
+                import anvil.tables.query as _q
+                for c in app_tables.clients.search(Phone=_q.any_of(*list(phones_needing_lookup)), is_deleted=False):
+                    client_by_phone[c.get('Phone')] = c
+            except Exception:
+                pass
+
+        data = []
+        for r in page_rows:
+            company = r.get('Company', '') or ''
+            if not company and r.get('Phone'):
+                cl = client_by_phone.get(r.get('Phone'))
+                if cl:
+                    company = cl.get('Company', '') or ''
+            data.append({
+                'Quotation#': r.get('Quotation#'),
+                'Client Name': r.get('Client Name', ''),
+                'Company': company,
+                'Model': r.get('Model', ''),
+                'Date': r.get('Date').isoformat() if r.get('Date') else '',
+                'Agreed Price': r.get('Agreed Price', 0)
+            })
 
         return {'success': True, 'data': data, 'total_count': total_count, 'page': page, 'page_size': page_size}
 
@@ -2119,8 +2140,9 @@ def get_quotations_list_without_contract(search='', token_or_email=None, page=1,
             q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by('Quotation#', False)])
         except Exception:
             q_iter = app_tables.quotations.search(is_deleted=False)
+        # Pass 1: collect page rows (without client lookups)
         total_count = 0
-        data = []
+        page_rows = []
         skip = (page - 1) * page_size
         for r in q_iter:
             q_num = r.get('Quotation#')
@@ -2134,23 +2156,40 @@ def get_quotations_list_without_contract(search='', token_or_email=None, page=1,
             if skip > 0:
                 skip -= 1
                 continue
-            if len(data) < page_size:
-                company = r.get('Company', '') or ''
-                if not company and r.get('Phone'):
-                    try:
-                        client = app_tables.clients.get(Phone=r.get('Phone'), is_deleted=False)
-                        if client:
-                            company = client.get('Company', '') or ''
-                    except Exception as _e:
-                        logger.debug("Suppressed: %s", _e)
-                data.append({
-                    'Quotation#': r.get('Quotation#'),
-                    'Client Name': r.get('Client Name', ''),
-                    'Company': company,
-                    'Model': r.get('Model', ''),
-                    'Date': r.get('Date').isoformat() if r.get('Date') else '',
-                    'Agreed Price': r.get('Agreed Price', 0)
-                })
+            if len(page_rows) < page_size:
+                page_rows.append(r)
+
+        # Pass 2: batch-load clients for rows missing Company
+        phones_needing_lookup = set()
+        for r in page_rows:
+            if not (r.get('Company', '') or ''):
+                phone = r.get('Phone')
+                if phone:
+                    phones_needing_lookup.add(phone)
+        client_by_phone = {}
+        if phones_needing_lookup:
+            try:
+                import anvil.tables.query as _q
+                for c in app_tables.clients.search(Phone=_q.any_of(*list(phones_needing_lookup)), is_deleted=False):
+                    client_by_phone[c.get('Phone')] = c
+            except Exception:
+                pass
+
+        data = []
+        for r in page_rows:
+            company = r.get('Company', '') or ''
+            if not company and r.get('Phone'):
+                cl = client_by_phone.get(r.get('Phone'))
+                if cl:
+                    company = cl.get('Company', '') or ''
+            data.append({
+                'Quotation#': r.get('Quotation#'),
+                'Client Name': r.get('Client Name', ''),
+                'Company': company,
+                'Model': r.get('Model', ''),
+                'Date': r.get('Date').isoformat() if r.get('Date') else '',
+                'Agreed Price': r.get('Agreed Price', 0)
+            })
         return {'success': True, 'data': data, 'total_count': total_count, 'page': page, 'page_size': page_size}
     except Exception as e:
         logger.exception("get_quotations_list_without_contract error")
@@ -2827,6 +2866,7 @@ def _parse_payment_amount(p):
 def _invalidate_payment_cache():
     _payment_dashboard_cache['data'] = None
     _payment_dashboard_cache['timestamp'] = 0
+    _payment_dashboard_cache['user'] = None
 
 @anvil.server.callable
 def get_payment_dashboard_data(token_or_email=None):
@@ -2834,13 +2874,14 @@ def get_payment_dashboard_data(token_or_email=None):
     Aggregated payment tracking data for the dashboard.
     Requires 'view' permission.
     """
-    is_valid, _, error = _require_permission(token_or_email, 'view')
+    is_valid, user_email, error = _require_permission(token_or_email, 'view')
     if not is_valid:
         return {'success': False, 'message': 'Permission denied'}
 
-    # Check cache (60 second TTL)
+    # Check cache with user validation
     now_ts = _time.time()
     if (_payment_dashboard_cache['data'] is not None
+        and _payment_dashboard_cache.get('user') == user_email
         and (now_ts - _payment_dashboard_cache['timestamp']) < _PAYMENT_DASHBOARD_CACHE_TTL_SECONDS):
         return _payment_dashboard_cache['data']
 
@@ -2973,6 +3014,7 @@ def get_payment_dashboard_data(token_or_email=None):
         # Update cache
         _payment_dashboard_cache['data'] = result
         _payment_dashboard_cache['timestamp'] = _time.time()
+        _payment_dashboard_cache['user'] = user_email
 
         return result
     except Exception as e:

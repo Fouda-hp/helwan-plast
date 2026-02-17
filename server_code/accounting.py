@@ -53,6 +53,36 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Financial report cache (keyed by report_name + date params + user)
+# ---------------------------------------------------------------------------
+import time as _report_time
+_report_cache = {}
+_REPORT_CACHE_TTL_SECONDS = 120
+
+def _get_report_cache(cache_key, user_email):
+    """Return cached data if fresh, else None."""
+    entry = _report_cache.get(cache_key)
+    if entry is None:
+        return None
+    if entry.get('user') != user_email:
+        return None
+    if (_report_time.time() - entry.get('timestamp', 0)) >= _REPORT_CACHE_TTL_SECONDS:
+        return None
+    return entry['data']
+
+def _set_report_cache(cache_key, data, user_email):
+    """Store result in cache."""
+    _report_cache[cache_key] = {
+        'data': data,
+        'user': user_email,
+        'timestamp': _report_time.time(),
+    }
+
+def _invalidate_report_cache():
+    """Clear all report caches (call after any ledger write)."""
+    _report_cache.clear()
+
+# ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
 def _uuid():
@@ -695,6 +725,7 @@ def post_journal_entry(entry_date, entries, description, ref_type, ref_id, user_
                 )
 
         _do_post()
+        _invalidate_report_cache()
         logger.info("Journal entry %s posted (%d lines) by %s", transaction_id, len(entries), user_email)
         return {'success': True, 'transaction_id': transaction_id}
     except Exception as e:
@@ -3621,6 +3652,11 @@ def get_trial_balance(date_from=None, date_to=None, token_or_email=None):
     is_valid, user_email, error = _require_permission(token_or_email, 'read')
     if not is_valid:
         return error
+    # Cache check
+    _cache_key = ('trial_balance', str(date_from), str(date_to))
+    _cached = _get_report_cache(_cache_key, user_email)
+    if _cached is not None:
+        return _cached
     try:
         accounts = _get_all_balances(as_of_date=date_to, date_from=date_from)
         rows = []
@@ -3662,7 +3698,7 @@ def get_trial_balance(date_from=None, date_to=None, token_or_email=None):
                 'debit': r.get('debit', 0),
                 'credit': r.get('credit', 0),
             })
-        return {
+        result = {
             'success': True,
             'data': data_rows,
             'rows': rows,
@@ -3672,6 +3708,8 @@ def get_trial_balance(date_from=None, date_to=None, token_or_email=None):
             'date_from': date_from,
             'date_to': date_to,
         }
+        _set_report_cache(_cache_key, result, user_email)
+        return result
     except Exception as e:
         logger.exception("get_trial_balance error")
         return {'success': False, 'message': str(e)}
@@ -3688,6 +3726,11 @@ def get_income_statement(date_from, date_to, token_or_email=None):
         return error
     if not date_from or not date_to:
         return {'success': False, 'message': 'Both date_from and date_to are required'}
+    # Cache check
+    _cache_key = ('income_statement', str(date_from), str(date_to))
+    _cached = _get_report_cache(_cache_key, user_email)
+    if _cached is not None:
+        return _cached
 
     try:
         d_from = _safe_date(date_from)
@@ -3768,7 +3811,7 @@ def get_income_statement(date_from, date_to, token_or_email=None):
             'total_expenses': _round2(total_cogs + total_expenses),
             'net_income': net_profit,
         }
-        return {
+        result = {
             'success': True,
             'data': data_obj,
             'date_from': str(d_from),
@@ -3779,6 +3822,8 @@ def get_income_statement(date_from, date_to, token_or_email=None):
             'expenses': {'items': expense_items, 'total': _round2(total_expenses)},
             'net_profit': net_profit,
         }
+        _set_report_cache(_cache_key, result, user_email)
+        return result
     except Exception as e:
         logger.exception("get_income_statement error")
         return {'success': False, 'message': str(e)}
@@ -3868,6 +3913,11 @@ def get_balance_sheet(as_of_date, token_or_email=None):
         return error
     if not as_of_date:
         return {'success': False, 'message': 'as_of_date is required'}
+    # Cache check
+    _cache_key = ('balance_sheet', str(as_of_date), '')
+    _cached = _get_report_cache(_cache_key, user_email)
+    if _cached is not None:
+        return _cached
 
     try:
         accounts = _get_all_balances(as_of_date)
@@ -3948,7 +3998,7 @@ def get_balance_sheet(as_of_date, token_or_email=None):
             'total_liabilities': _round2(total_liabilities),
             'total_equity': _round2(total_equity),
         }
-        return {
+        result = {
             'success': True,
             'data': data_obj,
             'as_of_date': str(_safe_date(as_of_date)),
@@ -3958,6 +4008,8 @@ def get_balance_sheet(as_of_date, token_or_email=None):
             'total_liabilities_equity': total_liabilities_equity,
             'is_balanced': abs(total_assets - total_liabilities_equity) < 0.01,
         }
+        _set_report_cache(_cache_key, result, user_email)
+        return result
     except Exception as e:
         logger.exception("get_balance_sheet error")
         return {'success': False, 'message': str(e)}

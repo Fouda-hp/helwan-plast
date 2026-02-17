@@ -203,14 +203,26 @@ def get_user_notifications(token_or_email, limit=50, unread_only=False):
         return {'success': False, 'data': [], 'message': 'Authentication required'}
     try:
         limit = max(1, min(200, int(limit) if limit is not None else 50))
+        rows = []
         try:
-            rows = list(app_tables.notifications.search(user_email=user_email, order_by=[anvil_order_by('created_at', False)]))
+            search_iter = app_tables.notifications.search(user_email=user_email, order_by=[anvil_order_by('created_at', False)])
+            for r in search_iter:
+                if unread_only and r.get('read_at') is not None:
+                    continue
+                rows.append(r)
+                if len(rows) >= limit:
+                    break
         except Exception:
-            rows = list(app_tables.notifications.search(user_email=user_email))
-            rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
-        if unread_only:
-            rows = [r for r in rows if r.get('read_at') is None]
-        rows = rows[:limit]
+            # Fallback: load limited batch, sort, then slice
+            _all = []
+            for r in app_tables.notifications.search(user_email=user_email):
+                if unread_only and r.get('read_at') is not None:
+                    continue
+                _all.append(r)
+                if len(_all) >= limit * 5:
+                    break
+            _all.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
+            rows = _all[:limit]
         data = []
         for r in rows:
             try:
@@ -357,12 +369,21 @@ def get_all_notifications_admin(token_or_email, limit=50):
         return {'success': False, 'data': [], 'message': 'Admin access required'}
     try:
         limit = max(1, min(200, int(limit) if limit is not None else 50))
+        rows = []
         try:
-            rows = list(app_tables.notifications.search(order_by=[anvil_order_by('created_at', False)]))
+            search_iter = app_tables.notifications.search(order_by=[anvil_order_by('created_at', False)])
+            for r in search_iter:
+                rows.append(r)
+                if len(rows) >= limit:
+                    break
         except Exception:
-            rows = list(app_tables.notifications.search())
-            rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
-        rows = rows[:limit]
+            _all = []
+            for r in app_tables.notifications.search():
+                _all.append(r)
+                if len(_all) >= limit * 5:
+                    break
+            _all.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
+            rows = _all[:limit]
         data = []
         for r in rows:
             try:

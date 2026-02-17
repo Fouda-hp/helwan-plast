@@ -18,10 +18,20 @@ ROUTES = {
     '#payment-dashboard': 'PaymentDashboardForm',
     '#follow-ups':        'FollowUpDashboardForm',
     '#login':             'LoginForm',
+    # Accounting sub-forms
+    '#accountant':        'AccountantForm',
+    '#customer-summary':  'CustomerSummaryForm',
+    '#inventory':         'InventoryForm',
+    '#purchase-invoices': 'PurchaseInvoicesForm',
+    '#suppliers':         'SuppliersForm',
+    '#supplier-summary':  'SupplierSummaryForm',
 }
 
 # Admin-only routes
-ADMIN_ONLY = set(['#admin'])
+ADMIN_ONLY = set([
+    '#admin', '#accountant', '#customer-summary',
+    '#inventory', '#purchase-invoices', '#suppliers', '#supplier-summary',
+])
 
 # Prefix-based routes (e.g. #client-detail-123)
 PREFIX_ROUTES = {

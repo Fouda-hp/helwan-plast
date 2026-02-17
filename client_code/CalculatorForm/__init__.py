@@ -179,6 +179,67 @@ class CalculatorForm(CalculatorFormTemplate):
     return anvil.server.call("get_active_users_for_dropdown", auth)
 
   # =================================================
+  # Settings application helper (بدون eval)
+  # =================================================
+  def _apply_settings_with_retry(self, parsed):
+    """تطبيق إعدادات الحاسبة مع retry عبر setTimeout — بدون eval."""
+    try:
+      w = anvil.js.window
+      # Direct call first (إذا الدالة متاحة فوراً)
+      try:
+        fn = getattr(w, 'applyCalculatorSettingsFromPython', None)
+        if fn and parsed:
+          fn(parsed)
+          calc_fn = getattr(w, 'calculateAll', None)
+          if calc_fn:
+            w.setTimeout(calc_fn, 50)
+          logger.info("Settings applied directly (no retry needed)")
+      except Exception as e:
+        logger.warning("Direct apply failed (%s), scheduling retries", e)
+
+      # Retry with setTimeout (الدوال قد لا تكون جاهزة بعد)
+      def _make_apply_fn():
+        applied = [False]
+        def _try_apply():
+          if applied[0]:
+            return
+          try:
+            fn = getattr(w, 'applyCalculatorSettingsFromPython', None)
+            data = getattr(w, '__calculatorSettingsFromPython', None)
+            if fn and data:
+              applied[0] = True
+              fn(data)
+              calc_fn = getattr(w, 'calculateAll', None)
+              if calc_fn:
+                w.setTimeout(calc_fn, 50)
+          except Exception:
+            applied[0] = False
+        return _try_apply
+
+      def _make_reinit_fn():
+        done = [False]
+        def _try_reinit():
+          if done[0]:
+            return
+          try:
+            fn = getattr(w, 'reinitCalculatorDropdowns', None)
+            if fn:
+              done[0] = True
+              fn()
+          except Exception:
+            pass
+        return _try_reinit
+
+      apply_fn = _make_apply_fn()
+      reinit_fn = _make_reinit_fn()
+      for delay in [300, 1000, 2000, 4000]:
+        w.setTimeout(apply_fn, delay)
+      for delay in [500, 2000]:
+        w.setTimeout(reinit_fn, delay)
+    except Exception as e:
+      logger.debug("_apply_settings_with_retry error: %s", e)
+
+  # =================================================
   # FORM SHOW - LOAD SETTINGS
   # =================================================
   def form_show(self, **event_args):
@@ -263,27 +324,7 @@ class CalculatorForm(CalculatorFormTemplate):
           pass
       except Exception as e:
         logger.error("form_show: FAILED to set __calculatorSettingsFromPython: %s", e)
-      # تطبيق الإعدادات — نستخدم applyCalculatorSettingsFromPython مباشرة بدل eval
-      try:
-        if anvil.js.window.applyCalculatorSettingsFromPython:
-          logger.info("form_show: calling applyCalculatorSettingsFromPython directly")
-          anvil.js.window.applyCalculatorSettingsFromPython(parsed)
-        else:
-          logger.warning("form_show: applyCalculatorSettingsFromPython NOT available yet, scheduling eval")
-      except Exception as e:
-        logger.warning("form_show: direct call failed (%s), falling back to eval", e)
-      apply_js = (
-        "var _d = window.__calculatorSettingsFromPython;"
-        "if(!_d){try{_d=window.top&&window.top.__calculatorSettingsFromPython;}catch(e){}}"
-        "if(_d){console.log('[CALC] Settings from Python:',JSON.stringify({hasPriceOptions:!!_d.priceOptions,hasMachinePrices:!!_d.machinePrices,priceOptionTypes:_d.priceOptions?_d.priceOptions.types:null,typeColorWidths:_d.priceOptions?_d.priceOptions.typeColorWidths:null}));}"
-        "else{console.warn('[CALC] NO settings from Python! window keys:', Object.keys(window).filter(function(k){return k.indexOf('calculator')>-1||k.indexOf('Calculator')>-1||k.indexOf('setting')>-1||k.indexOf('Setting')>-1;}).join(', '));}"
-        "var _applied = false;"
-        "var _apply = function() { if (_applied) return; _d = window.__calculatorSettingsFromPython; if(!_d){try{_d=window.top&&window.top.__calculatorSettingsFromPython;}catch(e){}} if (window.applyCalculatorSettingsFromPython && _d) { try { _applied = true; window.applyCalculatorSettingsFromPython(_d); if (window.calculateAll) setTimeout(window.calculateAll, 50); console.log('[CALC] Settings applied successfully!'); } catch(e) { _applied = false; console.error('[CALC] apply error:', e); } } else { console.warn('[CALC] retry: applyFn='+!!window.applyCalculatorSettingsFromPython+' data='+!!_d); } };"
-        "var _rDone = false;"
-        "var _r = function() { if (_rDone) return; if (window.reinitCalculatorDropdowns) { _rDone = true; window.reinitCalculatorDropdowns(); } };"
-        "setTimeout(_apply, 300); setTimeout(_apply, 1000); setTimeout(_apply, 2000); setTimeout(_apply, 4000);"
-        "setTimeout(_r, 500); setTimeout(_r, 2000);"
-      )
-      anvil.js.window.eval(apply_js)
+      # تطبيق الإعدادات بدون eval — Python مباشر مع retry عبر setTimeout
+      self._apply_settings_with_retry(parsed)
     except Exception as e:
       logger.debug("CalculatorForm form_show error: %s", e)

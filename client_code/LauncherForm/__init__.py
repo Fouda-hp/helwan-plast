@@ -16,6 +16,8 @@ import anvil.tables.query as q
 from anvil.tables import app_tables
 import anvil.js
 
+from ..routing import resolve_route, ADMIN_ONLY
+
 try:
     from ..notif_bridge import register_notif_bridges
     from ..auth_helpers import validate_token_cached, clear_token_cache
@@ -102,23 +104,20 @@ class LauncherForm(LauncherFormTemplate):
     def check_route(self):
         """التحقق من المسار والتوجيه — استعادة آخر صفحة بعد الـ refresh"""
         try:
-            # استعادة آخر صفحة من localStorage عند الـ refresh فقط (نفس التاب). لو التاب اتقفل واتفتح من جديد فـ sessionStorage فاضية فلا نستعيد → نفتح تسجيل الدخول
-            anvil.js.window.eval("""
-                (function() {
-                    var h = (window.location && window.location.hash) || '';
-                    if (!h || h === '#') {
-                        var hasSession = (window.sessionStorage && window.sessionStorage.getItem('auth_token'));
-                        if (hasSession) {
-                            var saved = (window.localStorage && window.localStorage.getItem('hp_last_page')) || '';
-                            if (saved && saved.indexOf('#') === 0 && window.location) window.location.hash = saved;
-                        } else if (window.location) {
-                            window.location.hash = '#login';
-                        }
-                    }
-                    h = (window.location && window.location.hash) || '#launcher';
-                    if (window.localStorage) window.localStorage.setItem('hp_last_page', h);
-                })();
-            """)
+            # استعادة آخر صفحة من localStorage عند الـ refresh (بدون eval)
+            w = anvil.js.window
+            h = (w.location.hash if w.location else '') or ''
+            if not h or h == '#':
+                has_session = w.sessionStorage and w.sessionStorage.getItem('auth_token')
+                if has_session:
+                    saved = (w.localStorage.getItem('hp_last_page') if w.localStorage else '') or ''
+                    if saved and saved.startswith('#') and w.location:
+                        w.location.hash = saved
+                elif w.location:
+                    w.location.hash = '#login'
+            h = (w.location.hash if w.location else '') or '#launcher'
+            if w.localStorage:
+                w.localStorage.setItem('hp_last_page', h)
         except Exception:
             pass
         try:
@@ -128,104 +127,38 @@ class LauncherForm(LauncherFormTemplate):
         if not hash_val or hash_val == "#":
             hash_val = "#launcher"
 
-        if hash_val == "#calculator":
-            open_form('CalculatorForm')
-        elif hash_val == "#clients":
-            open_form('ClientListForm')
-        elif hash_val == "#database":
-            open_form('DatabaseForm')
-        elif hash_val == "#admin":
-            if not self._user_is_admin():
-                try:
-                    anvil.js.window.location.hash = "#launcher"
-                except Exception:
-                    pass
-                open_form('LauncherForm')
-                return
-            open_form('AdminPanel')
-        elif hash_val == "#import":
-            open_form('DataImportForm')
-        elif hash_val == "#quotation-print":
-            open_form('QuotationPrintForm')
-        elif hash_val == "#contract-print":
-            open_form('ContractPrintForm')
-        elif hash_val == "#contract-new":
-            open_form('ContractPrintForm')
-        elif hash_val == "#contract-edit":
-            open_form('ContractEditForm')
-        elif hash_val == "#payment-dashboard":
-            open_form('PaymentDashboardForm')
-        elif hash_val.startswith("#client-detail"):
-            open_form('ClientDetailForm')
-        elif hash_val == "#follow-ups":
-            open_form('FollowUpDashboardForm')
-        elif hash_val == "#login":
-            open_form('LoginForm')
+        form_name, is_admin_only = resolve_route(hash_val)
+        if is_admin_only and not self._user_is_admin():
+            try:
+                anvil.js.window.location.hash = "#launcher"
+            except Exception:
+                pass
+            open_form('LauncherForm')
+            return
+        open_form(form_name)
 
     def form_show(self, **event_args):
         """عند عرض النموذج — تخفيف: مزامنة التوكن فوراً، تأجيل TOTP حتى لا يثقل التحميل"""
         self._inject_notification_system()
         self._sync_auth_token_to_frame()
         try:
-            anvil.js.window.eval("if (window.localStorage) window.localStorage.setItem('hp_last_page', '#launcher');")
+            if anvil.js.window.localStorage:
+                anvil.js.window.localStorage.setItem('hp_last_page', '#launcher')
         except Exception:
             pass
         self.route()
         self._inject_totp_link()
 
     def _inject_notification_system(self):
-        """ضمان وجود نظام الإشعارات (بديل عن alert البراوزر) — يعمل حتى قبل تحميل i18n."""
+        """ضمان وجود نظام الإشعارات — يُحمّل من ملف JS خارجي (notification-system.js)."""
         try:
-            anvil.js.window.eval("""
-(function() {
-  if (window._hpNotificationSystemReady) return;
-  window._hpNotificationSystemReady = true;
-  var c = document.getElementById('notificationContainer');
-  if (!c) {
-    c = document.createElement('div');
-    c.id = 'notificationContainer';
-    c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:999999;display:flex;flex-direction:column;gap:8px;max-width:360px;pointer-events:none;';
-    c.innerHTML = '<style>#notificationContainer .hp-t{pointer-events:auto;padding:12px 16px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);border-left:4px solid #667eea;background:#fff;}#notificationContainer .hp-t.suc{border-left-color:#4caf50;}#notificationContainer .hp-t.err{border-left-color:#f44336;}#notificationContainer .hp-t.warn{border-left-color:#ff9800;}#notificationContainer .hp-t.inf{border-left-color:#2196f3;}</style>';
-    document.body.appendChild(c);
-  }
-  if (!window.showNotification) {
-    window.showNotification = function(type, title, msg) {
-      var el = document.createElement('div');
-      el.className = 'hp-t ' + (type === 'success' ? 'suc' : type === 'error' ? 'err' : type === 'warning' ? 'warn' : 'inf');
-      el.innerHTML = (title ? '<strong style="display:block;margin-bottom:4px;">' + title + '</strong>' : '') + (msg || '');
-      c.appendChild(el);
-      setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 4500);
-    };
-  }
-  if (!window.showConfirm) {
-    window.showConfirm = function(msg, title) {
-      return new Promise(function(resolve) {
-        var b = document.createElement('div');
-        b.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999999;display:flex;align-items:center;justify-content:center;';
-        b.innerHTML = '<div style="background:#fff;padding:24px;border-radius:12px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);"><div style="font-weight:600;margin-bottom:12px;">' + (title || 'تأكيد') + '</div><div style="margin-bottom:20px;">' + (msg || '').replace(/</g,'&lt;') + '</div><div style="display:flex;gap:10px;justify-content:flex-end;"><button id="hpCnNo" style="padding:10px 20px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;">لا</button><button id="hpCnYes" style="padding:10px 20px;border:none;border-radius:8px;background:#1976d2;color:#fff;cursor:pointer;">نعم</button></div></div>';
-        b.onclick = function(ev) { if (ev.target === b) { document.body.removeChild(b); resolve(false); } };
-        document.body.appendChild(b);
-        document.getElementById('hpCnYes').onclick = function() { document.body.removeChild(b); resolve(true); };
-        document.getElementById('hpCnNo').onclick = function() { document.body.removeChild(b); resolve(false); };
-      });
-    };
-  }
-  if (!window.showPrompt) {
-    window.showPrompt = function(msg, def, title) {
-      return new Promise(function(resolve) {
-        var b = document.createElement('div');
-        var id = 'hpInp' + Date.now();
-        b.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999999;display:flex;align-items:center;justify-content:center;';
-        b.innerHTML = '<div style="background:#fff;padding:24px;border-radius:12px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">' + (title ? '<div style="font-weight:600;margin-bottom:12px;">' + title + '</div>' : '') + '<div style="margin-bottom:12px;">' + (msg || '').replace(/</g,'&lt;') + '</div><input type="text" id="' + id + '" value="' + (def != null ? String(def).replace(/"/g,'&quot;') : '') + '" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;margin-bottom:16px;box-sizing:border-box;"><div style="display:flex;gap:10px;justify-content:flex-end;"><button id="hpPmCancel" style="padding:10px 20px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;">إلغاء</button><button id="hpPmOk" style="padding:10px 20px;border:none;border-radius:8px;background:#1976d2;color:#fff;cursor:pointer;">موافق</button></div></div>';
-        b.onclick = function(ev) { if (ev.target === b) { document.body.removeChild(b); resolve(null); } };
-        document.body.appendChild(b);
-        document.getElementById('hpPmOk').onclick = function() { var v = document.getElementById(id).value; document.body.removeChild(b); resolve(v); };
-        document.getElementById('hpPmCancel').onclick = function() { document.body.removeChild(b); resolve(null); };
-      });
-    };
-  }
-})();
-""")
+            if anvil.js.window._hpNotificationSystemReady:
+                return  # Already loaded
+            doc = anvil.js.window.document
+            script = doc.createElement('script')
+            script.src = '_/theme/notification-system.js'
+            setattr(script, 'async', True)
+            doc.body.appendChild(script)
         except Exception:
             pass
 
@@ -347,101 +280,25 @@ class LauncherForm(LauncherFormTemplate):
             pass
 
     def route(self, **event_args):
-        """التوجيه حسب الـ hash"""
+        """التوجيه حسب الـ hash (مركزي من routing.py)"""
         h = anvil.js.window.location.hash
+        form_name, is_admin_only = resolve_route(h)
 
-        if h == "#clients":
-            # فتح صفحة العملاء (للقراءة فقط)
-            try:
-                from ..ClientListForm import ClientListForm
-                open_form("ClientListForm")
-            except Exception as e:
-                try: anvil.js.window.showNotification('error', '', str(e))
-                except Exception: pass
-
-        elif h == "#database":
-            # فتح صفحة قاعدة البيانات (للقراءة فقط)
-            try:
-                from ..DatabaseForm import DatabaseForm
-                open_form("DatabaseForm")
-            except Exception as e:
-                try: anvil.js.window.showNotification('error', '', str(e))
-                except Exception: pass
-
-        elif h == "#calculator":
-            # فتح الحاسبة
-            try:
-                open_form("CalculatorForm")
-            except Exception as e:
-                try: anvil.js.window.showNotification('error', '', str(e))
-                except Exception: pass
-
-        elif h == "#admin":
-            # فتح لوحة التحكم (للأدمن فقط — تحقق من السيرفر)
-            if not self._user_is_admin():
-                anvil.js.window.location.hash = "#launcher"
-                return
-            try:
-                open_form("AdminPanel")
-            except Exception as e:
-                try: anvil.js.window.showNotification('error', '', str(e))
-                except Exception: pass
-
-        elif h == "#import":
-            # فتح صفحة الاستيراد (للأدمن فقط)
-            try:
-                from ..DataImportForm import DataImportForm
-                open_form("DataImportForm")
-            except Exception as e:
-                try: anvil.js.window.showNotification('error', '', str(e))
-                except Exception: pass
-
-        elif h == "#quotation-print":
-            # فتح صفحة طباعة عروض الأسعار
-            try:
-                open_form("QuotationPrintForm")
-            except Exception as e:
-                try: anvil.js.window.showNotification('error', '', str(e))
-                except Exception: pass
-
-        elif h == "#contract-print":
-            try:
-                open_form("ContractPrintForm")
-            except Exception as e:
-                try: anvil.js.window.showNotification('error', '', str(e))
-                except Exception: pass
-        elif h == "#contract-new":
-            try:
-                open_form("ContractPrintForm")
-            except Exception as e:
-                try: anvil.js.window.showNotification('error', '', str(e))
-                except Exception: pass
-        elif h == "#contract-edit":
-            try:
-                open_form("ContractEditForm")
-            except Exception as e:
-                try: anvil.js.window.showNotification('error', '', str(e))
-                except Exception: pass
-        elif h == "#payment-dashboard":
-            try:
-                open_form("PaymentDashboardForm")
-            except Exception as e:
-                try: anvil.js.window.showNotification('error', '', str(e))
-                except Exception: pass
-        elif h.startswith("#client-detail"):
-            try:
-                open_form("ClientDetailForm")
-            except Exception as e:
-                try: anvil.js.window.showNotification('error', '', str(e))
-                except Exception: pass
-        elif h == "#follow-ups":
-            try:
-                open_form("FollowUpDashboardForm")
-            except Exception as e:
-                try: anvil.js.window.showNotification('error', '', str(e))
-                except Exception: pass
+        if is_admin_only and not self._user_is_admin():
+            anvil.js.window.location.hash = "#launcher"
+            return
 
         # لا نفتح LauncherForm مرة أخرى لتجنب الحلقة اللانهائية
+        if form_name == 'LauncherForm':
+            return
+
+        try:
+            open_form(form_name)
+        except Exception as e:
+            try:
+                anvil.js.window.showNotification('error', '', str(e))
+            except Exception:
+                pass
 
     # =========================================================
     # أحداث الأزرار (إذا كانت موجودة في الواجهة)

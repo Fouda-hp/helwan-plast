@@ -19,6 +19,8 @@ import anvil.js
 import json
 import logging
 
+from ..routing import resolve_route, ADMIN_ONLY
+
 try:
     from ..auth_helpers import validate_token_cached
 except ImportError:
@@ -125,34 +127,13 @@ class LoginForm(LoginFormTemplate):
 
         if hash_val == "#login":
             return  # نبقى على صفحة تسجيل الدخول (تجنب حلقة LauncherForm ↔ LoginForm)
-        if hash_val == "#launcher":
+
+        form_name, is_admin_only = resolve_route(hash_val)
+        if is_admin_only and not self._user_is_admin():
+            anvil.js.window.location.hash = '#launcher'
             open_form('LauncherForm')
-        elif hash_val == "#calculator":
-            open_form('CalculatorForm')
-        elif hash_val == "#admin":
-            if not self._user_is_admin():
-                anvil.js.window.location.hash = '#launcher'
-                open_form('LauncherForm')
-                return
-            open_form('AdminPanel')
-        elif hash_val == "#import":
-            open_form('DataImportForm')
-        elif hash_val == "#quotation-print":
-            open_form('QuotationPrintForm')
-        elif hash_val == "#contract-print":
-            open_form('ContractPrintForm')
-        elif hash_val == "#contract-new":
-            open_form('ContractPrintForm')
-        elif hash_val == "#contract-edit":
-            open_form('ContractEditForm')
-        elif hash_val == "#payment-dashboard":
-            open_form('PaymentDashboardForm')
-        elif hash_val.startswith("#client-detail"):
-            open_form('ClientDetailForm')
-        elif hash_val == "#follow-ups":
-            open_form('FollowUpDashboardForm')
-        else:
-            open_form('LauncherForm')
+            return
+        open_form(form_name)
 
     def _user_is_admin(self):
         """التحقق من السيرفر أن المستخدم الحالي أدمن (مع cache)."""

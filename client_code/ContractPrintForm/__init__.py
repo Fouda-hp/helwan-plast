@@ -1,4 +1,4 @@
-﻿from ._anvil_designer import ContractPrintFormTemplate
+from ._anvil_designer import ContractPrintFormTemplate
 from anvil import *
 import anvil.users
 import anvil.server

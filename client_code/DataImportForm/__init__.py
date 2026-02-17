@@ -66,9 +66,15 @@ class DataImportForm(DataImportFormTemplate):
     def check_route(self):
         """Handle routing"""
         hash_val = (anvil.js.window.location.hash or '').strip()
+        # Stay on DataImportForm if hash is #import
+        if not hash_val or hash_val == '#' or hash_val == '#import':
+            return
         if hash_val == "#admin":
             if not self._user_is_admin():
-                anvil.js.window.location.hash = '#launcher'
+                try:
+                    anvil.js.window.location.hash = '#launcher'
+                except Exception:
+                    pass
                 open_form('LauncherForm')
                 return
             open_form('AdminPanel')
@@ -76,7 +82,7 @@ class DataImportForm(DataImportFormTemplate):
             open_form('LauncherForm')
         elif hash_val == "#calculator":
             open_form('CalculatorForm')
-        elif hash_val == "#login" or hash_val == "":
+        elif hash_val == "#login":
             open_form('LoginForm')
 
     def _get_auth_info(self):

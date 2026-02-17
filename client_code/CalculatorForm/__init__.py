@@ -185,60 +185,63 @@ class CalculatorForm(CalculatorFormTemplate):
   # Settings application helper (بدون eval)
   # =================================================
   def _apply_settings_with_retry(self, parsed):
-    """تطبيق إعدادات الحاسبة مع retry عبر setTimeout — بدون eval."""
+    """Apply calculator settings with retry via setTimeout (no eval)."""
     try:
       w = anvil.js.window
-      # Direct call first (إذا الدالة متاحة فوراً)
+      # Direct call first
       try:
-        fn = getattr(w, 'applyCalculatorSettingsFromPython', None)
+        fn = w.applyCalculatorSettingsFromPython
         if fn and parsed:
           fn(parsed)
-          calc_fn = getattr(w, 'calculateAll', None)
-          if calc_fn:
-            w.setTimeout(calc_fn, 50)
+          try:
+            calc_fn = w.calculateAll
+            if calc_fn:
+              w.setTimeout(calc_fn, 50)
+          except Exception:
+            pass
           logger.info("Settings applied directly (no retry needed)")
       except Exception as e:
         logger.warning("Direct apply failed (%s), scheduling retries", e)
 
-      # Retry with setTimeout (الدوال قد لا تكون جاهزة بعد)
-      def _make_apply_fn():
-        applied = [False]
-        def _try_apply():
-          if applied[0]:
-            return
-          try:
-            fn = getattr(w, 'applyCalculatorSettingsFromPython', None)
-            data = getattr(w, '__calculatorSettingsFromPython', None)
-            if fn and data:
-              applied[0] = True
-              fn(data)
-              calc_fn = getattr(w, 'calculateAll', None)
-              if calc_fn:
-                w.setTimeout(calc_fn, 50)
-          except Exception:
-            applied[0] = False
-        return _try_apply
-
-      def _make_reinit_fn():
-        done = [False]
-        def _try_reinit():
-          if done[0]:
-            return
-          try:
-            fn = getattr(w, 'reinitCalculatorDropdowns', None)
-            if fn:
-              done[0] = True
-              fn()
-          except Exception:
-            pass
-        return _try_reinit
-
-      apply_fn = _make_apply_fn()
-      reinit_fn = _make_reinit_fn()
-      for delay in [300, 1000, 2000, 4000]:
-        w.setTimeout(apply_fn, delay)
-      for delay in [500, 2000]:
-        w.setTimeout(reinit_fn, delay)
+      # Schedule retries via eval to avoid Skulpt closure issues
+      apply_js = """
+      (function(){
+        var applied = false;
+        return function(){
+          if (applied) return;
+          try {
+            var fn = window.applyCalculatorSettingsFromPython;
+            var data = window.__calculatorSettingsFromPython;
+            if (fn && data) {
+              applied = true;
+              fn(data);
+              if (window.calculateAll) setTimeout(window.calculateAll, 50);
+            }
+          } catch(e) { applied = false; }
+        };
+      })()
+      """
+      reinit_js = """
+      (function(){
+        var done = false;
+        return function(){
+          if (done) return;
+          try {
+            var fn = window.reinitCalculatorDropdowns;
+            if (fn) { done = true; fn(); }
+          } catch(e) {}
+        };
+      })()
+      """
+      try:
+        apply_fn = w.eval(apply_js)
+        reinit_fn = w.eval(reinit_js)
+        for delay in [300, 1000, 2000, 4000]:
+          w.setTimeout(apply_fn, delay)
+        for delay in [500, 2000]:
+          w.setTimeout(reinit_fn, delay)
+      except Exception as e2:
+        logger.warning("Retry scheduling failed: %s", e2)
     except Exception as e:
       logger.debug("_apply_settings_with_retry error: %s", e)
 

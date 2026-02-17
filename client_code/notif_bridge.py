@@ -150,7 +150,12 @@ def register_notif_bridges():
         anvil.js.window.__hpNotifMarkRead = _mark_notification_read
         anvil.js.window.__hpNotifMarkUnread = _mark_notification_unread
         # Only fire the ready event once per page to avoid duplicate fetches
-        if not getattr(anvil.js.window, '__hpNotifBridgeReady', False):
+        ready = False
+        try:
+            ready = anvil.js.window.__hpNotifBridgeReady
+        except Exception:
+            pass
+        if not ready:
             anvil.js.window.__hpNotifBridgeReady = True
             anvil.js.window.dispatchEvent(
                 anvil.js.window.CustomEvent.new('hp-notif-bridge-ready')

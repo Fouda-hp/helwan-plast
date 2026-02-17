@@ -1,7 +1,6 @@
 """
-js_bridge.py - مساعدات لتسجيل دوال Python على window.HelwanAPI
-===============================================================
-يُنشئ الـ namespace مرة واحدة ويُسجل الدوال مع backward compat.
+js_bridge.py - Helpers to register Python functions on window.HelwanAPI
+Creates the namespace once and registers functions with backward compat.
 """
 
 import anvil.js
@@ -10,7 +9,8 @@ import anvil.js
 def _ensure_namespace():
     """Ensure window.HelwanAPI exists."""
     try:
-        if not anvil.js.window.HelwanAPI:
+        api = anvil.js.window.HelwanAPI
+        if not api:
             anvil.js.window.HelwanAPI = anvil.js.window.Object()
     except Exception:
         anvil.js.window.HelwanAPI = anvil.js.window.Object()
@@ -24,6 +24,15 @@ def register_bridges(bridges):
         bridges: dict of {name: callable}
     """
     _ensure_namespace()
-    for name, fn in bridges.items():
-        setattr(anvil.js.window.HelwanAPI, name, fn)  # HelwanAPI.xxx
-        setattr(anvil.js.window, name, fn)             # window.xxx (backward compat)
+    for name in bridges:
+        fn = bridges[name]
+        # HelwanAPI.xxx
+        try:
+            anvil.js.window.HelwanAPI[name] = fn
+        except Exception:
+            pass
+        # window.xxx (backward compat)
+        try:
+            anvil.js.window[name] = fn
+        except Exception:
+            pass

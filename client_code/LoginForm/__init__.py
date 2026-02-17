@@ -123,16 +123,25 @@ class LoginForm(LoginFormTemplate):
         self.check_route()
 
     def check_route(self):
-        hash_val = (anvil.js.window.location.hash or '').strip() or '#launcher'
+        hash_val = (anvil.js.window.location.hash or '').strip() or '#login'
 
+        # Already on login page - stay here
         if hash_val == "#login":
-            return  # نبقى على صفحة تسجيل الدخول (تجنب حلقة LauncherForm ↔ LoginForm)
+            return
 
         form_name, is_admin_only = resolve_route(hash_val)
         if is_admin_only and not self._user_is_admin():
-            anvil.js.window.location.hash = '#launcher'
+            try:
+                anvil.js.window.location.hash = '#launcher'
+            except Exception:
+                pass
             open_form('LauncherForm')
             return
+
+        # Prevent infinite loop: don't reopen LoginForm from LoginForm
+        if form_name == 'LoginForm':
+            return
+
         open_form(form_name)
 
     def _user_is_admin(self):

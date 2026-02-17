@@ -1,10 +1,9 @@
 """
-routing.py - جدول التوجيه المركزي (Hash-based routing)
-=====================================================
-يُستخدم من LoginForm و LauncherForm بدلاً من if-elif chains مكررة.
+routing.py - Central hash-based routing table
+Used by LoginForm and LauncherForm instead of duplicate if-elif chains.
 """
 
-# جدول التوجيه: hash → اسم الـ Form
+# Routing table: hash -> Form name
 ROUTES = {
     '#launcher':          'LauncherForm',
     '#calculator':        'CalculatorForm',
@@ -21,22 +20,22 @@ ROUTES = {
     '#login':             'LoginForm',
 }
 
-# مسارات تتطلب صلاحية أدمن
-ADMIN_ONLY = {'#admin'}
+# Admin-only routes
+ADMIN_ONLY = set(['#admin'])
 
-# مسارات تبدأ بـ prefix (مثل #client-detail-123)
+# Prefix-based routes (e.g. #client-detail-123)
 PREFIX_ROUTES = {
     '#client-detail': 'ClientDetailForm',
 }
 
-# الصفحة الافتراضية
+# Default form
 DEFAULT_FORM = 'LauncherForm'
 
 
 def resolve_route(hash_val):
     """
-    يُحدد الـ Form المناسب للـ hash.
-    يُرجع: (form_name: str, is_admin_only: bool)
+    Determine the Form for the given hash.
+    Returns: (form_name, is_admin_only)
     """
     if not hash_val or hash_val == '#':
         return DEFAULT_FORM, False
@@ -44,11 +43,14 @@ def resolve_route(hash_val):
     # Exact match first
     form = ROUTES.get(hash_val)
     if form:
-        return form, hash_val in ADMIN_ONLY
+        is_admin = hash_val in ADMIN_ONLY
+        return form, is_admin
 
     # Prefix match (e.g., #client-detail-XYZ)
-    for prefix, form_name in PREFIX_ROUTES.items():
+    for prefix in PREFIX_ROUTES:
         if hash_val.startswith(prefix):
-            return form_name, prefix in ADMIN_ONLY
+            fname = PREFIX_ROUTES[prefix]
+            is_admin = prefix in ADMIN_ONLY
+            return fname, is_admin
 
     return DEFAULT_FORM, False

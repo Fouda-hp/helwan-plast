@@ -154,15 +154,19 @@ class LauncherForm(LauncherFormTemplate):
         self._inject_totp_link()
 
     def _inject_notification_system(self):
-        """ضمان وجود نظام الإشعارات — يُحمّل من ملف JS خارجي (notification-system.js)."""
+        """Load notification system from external JS file (notification-system.js)."""
         try:
             if anvil.js.window._hpNotificationSystemReady:
                 return  # Already loaded
-            doc = anvil.js.window.document
-            script = doc.createElement('script')
-            script.src = '_/theme/notification-system.js'
-            setattr(script, 'async', True)
-            doc.body.appendChild(script)
+            anvil.js.window.eval("""
+                (function(){
+                    if (window._hpNotificationSystemReady) return;
+                    var s = document.createElement('script');
+                    s.src = '_/theme/notification-system.js';
+                    s.async = true;
+                    document.body.appendChild(s);
+                })();
+            """)
         except Exception:
             pass
 

@@ -1,6 +1,6 @@
 """
 routing.py - Central hash-based routing table
-Used by LoginForm and LauncherForm instead of duplicate if-elif chains.
+Used by LoginForm, LauncherForm and AdminPanel instead of duplicate if-elif chains.
 """
 
 # Routing table: hash -> Form name

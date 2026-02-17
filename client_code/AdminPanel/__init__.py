@@ -20,9 +20,11 @@ import logging
 try:
     from ..notif_bridge import register_notif_bridges
     from ..auth_helpers import validate_token_cached
+    from ..routing import resolve_route
 except ImportError:
     from notif_bridge import register_notif_bridges
     from auth_helpers import validate_token_cached
+    from routing import resolve_route
 
 logger = logging.getLogger(__name__)
 
@@ -2236,22 +2238,18 @@ class AdminPanel(AdminPanelTemplate):
             except Exception:
                 pass
 
-        if hash_val == "#launcher":
-            open_form('LauncherForm')
-        elif hash_val == "#calculator":
-            open_form('CalculatorForm')
-        elif hash_val == "#import":
-            open_form('DataImportForm')
-        elif hash_val == "#login":
-            open_form('LoginForm')
-        elif hash_val == "#admin":
-            pass  # نبقى على الأدمن
-        else:
-            # hash غير معروف أثناء وجودنا في الأدمن => ثبّت على الأدمن بدل التنطيط بين صفحات
-            try:
-                anvil.js.window.location.hash = '#admin'
-            except Exception:
-                pass
+        # استخدام resolve_route المركزي بدل if-elif يدوي
+        form_name, _is_admin_only = resolve_route(hash_val)
+
+        # نبقى على الأدمن
+        if form_name == 'AdminPanel':
+            return
+
+        # فتح النموذج المطلوب
+        try:
+            open_form(form_name)
+        except Exception:
+            pass
 
     # =========================================================
     # معلومات المستخدم

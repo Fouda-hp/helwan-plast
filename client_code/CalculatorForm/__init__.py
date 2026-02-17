@@ -10,6 +10,11 @@ try:
 except ImportError:
     from notif_bridge import register_notif_bridges
 
+try:
+    from ..js_bridge import register_bridges
+except ImportError:
+    from js_bridge import register_bridges
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,24 +29,22 @@ class CalculatorForm(CalculatorFormTemplate):
     # ---------- Bind form_show event to load settings
     self.add_event_handler('show', self.form_show)
 
-    # ---------- JS bridges (auto numbering — peek فقط بدون حجز)
-    anvil.js.window.getNextClientCode = self.peek_next_client_code_js
-    anvil.js.window.getNextQuotationNumber = self.peek_next_quotation_number_js
-    anvil.js.window.resyncNumberingCounters = self.resync_numbering_counters_js
-    anvil.js.window.getClientCodeFromServer = self.find_client_by_phone_js
-
-    # ---------- Overlays & save
-    anvil.js.window.getQuotationsForOverlay = self.get_quotations_for_overlay
-    anvil.js.window.getClientsForOverlay = self.get_clients_for_overlay
-    anvil.js.window.callPythonSave = self.save_button_click
+    # ---------- JS bridges → HelwanAPI namespace + window (backward compat)
+    register_bridges({
+      'getNextClientCode': self.peek_next_client_code_js,
+      'getNextQuotationNumber': self.peek_next_quotation_number_js,
+      'resyncNumberingCounters': self.resync_numbering_counters_js,
+      'getClientCodeFromServer': self.find_client_by_phone_js,
+      'getQuotationsForOverlay': self.get_quotations_for_overlay,
+      'getClientsForOverlay': self.get_clients_for_overlay,
+      'callPythonSave': self.save_button_click,
+      'getActiveUsersForDropdown': self.get_active_users_for_dropdown,
+    })
 
     # ---------- Load from overlays
     # ملاحظة: loadQuotationFromOverlay و loadClientFromOverlay
     # يتم تعريفهما في quotations.js و clients.js (التنفيذ الكامل مع DOM/cylinders/checkboxes)
     # لذلك لا نُعيد تعريفهما هنا لتجنب التعارض
-
-    # ---------- Get active users for Sales Rep dropdown
-    anvil.js.window.getActiveUsersForDropdown = self.get_active_users_for_dropdown
 
     # ---------- Event handlers
     for c in self.get_components():

@@ -516,15 +516,6 @@ container:
               <input type='email' id='loginEmail' placeholder='Enter your email'>
             </div>
 
-            <!-- Passkey Login (shown when user has registered passkey) -->
-            <div id='loginPasskeySection' style='display:none;margin-bottom:16px;'>
-              <button id='loginPasskeyBtn' type='button' style='width:100%;height:52px;border:2px solid #1976d2;border-radius:12px;background:#fff;color:#1976d2;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all 0.3s ease;'>
-                <span style='font-size:22px;'>&#x1f9d1;&#x200d;&#x1f4bb;</span>
-                <span id='loginPasskeyBtnText'>Sign in with Fingerprint / Face ID</span>
-              </button>
-              <div style='text-align:center;margin:12px 0;color:#999;font-size:13px;' id='loginPasskeyDivider'>&#x2014; or enter password &#x2014;</div>
-            </div>
-
             <div class='field'>
               <label id='lblLoginPassword'>Password</label>
               <input type='password' id='loginPassword' placeholder='Enter your password'>
@@ -1284,179 +1275,6 @@ container:
           var otpLoginForm = document.getElementById('otpLoginForm');
           var pendingLoginEmail = ''; // Store email for OTP verification
 
-          // ============================================
-          // PASSKEY CHECK ON EMAIL BLUR (main login form)
-          // ============================================
-          var _passkeyCheckTimeout = null;
-          var loginPasskeySection = document.getElementById('loginPasskeySection');
-          var loginPasskeyBtn = document.getElementById('loginPasskeyBtn');
-
-          if (loginEmail) {
-            loginEmail.addEventListener('blur', function() {
-              var email = (loginEmail.value || '').trim();
-              if (!email || email.indexOf('@') === -1) {
-                if (loginPasskeySection) loginPasskeySection.style.display = 'none';
-                return;
-              }
-              // Debounce: don't fire too fast
-              clearTimeout(_passkeyCheckTimeout);
-              _passkeyCheckTimeout = setTimeout(async function() {
-                try {
-                  if (!window.checkPasskeyForEmail) return;
-                  var hasPasskey = await window.checkPasskeyForEmail(email);
-                  var browserSupports = window.isWebAuthnSupported && window.isWebAuthnSupported();
-                  if (hasPasskey && browserSupports && loginPasskeySection) {
-                    // Remember this email for quick passkey login next time
-                    try { localStorage.setItem('passkey_email', email); } catch(ex){}
-                    loginPasskeySection.style.display = 'block';
-                    var pkBtnText = document.getElementById('loginPasskeyBtnText');
-                    var pkDivider = document.getElementById('loginPasskeyDivider');
-                    if (pkBtnText) pkBtnText.textContent = currentLang === 'ar' ? '\u062a\u0633\u062c\u064a\u0644 \u062f\u062e\u0648\u0644 \u0628\u0627\u0644\u0628\u0635\u0645\u0629 / Face ID' : 'Sign in with Fingerprint / Face ID';
-                    if (pkDivider) pkDivider.textContent = currentLang === 'ar' ? '\u2014 \u0623\u0648 \u0623\u062f\u062e\u0644 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u2014' : '\u2014 or enter password \u2014';
-                  } else {
-                    if (loginPasskeySection) loginPasskeySection.style.display = 'none';
-                  }
-                } catch (e) {
-                  console.log('Passkey check error:', e);
-                }
-              }, 300);
-            });
-
-            // Hide passkey button when user starts typing in email (will re-check on blur)
-            loginEmail.addEventListener('input', function() {
-              if (loginPasskeySection) loginPasskeySection.style.display = 'none';
-            });
-          }
-
-          // Passkey button click on main login form
-          if (loginPasskeyBtn) {
-            loginPasskeyBtn.onclick = async function() {
-              var email = (loginEmail.value || '').trim();
-              if (!email) return;
-              clearMessages();
-
-              loginPasskeyBtn.disabled = true;
-              loginPasskeyBtn.style.opacity = '0.7';
-              var origHTML = loginPasskeyBtn.innerHTML;
-              loginPasskeyBtn.innerHTML = '<span style="font-size:18px;">\u23F3</span> ' + (currentLang === 'ar' ? '\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u062d\u0642\u0642 \u0628\u0627\u0644\u0628\u0635\u0645\u0629...' : 'Authenticating with biometric...');
-
-              try {
-                var result = await window.authenticateWithPasskey(email);
-                if (result && result.success) {
-                  loginPasskeyBtn.innerHTML = '<span style="font-size:18px;">\u2705</span> ' + (currentLang === 'ar' ? '\u062a\u0645! \u062c\u0627\u0631\u064a \u0627\u0644\u062f\u062e\u0648\u0644...' : 'Verified! Redirecting...');
-                  completeLogin(result);
-                  return;
-                } else {
-                  var msg = (result && result.message) ? result.message : 'Authentication failed';
-                  showMessage('loginMessage', 'error', msg);
-                }
-              } catch (e) {
-                console.error('Login passkey error:', e);
-                showMessage('loginMessage', 'error', 'Passkey authentication failed');
-              }
-
-              loginPasskeyBtn.disabled = false;
-              loginPasskeyBtn.style.opacity = '1';
-              loginPasskeyBtn.innerHTML = origHTML;
-            };
-
-            // Hover effects
-            loginPasskeyBtn.onmouseenter = function() {
-              loginPasskeyBtn.style.background = '#e3f2fd';
-              loginPasskeyBtn.style.transform = 'translateY(-2px)';
-              loginPasskeyBtn.style.boxShadow = '0 4px 15px rgba(25,118,210,0.2)';
-            };
-            loginPasskeyBtn.onmouseleave = function() {
-              loginPasskeyBtn.style.background = '#fff';
-              loginPasskeyBtn.style.transform = 'translateY(0)';
-              loginPasskeyBtn.style.boxShadow = 'none';
-            };
-          }
-
-          // ============================================
-          // AUTO-DETECT PASSKEY ON PAGE LOAD
-          // If user previously logged in and has a passkey, show OTP/passkey screen directly
-          // Waits for Python bridge to be ready (retries up to 5 seconds)
-          // ============================================
-          function _showQuickPasskeyLogin(email) {
-            pendingLoginEmail = email;
-            loginEmail.value = email;
-
-            // Configure OTP form for passkey-only mode
-            var passkeySection = document.getElementById('passkeySection');
-            if (passkeySection) {
-              passkeySection.style.display = 'block';
-              var pkBtnText = document.getElementById('passkeyBtnText');
-              var pkDivider = document.getElementById('passkeyDivider');
-              if (pkBtnText) pkBtnText.textContent = currentLang === 'ar' ? '\u062a\u0633\u062c\u064a\u0644 \u062f\u062e\u0648\u0644 \u0628\u0627\u0644\u0628\u0635\u0645\u0629 / Face ID' : 'Sign in with Fingerprint / Face ID';
-              if (pkDivider) pkDivider.textContent = currentLang === 'ar' ? '\u2014 \u0623\u0648 \u0623\u062f\u062e\u0644 \u0627\u0644\u0631\u0645\u0632 \u064a\u062f\u0648\u064a\u0627\u064b \u2014' : '\u2014 or enter code manually \u2014';
-            }
-            // Hide OTP code field and verify button (passkey-only mode)
-            var otpField = document.querySelector('#otpLoginForm .field');
-            var verifyBtn = document.getElementById('verifyOtpLoginBtn');
-            var resendLink = document.getElementById('resendOtpLogin');
-            if (otpField) otpField.style.display = 'none';
-            if (verifyBtn) verifyBtn.style.display = 'none';
-            if (resendLink) resendLink.style.display = 'none';
-
-            // Update subtitle
-            var sub = document.getElementById('otpLoginSubtitle');
-            if (sub) sub.textContent = (currentLang === 'ar' ? '\u0645\u0631\u062d\u0628\u0627\u064b \u0628\u0639\u0648\u062f\u062a\u0643\u060c ' : 'Welcome back, ') + email;
-            var otpTitle = document.getElementById('otpLoginTitle');
-            if (otpTitle) otpTitle.textContent = currentLang === 'ar' ? '\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644 \u0627\u0644\u0633\u0631\u064a\u0639' : 'Quick Sign In';
-
-            // Switch to OTP form
-            var loginFormEl = document.getElementById('loginForm');
-            if (loginFormEl) loginFormEl.classList.remove('active');
-            if (otpLoginForm) otpLoginForm.classList.add('active');
-            document.querySelector('.auth-tabs').style.display = 'none';
-          }
-
-          (function _autoDetectPasskey() {
-            var rememberedEmail = localStorage.getItem('passkey_email');
-            if (!rememberedEmail) return;
-            // Don't auto-show if already logged in
-            if (sessionStorage.getItem('auth_token')) return;
-
-            var _retryCount = 0;
-            var _maxRetries = 10; // 10 * 500ms = 5 seconds max wait
-
-            function _tryCheck() {
-              _retryCount++;
-              // Wait for Python bridge to be ready
-              if (!window.checkPasskeyForEmail || !window.isWebAuthnSupported) {
-                if (_retryCount < _maxRetries) {
-                  setTimeout(_tryCheck, 500);
-                }
-                return;
-              }
-              // Check browser support
-              if (!window.isWebAuthnSupported()) return;
-
-              // Call server to check passkey (async via Promise)
-              try {
-                var result = window.checkPasskeyForEmail(rememberedEmail);
-                // Handle both Promise and direct return
-                if (result && typeof result.then === 'function') {
-                  result.then(function(hasPasskey) {
-                    if (hasPasskey && !sessionStorage.getItem('auth_token')) {
-                      _showQuickPasskeyLogin(rememberedEmail);
-                    }
-                  });
-                } else if (result) {
-                  if (!sessionStorage.getItem('auth_token')) {
-                    _showQuickPasskeyLogin(rememberedEmail);
-                  }
-                }
-              } catch(e) {
-                console.log('Auto-passkey check error:', e);
-              }
-            }
-
-            // Start checking after a short delay to let Python init complete
-            setTimeout(_tryCheck, 500);
-          })();
-
           loginBtn.onclick = async function() {
             clearMessages();
 
@@ -1475,41 +1293,66 @@ container:
 
               if (result.success) {
                 if (result.requires_2fa) {
-                  // Show OTP form for 2FA (إيميل أو تطبيق مصادقة)
-                  window._loginUseAuthenticator = result.use_authenticator || false;
-                  pendingLoginEmail = email;
-                  var sub = document.getElementById('otpLoginSubtitle');
-                  var resendLink = document.getElementById('resendOtpLogin');
-                  if (result.use_authenticator) {
-                    if (sub) sub.textContent = t('otpLoginSubtitleAuth');
-                    if (resendLink) resendLink.style.display = 'none';
-                  } else {
-                    if (sub) sub.textContent = t('otpLoginSubtitle');
-                    if (resendLink) resendLink.style.display = '';
-                  }
+                  // Check: does user have passkey AND browser supports it?
+                  var hasPasskey = result.has_passkey || false;
+                  var browserSupports = window.isWebAuthnSupported && window.isWebAuthnSupported();
 
-                  // Show Passkey button if user has registered passkey AND browser supports it
-                  var passkeySection = document.getElementById('passkeySection');
-                  if (passkeySection) {
-                    var hasPasskey = result.has_passkey || false;
-                    var browserSupports = window.isWebAuthnSupported && window.isWebAuthnSupported();
-                    if (hasPasskey && browserSupports) {
+                  if (hasPasskey && browserSupports) {
+                    // ── QUICK SIGN IN: Passkey mode (skip OTP entirely) ──
+                    pendingLoginEmail = email;
+                    var passkeySection = document.getElementById('passkeySection');
+                    if (passkeySection) {
                       passkeySection.style.display = 'block';
-                      // Update text based on language
                       var pkBtnText = document.getElementById('passkeyBtnText');
                       var pkDivider = document.getElementById('passkeyDivider');
                       if (pkBtnText) pkBtnText.textContent = currentLang === 'ar' ? '\u062a\u0633\u062c\u064a\u0644 \u062f\u062e\u0648\u0644 \u0628\u0627\u0644\u0628\u0635\u0645\u0629 / Face ID' : 'Sign in with Fingerprint / Face ID';
                       if (pkDivider) pkDivider.textContent = currentLang === 'ar' ? '\u2014 \u0623\u0648 \u0623\u062f\u062e\u0644 \u0627\u0644\u0631\u0645\u0632 \u064a\u062f\u0648\u064a\u0627\u064b \u2014' : '\u2014 or enter code manually \u2014';
-                    } else {
-                      passkeySection.style.display = 'none';
                     }
-                  }
+                    // Hide OTP input and verify button (passkey-only)
+                    var otpField = document.querySelector('#otpLoginForm .field');
+                    var verifyBtn = document.getElementById('verifyOtpLoginBtn');
+                    var resendLink = document.getElementById('resendOtpLogin');
+                    if (otpField) otpField.style.display = 'none';
+                    if (verifyBtn) verifyBtn.style.display = 'none';
+                    if (resendLink) resendLink.style.display = 'none';
+                    // Update title
+                    var otpTitle = document.getElementById('otpLoginTitle');
+                    var sub = document.getElementById('otpLoginSubtitle');
+                    if (otpTitle) otpTitle.textContent = currentLang === 'ar' ? '\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644 \u0627\u0644\u0633\u0631\u064a\u0639' : 'Quick Sign In';
+                    if (sub) sub.textContent = (currentLang === 'ar' ? '\u0645\u0631\u062d\u0628\u0627\u064b \u0628\u0639\u0648\u062f\u062a\u0643\u060c ' : 'Welcome back, ') + email;
 
-                  loginForm.classList.remove('active');
-                  otpLoginForm.classList.add('active');
-                  document.querySelector('.auth-tabs').style.display = 'none';
-                  showMessage('otpLoginMessage', 'success', result.message);
-                  document.getElementById('otpLoginCode').focus();
+                    loginForm.classList.remove('active');
+                    otpLoginForm.classList.add('active');
+                    document.querySelector('.auth-tabs').style.display = 'none';
+
+                  } else {
+                    // ── Normal OTP flow (no passkey) ──
+                    window._loginUseAuthenticator = result.use_authenticator || false;
+                    pendingLoginEmail = email;
+                    var sub = document.getElementById('otpLoginSubtitle');
+                    var resendLink = document.getElementById('resendOtpLogin');
+                    if (result.use_authenticator) {
+                      if (sub) sub.textContent = t('otpLoginSubtitleAuth');
+                      if (resendLink) resendLink.style.display = 'none';
+                    } else {
+                      if (sub) sub.textContent = t('otpLoginSubtitle');
+                      if (resendLink) resendLink.style.display = '';
+                    }
+                    // Make sure passkey button is hidden in OTP mode
+                    var passkeySection = document.getElementById('passkeySection');
+                    if (passkeySection) passkeySection.style.display = 'none';
+                    // Make sure OTP fields are visible
+                    var otpField = document.querySelector('#otpLoginForm .field');
+                    var verifyBtn = document.getElementById('verifyOtpLoginBtn');
+                    if (otpField) otpField.style.display = '';
+                    if (verifyBtn) verifyBtn.style.display = '';
+
+                    loginForm.classList.remove('active');
+                    otpLoginForm.classList.add('active');
+                    document.querySelector('.auth-tabs').style.display = 'none';
+                    showMessage('otpLoginMessage', 'success', result.message);
+                    document.getElementById('otpLoginCode').focus();
+                  }
                 } else {
                   // Direct login (email service down)
                   completeLogin(result);
@@ -1557,9 +1400,6 @@ container:
             sessionStorage.setItem('user_email', result.user.email);
             sessionStorage.setItem('user_name', result.user.full_name);
             sessionStorage.setItem('user_role', result.user.role);
-
-            // Remember email for passkey quick-login (persists across browser restarts)
-            try { localStorage.setItem('passkey_email', result.user.email); } catch(e){}
 
             // Navigate immediately - the overlay is already showing
             setTimeout(function() {
@@ -1657,9 +1497,11 @@ container:
             var otpField = document.querySelector('#otpLoginForm .field');
             var verifyBtn = document.getElementById('verifyOtpLoginBtn');
             var resendLink = document.getElementById('resendOtpLogin');
+            var passkeySection = document.getElementById('passkeySection');
             if (otpField) otpField.style.display = '';
             if (verifyBtn) verifyBtn.style.display = '';
             if (resendLink) resendLink.style.display = '';
+            if (passkeySection) passkeySection.style.display = 'none';
             // Reset title/subtitle
             var otpTitle = document.getElementById('otpLoginTitle');
             var otpSub = document.getElementById('otpLoginSubtitle');

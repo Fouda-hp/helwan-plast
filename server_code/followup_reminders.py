@@ -38,7 +38,7 @@ except ImportError:
 
 # Simple server-side cache for dashboard data
 _dashboard_cache = {'data': None, 'timestamp': 0, 'filter': None, 'user': None}
-_DASHBOARD_CACHE_TTL_SECONDS = 90
+_DASHBOARD_CACHE_TTL_SECONDS = 180
 
 
 def _get_client_ip():

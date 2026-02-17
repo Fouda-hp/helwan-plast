@@ -106,16 +106,15 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       return
 
     # Clear and add default option
-    select.innerHTML = f'<option value="">-- Select Quotation ({len(quotations)}) --</option>'
+    select.innerHTML = '<option value="">-- Select Quotation (' + str(len(quotations)) + ') --</option>'
 
-    # Add quotations: ط¹ط±ط¶ "ط§ط³ظ… ط§ظ„ط¹ظ…ظٹظ„ - ط§ط³ظ… ط§ظ„ط´ط±ظƒط©" ظ…ظ† ط§ظ„ط¬ط¯ظˆظ„
     for q in quotations:
       opt = anvil.js.window.document.createElement('option')
       opt.value = str(q.get('Quotation#', ''))
       client_name = q.get('Client Name', '') or 'N/A'
       company = q.get('Company', '') or ''
-      client_display = f"{client_name} - {company}".strip(' - ') if company else client_name
-      opt.textContent = f"#{q.get('Quotation#', '')} - {client_display} - {q.get('Model', '')}"
+      client_display = (client_name + ' - ' + company).strip(' - ') if company else client_name
+      opt.textContent = '#' + str(q.get('Quotation#', '')) + ' - ' + client_display + ' - ' + str(q.get('Model', ''))
       select.appendChild(opt)
 
   def filter_quotations(self):
@@ -176,9 +175,9 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         self.render_template()
       else:
         err_msg = _h(result.get("message", "Failed to load") if result else "Server returned empty response")
-        template_content.innerHTML = f'<div class="empty-state"><h3>Error</h3><p>{err_msg}</p></div>'
+        template_content.innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + str(err_msg) + '</p></div>'
     except Exception as e:
-      template_content.innerHTML = f'<div class="empty-state"><h3>Error</h3><p>{_h(str(e))}</p></div>'
+      template_content.innerHTML = '<div class="empty-state"><h3>Error</h3><p>' + str(_h(str(e))) + '</p></div>'
 
   def switch_language(self, lang):
     """Switch display language"""
@@ -216,7 +215,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     # Determine machine type prefix - use machine_type field not model
     machine_type_base = data.get('machine_type', '') or data.get('model', '')
-    machine_type_display = f"Flexo Stack With {machine_type_base}" if not is_ar else f"ظپظ„ظٹظƒط³ظˆ ط³طھط§ظƒ ظ…ط¹ {machine_type_base}"
+    machine_type_display = ("Flexo Stack With " + str(machine_type_base)) if not is_ar else ("ظپظ„ظٹظƒط³ظˆ ط³طھط§ظƒ ظ…ط¹ " + str(machine_type_base))
 
     # Determine Winder Type based on Unwind/Rewind checkboxes
     def get_winder_type():
@@ -250,61 +249,61 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     winder_type_display = get_winder_type()
 
     # ==================== PAGE 1 ====================
-    html = f'<div class="template-page {"" if is_ar else "ltr"}">'
+    html = '<div class="template-page ' + ("" if is_ar else "ltr") + '">'
 
     # Header
     html += '<div class="header">'
     html += '<div class="header-right">'
-    html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
-    html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
-    html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
-    html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
+    html += '<div class="location-date">' + str(_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))) + ' / ' + str(_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))) + '</div>'
+    html += '<div class="address">' + str(_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))) + '</div>'
+    html += '<div class="contact">' + str(_h(data.get("sales_rep_phone", ""))) + '</div>'
+    html += '<div class="contact">' + str(_h(data.get("sales_rep_email", ""))) + '</div>'
     html += '</div>'
     html += '<div class="header-left">'
     html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-    html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
-    html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
+    html += '<div class="company-name">' + str(_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))) + '</div>'
+    html += '<div class="website">' + str(_h(c.get("company_website", ""))) + '</div>'
     html += '</div>'
     html += '</div>'
 
     # Quotation Info
     html += '<div class="quotation-info">'
-    html += f'<div class="quotation-number">{"ط¹ط±ط¶ ط³ط¹ط± ط±ظ‚ظ…" if is_ar else "Quotation No.:"} <span>{data.get("quotation_number", "")}</span></div>'
+    html += '<div class="quotation-number">' + ("ط¹ط±ط¶ ط³ط¹ط± ط±ظ‚ظ…" if is_ar else "Quotation No.:") + ' <span>' + str(data.get("quotation_number", "")) + '</span></div>'
     client_name = data.get("client_name", "") or ""
     company = data.get("client_company", "") or ""
-    client_display = f"{client_name} - {company}".strip(" - ") if company else client_name
-    html += f'<div class="client-info">{"ط§ظ„ط³ط§ط¯ط© - ط´ط±ظƒط© /" if is_ar else "To: / Company:"} <span>{_h(client_display)}</span></div>'
-    html += f'<div class="greeting">{"طھط­ظٹط© ط·ظٹط¨ط© ظˆط¨ط¹ط¯طŒ" if is_ar else "Dear Sir/Madam,"}</div>'
+    client_display = (str(client_name) + " - " + str(company)).strip(" - ") if company else client_name
+    html += '<div class="client-info">' + ("ط§ظ„ط³ط§ط¯ط© - ط´ط±ظƒط© /" if is_ar else "To: / Company:") + ' <span>' + str(_h(client_display)) + '</span></div>'
+    html += '<div class="greeting">' + ("طھط­ظٹط© ط·ظٹط¨ط© ظˆط¨ط¹ط¯طŒ" if is_ar else "Dear Sir/Madam,") + '</div>'
     intro = 'ظ†ط­ظ† ظ†طھط´ط±ظپ ط¨طھظ‚ط¯ظٹظ… ط¹ط±ط¶ ط§ظ„ط³ط¹ط± ط§ظ„طھط§ظ„ظٹ ظ„ظ…ط§ظƒظٹظ†ط© ط§ظ„ط·ط¨ط§ط¹ط© ط·ط¨ظ‚ط§ظ‹ ظ„ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظ…ظˆط¶ط­ط© ط£ط¯ظ†ط§ظ‡:' if is_ar else 'We are pleased to submit our quotation for the following printing machine in accordance with the specifications detailed below:'
-    html += f'<div class="intro-text">{intro}</div>'
+    html += '<div class="intro-text">' + str(intro) + '</div>'
     html += '</div>'
 
     # Machine Details
-    html += f'<div class="section-title">{"طھظپط§طµظٹظ„ ط§ظ„ظ…ط§ظƒظٹظ†ط© :" if is_ar else "Machine Details"}</div>'
+    html += '<div class="section-title">' + ("طھظپط§طµظٹظ„ ط§ظ„ظ…ط§ظƒظٹظ†ط© :" if is_ar else "Machine Details") + '</div>'
     html += '<table class="details-table">'
 
     # Both Arabic and English: label (th) on left, value (td) on right
     if is_ar:
-      html += f'<tr><th>ظ†ظˆط¹ ط§ظ„ظ…ط§ظƒظٹظ†ط© :</th><td>{machine_type_display}</td></tr>'
-      html += f'<tr><th>ط§ظ„ظ…ظˆط¯ظٹظ„ :</th><td>{data.get("model", "")}</td></tr>'
-      html += f'<tr><th>ط¨ظ„ط¯ ط§ظ„ظ…ظ†ط´ط£ :</th><td>{c.get("country_origin_ar", "")}</td></tr>'
-      html += f'<tr><th>ط¹ط¯ط¯ ط§ظ„ط£ظ„ظˆط§ظ† :</th><td>{data.get("colors_count", "")}</td></tr>'
-      html += f'<tr><th>ط§ظ„ظˆظ†ط¯ط± :</th><td>{data.get("winder", "")}</td></tr>'
-      html += f'<tr><th>ظ†ظˆط¹ ط§ظ„ظˆظ†ط¯ط± :</th><td>{winder_type_display}</td></tr>'
-      html += f'<tr><th>ط¹ط±ط¶ ط§ظ„ظ…ط§ظƒظٹظ†ط© :</th><td>{data.get("machine_width", "")} ط³ظ…</td></tr>'
+      html += '<tr><th>ظ†ظˆط¹ ط§ظ„ظ…ط§ظƒظٹظ†ط© :</th><td>' + str(machine_type_display) + '</td></tr>'
+      html += '<tr><th>ط§ظ„ظ…ظˆط¯ظٹظ„ :</th><td>' + str(data.get("model", "")) + '</td></tr>'
+      html += '<tr><th>ط¨ظ„ط¯ ط§ظ„ظ…ظ†ط´ط£ :</th><td>' + str(c.get("country_origin_ar", "")) + '</td></tr>'
+      html += '<tr><th>ط¹ط¯ط¯ ط§ظ„ط£ظ„ظˆط§ظ† :</th><td>' + str(data.get("colors_count", "")) + '</td></tr>'
+      html += '<tr><th>ط§ظ„ظˆظ†ط¯ط± :</th><td>' + str(data.get("winder", "")) + '</td></tr>'
+      html += '<tr><th>ظ†ظˆط¹ ط§ظ„ظˆظ†ط¯ط± :</th><td>' + str(winder_type_display) + '</td></tr>'
+      html += '<tr><th>ط¹ط±ط¶ ط§ظ„ظ…ط§ظƒظٹظ†ط© :</th><td>' + str(data.get("machine_width", "")) + ' ط³ظ…</td></tr>'
     else:
       # English: label on far left, value next to it
-      html += f'<tr><th>Machine Type:</th><td>{machine_type_display}</td></tr>'
-      html += f'<tr><th>Model:</th><td>{data.get("model", "")}</td></tr>'
-      html += f'<tr><th>Country of Origin:</th><td>{c.get("country_origin_en", "")}</td></tr>'
-      html += f'<tr><th>Number of Colors:</th><td>{data.get("colors_count", "")}</td></tr>'
-      html += f'<tr><th>Winder:</th><td>{data.get("winder", "")}</td></tr>'
-      html += f'<tr><th>Winder Type:</th><td>{winder_type_display}</td></tr>'
-      html += f'<tr><th>Machine Width:</th><td>{data.get("machine_width", "")} CM</td></tr>'
+      html += '<tr><th>Machine Type:</th><td>' + str(machine_type_display) + '</td></tr>'
+      html += '<tr><th>Model:</th><td>' + str(data.get("model", "")) + '</td></tr>'
+      html += '<tr><th>Country of Origin:</th><td>' + str(c.get("country_origin_en", "")) + '</td></tr>'
+      html += '<tr><th>Number of Colors:</th><td>' + str(data.get("colors_count", "")) + '</td></tr>'
+      html += '<tr><th>Winder:</th><td>' + str(data.get("winder", "")) + '</td></tr>'
+      html += '<tr><th>Winder Type:</th><td>' + str(winder_type_display) + '</td></tr>'
+      html += '<tr><th>Machine Width:</th><td>' + str(data.get("machine_width", "")) + ' CM</td></tr>'
     html += '</table>'
 
     # ==================== 17 SPECIFICATIONS ====================
-    html += f'<div class="section-title">{"ط§ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظپظ†ظٹط©:" if is_ar else "Technical Specifications:"}</div>'
+    html += '<div class="section-title">' + ("ط§ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظپظ†ظٹط©:" if is_ar else "Technical Specifications:") + '</div>'
     html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
 
     # Helper: Belt/Gear drive for item 13 (uses is_metal_anilox, is_nonwoven from above)
@@ -370,30 +369,30 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     specs = specs_ar if is_ar else specs_en
     for i, spec in enumerate(specs, 1):
-      html += f'<li>{spec}</li>'
+      html += '<li>' + str(spec) + '</li>'
 
     html += '</ol>'
     html += '</div>'  # End Page 1
 
     # ==================== PAGE 2 - Technical Table ====================
-    html += f'<div class="template-page page-break-before {"" if is_ar else "ltr"}">'
+    html += '<div class="template-page page-break-before ' + ("" if is_ar else "ltr") + '">'
 
     # Header (repeated)
     html += '<div class="header">'
     html += '<div class="header-right">'
-    html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
-    html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
-    html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
-    html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
+    html += '<div class="location-date">' + str(_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))) + ' / ' + str(_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))) + '</div>'
+    html += '<div class="address">' + str(_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))) + '</div>'
+    html += '<div class="contact">' + str(_h(data.get("sales_rep_phone", ""))) + '</div>'
+    html += '<div class="contact">' + str(_h(data.get("sales_rep_email", ""))) + '</div>'
     html += '</div>'
     html += '<div class="header-left">'
     html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-    html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
-    html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
+    html += '<div class="company-name">' + str(_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))) + '</div>'
+    html += '<div class="website">' + str(_h(c.get("company_website", ""))) + '</div>'
     html += '</div>'
     html += '</div>'
 
-    html += f'<div class="section-title">{"ط¬ط¯ظˆظ„ ط§ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظپظ†ظٹط©:" if is_ar else "General Specifications:"}</div>'
+    html += '<div class="section-title">' + ("ط¬ط¯ظˆظ„ ط§ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظپظ†ظٹط©:" if is_ar else "General Specifications:") + '</div>'
 
     # ==================== CALCULATE TABLE VALUES ====================
     # Get values from quotation data
@@ -436,11 +435,11 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     # Calculate values based on rules
     # Number of Colors format
     if colors_count == 8:
-      colors_display = "8+0, 7+1, 6+2, 5+3, 4+4 reverse printing" if not is_ar else f"{to_ar('8+0')}طŒ {to_ar('7+1')}طŒ {to_ar('6+2')}طŒ {to_ar('5+3')}طŒ {to_ar('4+4')} ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©"
+      colors_display = "8+0, 7+1, 6+2, 5+3, 4+4 reverse printing" if not is_ar else (to_ar('8+0') + "طŒ " + to_ar('7+1') + "طŒ " + to_ar('6+2') + "طŒ " + to_ar('5+3') + "طŒ " + to_ar('4+4') + " ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©")
     elif colors_count == 6:
-      colors_display = "6+0, 5+1, 4+2, 3+3 reverse printing" if not is_ar else f"{to_ar('6+0')}طŒ {to_ar('5+1')}طŒ {to_ar('4+2')}طŒ {to_ar('3+3')} ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©"
+      colors_display = "6+0, 5+1, 4+2, 3+3 reverse printing" if not is_ar else (to_ar('6+0') + "طŒ " + to_ar('5+1') + "طŒ " + to_ar('4+2') + "طŒ " + to_ar('3+3') + " ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©")
     elif colors_count == 4:
-      colors_display = "4+0, 3+1, 2+2 reverse printing" if not is_ar else f"{to_ar('4+0')}طŒ {to_ar('3+1')}طŒ {to_ar('2+2')} ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©"
+      colors_display = "4+0, 3+1, 2+2 reverse printing" if not is_ar else (to_ar('4+0') + "طŒ " + to_ar('3+1') + "طŒ " + to_ar('2+2') + " ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©")
     else:
       colors_display = str(colors_count) if not is_ar else to_ar(colors_count)
 
@@ -542,7 +541,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         if first_key and first_key.startswith('tech_spec_'):
           specs = []
           for i, default in enumerate(defaults, 1):
-            saved = raw.get(f'tech_spec_{i}', {})
+            saved = raw.get('tech_spec_' + str(i), {})
             if isinstance(saved, dict):
               specs.append({
                 'label_ar': saved.get('label_ar', default['label_ar']),
@@ -570,7 +569,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         part = part.strip()
         m = re.match(r'(\d+)\s*pc\s*\((\d+)kg\)', part)
         if m:
-          ar_parts.append(f"{to_ar(m.group(1))} ظ‚ط·ط¹ط© ({to_ar(m.group(2))} ظƒط¬ظ…)")
+          ar_parts.append(to_ar(m.group(1)) + " ظ‚ط·ط¹ط© (" + to_ar(m.group(2)) + " ظƒط¬ظ…)")
         else:
           ar_parts.append(to_ar(part))
       return ' + '.join(ar_parts)
@@ -581,7 +580,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       import re
       m = re.match(r'([\d.]+)kw\s*air\s*blower\s*[أ—x]\s*(\d+)\s*units?', str(dc_str), re.IGNORECASE)
       if m:
-        return f"{to_ar(m.group(1))} ظƒظٹظ„ظˆ ظˆط§طھ طھط¬ظپظٹظپ ظ‡ظˆط§ط¦ظٹ أ— {to_ar(m.group(2))}"
+        return to_ar(m.group(1)) + " ظƒظٹظ„ظˆ ظˆط§طھ طھط¬ظپظٹظپ ظ‡ظˆط§ط¦ظٹ أ— " + to_ar(m.group(2))
       return to_ar(dc_str)
 
     # Arabic print length formatting
@@ -590,7 +589,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       import re
       m = re.match(r'(\d+)\s*mm\s*-\s*(\d+)\s*mm', str(pl_str), re.IGNORECASE)
       if m:
-        return f"{to_ar(m.group(1))} ظ…ظ… - {to_ar(m.group(2))} ظ…ظ…"
+        return to_ar(m.group(1)) + " ظ…ظ… - " + to_ar(m.group(2)) + " ظ…ظ…"
       return to_ar(pl_str)
 
     if is_ar:
@@ -598,20 +597,20 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         'model': data.get('model', '-'),
         'colors_display': colors_display,
         'printing_sides': to_ar('2'),
-        'tension_units': f"{to_ar(tension_units)} ظ‚ط·ط¹ط©",
-        'brake_system': f"{to_ar(brake_system)} ظ‚ط·ط¹ط©",
+        'tension_units': to_ar(tension_units) + " ظ‚ط·ط¹ط©",
+        'brake_system': to_ar(brake_system) + " ظ‚ط·ط¹ط©",
         'brake_power': ar_brake_power(brake_power),
-        'web_guiding': f"{to_ar(web_guiding)} ظ‚ط·ط¹ط©",
-        'max_film_width': f"{to_ar(max_film_width)} ظ…ظ…",
-        'max_print_width': f"{to_ar(max_print_width)} ظ…ظ…",
+        'web_guiding': to_ar(web_guiding) + " ظ‚ط·ط¹ط©",
+        'max_film_width': to_ar(max_film_width) + " ظ…ظ…",
+        'max_print_width': to_ar(max_print_width) + " ظ…ظ…",
         'print_length': ar_print_length(print_length),
-        'max_roll_diameter': f"{to_ar(max_roll_diameter)} ظ…ظ…",
+        'max_roll_diameter': to_ar(max_roll_diameter) + " ظ…ظ…",
         'anilox_display': anilox_display,
-        'max_machine_speed': f"{to_ar(max_machine_speed)} ظ…طھط± ظپظٹ ط§ظ„ط¯ظ‚ظٹظ‚ط©",
-        'max_print_speed': f"{to_ar(max_print_speed)} ظ…طھط± ظپظٹ ط§ظ„ط¯ظ‚ظٹظ‚ط©",
+        'max_machine_speed': to_ar(max_machine_speed) + " ظ…طھط± ظپظٹ ط§ظ„ط¯ظ‚ظٹظ‚ط©",
+        'max_print_speed': to_ar(max_print_speed) + " ظ…طھط± ظپظٹ ط§ظ„ط¯ظ‚ظٹظ‚ط©",
         'dryer_capacity': ar_dryer(dryer_capacity),
         'drive_display': drive_display,
-        'main_motor_power': f"{to_ar(main_motor_power.replace('HP', '').replace('hp', '').strip())} ط­طµط§ظ†",
+        'main_motor_power': to_ar(main_motor_power.replace('HP', '').replace('hp', '').strip()) + " ط­طµط§ظ†",
       }
     else:
       value_map = {
@@ -622,13 +621,13 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         'brake_system': str(brake_system),
         'brake_power': brake_power,
         'web_guiding': str(web_guiding),
-        'max_film_width': f"{max_film_width} mm",
-        'max_print_width': f"{max_print_width} mm",
+        'max_film_width': str(max_film_width) + " mm",
+        'max_print_width': str(max_print_width) + " mm",
         'print_length': print_length,
-        'max_roll_diameter': f"{max_roll_diameter} mm",
+        'max_roll_diameter': str(max_roll_diameter) + " mm",
         'anilox_display': anilox_display,
-        'max_machine_speed': f"{max_machine_speed} m/min",
-        'max_print_speed': f"{max_print_speed} m/min",
+        'max_machine_speed': str(max_machine_speed) + " m/min",
+        'max_print_speed': str(max_print_speed) + " m/min",
         'dryer_capacity': dryer_capacity,
         'drive_display': drive_display,
         'main_motor_power': main_motor_power,
@@ -691,21 +690,21 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       if value_upper in ['NO', 'ظ„ط§', 'N/A', '-', '']:
         continue
       val_style = ' style="text-align:right;"' if is_ar else ''
-      html += f'<tr><td class="row-num">{row_num}</td><th>{label}</th><td class="value"{val_style}>{value_text}</td></tr>'
+      html += '<tr><td class="row-num">' + str(row_num) + '</td><th>' + str(label) + '</th><td class="value"' + str(val_style) + '>' + str(value_text) + '</td></tr>'
       row_num += 1
     html += '</table>'
 
     # Cylinders - 2 columns, 12 rows fixed (border only on filled rows)
     cylinders = data.get('cylinders', [])
-    html += f'<div class="section-title">{"ط³ظ„ظ†ط¯ط±ط§طھ ط§ظ„ط·ط¨ط§ط¹ط© :" if is_ar else "Printing Cylinders:"}</div>'
+    html += '<div class="section-title">' + ("ط³ظ„ظ†ط¯ط±ط§طھ ط§ظ„ط·ط¨ط§ط¹ط© :" if is_ar else "Printing Cylinders:") + '</div>'
     html += '<table class="cylinders-table" style="width: 50%;">'
-    html += f'<tr><th>{"ظ…ظ‚ط§ط³" if is_ar else "Size"}</th><th>{"ط¹ط¯ط¯" if is_ar else "Count"}</th></tr>'
+    html += '<tr><th>' + ("ظ…ظ‚ط§ط³" if is_ar else "Size") + '</th><th>' + ("ط¹ط¯ط¯" if is_ar else "Count") + '</th></tr>'
     for i in range(12):
       if i < len(cylinders):
         cyl = cylinders[i]
         size = cyl.get("size", "")
         count = cyl.get("count", "")
-        html += f'<tr><td style="border: 1px solid #ddd;">{size}</td><td style="border: 1px solid #ddd;">{count}</td></tr>'
+        html += '<tr><td style="border: 1px solid #ddd;">' + str(size) + '</td><td style="border: 1px solid #ddd;">' + str(count) + '</td></tr>'
       else:
         html += '<tr><td style="border: none;"></td><td style="border: none;"></td></tr>'
     html += '</table>'
@@ -713,45 +712,45 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     html += '</div>'  # End Page 2
 
     # ==================== PAGE 3 - Financial ====================
-    html += f'<div class="template-page page-break-before {"" if is_ar else "ltr"}">'
+    html += '<div class="template-page page-break-before ' + ("" if is_ar else "ltr") + '">'
 
     # Header (repeated)
     html += '<div class="header">'
     html += '<div class="header-right">'
-    html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
-    html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
-    html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
-    html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
+    html += '<div class="location-date">' + str(_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))) + ' / ' + str(_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))) + '</div>'
+    html += '<div class="address">' + str(_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))) + '</div>'
+    html += '<div class="contact">' + str(_h(data.get("sales_rep_phone", ""))) + '</div>'
+    html += '<div class="contact">' + str(_h(data.get("sales_rep_email", ""))) + '</div>'
     html += '</div>'
     html += '<div class="header-left">'
     html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-    html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
-    html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
+    html += '<div class="company-name">' + str(_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))) + '</div>'
+    html += '<div class="website">' + str(_h(c.get("company_website", ""))) + '</div>'
     html += '</div>'
     html += '</div>'
 
-    html += f'<div class="section-title">{"ط§ظ„ط¹ط±ط¶ ط§ظ„ظ…ط§ظ„ظٹ:" if is_ar else "Financial Offer:"}</div>'
+    html += '<div class="section-title">' + ("ط§ظ„ط¹ط±ط¶ ط§ظ„ظ…ط§ظ„ظٹ:" if is_ar else "Financial Offer:") + '</div>'
 
     # Get pricing mode
     pricing_mode = str(data.get('pricing_mode', '')).upper()
     is_in_stock = 'STOCK' in pricing_mode
 
     html += '<div class="financial-box">'
-    html += f'<div class="total-price">{data.get("total_price", "")} {"ط¬.ظ…" if is_ar else "EGP"}</div>'
+    html += '<div class="total-price">' + str(data.get("total_price", "")) + ' ' + ("ط¬.ظ…" if is_ar else "EGP") + '</div>'
     price_note = 'ط§ظ„ط³ط¹ط± ط´ط§ظ…ظ„ ط§ظ„طھظˆط±ظٹط¯ ظˆط§ظ„طھط±ظƒظٹط¨ ظˆط§ظ„ط¶ظ…ط§ظ†' if is_ar else 'The price includes: supply, installation, and warranty'
-    html += f'<div class="price-notes">{price_note}</div>'
+    html += '<div class="price-notes">' + str(price_note) + '</div>'
 
-    html += f'<div class="section-title">{"ط·ط±ظٹظ‚ط© ط§ظ„ط¯ظپط¹:" if is_ar else "Payment Terms:"}</div>'
+    html += '<div class="section-title">' + ("ط·ط±ظٹظ‚ط© ط§ظ„ط¯ظپط¹:" if is_ar else "Payment Terms:") + '</div>'
     if is_in_stock:
       html += '<ul class="payment-list-simple" style="list-style: disc; padding-left: 25px; font-size: 14px; line-height: 1.8;">'
-      html += f'<li>{"ظ…ظ‚ط¯ظ… طھط¹ط§ظ‚ط¯" if is_ar else "Down Payment"}</li>'
-      html += f'<li>{"ط§ظ„ط¯ظپط¹ ظ‚ط¨ظ„ ط§ظ„ط´ط­ظ†" if is_ar else "Payment before shipping"}</li>'
+      html += '<li>' + ("ظ…ظ‚ط¯ظ… طھط¹ط§ظ‚ط¯" if is_ar else "Down Payment") + '</li>'
+      html += '<li>' + ("ط§ظ„ط¯ظپط¹ ظ‚ط¨ظ„ ط§ظ„ط´ط­ظ†" if is_ar else "Payment before shipping") + '</li>'
       html += '</ul>'
     else:
       html += '<table class="payment-table">'
-      html += f'<tr><th>{"ظ…ظ‚ط¯ظ… طھط¹ط§ظ‚ط¯" if is_ar else "Down Payment"}</th><td>{data.get("down_payment_percent", "")}%</td><td class="amount">{data.get("down_payment_amount", "")} {"ط¬.ظ…" if is_ar else "EGP"}</td></tr>'
-      html += f'<tr><th>{"ظ‚ط¨ظ„ ط§ظ„ط´ط­ظ†" if is_ar else "Before Shipping"}</th><td>{data.get("before_shipping_percent", "")}%</td><td class="amount">{data.get("before_shipping_amount", "")} {"ط¬.ظ…" if is_ar else "EGP"}</td></tr>'
-      html += f'<tr><th>{"ظ‚ط¨ظ„ ط§ظ„طھط³ظ„ظٹظ…" if is_ar else "Before Delivery"}</th><td>{data.get("before_delivery_percent", "")}%</td><td class="amount">{data.get("before_delivery_amount", "")} {"ط¬.ظ…" if is_ar else "EGP"}</td></tr>'
+      html += '<tr><th>' + ("ظ…ظ‚ط¯ظ… طھط¹ط§ظ‚ط¯" if is_ar else "Down Payment") + '</th><td>' + str(data.get("down_payment_percent", "")) + '%</td><td class="amount">' + str(data.get("down_payment_amount", "")) + ' ' + ("ط¬.ظ…" if is_ar else "EGP") + '</td></tr>'
+      html += '<tr><th>' + ("ظ‚ط¨ظ„ ط§ظ„ط´ط­ظ†" if is_ar else "Before Shipping") + '</th><td>' + str(data.get("before_shipping_percent", "")) + '%</td><td class="amount">' + str(data.get("before_shipping_amount", "")) + ' ' + ("ط¬.ظ…" if is_ar else "EGP") + '</td></tr>'
+      html += '<tr><th>' + ("ظ‚ط¨ظ„ ط§ظ„طھط³ظ„ظٹظ…" if is_ar else "Before Delivery") + '</th><td>' + str(data.get("before_delivery_percent", "")) + '%</td><td class="amount">' + str(data.get("before_delivery_amount", "")) + ' ' + ("ط¬.ظ…" if is_ar else "EGP") + '</td></tr>'
       html += '</table>'
 
     html += '</div>'
@@ -759,8 +758,8 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     # Delivery & Warranty
     html += '<div class="info-grid">'
     html += '<div class="info-box">'
-    html += f'<h4>{"ط§ظ„طھط³ظ„ظٹظ… :" if is_ar else "Delivery:"}</h4>'
-    html += f'<p>{"ظ…ظƒط§ظ† ط§ظ„طھط³ظ„ظٹظ… :" if is_ar else "Place of delivery:"} <span class="highlight">{data.get("delivery_location", "-")}</span></p>'
+    html += '<h4>' + ("ط§ظ„طھط³ظ„ظٹظ… :" if is_ar else "Delivery:") + '</h4>'
+    html += '<p>' + ("ظ…ظƒط§ظ† ط§ظ„طھط³ظ„ظٹظ… :" if is_ar else "Place of delivery:") + ' <span class="highlight">' + str(data.get("delivery_location", "-")) + '</span></p>'
     if is_in_stock:
       delivery_time = "ط¨ط¶ط§ط¹ظ‡ ط­ط§ط¶ط±ظ‡" if is_ar else "In Stock"
     else:
@@ -768,33 +767,33 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         delivery_time = self.custom_delivery_date
       else:
         delivery_time = data.get("expected_delivery_formatted", "-")
-    html += f'<p>{"ظˆظ‚طھ ط§ظ„طھط³ظ„ظٹظ… ط§ظ„ظ…طھظˆظ‚ط¹ :" if is_ar else "Expected delivery time:"} <span class="highlight">{delivery_time}</span></p>'
+    html += '<p>' + ("ظˆظ‚طھ ط§ظ„طھط³ظ„ظٹظ… ط§ظ„ظ…طھظˆظ‚ط¹ :" if is_ar else "Expected delivery time:") + ' <span class="highlight">' + str(delivery_time) + '</span></p>'
     html += '</div>'
 
     html += '<div class="info-box">'
-    html += f'<h4>{"ط§ظ„ط¶ظ…ط§ظ† ظˆط®ط¯ظ…ط© ظ…ط§ ط¨ط¹ط¯ ط§ظ„ط¨ظٹط¹:" if is_ar else "Warranty & After-Sales Service:"}</h4>'
-    warranty_text = f'ظٹط³ط±ظٹ ط§ظ„ط¶ظ…ط§ظ† ظ„ظ…ط¯ط© <strong>{c.get("warranty_months", "")}</strong> ط´ظ‡ط± ط¶ط¯ ط¹ظٹظˆط¨ ط§ظ„طµظ†ط§ط¹ط©' if is_ar else f'The warranty is valid for <strong>{c.get("warranty_months", "")}</strong> months against manufacturing defects'
-    html += f'<p>{warranty_text}</p>'
+    html += '<h4>' + ("ط§ظ„ط¶ظ…ط§ظ† ظˆط®ط¯ظ…ط© ظ…ط§ ط¨ط¹ط¯ ط§ظ„ط¨ظٹط¹:" if is_ar else "Warranty & After-Sales Service:") + '</h4>'
+    warranty_text = ('ظٹط³ط±ظٹ ط§ظ„ط¶ظ…ط§ظ† ظ„ظ…ط¯ط© <strong>' + str(c.get("warranty_months", "")) + '</strong> ط´ظ‡ط± ط¶ط¯ ط¹ظٹظˆط¨ ط§ظ„طµظ†ط§ط¹ط©') if is_ar else ('The warranty is valid for <strong>' + str(c.get("warranty_months", "")) + '</strong> months against manufacturing defects')
+    html += '<p>' + str(warranty_text) + '</p>'
     html += '</div>'
     html += '</div>'
 
     # Notes
     html += '<div class="notes-section">'
-    html += f'<h4>{"ظ…ظ„ط§ط­ط¸ط§طھ:" if is_ar else "Notes:"}</h4>'
+    html += '<h4>' + ("ظ…ظ„ط§ط­ط¸ط§طھ:" if is_ar else "Notes:") + '</h4>'
     html += '<div class="notes-list">'
-    note1 = f'ط¹ط±ط¶ ط§ظ„ط³ط¹ط± ط³ط§ط±ظٹ ظ„ظ…ط¯ط© {c.get("validity_days", "")} ظٹظˆظ… ظ…ظ† طھط§ط±ظٹط® ط¹ط±ط¶ ط§ظ„ط³ط¹ط±' if is_ar else f'This quotation is valid for {c.get("validity_days", "")} days from the quotation date'
+    note1 = ('ط¹ط±ط¶ ط§ظ„ط³ط¹ط± ط³ط§ط±ظٹ ظ„ظ…ط¯ط© ' + str(c.get("validity_days", "")) + ' ظٹظˆظ… ظ…ظ† طھط§ط±ظٹط® ط¹ط±ط¶ ط§ظ„ط³ط¹ط±') if is_ar else ('This quotation is valid for ' + str(c.get("validity_days", "")) + ' days from the quotation date')
     note2 = 'ظٹطھظ… طھط¹ط¯ظٹظ„ ط§ظ„ط³ط¹ط± ظپظٹ ط­ط§ظ„ط© ط§ط±طھظپط§ط¹ ط³ط¹ط± طµط±ظپ ط§ظ„ط¯ظˆظ„ط§ط± ط¨ظ‚ظٹظ…ط© طھط²ظٹط¯ ط¹ظ† ظ¥ظ  ظ‚ط±ط´' if is_ar else 'The price may be adjusted in case of an increase in the USD exchange rate exceeding EGP 0.50'
     note3 = 'ظ‡ط°ط§ ط§ظ„ط¹ط±ط¶ ط§ط³طھط±ط´ط§ط¯ظٹ ظˆط؛ظٹط± ظ…ظ„ط²ظ… ط¥ظ„ط§ ط¨ط¹ط¯ طھظˆظ‚ظٹط¹ ط§ظ„ط¹ظ‚ط¯ ط§ظ„ظ†ظ‡ط§ط¦ظٹ' if is_ar else 'This quotation is indicative and non-binding until the final contract is signed'
-    html += f'<p>â€¢ {note1}</p>'
-    html += f'<p>â€¢ {note2}</p>'
-    html += f'<p>â€¢ {note3}</p>'
+    html += '<p>â€¢ ' + str(note1) + '</p>'
+    html += '<p>â€¢ ' + str(note2) + '</p>'
+    html += '<p>â€¢ ' + str(note3) + '</p>'
     html += '</div>'
     html += '</div>'
 
     # Footer
     html += '<div class="template-footer">'
-    html += f'<div class="regards">{"ظˆطھظپط¶ظ„ظˆط§ ط¨ظ‚ط¨ظˆظ„ ظˆط§ظپط± ط§ظ„ط§ط­طھط±ط§ظ…طŒطŒطŒ" if is_ar else "Yours faithfully,"}</div>'
-    html += f'<div class="company">{c.get("company_name_ar" if is_ar else "company_name_en", "")}</div>'
+    html += '<div class="regards">' + ("ظˆطھظپط¶ظ„ظˆط§ ط¨ظ‚ط¨ظˆظ„ ظˆط§ظپط± ط§ظ„ط§ط­طھط±ط§ظ…طŒطŒطŒ" if is_ar else "Yours faithfully,") + '</div>'
+    html += '<div class="company">' + str(c.get("company_name_ar" if is_ar else "company_name_en", "")) + '</div>'
     html += '</div>'
 
     html += '</div>'  # End Page 3
@@ -827,33 +826,33 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     q_num = sanitize_filename(self.current_data.get('quotation_number', 'quotation'))
     client_name = sanitize_filename(self.current_data.get('client_name', 'Client'))
     model_name = sanitize_filename(self.current_data.get('model', 'Model'))
-    filename = f"{q_num} - {client_name} - {model_name}.pdf"
+    filename = str(q_num) + " - " + str(client_name) + " - " + str(model_name) + ".pdf"
     filename_js = filename.replace("\\", "\\\\").replace("'", "\\'")
 
-    js_code = f"""
-        (async function() {{
+    js_code = """
+        (async function() {
             const element = document.getElementById('templateContent');
-            if (!element || !element.innerHTML.trim()) {{
+            if (!element || !element.innerHTML.trim()) {
                 if (window.showNotification) window.showNotification('error', '', 'No content to export. Please select a quotation first.');
                 return;
-            }}
+            }
 
             // Load libraries
-            function loadScript(url) {{
-                return new Promise((resolve, reject) => {{
-                    if (document.querySelector('script[src="' + url + '"]')) {{
+            function loadScript(url) {
+                return new Promise((resolve, reject) => {
+                    if (document.querySelector('script[src="' + url + '"]')) {
                         resolve();
                         return;
-                    }}
+                    }
                     const script = document.createElement('script');
                     script.src = url;
                     script.onload = resolve;
                     script.onerror = reject;
                     document.head.appendChild(script);
-                }});
-            }}
+                });
+            }
 
-            try {{
+            try {
                 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
                 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
 
@@ -861,21 +860,21 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                 element.classList.add('pdf-export-mode');
                 await new Promise(r => setTimeout(r, 100));
 
-                const {{ jsPDF }} = window.jspdf;
+                const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const pages = element.querySelectorAll('.template-page');
 
-                if (pages.length === 0) {{
+                if (pages.length === 0) {
                     element.classList.remove('pdf-export-mode');
                     if (window.showNotification) window.showNotification('error', '', 'No pages found to export');
                     return;
-                }}
+                }
 
-                for (let i = 0; i < pages.length; i++) {{
+                for (let i = 0; i < pages.length; i++) {
                     const page = pages[i];
 
                     // Capture page as canvas
-                    const canvas = await html2canvas(page, {{
+                    const canvas = await html2canvas(page, {
                         scale: 2,
                         useCORS: true,
                         allowTaint: true,
@@ -883,28 +882,28 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                         logging: false,
                         width: page.scrollWidth,
                         height: page.scrollHeight
-                    }});
+                    });
 
                     const imgData = canvas.toDataURL('image/jpeg', 0.95);
                     const imgWidth = 210; // A4 width in mm
                     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-                    if (i > 0) {{
+                    if (i > 0) {
                         pdf.addPage();
-                    }}
+                    }
 
                     pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
-                }}
+                }
 
                 element.classList.remove('pdf-export-mode');
-                pdf.save('{filename_js}');
+                pdf.save('""" + filename_js + """');
 
-            }} catch (error) {{
+            } catch (error) {
                 element.classList.remove('pdf-export-mode');
                 console.error('PDF Export Error:', error);
                 if (window.showNotification) window.showNotification('error', '', 'Error exporting PDF: ' + error.message);
-            }}
-        }})();
+            }
+        })();
     """
     anvil.js.window.eval(js_code)
 

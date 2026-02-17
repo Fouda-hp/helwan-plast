@@ -169,7 +169,6 @@ class AccountantForm(AccountantFormTemplate):
                         }
                         if (t && window.sessionStorage) {
                             window.sessionStorage.setItem('auth_token', t);
-                            if (window.localStorage) window.localStorage.setItem('auth_token', t);
                         }
                     } catch (e) {}
                 })();

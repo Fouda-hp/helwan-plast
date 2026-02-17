@@ -212,7 +212,21 @@
   return;
   }
 
-  var stats = await window.getDashboardStats();
+  // Parallel fetch: all 3 calls fire at once, then we apply results
+  var statsP = window.getDashboardStats();
+  var pendingP = window.getPendingUsers ? window.getPendingUsers() : Promise.resolve(null);
+  var acctP = window.getAccountingDashboardStats ? window.getAccountingDashboardStats() : Promise.resolve(null);
+
+  var results = await Promise.all([
+    statsP.catch(function(e){ console.error('Stats error:', e); return null; }),
+    pendingP.catch(function(e){ console.error('Pending error:', e); return null; }),
+    acctP.catch(function(e){ console.error('Acct error:', e); return null; })
+  ]);
+
+  var stats = results[0];
+  var pending = results[1];
+  var acct = results[2];
+
   if (stats) {
   setStatText('statClients', (stats.total_clients || 0).toLocaleString());
   setStatText('statQuotations', (stats.total_quotations || 0).toLocaleString());
@@ -220,12 +234,23 @@
   setStatText('statMonthly', (stats.this_month_quotations || 0).toLocaleString());
   }
 
-  if (window.getPendingUsers) {
-  var pending = await window.getPendingUsers();
   if (pending && pending.success && pending.users) {
   setStatText('pendingBadge', pending.users.length);
   }
+
+  if (acct && acct.success) {
+    var inv = acct.inventory || {};
+    var pi = acct.purchase_invoices || {};
+    var prof = acct.profitability || {};
+    setStatText('statInventory', (inv.total_count || 0).toLocaleString());
+    setStatText('statPurchaseInv', (pi.total_count || 0).toLocaleString());
+    setStatText('statCOGS', '$' + (prof.total_cogs || 0).toLocaleString());
+    setStatText('statProfit', '$' + (prof.gross_profit || 0).toLocaleString());
+    var profEl = document.getElementById('statProfit');
+    if (profEl) profEl.style.color = (prof.gross_profit || 0) >= 0 ? '#2e7d32' : '#c62828';
+    renderDashCharts(acct);
   }
+
   } catch (e) {
   console.error('Dashboard error:', e);
   setStatText('statClients', '0');
@@ -233,25 +258,6 @@
   setStatText('statValue', '0');
   setStatText('statMonthly', '0');
   }
-
-  // Load accounting dashboard stats
-  try {
-    if (window.getAccountingDashboardStats) {
-      var acct = await window.getAccountingDashboardStats();
-      if (acct && acct.success) {
-        var inv = acct.inventory || {};
-        var pi = acct.purchase_invoices || {};
-        var prof = acct.profitability || {};
-        setStatText('statInventory', (inv.total_count || 0).toLocaleString());
-        setStatText('statPurchaseInv', (pi.total_count || 0).toLocaleString());
-        setStatText('statCOGS', '$' + (prof.total_cogs || 0).toLocaleString());
-        setStatText('statProfit', '$' + (prof.gross_profit || 0).toLocaleString());
-        var profEl = document.getElementById('statProfit');
-        if (profEl) profEl.style.color = (prof.gross_profit || 0) >= 0 ? '#2e7d32' : '#c62828';
-        renderDashCharts(acct);
-      }
-    }
-  } catch(e2) { console.log('Accounting stats error:', e2); }
 };
 function renderDashCharts(acct) {
   try {

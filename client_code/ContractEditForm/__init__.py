@@ -81,9 +81,9 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
             qnum = c.get('quotation_number')
             client = (c.get('client_name') or '').strip()
             if not cnum and qnum is not None:
-                cnum = f"C - {qnum} / ? - ?"
-            option_text = f"{cnum} - {client}"
-            select.innerHTML += f'<option value="{qnum}">{option_text}</option>'
+                cnum = 'C - ' + str(qnum) + ' / ? - ?'
+            option_text = str(cnum) + ' - ' + str(client)
+            select.innerHTML += '<option value="' + str(qnum) + '">' + str(option_text) + '</option>'
 
     def load_selected_quotation(self):
         self.load_selected_contract()
@@ -136,7 +136,7 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
             total = 0
         total_el = anvil.js.window.document.getElementById('totalContractAmount')
         if total_el:
-            total_el.textContent = f"{total:,.2f}"
+            total_el.textContent = "{:,.2f}".format(total)
         self.calculate_total_percentage()
 
     def update_contract(self):
@@ -291,5 +291,5 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
             cnum = (c.get('contract_number') or '').strip()
             qnum = c.get('quotation_number')
             client = (c.get('client_name') or '').strip()
-            option_text = f"{cnum} - {client}"
-            select.innerHTML += f'<option value="{qnum}">{option_text}</option>'
+            option_text = str(cnum) + ' - ' + str(client)
+            select.innerHTML += '<option value="' + str(qnum) + '">' + str(option_text) + '</option>'

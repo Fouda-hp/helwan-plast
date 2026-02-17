@@ -136,17 +136,25 @@ def log_audit(action, table_name, record_id, old_data, new_data,
                 app_tables.audit_log.add_row(**row_data)
             else:
                 raise
-        # إشعار لكل الأدمن عند أي إجراء (ولو طفيف)
-        try:
-            from . import notifications as notif_mod
-            notif_mod.create_notification_for_all_admins('audit_action', {
-                'action_description': desc,
-                'action': action,
-                'table_name': table_name or '',
-                'record_id': str(record_id)[:100] if record_id else None,
-                'user_name': row_data.get('user_name', '—')
-            })
-        except Exception as notif_e:
-            logger.debug("Notify admins after audit: %s", notif_e)
+        # إشعار لكل الأدمن فقط عند الأحداث المهمة (وليس كل عملية بسيطة)
+        # الأحداث المهمة: إنشاء/حذف/استعادة بيانات، إدارة مستخدمين، نسخ احتياطي
+        _important_actions = (
+            'APPROVE_USER', 'REJECT_USER', 'DELETE_USER_PERMANENTLY',
+            'BACKUP_EXPORT', 'BACKUP_RESTORE', 'BACKUP_SCHEDULED',
+            'EMERGENCY_ADMIN_UPGRADE', 'EMERGENCY_ADMIN_CREATED',
+            'SETUP_ADMIN', 'IMPORT', 'SOFT_DELETE', 'RESTORE',
+        )
+        if action in _important_actions:
+            try:
+                from . import notifications as notif_mod
+                notif_mod.create_notification_for_all_admins('audit_action', {
+                    'action_description': desc,
+                    'action': action,
+                    'table_name': table_name or '',
+                    'record_id': str(record_id)[:100] if record_id else None,
+                    'user_name': row_data.get('user_name', '—')
+                })
+            except Exception as notif_e:
+                logger.debug("Notify admins after audit: %s", notif_e)
     except Exception as e:
         logger.error("Audit log error: %s", e)

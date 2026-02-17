@@ -179,6 +179,23 @@ def _user_email_from_token(token_or_email):
 
 
 @anvil.server.callable
+def get_unread_notification_count(token_or_email):
+    """Return ONLY the unread count (lightweight endpoint for badge polling)."""
+    user_email = _user_email_from_token(token_or_email)
+    if not user_email:
+        return {'success': False, 'count': 0}
+    try:
+        count = 0
+        for r in app_tables.notifications.search(user_email=user_email, read_at=None):
+            count += 1
+            if count >= 999:
+                break
+        return {'success': True, 'count': count}
+    except Exception as e:
+        return {'success': False, 'count': 0, 'message': str(e)}
+
+
+@anvil.server.callable
 def get_user_notifications(token_or_email, limit=50, unread_only=False):
     """جلب إشعارات المستخدم الحالي (من الأحدث للأقدم)."""
     user_email = _user_email_from_token(token_or_email)

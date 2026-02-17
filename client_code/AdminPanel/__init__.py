@@ -173,19 +173,25 @@ class AdminPanel(AdminPanelTemplate):
             logger.debug("Error loading user info: %s", e)
 
     def _force_dashboard_reload(self):
-        """Ensure dashboard widgets load after back/navigation without manual refresh."""
+        """Ensure dashboard widgets load after back/navigation without manual refresh.
+        Single call with retry-on-missing-bridge instead of triple fire."""
         try:
             anvil.js.window.eval("""
                 (function(){
-                  var run = function(){
+                  var _loaded = false;
+                  var run = function(attempt){
+                    if (_loaded) return;
                     try {
-                      if (window.loadDashboard) window.loadDashboard();
-                      if (window.refreshNotificationBell) window.refreshNotificationBell();
+                      if (window.loadDashboard) {
+                        _loaded = true;
+                        window.loadDashboard();
+                        if (window.refreshNotificationBell) window.refreshNotificationBell();
+                      } else if (attempt < 3) {
+                        setTimeout(function(){ run(attempt + 1); }, 400);
+                      }
                     } catch(e) {}
                   };
-                  setTimeout(run, 120);
-                  setTimeout(run, 450);
-                  setTimeout(run, 900);
+                  setTimeout(function(){ run(0); }, 150);
                 })();
             """)
         except Exception:

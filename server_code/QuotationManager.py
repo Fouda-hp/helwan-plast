@@ -707,8 +707,8 @@ _payment_dashboard_cache = {'data': None, 'timestamp': 0}
 # Admin dashboard cache
 _dashboard_stats_cache = {'data': None, 'timestamp': 0}
 
-_DASHBOARD_CACHE_TTL_SECONDS = 45
-_PAYMENT_DASHBOARD_CACHE_TTL_SECONDS = 90
+_DASHBOARD_CACHE_TTL_SECONDS = 180
+_PAYMENT_DASHBOARD_CACHE_TTL_SECONDS = 180
 
 def _quotation_matches_search(r, search_lower, get_client):
     if not search_lower:

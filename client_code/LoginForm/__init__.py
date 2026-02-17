@@ -181,7 +181,7 @@ class LoginForm(LoginFormTemplate):
 
             return result
         except Exception as e:
-            return {'success': False, 'message': f'Error: {str(e)}'}
+            return {'success': False, 'message': 'Error: ' + str(e)}
 
     def register_user(self, email, password, full_name, phone=None):
         """
@@ -195,7 +195,7 @@ class LoginForm(LoginFormTemplate):
             return result
         except Exception as e:
             logger.debug("register_user error: %s", e)
-            return {'success': False, 'message': f'Error: {str(e)}'}
+            return {'success': False, 'message': 'Error: ' + str(e)}
 
     def setup_admin(self, email, password, full_name, phone=None):
         """
@@ -206,7 +206,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('setup_initial_admin', email, password, full_name, phone)
             return result
         except Exception as e:
-            return {'success': False, 'message': f'Error: {str(e)}'}
+            return {'success': False, 'message': 'Error: ' + str(e)}
 
     def check_admin_exists(self):
         """
@@ -228,7 +228,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('reset_admin_password_emergency', email, new_password, secret_key)
             return result
         except Exception as e:
-            return {'success': False, 'message': f'Error: {str(e)}'}
+            return {'success': False, 'message': 'Error: ' + str(e)}
 
     # =========================================
     # OTP Verification functions
@@ -254,7 +254,7 @@ class LoginForm(LoginFormTemplate):
 
             return result
         except Exception as e:
-            return {'success': False, 'message': f'Error: {str(e)}'}
+            return {'success': False, 'message': 'Error: ' + str(e)}
 
     def _save_auth_everywhere(self, user_email='', user_name='', user_role='', auth_token=''):
         """حفظ التوكن في sessionStorage فقط + بيانات المستخدم (بدون auth_token في localStorage)."""
@@ -297,7 +297,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('resend_login_otp', email)
             return result
         except Exception as e:
-            return {'success': False, 'message': f'Error: {str(e)}'}
+            return {'success': False, 'message': 'Error: ' + str(e)}
 
     def verify_registration_otp(self, email, otp):
         """
@@ -308,7 +308,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('verify_registration_otp', email, otp)
             return result
         except Exception as e:
-            return {'success': False, 'message': f'Error: {str(e)}'}
+            return {'success': False, 'message': 'Error: ' + str(e)}
 
     def resend_verification_otp(self, email):
         """
@@ -319,7 +319,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('resend_verification_otp', email)
             return result
         except Exception as e:
-            return {'success': False, 'message': f'Error: {str(e)}'}
+            return {'success': False, 'message': 'Error: ' + str(e)}
 
     # =========================================
     # Forgot Password functions
@@ -333,7 +333,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('request_password_reset', email)
             return result
         except Exception as e:
-            return {'success': False, 'message': f'Error: {str(e)}'}
+            return {'success': False, 'message': 'Error: ' + str(e)}
 
     def verify_password_reset_otp(self, email, otp):
         """
@@ -344,7 +344,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('verify_password_reset_otp', email, otp)
             return result
         except Exception as e:
-            return {'success': False, 'message': f'Error: {str(e)}'}
+            return {'success': False, 'message': 'Error: ' + str(e)}
 
     def complete_password_reset(self, email, new_password):
         """
@@ -355,7 +355,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('complete_password_reset', email, new_password)
             return result
         except Exception as e:
-            return {'success': False, 'message': f'Error: {str(e)}'}
+            return {'success': False, 'message': 'Error: ' + str(e)}
 
     def clear_rate_limit(self):
         """
@@ -365,4 +365,4 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('clear_my_rate_limit')
             return result
         except Exception as e:
-            return {'success': False, 'message': f'Error: {str(e)}'}
+            return {'success': False, 'message': 'Error: ' + str(e)}

@@ -143,15 +143,15 @@ class ContractPrintForm(ContractPrintFormTemplate):
         select = anvil.js.window.document.getElementById('quotationSelect')
         if not select:
             return
-        select.innerHTML = f'<option value="">-- Select Quotation ({_h(len(quotations))}) --</option>'
+        select.innerHTML = '<option value="">-- Select Quotation (' + str(_h(len(quotations))) + ') --</option>'
         for q in quotations:
             q_num = _h(q.get('Quotation#', ''))
             client_name = _h(q.get('Client Name', ''))
             company = _h(q.get('Company', ''))
-            client_display = f"{client_name} - {company}".strip(' - ') if company else client_name
+            client_display = (str(client_name) + ' - ' + str(company)).strip(' - ') if company else client_name
             model = _h(q.get('Model', ''))
-            option_text = f"#{q_num} - {client_display} - {model}"
-            select.innerHTML += f'<option value="{q_num}">{option_text}</option>'
+            option_text = '#' + str(q_num) + ' - ' + str(client_display) + ' - ' + str(model)
+            select.innerHTML += '<option value="' + str(q_num) + '">' + str(option_text) + '</option>'
 
     def filter_quotations(self):
         search_input = anvil.js.window.document.getElementById('searchInput')
@@ -209,7 +209,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 total = 0
             total_el = anvil.js.window.document.getElementById('totalContractAmount')
             if total_el:
-                total_el.textContent = f"{total:,.2f}"
+                total_el.textContent = "{:,.2f}".format(total)
             # Also trigger calculation to update entered/remaining
             self.calculate_total_percentage()
 
@@ -346,8 +346,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
         placeholder = '%' if self.payment_method == 'percentage' else 'Amount'
         
         for i in range(1, num + 1):
-            label = labels.get(i, (f'ط§ظ„ط¯ظپط¹ط© {i}', f'Installment {i}'))
-            label_text = f"{label[0]} / {label[1]}"
+            label = labels.get(i, ('ط§ظ„ط¯ظپط¹ط© ' + str(i), 'Installment ' + str(i)))
+            label_text = str(label[0]) + ' / ' + str(label[1])
             
             saved_val = ''
             saved_date = ''
@@ -356,17 +356,17 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 saved_date = self.payment_data[i-1].get('date', '')
             
             bg_color = '#f8f9fa' if i % 2 == 0 else 'white'
-            rows_html += f'''
-            <tr style="background:{bg_color};">
-                <td style="padding:10px;"><strong>{label_text}</strong></td>
-                <td style="padding:10px;"><input type="number" class="payment-value" data-index="{i}" 
-                    value="{saved_val}" placeholder="{placeholder}" 
-                    oninput="window.calculateTotalPercentage()"
-                    style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;text-align:center;"></td>
-                <td style="padding:10px;"><input type="date" class="payment-date" data-index="{i}" value="{saved_date}"
-                    style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;"></td>
-            </tr>
-            '''
+            rows_html += (
+                '<tr style="background:' + str(bg_color) + ';">'
+                '<td style="padding:10px;"><strong>' + str(label_text) + '</strong></td>'
+                '<td style="padding:10px;"><input type="number" class="payment-value" data-index="' + str(i) + '" '
+                'value="' + str(saved_val) + '" placeholder="' + str(placeholder) + '" '
+                'oninput="window.calculateTotalPercentage()" '
+                'style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;text-align:center;"></td>'
+                '<td style="padding:10px;"><input type="date" class="payment-date" data-index="' + str(i) + '" value="' + str(saved_date) + '"'
+                ' style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;"></td>'
+                '</tr>'
+            )
         
         tbody.innerHTML = rows_html
         # Recalculate totals after updating rows
@@ -403,7 +403,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             remaining_amount = total_contract - entered_amount
             
             if total_el:
-                total_el.textContent = f"{total_entered:.1f}"
+                total_el.textContent = "{:.1f}".format(total_entered)
                 if total_unit:
                     total_unit.textContent = '%'
                 # Color based on percentage
@@ -413,15 +413,15 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     total_el.style.color = '#f44336'  # Red when over 100%
                 else:
                     total_el.style.color = '#ff9800'  # Orange when under 100%
-            
+
             if entered_el:
                 currency = 'ط¬.ظ…' if is_ar else 'EGP'
-                entered_el.textContent = f"{entered_amount:,.0f} {currency}"
+                entered_el.textContent = "{:,.0f}".format(entered_amount) + ' ' + currency
                 entered_el.style.color = '#2196F3'
-            
+
             if remaining_el:
                 currency = 'ط¬.ظ…' if is_ar else 'EGP'
-                remaining_el.textContent = f"{remaining_amount:,.0f} {currency}"
+                remaining_el.textContent = "{:,.0f}".format(remaining_amount) + ' ' + currency
                 if remaining_amount == 0:
                     remaining_el.style.color = '#4caf50'  # Green when done
                 elif remaining_amount < 0:
@@ -434,7 +434,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             
             if total_el:
                 currency = 'ط¬.ظ…' if is_ar else 'EGP'
-                total_el.textContent = f"{total_entered:,.0f}"
+                total_el.textContent = "{:,.0f}".format(total_entered)
                 if total_unit:
                     total_unit.textContent = currency
                 # Color based on amount
@@ -444,15 +444,15 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     total_el.style.color = '#f44336'  # Red when over
                 else:
                     total_el.style.color = '#ff9800'  # Orange when under
-            
+
             if entered_el:
                 currency = 'ط¬.ظ…' if is_ar else 'EGP'
-                entered_el.textContent = f"{total_entered:,.0f} {currency}"
+                entered_el.textContent = "{:,.0f}".format(total_entered) + ' ' + currency
                 entered_el.style.color = '#2196F3'
-            
+
             if remaining_el:
                 currency = 'ط¬.ظ…' if is_ar else 'EGP'
-                remaining_el.textContent = f"{remaining_amount:,.0f} {currency}"
+                remaining_el.textContent = "{:,.0f}".format(remaining_amount) + ' ' + currency
                 if remaining_amount == 0:
                     remaining_el.style.color = '#4caf50'
                 elif remaining_amount < 0:
@@ -485,12 +485,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
             # طھط§ط±ظٹط® ظ†ط§ظ‚طµ: ظ„ظˆ ظپظٹظ‡ ظ‚ظٹظ…ط© ظˆظ…ظپظٹط´ طھط§ط±ظٹط®
             if val > 0 and not date_str:
                 errors.append(
-                    f'طھط§ط±ظٹط® ط§ظ„ط¯ظپط¹ط© ط±ظ‚ظ… {i+1} ظ†ط§ظ‚طµ' if is_ar else f'Date for installment {i+1} is missing'
+                    ('طھط§ط±ظٹط® ط§ظ„ط¯ظپط¹ط© ط±ظ‚ظ… ' + str(i+1) + ' ظ†ط§ظ‚طµ') if is_ar else ('Date for installment ' + str(i+1) + ' is missing')
                 )
             # ط¯ظپط¹ط© ظ†ط§ظ‚طµط©: ظ„ظˆ ظپظٹظ‡ طھط§ط±ظٹط® ظˆظ…ظپظٹط´ ظ‚ظٹظ…ط©
             if date_str and val <= 0:
                 errors.append(
-                    f'ظ‚ظٹظ…ط© ط§ظ„ط¯ظپط¹ط© ط±ظ‚ظ… {i+1} ظ†ط§ظ‚طµط©' if is_ar else f'Value for installment {i+1} is missing'
+                    ('ظ‚ظٹظ…ط© ط§ظ„ط¯ظپط¹ط© ط±ظ‚ظ… ' + str(i+1) + ' ظ†ط§ظ‚طµط©') if is_ar else ('Value for installment ' + str(i+1) + ' is missing')
                 )
             
             if date_str:
@@ -498,12 +498,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     payment_date = datetime.strptime(date_str, '%Y-%m-%d').date()
                 except Exception:
                     errors.append(
-                        f'طھط§ط±ظٹط® ط؛ظٹط± طµط­ظٹط­ ظ„ظ„ط¯ظپط¹ط© ط±ظ‚ظ… {i+1}' if is_ar else f'Invalid date for installment {i+1}'
+                        ('طھط§ط±ظٹط® ط؛ظٹط± طµط­ظٹط­ ظ„ظ„ط¯ظپط¹ط© ط±ظ‚ظ… ' + str(i+1)) if is_ar else ('Invalid date for installment ' + str(i+1))
                     )
                 else:
                     if payment_date < today:
                         errors.append(
-                            f'طھط§ط±ظٹط® ط§ظ„ط¯ظپط¹ط© ط±ظ‚ظ… {i+1} ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظ‚ط¨ظ„ ط§ظ„ظٹظˆظ…' if is_ar else f'Date for installment {i+1} cannot be before today'
+                            ('طھط§ط±ظٹط® ط§ظ„ط¯ظپط¹ط© ط±ظ‚ظ… ' + str(i+1) + ' ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظ‚ط¨ظ„ ط§ظ„ظٹظˆظ…') if is_ar else ('Date for installment ' + str(i+1) + ' cannot be before today')
                         )
                     if date_str in dates_used:
                         errors.append(
@@ -513,7 +513,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     # ط¯ظپط¹ط© ظ„ط§ط­ظ‚ط© ظ„ط§ طھظƒظˆظ† ط£ظ‚ط¯ظ… ظ…ظ† ط£ظٹ ط¯ظپط¹ط© ط³ط§ط¨ظ‚ط©
                     if last_date is not None and payment_date < last_date:
                         errors.append(
-                            f'طھط§ط±ظٹط® ط§ظ„ط¯ظپط¹ط© ط±ظ‚ظ… {i+1} ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظ‚ط¨ظ„ طھط§ط±ظٹط® ط§ظ„ط¯ظپط¹ط© ط§ظ„ط³ط§ط¨ظ‚ط©' if is_ar else f'Date for installment {i+1} cannot be before previous installment'
+                            ('طھط§ط±ظٹط® ط§ظ„ط¯ظپط¹ط© ط±ظ‚ظ… ' + str(i+1) + ' ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظ‚ط¨ظ„ طھط§ط±ظٹط® ط§ظ„ط¯ظپط¹ط© ط§ظ„ط³ط§ط¨ظ‚ط©') if is_ar else ('Date for installment ' + str(i+1) + ' cannot be before previous installment')
                         )
                     if payment_date is not None:
                         last_date = payment_date
@@ -523,13 +523,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
         if self.payment_method == 'percentage':
             if round(total_value, 2) != 100:
                 errors.append(
-                    f'ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ†ط³ط¨ = {total_value}% â€” ظٹط¬ط¨ ط£ظ† ظٹظƒظˆظ† 100%' if is_ar else f'Total = {total_value}% â€” must be 100%'
+                    ('ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ†ط³ط¨ = ' + str(total_value) + '% â€" ظٹط¬ط¨ ط£ظ† ظٹظƒظˆظ† 100%') if is_ar else ('Total = ' + str(total_value) + '% â€" must be 100%')
                 )
         else:
             if round(total_value, 0) != round(total_price, 0):
                 diff = abs(total_price - total_value)
                 errors.append(
-                    f'ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ…ط¨ط§ظ„ط؛ ({total_value:,.0f}) ظ„ط§ ظٹط³ط§ظˆظٹ ظ‚ظٹظ…ط© ط§ظ„ط¹ظ‚ط¯ ({total_price:,.0f}) â€” ط§ظ„ظپط±ظ‚ {diff:,.0f}' if is_ar else f'Total ({total_value:,.0f}) does not match contract ({total_price:,.0f}) â€” diff {diff:,.0f}'
+                    ('ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ…ط¨ط§ظ„ط؛ (' + "{:,.0f}".format(total_value) + ') ظ„ط§ ظٹط³ط§ظˆظٹ ظ‚ظٹظ…ط© ط§ظ„ط¹ظ‚ط¯ (' + "{:,.0f}".format(total_price) + ') â€" ط§ظ„ظپط±ظ‚ ' + "{:,.0f}".format(diff)) if is_ar else ('Total (' + "{:,.0f}".format(total_value) + ') does not match contract (' + "{:,.0f}".format(total_price) + ') â€" diff ' + "{:,.0f}".format(diff))
                 )
         
         if errors:
@@ -585,8 +585,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
                     self.payment_data.append({
                         'index': i + 1,
-                        'label_ar': labels_ar[i] if i < len(labels_ar) else f'ط§ظ„ط¯ظپط¹ط© {i+1}',
-                        'label_en': labels_en[i] if i < len(labels_en) else f'Installment {i+1}',
+                        'label_ar': labels_ar[i] if i < len(labels_ar) else ('ط§ظ„ط¯ظپط¹ط© ' + str(i+1)),
+                        'label_en': labels_en[i] if i < len(labels_en) else ('Installment ' + str(i+1)),
                         'value': val,
                         'percentage': percentage,
                         'amount': amount,
@@ -626,8 +626,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
                         desc = _h(item.get('description', ''))
                         code = _h(item.get('machine_code', ''))
                         cost = item.get('total_cost', 0) or 0
-                        label = f"{code} - {desc} (Cost: {cost:,.0f} EGP)"
-                        opts += f'<option value="{item_id}" data-cost="{cost}">{label}</option>'
+                        label = str(code) + ' - ' + str(desc) + ' (Cost: ' + "{:,.0f}".format(cost) + ' EGP)'
+                        opts += '<option value="' + str(item_id) + '" data-cost="' + str(cost) + '">' + str(label) + '</option>'
                     sel.innerHTML = opts
         except Exception as e:
             logger.debug("Error loading inventory: %s", e)
@@ -748,7 +748,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 acct_msg = ''
                 if result.get('purchase_invoice_number'):
                     inv_num = result['purchase_invoice_number']
-                    acct_msg = f' | ظپط§طھظˆط±ط© ط´ط±ط§ط،: {inv_num}' if is_ar else f' | Purchase Invoice: {inv_num}'
+                    acct_msg = (' | ظپط§طھظˆط±ط© ط´ط±ط§ط،: ' + str(inv_num)) if is_ar else (' | Purchase Invoice: ' + str(inv_num))
                 elif result.get('inventory_sold'):
                     acct_msg = ' | طھظ… ط±ط¨ط· ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ…ظ† ط§ظ„ظ…ط®ط²ظˆظ† ظˆطھط³ط¬ظٹظ„ ط§ظ„ط¨ظٹط¹' if is_ar else ' | Inventory item sold & linked'
                 base_msg = 'طھظ… ط­ظپط¸ ط§ظ„ط¹ظ‚ط¯ ط¨ظ†ط¬ط§ط­' if is_ar else 'Contract saved'
@@ -768,9 +768,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
             detail = str(e)
             is_ar = self.current_lang == 'ar'
             if is_ar:
-                msg = f'ط§ظ„ظ…ط´ظƒظ„ط©: ظپط´ظ„ ط­ظپط¸ ط§ظ„ط¹ظ‚ط¯. طھظپط§طµظٹظ„: {detail}'
+                msg = 'ط§ظ„ظ…ط´ظƒظ„ط©: ظپط´ظ„ ط­ظپط¸ ط§ظ„ط¹ظ‚ط¯. طھظپط§طµظٹظ„: ' + str(detail)
             else:
-                msg = f'Save failed. Details: {detail}'
+                msg = 'Save failed. Details: ' + str(detail)
             self._show_msg(msg)
 
     def delete_contract(self):
@@ -810,7 +810,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 self._show_msg(err)
         except Exception as e:
             is_ar = self.current_lang == 'ar'
-            self._show_msg(f'ظپط´ظ„ ط§ظ„ط­ط°ظپ: {str(e)}' if is_ar else f'Delete failed: {str(e)}')
+            self._show_msg(('ظپط´ظ„ ط§ظ„ط­ط°ظپ: ' + str(e)) if is_ar else ('Delete failed: ' + str(e)))
 
     # ==================== RENDER TEMPLATE (Same as Quotation) ====================
     def render_template(self):
@@ -836,7 +836,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
         material = str(data.get('material', '')).upper()
         plc_value = str(data.get('plc', '')).upper()
         machine_type_base = data.get('machine_type', '') or data.get('model', '')
-        machine_type_display = f"Flexo Stack With {machine_type_base}" if not is_ar else f"ظپظ„ظٹظƒط³ظˆ ط³طھط§ظƒ ظ…ط¹ {machine_type_base}"
+        machine_type_display = ('Flexo Stack With ' + str(machine_type_base)) if not is_ar else ('ظپظ„ظٹظƒط³ظˆ ط³طھط§ظƒ ظ…ط¹ ' + str(machine_type_base))
 
         # Winder type
         def get_winder_type():
@@ -867,68 +867,68 @@ class ContractPrintForm(ContractPrintFormTemplate):
         year = date.today().year
         if not contract_display and q_num:
             serial = getattr(self, 'preview_contract_serial', None) or 2
-            contract_display = f"C - {q_num} / {serial} - {year}"
-        contract_display = contract_display or (f"C - {q_num} / {getattr(self, 'preview_contract_serial', None) or 2} - {year}" if q_num else "")
+            contract_display = 'C - ' + str(q_num) + ' / ' + str(serial) + ' - ' + str(year)
+        contract_display = contract_display or (('C - ' + str(q_num) + ' / ' + str(getattr(self, 'preview_contract_serial', None) or 2) + ' - ' + str(year)) if q_num else "")
         # طھط­ظˆظٹظ„ ط§ظ„طھظ†ط³ظٹظ‚ ط§ظ„ظ‚ط¯ظٹظ… C-8 ط¥ظ„ظ‰ ط§ظ„طھظ†ط³ظٹظ‚ ط§ظ„ط¬ط¯ظٹط¯ (ط§ظ„ظ…طھط³ظ„ط³ظ„ ظ…ظ† ط§ظ„ط¬ط¯ظˆظ„ ط£ظˆ 2)
         if contract_display and re.match(r'^C-\d+$', str(contract_display).strip()):
             old_num = str(contract_display).strip().replace('C-', '')
             serial = getattr(self, 'preview_contract_serial', None) or 2
-            contract_display = f"C - {old_num} / {serial} - {year}"
+            contract_display = 'C - ' + str(old_num) + ' / ' + str(serial) + ' - ' + str(year)
 
         # ==================== PAGE 1 ====================
-        html = f'<div class="template-page {"" if is_ar else "ltr"}">'
+        html = '<div class="template-page ' + ('' if is_ar else 'ltr') + '">'
 
         # Header
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
-        html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
-        html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
-        html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
+        html += '<div class="location-date">' + str(_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))) + ' / ' + str(_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))) + '</div>'
+        html += '<div class="address">' + str(_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))) + '</div>'
+        html += '<div class="contact">' + str(_h(data.get("sales_rep_phone", ""))) + '</div>'
+        html += '<div class="contact">' + str(_h(data.get("sales_rep_email", ""))) + '</div>'
         html += '</div>'
         html += '<div class="header-left">'
         html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-        html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
-        html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
+        html += '<div class="company-name">' + str(_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))) + '</div>'
+        html += '<div class="website">' + str(_h(c.get("company_website", ""))) + '</div>'
         html += '</div>'
         html += '</div>'
 
         # Contract Info (ط±ظ‚ظ… ط§ظ„ط¹ظ‚ط¯ ط¨ط§ظ„طھظ†ط³ظٹظ‚: C - ط±ظ‚ظ… ط§ظ„ظƒظˆطھظٹط´ظ† / ظ…طھط³ظ„ط³ظ„ - ط§ظ„ط³ظ†ط©)
         html += '<div class="quotation-info">'
-        html += f'<div class="quotation-number">{"ط¹ظ‚ط¯ ط±ظ‚ظ…" if is_ar else "Contract No.:"} <span>{_h(contract_display)}</span></div>'
+        html += '<div class="quotation-number">' + ('ط¹ظ‚ط¯ ط±ظ‚ظ…' if is_ar else 'Contract No.:') + ' <span>' + str(_h(contract_display)) + '</span></div>'
         client_name = data.get("client_name", "") or ""
         company = data.get("client_company", "") or ""
-        client_display = f"{client_name} - {company}".strip(" - ") if company else client_name
-        html += f'<div class="client-info">{"ط§ظ„ط³ط§ط¯ط© - ط´ط±ظƒط© /" if is_ar else "To: / Company:"} <span>{_h(client_display)}</span></div>'
-        html += f'<div class="greeting">{"طھط­ظٹط© ط·ظٹط¨ط© ظˆط¨ط¹ط¯طŒ" if is_ar else "Dear Sir/Madam,"}</div>'
+        client_display = (str(client_name) + ' - ' + str(company)).strip(" - ") if company else client_name
+        html += '<div class="client-info">' + ('ط§ظ„ط³ط§ط¯ط© - ط´ط±ظƒط© /' if is_ar else 'To: / Company:') + ' <span>' + str(_h(client_display)) + '</span></div>'
+        html += '<div class="greeting">' + ('طھط­ظٹط© ط·ظٹط¨ط© ظˆط¨ط¹ط¯طŒ' if is_ar else 'Dear Sir/Madam,') + '</div>'
         intro = 'طھظ… ط§ظ„ط§طھظپط§ظ‚ ط¨ظٹظ† ط§ظ„ط·ط±ظپظٹظ† ط¹ظ„ظ‰ طھظˆط±ظٹط¯ ظ…ط§ظƒظٹظ†ط© ط§ظ„ط·ط¨ط§ط¹ط© ط§ظ„طھط§ظ„ظٹط© ط·ط¨ظ‚ط§ظ‹ ظ„ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظ…ظˆط¶ط­ط© ط£ط¯ظ†ط§ظ‡:' if is_ar else 'Both parties have agreed to supply the following printing machine according to the specifications detailed below:'
-        html += f'<div class="intro-text">{intro}</div>'
+        html += '<div class="intro-text">' + str(intro) + '</div>'
         html += '</div>'
 
         # Machine Details (Same as Quotation)
-        html += f'<div class="section-title">{"طھظپط§طµظٹظ„ ط§ظ„ظ…ط§ظƒظٹظ†ط© :" if is_ar else "Machine Details"}</div>'
+        html += '<div class="section-title">' + ('طھظپط§طµظٹظ„ ط§ظ„ظ…ط§ظƒظٹظ†ط© :' if is_ar else 'Machine Details') + '</div>'
         html += '<table class="details-table">'
         
         if is_ar:
-            html += f'<tr><th>ظ†ظˆط¹ ط§ظ„ظ…ط§ظƒظٹظ†ط© :</th><td>{machine_type_display}</td></tr>'
-            html += f'<tr><th>ط§ظ„ظ…ظˆط¯ظٹظ„ :</th><td>{data.get("model", "")}</td></tr>'
-            html += f'<tr><th>ط¨ظ„ط¯ ط§ظ„ظ…ظ†ط´ط£ :</th><td>{c.get("country_origin_ar", "")}</td></tr>'
-            html += f'<tr><th>ط¹ط¯ط¯ ط§ظ„ط£ظ„ظˆط§ظ† :</th><td>{data.get("colors_count", "")}</td></tr>'
-            html += f'<tr><th>ط§ظ„ظˆظ†ط¯ط± :</th><td>{data.get("winder", "")}</td></tr>'
-            html += f'<tr><th>ظ†ظˆط¹ ط§ظ„ظˆظ†ط¯ط± :</th><td>{winder_type_display}</td></tr>'
-            html += f'<tr><th>ط¹ط±ط¶ ط§ظ„ظ…ط§ظƒظٹظ†ط© :</th><td>{data.get("machine_width", "")} ط³ظ…</td></tr>'
+            html += '<tr><th>ظ†ظˆط¹ ط§ظ„ظ…ط§ظƒظٹظ†ط© :</th><td>' + str(machine_type_display) + '</td></tr>'
+            html += '<tr><th>ط§ظ„ظ…ظˆط¯ظٹظ„ :</th><td>' + str(data.get("model", "")) + '</td></tr>'
+            html += '<tr><th>ط¨ظ„ط¯ ط§ظ„ظ…ظ†ط´ط£ :</th><td>' + str(c.get("country_origin_ar", "")) + '</td></tr>'
+            html += '<tr><th>ط¹ط¯ط¯ ط§ظ„ط£ظ„ظˆط§ظ† :</th><td>' + str(data.get("colors_count", "")) + '</td></tr>'
+            html += '<tr><th>ط§ظ„ظˆظ†ط¯ط± :</th><td>' + str(data.get("winder", "")) + '</td></tr>'
+            html += '<tr><th>ظ†ظˆط¹ ط§ظ„ظˆظ†ط¯ط± :</th><td>' + str(winder_type_display) + '</td></tr>'
+            html += '<tr><th>ط¹ط±ط¶ ط§ظ„ظ…ط§ظƒظٹظ†ط© :</th><td>' + str(data.get("machine_width", "")) + ' ط³ظ…</td></tr>'
         else:
-            html += f'<tr><th>Machine Type:</th><td>{machine_type_display}</td></tr>'
-            html += f'<tr><th>Model:</th><td>{data.get("model", "")}</td></tr>'
-            html += f'<tr><th>Country of Origin:</th><td>{c.get("country_origin_en", "")}</td></tr>'
-            html += f'<tr><th>Number of Colors:</th><td>{data.get("colors_count", "")}</td></tr>'
-            html += f'<tr><th>Winder:</th><td>{data.get("winder", "")}</td></tr>'
-            html += f'<tr><th>Winder Type:</th><td>{winder_type_display}</td></tr>'
-            html += f'<tr><th>Machine Width:</th><td>{data.get("machine_width", "")} CM</td></tr>'
+            html += '<tr><th>Machine Type:</th><td>' + str(machine_type_display) + '</td></tr>'
+            html += '<tr><th>Model:</th><td>' + str(data.get("model", "")) + '</td></tr>'
+            html += '<tr><th>Country of Origin:</th><td>' + str(c.get("country_origin_en", "")) + '</td></tr>'
+            html += '<tr><th>Number of Colors:</th><td>' + str(data.get("colors_count", "")) + '</td></tr>'
+            html += '<tr><th>Winder:</th><td>' + str(data.get("winder", "")) + '</td></tr>'
+            html += '<tr><th>Winder Type:</th><td>' + str(winder_type_display) + '</td></tr>'
+            html += '<tr><th>Machine Width:</th><td>' + str(data.get("machine_width", "")) + ' CM</td></tr>'
         html += '</table>'
 
         # ==================== 17 SPECIFICATIONS (Same as Quotation - FULL VERSION) ====================
-        html += f'<div class="section-title">{"ط§ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظپظ†ظٹط©:" if is_ar else "Technical Specifications:"}</div>'
+        html += '<div class="section-title">' + ('ط§ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظپظ†ظٹط©:' if is_ar else 'Technical Specifications:') + '</div>'
         html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
 
         # Helper function to determine Belt/Gear drive for item 13
@@ -998,30 +998,30 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         specs = specs_ar if is_ar else specs_en
         for i, spec in enumerate(specs, 1):
-            html += f'<li>{spec}</li>'
+            html += '<li>' + str(spec) + '</li>'
 
         html += '</ol>'
         html += '</div>'  # End Page 1
 
         # ==================== PAGE 2 - Technical Table (Same as Quotation) ====================
-        html += f'<div class="template-page page-break-before {"" if is_ar else "ltr"}">'
+        html += '<div class="template-page page-break-before ' + ('' if is_ar else 'ltr') + '">'
 
         # Header (repeated)
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
-        html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
-        html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
-        html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
+        html += '<div class="location-date">' + str(_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))) + ' / ' + str(_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))) + '</div>'
+        html += '<div class="address">' + str(_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))) + '</div>'
+        html += '<div class="contact">' + str(_h(data.get("sales_rep_phone", ""))) + '</div>'
+        html += '<div class="contact">' + str(_h(data.get("sales_rep_email", ""))) + '</div>'
         html += '</div>'
         html += '<div class="header-left">'
         html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-        html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
-        html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
+        html += '<div class="company-name">' + str(_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))) + '</div>'
+        html += '<div class="website">' + str(_h(c.get("company_website", ""))) + '</div>'
         html += '</div>'
         html += '</div>'
 
-        html += f'<div class="section-title">{"ط¬ط¯ظˆظ„ ط§ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظپظ†ظٹط©:" if is_ar else "General Specifications:"}</div>'
+        html += '<div class="section-title">' + ('ط¬ط¯ظˆظ„ ط§ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظپظ†ظٹط©:' if is_ar else 'General Specifications:') + '</div>'
 
         # Calculate table values
         winder_type = str(data.get('winder', '')).upper()
@@ -1053,11 +1053,11 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         # Calculate values - Number of Colors format (same as Quotation)
         if colors_count == 8:
-            colors_display = "8+0, 7+1, 6+2, 5+3, 4+4 reverse printing" if not is_ar else f"{to_ar('8+0')}طŒ {to_ar('7+1')}طŒ {to_ar('6+2')}طŒ {to_ar('5+3')}طŒ {to_ar('4+4')} ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©"
+            colors_display = "8+0, 7+1, 6+2, 5+3, 4+4 reverse printing" if not is_ar else (str(to_ar('8+0')) + 'طŒ ' + str(to_ar('7+1')) + 'طŒ ' + str(to_ar('6+2')) + 'طŒ ' + str(to_ar('5+3')) + 'طŒ ' + str(to_ar('4+4')) + ' ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©')
         elif colors_count == 6:
-            colors_display = "6+0, 5+1, 4+2, 3+3 reverse printing" if not is_ar else f"{to_ar('6+0')}طŒ {to_ar('5+1')}طŒ {to_ar('4+2')}طŒ {to_ar('3+3')} ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©"
+            colors_display = "6+0, 5+1, 4+2, 3+3 reverse printing" if not is_ar else (str(to_ar('6+0')) + 'طŒ ' + str(to_ar('5+1')) + 'طŒ ' + str(to_ar('4+2')) + 'طŒ ' + str(to_ar('3+3')) + ' ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©')
         elif colors_count == 4:
-            colors_display = "4+0, 3+1, 2+2 reverse printing" if not is_ar else f"{to_ar('4+0')}طŒ {to_ar('3+1')}طŒ {to_ar('2+2')} ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©"
+            colors_display = "4+0, 3+1, 2+2 reverse printing" if not is_ar else (str(to_ar('4+0')) + 'طŒ ' + str(to_ar('3+1')) + 'طŒ ' + str(to_ar('2+2')) + ' ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©')
         else:
             colors_display = str(colors_count) if not is_ar else to_ar(colors_count)
 
@@ -1163,7 +1163,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 if first_key and first_key.startswith('tech_spec_'):
                     specs = []
                     for i, default in enumerate(defaults, 1):
-                        saved = raw.get(f'tech_spec_{i}', {})
+                        saved = raw.get('tech_spec_' + str(i), {})
                         if isinstance(saved, dict):
                             specs.append({
                                 'label_ar': saved.get('label_ar', default['label_ar']),
@@ -1196,7 +1196,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 part = part.strip()
                 m = re.match(r'(\d+)\s*pc\s*\((\d+)kg\)', part)
                 if m:
-                    ar_parts.append(f"{to_ar(m.group(1))} ظ‚ط·ط¹ط© ({to_ar(m.group(2))} ظƒط¬ظ…)")
+                    ar_parts.append(str(to_ar(m.group(1))) + ' ظ‚ط·ط¹ط© (' + str(to_ar(m.group(2))) + ' ظƒط¬ظ…)')
                 else:
                     ar_parts.append(to_ar(part))
             return ' + '.join(ar_parts)
@@ -1206,7 +1206,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             import re
             m = re.match(r'([\d.]+)kw\s*air\s*blower\s*[أ—x]\s*(\d+)\s*units?', str(dc_str), re.IGNORECASE)
             if m:
-                return f"{to_ar(m.group(1))} ظƒظٹظ„ظˆ ظˆط§طھ طھط¬ظپظٹظپ ظ‡ظˆط§ط¦ظٹ أ— {to_ar(m.group(2))}"
+                return str(to_ar(m.group(1))) + ' ظƒظٹظ„ظˆ ظˆط§طھ طھط¬ظپظٹظپ ظ‡ظˆط§ط¦ظٹ أ— ' + str(to_ar(m.group(2)))
             return to_ar(dc_str)
 
         # Arabic print length formatting
@@ -1214,7 +1214,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
             import re
             m = re.match(r'(\d+)\s*mm\s*-\s*(\d+)\s*mm', str(pl_str), re.IGNORECASE)
             if m:
-                return f"{to_ar(m.group(1))} ظ…ظ… - {to_ar(m.group(2))} ظ…ظ…"
+                return str(to_ar(m.group(1))) + ' ظ…ظ… - ' + str(to_ar(m.group(2))) + ' ظ…ظ…'
             return to_ar(pl_str)
 
         if is_ar:
@@ -1222,20 +1222,20 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 'model': data.get('model', '-'),
                 'colors_display': colors_display,
                 'printing_sides': to_ar('2'),
-                'tension_units': f"{to_ar(tension_units)} ظ‚ط·ط¹ط©",
-                'brake_system': f"{to_ar(brake_system)} ظ‚ط·ط¹ط©",
+                'tension_units': str(to_ar(tension_units)) + ' ظ‚ط·ط¹ط©',
+                'brake_system': str(to_ar(brake_system)) + ' ظ‚ط·ط¹ط©',
                 'brake_power': ar_brake_power(brake_power),
-                'web_guiding': f"{to_ar(web_guiding)} ظ‚ط·ط¹ط©",
-                'max_film_width': f"{to_ar(max_film_width)} ظ…ظ…",
-                'max_print_width': f"{to_ar(max_print_width)} ظ…ظ…",
+                'web_guiding': str(to_ar(web_guiding)) + ' ظ‚ط·ط¹ط©',
+                'max_film_width': str(to_ar(max_film_width)) + ' ظ…ظ…',
+                'max_print_width': str(to_ar(max_print_width)) + ' ظ…ظ…',
                 'print_length': ar_print_length(print_length),
-                'max_roll_diameter': f"{to_ar(max_roll_diameter)} ظ…ظ…",
+                'max_roll_diameter': str(to_ar(max_roll_diameter)) + ' ظ…ظ…',
                 'anilox_display': anilox_display,
-                'max_machine_speed': f"{to_ar(max_machine_speed)} ظ…طھط± ظپظٹ ط§ظ„ط¯ظ‚ظٹظ‚ط©",
-                'max_print_speed': f"{to_ar(max_print_speed)} ظ…طھط± ظپظٹ ط§ظ„ط¯ظ‚ظٹظ‚ط©",
+                'max_machine_speed': str(to_ar(max_machine_speed)) + ' ظ…طھط± ظپظٹ ط§ظ„ط¯ظ‚ظٹظ‚ط©',
+                'max_print_speed': str(to_ar(max_print_speed)) + ' ظ…طھط± ظپظٹ ط§ظ„ط¯ظ‚ظٹظ‚ط©',
                 'dryer_capacity': ar_dryer(dryer_capacity),
                 'drive_display': drive_display,
-                'main_motor_power': f"{to_ar(main_motor_power.replace('HP', '').replace('hp', '').strip())} ط­طµط§ظ†",
+                'main_motor_power': str(to_ar(main_motor_power.replace('HP', '').replace('hp', '').strip())) + ' ط­طµط§ظ†',
             }
         else:
             value_map = {
@@ -1246,13 +1246,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 'brake_system': str(brake_system),
                 'brake_power': brake_power,
                 'web_guiding': str(web_guiding),
-                'max_film_width': f"{max_film_width} mm",
-                'max_print_width': f"{max_print_width} mm",
+                'max_film_width': str(max_film_width) + ' mm',
+                'max_print_width': str(max_print_width) + ' mm',
                 'print_length': print_length,
-                'max_roll_diameter': f"{max_roll_diameter} mm",
+                'max_roll_diameter': str(max_roll_diameter) + ' mm',
                 'anilox_display': anilox_display,
-                'max_machine_speed': f"{max_machine_speed} m/min",
-                'max_print_speed': f"{max_print_speed} m/min",
+                'max_machine_speed': str(max_machine_speed) + ' m/min',
+                'max_print_speed': str(max_print_speed) + ' m/min',
                 'dryer_capacity': dryer_capacity,
                 'drive_display': drive_display,
                 'main_motor_power': main_motor_power,
@@ -1324,22 +1324,22 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 continue
 
             val_style = ' style="text-align:right;"' if is_ar else ''
-            html += f'<tr><td class="row-num">{row_num}</td><th>{label}</th><td class="value"{val_style}>{value_text}</td></tr>'
+            html += '<tr><td class="row-num">' + str(row_num) + '</td><th>' + str(label) + '</th><td class="value"' + str(val_style) + '>' + str(value_text) + '</td></tr>'
             row_num += 1
         html += '</table>'
 
         # Cylinders - centered table
         cylinders = data.get('cylinders', [])
-        html += f'<div class="section-title">{"ط³ظ„ظ†ط¯ط±ط§طھ ط§ظ„ط·ط¨ط§ط¹ط© :" if is_ar else "Printing Cylinders:"}</div>'
+        html += '<div class="section-title">' + ('ط³ظ„ظ†ط¯ط±ط§طھ ط§ظ„ط·ط¨ط§ط¹ط© :' if is_ar else 'Printing Cylinders:') + '</div>'
         html += '<div style="display: flex; justify-content: center;">'
         html += '<table class="cylinders-table" style="width: 50%; margin: 0 auto;">'
-        html += f'<tr><th style="background:#f5f5f5; padding:8px; border:1px solid #ddd;">{"ظ…ظ‚ط§ط³" if is_ar else "Size"}</th><th style="background:#f5f5f5; padding:8px; border:1px solid #ddd;">{"ط¹ط¯ط¯" if is_ar else "Count"}</th></tr>'
+        html += '<tr><th style="background:#f5f5f5; padding:8px; border:1px solid #ddd;">' + ('ظ…ظ‚ط§ط³' if is_ar else 'Size') + '</th><th style="background:#f5f5f5; padding:8px; border:1px solid #ddd;">' + ('ط¹ط¯ط¯' if is_ar else 'Count') + '</th></tr>'
         for i in range(12):
             if i < len(cylinders):
                 cyl = cylinders[i]
                 size = cyl.get("size", "")
                 count = cyl.get("count", "")
-                html += f'<tr><td style="border: 1px solid #ddd; padding:6px; text-align:center;">{size}</td><td style="border: 1px solid #ddd; padding:6px; text-align:center;">{count}</td></tr>'
+                html += '<tr><td style="border: 1px solid #ddd; padding:6px; text-align:center;">' + str(size) + '</td><td style="border: 1px solid #ddd; padding:6px; text-align:center;">' + str(count) + '</td></tr>'
             else:
                 html += '<tr><td style="border: none;"></td><td style="border: none;"></td></tr>'
         html += '</table>'
@@ -1347,87 +1347,87 @@ class ContractPrintForm(ContractPrintFormTemplate):
         html += '</div>'  # End Page 2
 
         # ==================== PAGE 3 - Financial + Payments ====================
-        html += f'<div class="template-page page-break-before {"" if is_ar else "ltr"}">'
+        html += '<div class="template-page page-break-before ' + ('' if is_ar else 'ltr') + '">'
 
         # Header (repeated)
         html += '<div class="header">'
         html += '<div class="header-right">'
-        html += f'<div class="location-date">{_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))} / {_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))}</div>'
-        html += f'<div class="address">{_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))}</div>'
-        html += f'<div class="contact">{_h(data.get("sales_rep_phone", ""))}</div>'
-        html += f'<div class="contact">{_h(data.get("sales_rep_email", ""))}</div>'
+        html += '<div class="location-date">' + str(_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))) + ' / ' + str(_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))) + '</div>'
+        html += '<div class="address">' + str(_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))) + '</div>'
+        html += '<div class="contact">' + str(_h(data.get("sales_rep_phone", ""))) + '</div>'
+        html += '<div class="contact">' + str(_h(data.get("sales_rep_email", ""))) + '</div>'
         html += '</div>'
         html += '<div class="header-left">'
         html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
-        html += f'<div class="company-name">{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>'
-        html += f'<div class="website">{_h(c.get("company_website", ""))}</div>'
+        html += '<div class="company-name">' + str(_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))) + '</div>'
+        html += '<div class="website">' + str(_h(c.get("company_website", ""))) + '</div>'
         html += '</div>'
         html += '</div>'
 
-        html += f'<div class="section-title">{"ط§ظ„ظ‚ظٹظ…ط© ط§ظ„ظ…ط§ظ„ظٹط©:" if is_ar else "Contract Value:"}</div>'
+        html += '<div class="section-title">' + ('ط§ظ„ظ‚ظٹظ…ط© ط§ظ„ظ…ط§ظ„ظٹط©:' if is_ar else 'Contract Value:') + '</div>'
 
         html += '<div class="financial-box">'
         total_price = data.get("total_price", "")
-        html += f'<div class="total-price">{total_price} {"ط¬.ظ…" if is_ar else "EGP"}</div>'
+        html += '<div class="total-price">' + str(total_price) + ' ' + ('ط¬.ظ…' if is_ar else 'EGP') + '</div>'
         html += '</div>'
 
         # Payment Schedule
         if self.payment_data:
-            html += f'<div class="section-title">{"ط¬ط¯ظˆظ„ ط§ظ„ط¯ظپط¹ط§طھ:" if is_ar else "Payment Schedule:"}</div>'
+            html += '<div class="section-title">' + ('ط¬ط¯ظˆظ„ ط§ظ„ط¯ظپط¹ط§طھ:' if is_ar else 'Payment Schedule:') + '</div>'
             html += '<table class="payment-table" style="width:100%;">'
             html += '<tr style="background:#667eea;color:white;">'
-            html += f'<th style="padding:10px;color:white;">#</th>'
-            html += f'<th style="padding:10px;color:white;">{"ط§ظ„ط¨ظ†ط¯" if is_ar else "Description"}</th>'
-            html += f'<th style="padding:10px;color:white;">{"ط§ظ„ظ†ط³ط¨ط©" if is_ar else "%"}</th>'
-            html += f'<th style="padding:10px;color:white;">{"ط§ظ„ظ…ط¨ظ„ط؛" if is_ar else "Amount"}</th>'
-            html += f'<th style="padding:10px;color:white;">{"ط§ظ„طھط§ط±ظٹط®" if is_ar else "Date"}</th>'
+            html += '<th style="padding:10px;color:white;">#</th>'
+            html += '<th style="padding:10px;color:white;">' + ('ط§ظ„ط¨ظ†ط¯' if is_ar else 'Description') + '</th>'
+            html += '<th style="padding:10px;color:white;">' + ('ط§ظ„ظ†ط³ط¨ط©' if is_ar else '%') + '</th>'
+            html += '<th style="padding:10px;color:white;">' + ('ط§ظ„ظ…ط¨ظ„ط؛' if is_ar else 'Amount') + '</th>'
+            html += '<th style="padding:10px;color:white;">' + ('ط§ظ„طھط§ط±ظٹط®' if is_ar else 'Date') + '</th>'
             html += '</tr>'
             
             currency = 'ط¬.ظ…' if is_ar else 'EGP'
             for i, p in enumerate(self.payment_data):
                 label = p.get('label_ar' if is_ar else 'label_en', '')
                 bg = '#f8f9fa' if i % 2 == 0 else 'white'
-                html += f'<tr style="background:{bg};">'
-                html += f'<td style="padding:8px;text-align:center;">{i+1}</td>'
-                html += f'<td style="padding:8px;">{label}</td>'
-                html += f'<td style="padding:8px;text-align:center;">{p.get("percentage", 0):.1f}%</td>'
-                html += f'<td style="padding:8px;text-align:center;">{p.get("amount", 0):,.0f} {currency}</td>'
-                html += f'<td style="padding:8px;text-align:center;">{p.get("date", "")}</td>'
+                html += '<tr style="background:' + str(bg) + ';">'
+                html += '<td style="padding:8px;text-align:center;">' + str(i+1) + '</td>'
+                html += '<td style="padding:8px;">' + str(label) + '</td>'
+                html += '<td style="padding:8px;text-align:center;">' + "{:.1f}".format(p.get("percentage", 0)) + '%</td>'
+                html += '<td style="padding:8px;text-align:center;">' + "{:,.0f}".format(p.get("amount", 0)) + ' ' + str(currency) + '</td>'
+                html += '<td style="padding:8px;text-align:center;">' + str(p.get("date", "")) + '</td>'
                 html += '</tr>'
             html += '</table>'
 
         # Delivery
         html += '<div class="info-grid">'
         html += '<div class="info-box">'
-        html += f'<h4>{"ط§ظ„طھط³ظ„ظٹظ… :" if is_ar else "Delivery:"}</h4>'
-        html += f'<p>{"ظ…ظƒط§ظ† ط§ظ„طھط³ظ„ظٹظ… :" if is_ar else "Delivery location:"} <span class="highlight">{data.get("delivery_location", "-")}</span></p>'
+        html += '<h4>' + ('ط§ظ„طھط³ظ„ظٹظ… :' if is_ar else 'Delivery:') + '</h4>'
+        html += '<p>' + ('ظ…ظƒط§ظ† ط§ظ„طھط³ظ„ظٹظ… :' if is_ar else 'Delivery location:') + ' <span class="highlight">' + str(data.get("delivery_location", "-")) + '</span></p>'
         delivery_time = self.delivery_date if self.delivery_date else data.get("expected_delivery_formatted", "-")
-        html += f'<p>{"طھط§ط±ظٹط® ط§ظ„طھط³ظ„ظٹظ… ط§ظ„ظ…طھظˆظ‚ط¹ :" if is_ar else "Expected delivery:"} <span class="highlight">{delivery_time}</span></p>'
+        html += '<p>' + ('طھط§ط±ظٹط® ط§ظ„طھط³ظ„ظٹظ… ط§ظ„ظ…طھظˆظ‚ط¹ :' if is_ar else 'Expected delivery:') + ' <span class="highlight">' + str(delivery_time) + '</span></p>'
         html += '</div>'
 
         html += '<div class="info-box">'
-        html += f'<h4>{"ط§ظ„ط¶ظ…ط§ظ†:" if is_ar else "Warranty:"}</h4>'
-        warranty_text = f'ظٹط³ط±ظٹ ط§ظ„ط¶ظ…ط§ظ† ظ„ظ…ط¯ط© <strong>{c.get("warranty_months", "12")}</strong> ط´ظ‡ط±' if is_ar else f'Warranty: <strong>{c.get("warranty_months", "12")}</strong> months'
-        html += f'<p>{warranty_text}</p>'
+        html += '<h4>' + ('ط§ظ„ط¶ظ…ط§ظ†:' if is_ar else 'Warranty:') + '</h4>'
+        warranty_text = ('ظٹط³ط±ظٹ ط§ظ„ط¶ظ…ط§ظ† ظ„ظ…ط¯ط© <strong>' + str(c.get("warranty_months", "12")) + '</strong> ط´ظ‡ط±') if is_ar else ('Warranty: <strong>' + str(c.get("warranty_months", "12")) + '</strong> months')
+        html += '<p>' + str(warranty_text) + '</p>'
         support_text = 'ط¯ط¹ظ… ظپظ†ظٹ ظƒط§ظ…ظ„ ظ…ط¹ طھظˆط§ظپط± ظ‚ط·ط¹ ط§ظ„ط؛ظٹط§ط± ط¹ظ†ط¯ ط§ظ„ط·ظ„ط¨' if is_ar else 'Full technical support with spare parts availability upon request'
-        html += f'<p style="margin-top:8px; color:#555;">{support_text}</p>'
+        html += '<p style="margin-top:8px; color:#555;">' + str(support_text) + '</p>'
         html += '</div>'
         html += '</div>'
 
         # Signatures
         html += '<div style="margin-top:40px;display:flex;justify-content:space-around;">'
-        html += f'''
-        <div style="text-align:center;min-width:200px;">
-            <div style="font-weight:bold;margin-bottom:10px;">{"ط§ظ„ط·ط±ظپ ط§ظ„ط£ظˆظ„" if is_ar else "First Party"}</div>
-            <div>{_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))}</div>
-            <div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">{"ط§ظ„طھظˆظ‚ظٹط¹" if is_ar else "Signature"}</div>
-        </div>
-        <div style="text-align:center;min-width:200px;">
-            <div style="font-weight:bold;margin-bottom:10px;">{"ط§ظ„ط·ط±ظپ ط§ظ„ط«ط§ظ†ظٹ" if is_ar else "Second Party"}</div>
-            <div>{_h(client_display)}</div>
-            <div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">{"ط§ظ„طھظˆظ‚ظٹط¹" if is_ar else "Signature"}</div>
-        </div>
-        '''
+        html += (
+            '<div style="text-align:center;min-width:200px;">'
+            '<div style="font-weight:bold;margin-bottom:10px;">' + ('ط§ظ„ط·ط±ظپ ط§ظ„ط£ظˆظ„' if is_ar else 'First Party') + '</div>'
+            '<div>' + str(_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))) + '</div>'
+            '<div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">' + ('ط§ظ„طھظˆظ‚ظٹط¹' if is_ar else 'Signature') + '</div>'
+            '</div>'
+            '<div style="text-align:center;min-width:200px;">'
+            '<div style="font-weight:bold;margin-bottom:10px;">' + ('ط§ظ„ط·ط±ظپ ط§ظ„ط«ط§ظ†ظٹ' if is_ar else 'Second Party') + '</div>'
+            '<div>' + str(_h(client_display)) + '</div>'
+            '<div style="margin-top:60px;border-top:1px solid #333;padding-top:5px;">' + ('ط§ظ„طھظˆظ‚ظٹط¹' if is_ar else 'Signature') + '</div>'
+            '</div>'
+        )
         html += '</div>'
         html += '</div>'  # End Page 3
 
@@ -1451,24 +1451,24 @@ class ContractPrintForm(ContractPrintFormTemplate):
         # طھظ†ط¸ظٹظپ ط§ط³ظ… ط§ظ„ظ…ظ„ظپ: ط¥ط²ط§ظ„ط© ط£ظٹ ط£ط­ط±ظپ ط؛ظٹط± ط¢ظ…ظ†ط© ظ‚ط¨ظ„ ط¥ط¯ط®ط§ظ„ظ‡ ظپظٹ eval (ظ…ظ†ط¹ ط­ظ‚ظ† JS)
         safe_client = ''.join(c for c in client if c.isalnum() or c in ('_', '-'))[:80]
         safe_q = str(q_num).strip()[:20]
-        filename = f"Contract_C-{safe_q}_{safe_client or 'contract'}.pdf"
-        js_code = f"""
-        (async function() {{
+        filename = 'Contract_C-' + str(safe_q) + '_' + str(safe_client or 'contract') + '.pdf'
+        js_code = """
+        (async function() {
             const element = document.getElementById('templateContent');
-            if (!element) {{ if (window.showNotification) window.showNotification('error', '', 'No content'); return; }}
-            
-            function loadScript(url) {{
-                return new Promise((resolve, reject) => {{
-                    if (document.querySelector('script[src="' + url + '"]')) {{ resolve(); return; }}
+            if (!element) { if (window.showNotification) window.showNotification('error', '', 'No content'); return; }
+
+            function loadScript(url) {
+                return new Promise((resolve, reject) => {
+                    if (document.querySelector('script[src="' + url + '"]')) { resolve(); return; }
                     const script = document.createElement('script');
                     script.src = url;
                     script.onload = resolve;
                     script.onerror = reject;
                     document.head.appendChild(script);
-                }});
-            }}
+                });
+            }
 
-            try {{
+            try {
                 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
                 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
 
@@ -1476,28 +1476,28 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 element.classList.add('pdf-export-mode');
                 await new Promise(r => setTimeout(r, 100));
 
-                const {{ jsPDF }} = window.jspdf;
+                const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const pages = element.querySelectorAll('.template-page');
 
-                for (let i = 0; i < pages.length; i++) {{
-                    const canvas = await html2canvas(pages[i], {{
+                for (let i = 0; i < pages.length; i++) {
+                    const canvas = await html2canvas(pages[i], {
                         scale: 2, useCORS: true, backgroundColor: '#ffffff'
-                    }});
+                    });
                     const imgData = canvas.toDataURL('image/jpeg', 0.95);
                     const imgWidth = 210;
                     const imgHeight = (canvas.height * imgWidth) / canvas.width;
                     if (i > 0) pdf.addPage();
                     pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
-                }}
+                }
 
                 element.classList.remove('pdf-export-mode');
-                pdf.save('{filename}');
-            }} catch (error) {{
+                pdf.save('""" + str(filename) + """');
+            } catch (error) {
                 element.classList.remove('pdf-export-mode');
                 if (window.showNotification) window.showNotification('error', '', 'Error: ' + error.message);
-            }}
-        }})();
+            }
+        })();
         """
         anvil.js.window.eval(js_code)
 

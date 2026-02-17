@@ -102,8 +102,19 @@ def _type_label(notif_type, payload, lang):
     base = pair[1] if lang == 'ar' else pair[0]
     qn = payload.get('quotation_number', '')
     if qn:
-        base += f' #{qn}'
+        base += ' #' + str(qn)
     return base
+
+
+def _get_unread_count():
+    """Lightweight: just the unread count for badge polling."""
+    token = _get_token()
+    if not token:
+        return {'success': False, 'count': 0}
+    try:
+        return anvil.server.call('get_unread_notification_count', token)
+    except Exception:
+        return {'success': False, 'count': 0}
 
 
 def _delete_one_notification(notification_id):
@@ -145,6 +156,7 @@ def register_notif_bridges():
     """
     try:
         anvil.js.window.__hpNotifGetAll = _get_all_notifications
+        anvil.js.window.__hpNotifGetUnreadCount = _get_unread_count
         anvil.js.window.__hpNotifDeleteOne = _delete_one_notification
         anvil.js.window.__hpNotifDeleteAll = _delete_all_notifications
         anvil.js.window.__hpNotifMarkRead = _mark_notification_read

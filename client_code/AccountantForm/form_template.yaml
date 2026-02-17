@@ -96,7 +96,7 @@ container:
           <h1 id="pageTitle">Accountant</h1>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <button class="btn btn-seed" onclick="withButtonLock(this, function(){ return seedAccounts(); })" id="btnSeed" title="Initialize chart of accounts" data-loading-text="...">Setup Accounts</button>
-            <button class="btn btn-back" onclick="goBack()" id="btnBack">Back</button>
+            <button class="btn btn-back" onclick="if(window.goBack){window.goBack();}else if(window.pyGoBack){window.pyGoBack();}else{window.location.hash='#admin';}" id="btnBack">Back</button>
           </div>
         </div>
 

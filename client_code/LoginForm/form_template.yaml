@@ -461,6 +461,7 @@ container:
 
       <div aria-hidden='true' data-note='disable-hand-loader' style='display:none'></div>
       <script>window.__hpLoadingInit = true;</script>
+      <script src='_/theme/webauthn-helper.js'></script>
       <div aria-hidden='true' data-note='i18n-script' style='display:none'></div>
       <script>
         // Inline i18n to avoid 404 issues
@@ -1296,7 +1297,6 @@ container:
                   // Check: does user have passkey AND browser supports it?
                   var hasPasskey = result.has_passkey || false;
                   var browserSupports = window.isWebAuthnSupported && window.isWebAuthnSupported();
-                  console.log('[PASSKEY DEBUG] result.has_passkey=', result.has_passkey, 'hasPasskey=', hasPasskey, 'browserSupports=', browserSupports, 'full result keys=', Object.keys(result));
 
                   if (hasPasskey && browserSupports) {
                     // ── QUICK SIGN IN: Passkey mode (skip OTP entirely) ──

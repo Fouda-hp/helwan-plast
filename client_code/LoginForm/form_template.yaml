@@ -516,6 +516,15 @@ container:
               <input type='email' id='loginEmail' placeholder='Enter your email'>
             </div>
 
+            <!-- Passkey Login (shown when user has registered passkey) -->
+            <div id='loginPasskeySection' style='display:none;margin-bottom:16px;'>
+              <button id='loginPasskeyBtn' type='button' style='width:100%;height:52px;border:2px solid #1976d2;border-radius:12px;background:#fff;color:#1976d2;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all 0.3s ease;'>
+                <span style='font-size:22px;'>&#x1f9d1;&#x200d;&#x1f4bb;</span>
+                <span id='loginPasskeyBtnText'>Sign in with Fingerprint / Face ID</span>
+              </button>
+              <div style='text-align:center;margin:12px 0;color:#999;font-size:13px;' id='loginPasskeyDivider'>&#x2014; or enter password &#x2014;</div>
+            </div>
+
             <div class='field'>
               <label id='lblLoginPassword'>Password</label>
               <input type='password' id='loginPassword' placeholder='Enter your password'>
@@ -1274,6 +1283,93 @@ container:
           var loginPassword = document.getElementById('loginPassword');
           var otpLoginForm = document.getElementById('otpLoginForm');
           var pendingLoginEmail = ''; // Store email for OTP verification
+
+          // ============================================
+          // PASSKEY CHECK ON EMAIL BLUR (main login form)
+          // ============================================
+          var _passkeyCheckTimeout = null;
+          var loginPasskeySection = document.getElementById('loginPasskeySection');
+          var loginPasskeyBtn = document.getElementById('loginPasskeyBtn');
+
+          if (loginEmail) {
+            loginEmail.addEventListener('blur', function() {
+              var email = (loginEmail.value || '').trim();
+              if (!email || email.indexOf('@') === -1) {
+                if (loginPasskeySection) loginPasskeySection.style.display = 'none';
+                return;
+              }
+              // Debounce: don't fire too fast
+              clearTimeout(_passkeyCheckTimeout);
+              _passkeyCheckTimeout = setTimeout(async function() {
+                try {
+                  if (!window.checkPasskeyForEmail) return;
+                  var hasPasskey = await window.checkPasskeyForEmail(email);
+                  var browserSupports = window.isWebAuthnSupported && window.isWebAuthnSupported();
+                  if (hasPasskey && browserSupports && loginPasskeySection) {
+                    loginPasskeySection.style.display = 'block';
+                    var pkBtnText = document.getElementById('loginPasskeyBtnText');
+                    var pkDivider = document.getElementById('loginPasskeyDivider');
+                    if (pkBtnText) pkBtnText.textContent = currentLang === 'ar' ? '\u062a\u0633\u062c\u064a\u0644 \u062f\u062e\u0648\u0644 \u0628\u0627\u0644\u0628\u0635\u0645\u0629 / Face ID' : 'Sign in with Fingerprint / Face ID';
+                    if (pkDivider) pkDivider.textContent = currentLang === 'ar' ? '\u2014 \u0623\u0648 \u0623\u062f\u062e\u0644 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u2014' : '\u2014 or enter password \u2014';
+                  } else {
+                    if (loginPasskeySection) loginPasskeySection.style.display = 'none';
+                  }
+                } catch (e) {
+                  console.log('Passkey check error:', e);
+                }
+              }, 300);
+            });
+
+            // Hide passkey button when user starts typing in email (will re-check on blur)
+            loginEmail.addEventListener('input', function() {
+              if (loginPasskeySection) loginPasskeySection.style.display = 'none';
+            });
+          }
+
+          // Passkey button click on main login form
+          if (loginPasskeyBtn) {
+            loginPasskeyBtn.onclick = async function() {
+              var email = (loginEmail.value || '').trim();
+              if (!email) return;
+              clearMessages();
+
+              loginPasskeyBtn.disabled = true;
+              loginPasskeyBtn.style.opacity = '0.7';
+              var origHTML = loginPasskeyBtn.innerHTML;
+              loginPasskeyBtn.innerHTML = '<span style="font-size:18px;">\u23F3</span> ' + (currentLang === 'ar' ? '\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u062d\u0642\u0642 \u0628\u0627\u0644\u0628\u0635\u0645\u0629...' : 'Authenticating with biometric...');
+
+              try {
+                var result = await window.authenticateWithPasskey(email);
+                if (result && result.success) {
+                  loginPasskeyBtn.innerHTML = '<span style="font-size:18px;">\u2705</span> ' + (currentLang === 'ar' ? '\u062a\u0645! \u062c\u0627\u0631\u064a \u0627\u0644\u062f\u062e\u0648\u0644...' : 'Verified! Redirecting...');
+                  completeLogin(result);
+                  return;
+                } else {
+                  var msg = (result && result.message) ? result.message : 'Authentication failed';
+                  showMessage('loginMessage', 'error', msg);
+                }
+              } catch (e) {
+                console.error('Login passkey error:', e);
+                showMessage('loginMessage', 'error', 'Passkey authentication failed');
+              }
+
+              loginPasskeyBtn.disabled = false;
+              loginPasskeyBtn.style.opacity = '1';
+              loginPasskeyBtn.innerHTML = origHTML;
+            };
+
+            // Hover effects
+            loginPasskeyBtn.onmouseenter = function() {
+              loginPasskeyBtn.style.background = '#e3f2fd';
+              loginPasskeyBtn.style.transform = 'translateY(-2px)';
+              loginPasskeyBtn.style.boxShadow = '0 4px 15px rgba(25,118,210,0.2)';
+            };
+            loginPasskeyBtn.onmouseleave = function() {
+              loginPasskeyBtn.style.background = '#fff';
+              loginPasskeyBtn.style.transform = 'translateY(0)';
+              loginPasskeyBtn.style.boxShadow = 'none';
+            };
+          }
 
           loginBtn.onclick = async function() {
             clearMessages();

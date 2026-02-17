@@ -442,6 +442,7 @@ function renderDashCharts(acct) {
   return;
   }
 
+  var _currentUserEmail = (sessionStorage.getItem('user_email') || '').toLowerCase();
   var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>OTP</th><th>Passkey</th><th>Actions</th></tr></thead><tbody>';
   result.users.forEach(function(u) {
   var status = u.is_approved ? (u.is_active ? 'active' : 'inactive') : 'pending';
@@ -459,7 +460,12 @@ function renderDashCharts(acct) {
   html += '<option value="whatsapp"' + (om === 'whatsapp' ? ' selected' : '') + '>WhatsApp</option>';
   html += '<option value="authenticator"' + (om === 'authenticator' ? ' selected' : '') + '>Authenticator</option>';
   html += '</select></td>';
-  html += '<td><button class="btn-sm edit" data-action="passkey" data-email="' + escapeHtml(u.email || '') + '" data-name="' + escapeHtml(u.full_name) + '" style="white-space:nowrap;">🔐 Passkeys</button></td>';
+  var _isCurrentUser = (u.email || '').toLowerCase() === _currentUserEmail;
+  if (_isCurrentUser) {
+    html += '<td><button class="btn-sm edit" data-action="passkey" data-email="' + escapeHtml(u.email || '') + '" data-name="' + escapeHtml(u.full_name) + '" style="white-space:nowrap;">🔐 Passkeys</button></td>';
+  } else {
+    html += '<td><button class="btn-sm edit" data-action="passkey" data-email="' + escapeHtml(u.email || '') + '" data-name="' + escapeHtml(u.full_name) + '" style="white-space:nowrap;opacity:0.5;cursor:default;" title="View only - can only register passkeys on your own device">🔐 Passkeys</button></td>';
+  }
   html += '<td class="actions">';
   html += '<button class="btn-sm edit" data-action="role" data-uid="' + escapeHtml(u.user_id) + '" data-role="' + escapeHtml(u.role) + '">Role</button>';
   html += '<button class="btn-sm edit" data-action="password" data-uid="' + escapeHtml(u.user_id) + '">Password</button>';
@@ -643,6 +649,20 @@ function renderDashCharts(acct) {
       document.body.appendChild(modal);
     }
     document.getElementById('passkeyUserInfo').textContent = (userName || '') + ' (' + email + ')';
+    // Show/hide register button based on whether this is the current user
+    var _curEmail = (sessionStorage.getItem('user_email') || '').toLowerCase();
+    var _isOwn = email.toLowerCase() === _curEmail;
+    var regBtn = document.getElementById('registerPasskeyBtn');
+    if (regBtn) {
+      if (_isOwn) {
+        regBtn.style.display = '';
+        regBtn.parentElement.querySelector('p').textContent = 'Note: This registers a passkey on YOUR current device.';
+      } else {
+        regBtn.style.display = 'none';
+        regBtn.parentElement.querySelector('p').textContent = 'Passkey registration requires physical access to the user\'s own device. You can view and remove existing passkeys.';
+        regBtn.parentElement.querySelector('p').style.color = '#e65100';
+      }
+    }
     modal.style.display = 'block';
     loadPasskeyList(email);
   };
@@ -694,6 +714,13 @@ function renderDashCharts(acct) {
   };
 
   window.registerPasskeyForUser = async function() {
+    // Guard: only allow registering passkey for your own account
+    var _curEmail = (sessionStorage.getItem('user_email') || '').toLowerCase();
+    if (_passkeyUserEmail && _passkeyUserEmail.toLowerCase() !== _curEmail) {
+      if (window.showNotification) showNotification('error', 'Error', 'You can only register a passkey for your own account.');
+      return;
+    }
+
     var btn = document.getElementById('registerPasskeyBtn');
     if (!btn) return;
     var origText = btn.innerHTML;

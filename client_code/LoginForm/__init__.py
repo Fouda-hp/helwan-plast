@@ -53,6 +53,7 @@ class LoginForm(LoginFormTemplate):
         # WebAuthn / Passkey (Biometric) functions
         anvil.js.window.authenticateWithPasskey = self.authenticate_with_passkey
         anvil.js.window.isPasskeySupported = self.is_passkey_supported
+        anvil.js.window.checkPasskeyForEmail = self.check_passkey_for_email
 
         # Rate Limit Clear function
         anvil.js.window.clearRateLimit = self.clear_rate_limit
@@ -371,6 +372,17 @@ class LoginForm(LoginFormTemplate):
         """
         try:
             return bool(anvil.js.window.isWebAuthnSupported and anvil.js.window.isWebAuthnSupported())
+        except Exception:
+            return False
+
+    def check_passkey_for_email(self, email):
+        """
+        Check if a user has registered passkeys (called from login form on email blur).
+        """
+        try:
+            if not email or not str(email).strip():
+                return False
+            return anvil.server.call('webauthn_has_passkey', str(email).strip())
         except Exception:
             return False
 

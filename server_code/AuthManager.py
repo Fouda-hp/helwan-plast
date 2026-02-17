@@ -398,6 +398,14 @@ def setup_totp_confirm(auth_token, code):
 
 
 @anvil.server.callable
+def verify_backup_code(email, code):
+  """التحقق من كود احتياطي (backup code) لتسجيل الدخول بدل TOTP."""
+  if not email or not code:
+    return False
+  return auth_totp.verify_backup_code_impl(email, code)
+
+
+@anvil.server.callable
 def disable_totp(user_email, auth_token):
   """إلغاء تفعيل تطبيق المصادقة (نفس المستخدم أو أدمن)."""
   user = app_tables.users.get(email=user_email)

@@ -5,8 +5,10 @@ auth_totp.py - منطق TOTP (تطبيق المصادقة)
 
 import json
 import base64
+import hashlib
 import io
 import logging
+import secrets
 from datetime import datetime, timedelta
 from anvil.tables import app_tables
 
@@ -18,8 +20,48 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _generate_backup_codes(count=8):
+    """Generate a set of single-use backup codes (8-char hex each)."""
+    return [secrets.token_hex(4) for _ in range(count)]
+
+
+def _hash_backup_code(code):
+    """SHA-256 hash a backup code for safe storage."""
+    return hashlib.sha256(code.strip().lower().encode()).hexdigest()
+
+
+def verify_backup_code_impl(user_email, code):
+    """
+    التحقق من كود احتياطي (backup code) واستهلاكه.
+    يُرجع True إذا الكود صحيح (يُستخدم مرة واحدة فقط).
+    """
+    try:
+        user = app_tables.users.get(email=user_email)
+        if not user:
+            return False
+        stored = user.get('totp_backup_codes')
+        if not stored:
+            return False
+        try:
+            hashes = json.loads(stored)
+        except (json.JSONDecodeError, TypeError):
+            return False
+        if not isinstance(hashes, list):
+            return False
+        code_hash = _hash_backup_code(code)
+        if code_hash in hashes:
+            hashes.remove(code_hash)  # استخدام مرة واحدة
+            user.update(totp_backup_codes=json.dumps(hashes))
+            logger.info("Backup code used for %s, remaining: %d", user_email, len(hashes))
+            return True
+        return False
+    except Exception as e:
+        logger.error("Backup code verify error: %s", e)
+        return False
+
+
 def verify_totp_for_user(user_email, token):
-    """التحقق من كود TOTP من تطبيق المصادقة."""
+    """التحقق من كود TOTP من تطبيق المصادقة، أو كود احتياطي."""
     try:
         import pyotp
         user = app_tables.users.get(email=user_email)
@@ -29,7 +71,14 @@ def verify_totp_for_user(user_email, token):
         if not secret:
             return False
         totp = pyotp.TOTP(secret)
-        return totp.verify(str(token).strip().replace(' ', ''), valid_window=1)
+        code = str(token).strip().replace(' ', '')
+        # Try TOTP first
+        if totp.verify(code, valid_window=1):
+            return True
+        # If TOTP fails, try as backup code
+        if verify_backup_code_impl(user_email, code):
+            return True
+        return False
     except Exception as e:
         logger.error("TOTP verify error: %s", e)
         return False
@@ -106,9 +155,20 @@ def setup_totp_confirm_impl(user_email, code):
         if not user:
             setting.delete()
             return {'success': False, 'message': 'User not found'}
-        user.update(totp_secret=secret)
+        # Generate backup codes and store hashed versions
+        backup_codes = _generate_backup_codes()
+        hashed_codes = [_hash_backup_code(c) for c in backup_codes]
+        user.update(
+            totp_secret=secret,
+            totp_backup_codes=json.dumps(hashed_codes)
+        )
         setting.delete()
-        return {'success': True, 'message': 'Authenticator app enabled. Use it at next login.'}
+        logger.info("TOTP enabled for %s with %d backup codes", user_email, len(backup_codes))
+        return {
+            'success': True,
+            'message': 'Authenticator app enabled. Save your backup codes!',
+            'backup_codes': backup_codes,
+        }
     except Exception as e:
         logger.error("TOTP confirm error: %s", e)
         return {'success': False, 'message': str(e)}

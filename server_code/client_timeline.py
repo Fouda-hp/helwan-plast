@@ -7,6 +7,7 @@ client_timeline.py - التايم لاين الشامل للعميل
 
 import anvil.server
 from anvil.tables import app_tables
+import anvil.tables.query as q
 import json
 import logging
 from datetime import datetime, date
@@ -142,16 +143,20 @@ def get_client_detail(client_code, token_or_email=None):
             if q_dt and (last_activity is None or q_dt > last_activity):
                 last_activity = q_dt
 
-        # Contract stats - lookup per quotation number (avoids loading ALL contracts)
+        # Contract stats - batch load (N+1 fix: single query instead of per-quotation)
         total_contracts = 0
         total_contract_value = 0
-        for qn in q_numbers:
-            if qn is None:
-                continue
+        valid_qns = [qn for qn in q_numbers if qn is not None]
+        if valid_qns:
             try:
-                c = app_tables.contracts.get(quotation_number=qn)
+                all_contracts = list(app_tables.contracts.search(quotation_number=q.any_of(*valid_qns)))
             except Exception:
-                c = None
+                all_contracts = []
+            contracts_by_qn = {c['quotation_number']: c for c in all_contracts}
+        else:
+            contracts_by_qn = {}
+        for qn in valid_qns:
+            c = contracts_by_qn.get(qn)
             if not c:
                 continue
             total_contracts += 1
@@ -221,15 +226,20 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
         except Exception as e:
             logger.warning("Timeline quotations error: %s", e)
 
-        # 2. Contracts - lookup per quotation number (avoids loading ALL contracts)
+        # 2. Contracts - batch load (N+1 fix: single query instead of per-quotation)
         try:
-            for qn in q_numbers:
-                if qn is None:
-                    continue
+            valid_qns = [qn for qn in q_numbers if qn is not None]
+            if valid_qns:
                 try:
-                    c = app_tables.contracts.get(quotation_number=qn)
+                    all_contracts = list(app_tables.contracts.search(quotation_number=q.any_of(*valid_qns)))
                 except Exception:
-                    c = None
+                    all_contracts = []
+                contracts_by_qn = {c['quotation_number']: c for c in all_contracts}
+            else:
+                contracts_by_qn = {}
+
+            for qn in valid_qns:
+                c = contracts_by_qn.get(qn)
                 if not c:
                     continue
                 c_date = c.get('created_at')

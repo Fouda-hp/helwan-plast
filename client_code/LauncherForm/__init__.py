@@ -39,6 +39,12 @@ class LauncherForm(LauncherFormTemplate):
         anvil.js.window.setupTotpConfirm = self.setup_totp_confirm
         anvil.js.window.userHasTotpEnabled = self.user_has_totp_enabled
 
+        # WebAuthn / Passkey (البصمة / Face ID / PIN)
+        anvil.js.window.registerPasskey = self.register_passkey
+        anvil.js.window.listPasskeys = self.list_passkeys
+        anvil.js.window.removePasskey = self.remove_passkey
+        anvil.js.window.hasRegisteredPasskey = self.has_registered_passkey
+
         # Notification bell bridges
         register_notif_bridges()
 
@@ -79,6 +85,70 @@ class LauncherForm(LauncherFormTemplate):
         """هل المستخدم الحالي فعّل تطبيق المصادقة؟ (لإخفاء الرابط بعد التفعيل)"""
         auth_token = token if token is not None else self.get_token()
         return anvil.server.call('user_has_totp_enabled', auth_token)
+
+    # ── WebAuthn / Passkey (البصمة) ──────────────────────
+
+    def register_passkey(self, token=None):
+        """
+        Register a new Passkey (fingerprint / Face ID / PIN).
+        Called from JavaScript settings panel.
+        """
+        import anvil.js
+        auth_token = token if token is not None else self.get_token()
+        try:
+            # Step 1: Get registration options from server
+            result = anvil.server.call('webauthn_register_start', auth_token)
+            if not result.get('success'):
+                return result
+
+            options_json = result.get('options')
+            if not options_json:
+                return {'success': False, 'error': 'No options received'}
+
+            # Step 2: Create credential via browser (shows biometric prompt)
+            credential_json = anvil.js.await_promise(
+                anvil.js.window.webauthnRegister(options_json)
+            )
+
+            if not credential_json:
+                return {'success': False, 'error': 'Registration was cancelled'}
+
+            # Step 3: Verify and store on server
+            verify = anvil.server.call('webauthn_register_complete', auth_token, credential_json)
+            return verify
+
+        except Exception as e:
+            error_str = str(e)
+            if 'NotAllowedError' in error_str or 'cancelled' in error_str.lower():
+                return {'success': False, 'error': 'Registration was cancelled'}
+            return {'success': False, 'error': 'Registration failed: ' + error_str}
+
+    def list_passkeys(self, token=None):
+        """List all registered passkeys for current user."""
+        auth_token = token if token is not None else self.get_token()
+        try:
+            return anvil.server.call('webauthn_list_credentials', auth_token)
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def remove_passkey(self, credential_id_prefix, token=None):
+        """Remove a registered passkey."""
+        auth_token = token if token is not None else self.get_token()
+        try:
+            return anvil.server.call('webauthn_remove_credential', auth_token, credential_id_prefix)
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def has_registered_passkey(self, token=None):
+        """Check if current user has any registered passkeys."""
+        auth_token = token if token is not None else self.get_token()
+        try:
+            email = anvil.js.window.sessionStorage.getItem('user_email')
+            if email:
+                return anvil.server.call('webauthn_has_passkey', email)
+            return False
+        except Exception:
+            return False
 
     def logout_user(self):
         """تسجيل الخروج"""

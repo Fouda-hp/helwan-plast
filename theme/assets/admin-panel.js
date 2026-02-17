@@ -442,7 +442,7 @@ function renderDashCharts(acct) {
   return;
   }
 
-  var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>OTP</th><th>Actions</th></tr></thead><tbody>';
+  var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>OTP</th><th>Passkey</th><th>Actions</th></tr></thead><tbody>';
   result.users.forEach(function(u) {
   var status = u.is_approved ? (u.is_active ? 'active' : 'inactive') : 'pending';
   html += '<tr>';
@@ -459,6 +459,7 @@ function renderDashCharts(acct) {
   html += '<option value="whatsapp"' + (om === 'whatsapp' ? ' selected' : '') + '>WhatsApp</option>';
   html += '<option value="authenticator"' + (om === 'authenticator' ? ' selected' : '') + '>Authenticator</option>';
   html += '</select></td>';
+  html += '<td><button class="btn-sm edit" data-action="passkey" data-email="' + escapeHtml(u.email || '') + '" data-name="' + escapeHtml(u.full_name) + '" style="white-space:nowrap;">🔐 Passkeys</button></td>';
   html += '<td class="actions">';
   html += '<button class="btn-sm edit" data-action="role" data-uid="' + escapeHtml(u.user_id) + '" data-role="' + escapeHtml(u.role) + '">Role</button>';
   html += '<button class="btn-sm edit" data-action="password" data-uid="' + escapeHtml(u.user_id) + '">Password</button>';
@@ -478,6 +479,7 @@ function renderDashCharts(acct) {
       else if(action==='password') showPasswordModal(uid);
       else if(action==='toggle') toggleActive(uid);
       else if(action==='deleteuser') confirmDeleteUser(uid, this.getAttribute('data-name'));
+      else if(action==='passkey') showPasskeyModal(this.getAttribute('data-email'), this.getAttribute('data-name'));
     });
   });
   } catch (e) {
@@ -594,6 +596,158 @@ function renderDashCharts(acct) {
     (window.showNotification?window.showNotification('error','','Error deleting user: ' + e.message):null);
     }
   });
+  };
+
+  // ============================================
+  // PASSKEY MANAGEMENT (Admin → Users)
+  // ============================================
+  var _passkeyUserEmail = '';
+
+  window.showPasskeyModal = async function(email, userName) {
+    _passkeyUserEmail = email;
+    // Create modal if not exists
+    var modal = document.getElementById('passkeyModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'passkeyModal';
+      modal.className = 'modal-overlay';
+      modal.innerHTML =
+        '<div class="modal-box" style="max-width:600px;">' +
+          '<div class="modal-header">' +
+            '<h3 id="passkeyModalTitle">🔐 Passkeys</h3>' +
+            '<button class="modal-close" onclick="closeModal(\'passkeyModal\')">&times;</button>' +
+          '</div>' +
+          '<div class="modal-body">' +
+            '<div style="background:#e3f2fd;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:14px;">' +
+              '<strong>User:</strong> <span id="passkeyUserInfo">-</span>' +
+            '</div>' +
+            '<div id="passkeyListContent" style="min-height:60px;"><div style="text-align:center;padding:20px;color:#999;">Loading...</div></div>' +
+            '<div style="margin-top:16px;padding-top:16px;border-top:1px solid #e0e0e0;">' +
+              '<button class="action-btn" id="registerPasskeyBtn" onclick="registerPasskeyForUser()" style="width:100%;">' +
+                '<span style="font-size:18px;">🖐️</span> Register New Passkey (Fingerprint / Face ID)' +
+              '</button>' +
+              '<p style="margin-top:8px;font-size:12px;color:#999;text-align:center;">' +
+                'Note: This registers a passkey on YOUR current device for this user\'s account.' +
+              '</p>' +
+            '</div>' +
+          '</div>' +
+          '<div class="modal-footer">' +
+            '<button class="filter-btn" onclick="closeModal(\'passkeyModal\')">Close</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+    }
+    document.getElementById('passkeyUserInfo').textContent = (userName || '') + ' (' + email + ')';
+    modal.classList.add('show');
+    loadPasskeyList(email);
+  };
+
+  window.loadPasskeyList = async function(email) {
+    var container = document.getElementById('passkeyListContent');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:#999;">Loading passkeys...</div>';
+
+    try {
+      if (!window.listUserPasskeys) {
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:#e53935;">Bridge not ready. Please refresh the page.</div>';
+        return;
+      }
+      var result = await window.listUserPasskeys(email);
+      if (!result || !result.success) {
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:#999;">No passkeys found or error: ' + escapeHtml((result && result.error) || 'Unknown') + '</div>';
+        return;
+      }
+      var creds = result.credentials || [];
+      if (creds.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:24px;color:#999;">' +
+          '<div style="font-size:40px;margin-bottom:8px;">🔑</div>' +
+          '<p>No passkeys registered for this user.</p>' +
+          '<p style="font-size:12px;">Register a passkey below to enable biometric login.</p>' +
+        '</div>';
+        return;
+      }
+      var html = '<div style="font-size:13px;color:#666;margin-bottom:8px;">' + creds.length + ' passkey(s) registered:</div>';
+      html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+      creds.forEach(function(c, idx) {
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#f8f9fa;border-radius:10px;border:1px solid #e0e0e0;">';
+        html += '<div style="display:flex;align-items:center;gap:12px;">';
+        html += '<span style="font-size:24px;">🔐</span>';
+        html += '<div>';
+        html += '<div style="font-weight:600;font-size:14px;">' + escapeHtml(c.nickname || 'Passkey ' + (idx + 1)) + '</div>';
+        html += '<div style="font-size:12px;color:#999;">Created: ' + escapeHtml(c.created_at ? c.created_at.split('.')[0] : '-') + '</div>';
+        html += '<div style="font-size:12px;color:#999;">Last used: ' + escapeHtml(c.last_used === 'Never' || !c.last_used ? 'Never' : c.last_used.split('.')[0]) + '</div>';
+        html += '</div></div>';
+        html += '<button class="btn-sm reject" data-credprefix="' + escapeHtml(c.credential_id || '') + '" onclick="removeUserPasskeyAction(this)" style="white-space:nowrap;">🗑️ Remove</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    } catch (e) {
+      console.error('loadPasskeyList:', e);
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:#e53935;">Error loading passkeys: ' + escapeHtml(e.message || 'Unknown') + '</div>';
+    }
+  };
+
+  window.registerPasskeyForUser = async function() {
+    var btn = document.getElementById('registerPasskeyBtn');
+    if (!btn) return;
+    var origText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span style="font-size:18px;">⏳</span> Waiting for biometric prompt...';
+
+    try {
+      if (!window.registerPasskey) {
+        showNotification('error', 'Error', 'Passkey bridge not ready. Refresh the page.');
+        return;
+      }
+      var result = await window.registerPasskey();
+      if (result && result.success) {
+        showNotification('success', 'Success', 'Passkey registered successfully!');
+        loadPasskeyList(_passkeyUserEmail);
+      } else {
+        var errMsg = (result && (result.error || result.message)) || 'Registration failed';
+        if (errMsg.indexOf('cancelled') !== -1) {
+          showNotification('warning', 'Cancelled', 'Passkey registration was cancelled.');
+        } else {
+          showNotification('error', 'Error', errMsg);
+        }
+      }
+    } catch (e) {
+      console.error('registerPasskeyForUser:', e);
+      showNotification('error', 'Error', 'Failed to register passkey: ' + (e.message || 'Unknown error'));
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  };
+
+  window.removeUserPasskeyAction = async function(btnEl) {
+    var credPrefix = btnEl.getAttribute('data-credprefix');
+    if (!credPrefix) return;
+    if (!confirm('Are you sure you want to remove this passkey? The user will not be able to use it for biometric login anymore.')) return;
+
+    btnEl.disabled = true;
+    btnEl.textContent = '...';
+    try {
+      if (!window.removeUserPasskey) {
+        showNotification('error', 'Error', 'Bridge not ready');
+        return;
+      }
+      var result = await window.removeUserPasskey(_passkeyUserEmail, credPrefix);
+      if (result && result.success) {
+        showNotification('success', 'Removed', 'Passkey removed successfully');
+        loadPasskeyList(_passkeyUserEmail);
+      } else {
+        showNotification('error', 'Error', (result && result.error) || 'Failed to remove passkey');
+        btnEl.disabled = false;
+        btnEl.textContent = '🗑️ Remove';
+      }
+    } catch (e) {
+      console.error('removeUserPasskeyAction:', e);
+      showNotification('error', 'Error', 'Failed: ' + (e.message || 'Unknown'));
+      btnEl.disabled = false;
+      btnEl.textContent = '🗑️ Remove';
+    }
   };
 
   // ============================================

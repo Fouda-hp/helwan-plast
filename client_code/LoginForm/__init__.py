@@ -50,6 +50,10 @@ class LoginForm(LoginFormTemplate):
         anvil.js.window.verifyPasswordResetOtp = self.verify_password_reset_otp
         anvil.js.window.completePasswordReset = self.complete_password_reset
 
+        # WebAuthn / Passkey (Biometric) functions
+        anvil.js.window.authenticateWithPasskey = self.authenticate_with_passkey
+        anvil.js.window.isPasskeySupported = self.is_passkey_supported
+
         # Rate Limit Clear function
         anvil.js.window.clearRateLimit = self.clear_rate_limit
 
@@ -356,6 +360,66 @@ class LoginForm(LoginFormTemplate):
             return result
         except Exception as e:
             return {'success': False, 'message': 'Error: ' + str(e)}
+
+    # =========================================
+    # WebAuthn / Passkey (Biometric) functions
+    # =========================================
+    def is_passkey_supported(self):
+        """
+        Check if the browser supports WebAuthn / Passkeys.
+        Returns True/False.
+        """
+        try:
+            return bool(anvil.js.window.isWebAuthnSupported and anvil.js.window.isWebAuthnSupported())
+        except Exception:
+            return False
+
+    def authenticate_with_passkey(self, email):
+        """
+        Authenticate using biometric (fingerprint / Face ID / PIN).
+        Called from JavaScript when user clicks the Passkey button.
+        """
+        try:
+            # Step 1: Get authentication options from server
+            result = anvil.server.call('webauthn_auth_start', email)
+            if not result.get('success'):
+                error_msg = result.get('error', 'Failed to start authentication')
+                return {'success': False, 'message': error_msg}
+
+            options_json = result.get('options')
+            if not options_json:
+                return {'success': False, 'message': 'No authentication options received'}
+
+            # Step 2: Call browser WebAuthn API (shows biometric prompt)
+            assertion_json = anvil.js.await_promise(
+                anvil.js.window.webauthnAuthenticate(options_json)
+            )
+
+            if not assertion_json:
+                return {'success': False, 'message': 'Authentication was cancelled'}
+
+            # Step 3: Verify assertion on server
+            verify = anvil.server.call('webauthn_auth_complete', email, assertion_json)
+
+            if verify.get('success') and verify.get('user'):
+                user = verify['user']
+                token = verify.get('token', '')
+                self._save_auth_everywhere(
+                    user_email=user.get('email', ''),
+                    user_name=user.get('full_name', ''),
+                    user_role=user.get('role', ''),
+                    auth_token=token
+                )
+
+            return verify
+
+        except Exception as e:
+            error_str = str(e)
+            # User cancelled the biometric prompt
+            if 'NotAllowedError' in error_str or 'cancelled' in error_str.lower():
+                return {'success': False, 'message': 'Authentication was cancelled'}
+            logger.debug("Passkey auth error: %s", e)
+            return {'success': False, 'message': 'Passkey authentication failed: ' + error_str}
 
     def clear_rate_limit(self):
         """

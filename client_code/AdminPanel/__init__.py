@@ -287,6 +287,14 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.openPurchaseInvoices = self.open_purchase_invoices
         anvil.js.window.logoutUser = self.logout_user
 
+        # WebAuthn / Passkey (البصمة)
+        anvil.js.window.registerPasskey = self.register_passkey
+        anvil.js.window.listPasskeys = self.list_passkeys
+        anvil.js.window.removePasskey = self.remove_passkey
+        anvil.js.window.hasRegisteredPasskey = self.has_registered_passkey
+        anvil.js.window.listUserPasskeys = self.list_user_passkeys
+        anvil.js.window.removeUserPasskey = self.remove_user_passkey
+
         # Debug
         anvil.js.window.debugAdminCheck = self.debug_admin_check
 
@@ -2249,6 +2257,96 @@ class AdminPanel(AdminPanelTemplate):
             open_form(form_name)
         except Exception:
             pass
+
+    # =========================================================
+    # WebAuthn / Passkey (البصمة)
+    # =========================================================
+    def register_passkey(self, token=None):
+        """Register a new Passkey (fingerprint / Face ID / PIN)."""
+        auth_token = token if token is not None else self.get_token()
+        try:
+            result = anvil.server.call('webauthn_register_start', auth_token)
+            if not result.get('success'):
+                return result
+
+            options_json = result.get('options')
+            if not options_json:
+                return {'success': False, 'error': 'No options received'}
+
+            credential_json = anvil.js.await_promise(
+                anvil.js.window.webauthnRegister(options_json)
+            )
+
+            if not credential_json:
+                return {'success': False, 'error': 'Registration was cancelled'}
+
+            verify = anvil.server.call('webauthn_register_complete', auth_token, credential_json)
+            return verify
+
+        except Exception as e:
+            error_str = str(e)
+            if 'NotAllowedError' in error_str or 'cancelled' in error_str.lower():
+                return {'success': False, 'error': 'Registration was cancelled'}
+            return {'success': False, 'error': 'Registration failed: ' + error_str}
+
+    def list_passkeys(self, token=None):
+        """List all registered passkeys for current user."""
+        auth_token = token if token is not None else self.get_token()
+        try:
+            return anvil.server.call('webauthn_list_credentials', auth_token)
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def remove_passkey(self, credential_id_prefix, token=None):
+        """Remove a registered passkey."""
+        auth_token = token if token is not None else self.get_token()
+        try:
+            return anvil.server.call('webauthn_remove_credential', auth_token, credential_id_prefix)
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def has_registered_passkey(self, token=None):
+        """Check if current user has any registered passkeys."""
+        auth_token = token if token is not None else self.get_token()
+        try:
+            email = anvil.js.window.sessionStorage.getItem('user_email')
+            if email:
+                return anvil.server.call('webauthn_has_passkey', email)
+            return False
+        except Exception:
+            return False
+
+    def list_user_passkeys(self, user_email):
+        """Admin: List passkeys for any user by email."""
+        try:
+            from anvil.tables import app_tables
+            rows = app_tables.webauthn_credentials.search(user_email=user_email, is_active=True)
+            credentials = []
+            for row in rows:
+                cred_id = row['credential_id'] or ''
+                credentials.append({
+                    'credential_id': cred_id[:16],
+                    'credential_id_display': cred_id[:16] + '...' if len(cred_id) > 16 else cred_id,
+                    'nickname': row['nickname'] or 'Passkey',
+                    'created_at': str(row['created_at'] or ''),
+                    'last_used': str(row['last_used'] or 'Never'),
+                })
+            return {'success': True, 'credentials': credentials}
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'credentials': []}
+
+    def remove_user_passkey(self, user_email, credential_id_prefix):
+        """Admin: Remove a passkey for any user."""
+        try:
+            from anvil.tables import app_tables
+            rows = app_tables.webauthn_credentials.search(user_email=user_email, is_active=True)
+            for row in rows:
+                if row['credential_id'] and row['credential_id'].startswith(credential_id_prefix):
+                    row['is_active'] = False
+                    return {'success': True, 'message': 'Passkey removed'}
+            return {'success': False, 'error': 'Passkey not found'}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
 
     # =========================================================
     # معلومات المستخدم

@@ -1219,6 +1219,38 @@ db_schema:
       type: string
     server: full
     title: USERS
+  webauthn_credentials:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: credential_id
+      type: string
+    - admin_ui: {width: 200}
+      name: user_email
+      type: string
+    - admin_ui: {width: 400}
+      name: public_key
+      type: string
+    - admin_ui: {width: 100}
+      name: sign_count
+      type: number
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: last_used
+      type: datetime
+    - admin_ui: {width: 200}
+      name: transports
+      type: string
+    - admin_ui: {width: 200}
+      name: nickname
+      type: string
+    - admin_ui: {width: 100}
+      name: is_active
+      type: bool
+    server: full
+    title: webauthn_credentials
 dependencies: []
 metadata: {logo_img: 'asset:helwan_logo-logo.png', robots: 'noindex, nofollow', title: Helwan Plast - Printer System}
 name: Helwan Plast System

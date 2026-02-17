@@ -839,6 +839,15 @@ def login_user(email, password):
     # كلمة المرور صحيحة - ترقية الهاش إذا كان قديماً
     upgrade_password_hash(user, password)
 
+    # التحقق من وجود Passkey مسجل (بصمة / Face ID / PIN)
+    _has_passkey = False
+    try:
+        _has_passkey = len(list(app_tables.webauthn_credentials.search(
+            user_email=email, is_active=True
+        ))) > 0
+    except Exception:
+        pass  # Table may not exist yet or webauthn not configured
+
     # إذا المستخدم مفعّل عنده تطبيق المصادقة (TOTP) - لا نرسل إيميل، نطلب كود من التطبيق فقط (مجاني)
     if user.get('totp_secret'):
         logger.info(f"2FA via Authenticator app for: {email}")
@@ -846,6 +855,7 @@ def login_user(email, password):
             'success': True,
             'requires_2fa': True,
             'use_authenticator': True,
+            'has_passkey': _has_passkey,
             'message': 'Enter the 6-digit code from your authenticator app'
         }
 
@@ -860,7 +870,7 @@ def login_user(email, password):
 
     if email_sent:
         logger.info(f"2FA OTP sent to: {email}")
-        return {'success': True, 'requires_2fa': True, 'use_authenticator': False, 'message': 'Verification code sent to your email'}
+        return {'success': True, 'requires_2fa': True, 'use_authenticator': False, 'has_passkey': _has_passkey, 'message': 'Verification code sent to your email'}
     else:
         logger.error(f"Failed to send 2FA OTP to: {email}")
         return {'success': False, 'message': 'Failed to send verification code. Please try again later.'}

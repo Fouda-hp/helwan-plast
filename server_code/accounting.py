@@ -14,6 +14,7 @@ Double-entry accounting system for Helwan Plast.
 
 import anvil.server
 from anvil.tables import app_tables
+import anvil.tables
 from datetime import datetime, date, timedelta
 import json
 import uuid
@@ -469,6 +470,123 @@ def close_financial_year(year, token_or_email=None):
 
 
 @anvil.server.callable
+def post_year_end_closing(year, token_or_email=None):
+    """
+    Post year-end closing journal entry.
+    Closes all revenue (4xxx) and expense (5xxx, 6xxx) accounts to Retained Earnings (3100).
+    This ensures that Balance Sheet shows cumulative retained earnings correctly,
+    and next year's Income Statement starts from zero.
+
+    Entry dated December 31st of the closing year.
+    Idempotent: returns error if already posted for this year.
+
+    Steps:
+    1) Sum all revenue accounts (credit-normal) → DR each revenue, CR 3100
+    2) Sum all expense accounts (debit-normal) → CR each expense, DR 3100
+    Net effect on 3100 = net profit (or loss) for the year.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+    try:
+        y = int(year)
+    except (TypeError, ValueError):
+        return {'success': False, 'message': 'year must be a valid year (e.g. 2025)'}
+
+    ref_id = f"year_end_{y}"
+    # Idempotent check
+    try:
+        existing = list(app_tables.ledger.search(reference_type='year_end_closing', reference_id=ref_id))
+        if existing:
+            return {'success': False, 'message': f'Year-end closing for {y} is already posted. Cannot repeat.'}
+    except Exception:
+        pass
+
+    if not _validate_account_exists('3100'):
+        return {'success': False, 'message': 'Account 3100 (Retained Earnings) not found. Run seed_default_accounts or add it.'}
+
+    entry_date = date(y, 12, 31)
+    # Note: we do NOT check period lock here because closing IS the final entry for the year.
+    # After closing, the user should lock the year via close_financial_year().
+
+    import anvil.tables.query as q
+    year_start = date(y, 1, 1)
+    year_end = date(y, 12, 31)
+
+    # Load chart of accounts
+    acct_meta = {}
+    for acct in app_tables.chart_of_accounts.search(is_active=True):
+        acct_meta[acct.get('code')] = (acct.get('account_type') or '').strip().lower()
+
+    # Aggregate revenue and expense for the year
+    acct_totals = {}
+    for entry in app_tables.ledger.search(
+        date=q.all_of(q.greater_than_or_equal_to(year_start), q.less_than_or_equal_to(year_end))
+    ):
+        code = entry.get('account_code', '')
+        atype = acct_meta.get(code, '')
+        if atype not in ('revenue', 'expense'):
+            continue
+        if code not in acct_totals:
+            acct_totals[code] = {'debit': 0.0, 'credit': 0.0, 'type': atype}
+        acct_totals[code]['debit'] += _round2(entry.get('debit', 0))
+        acct_totals[code]['credit'] += _round2(entry.get('credit', 0))
+
+    entries = []
+    net_to_retained = 0.0  # positive = profit, negative = loss
+
+    for code, info in sorted(acct_totals.items()):
+        d = _round2(info['debit'])
+        c = _round2(info['credit'])
+        if info['type'] == 'revenue':
+            # Revenue accounts have credit balance; close by debiting them
+            bal = _round2(c - d)
+            if bal > 0:
+                entries.append({'account_code': code, 'debit': bal, 'credit': 0})
+                net_to_retained += bal
+            elif bal < 0:
+                entries.append({'account_code': code, 'debit': 0, 'credit': abs(bal)})
+                net_to_retained += bal
+        elif info['type'] == 'expense':
+            # Expense accounts have debit balance; close by crediting them
+            bal = _round2(d - c)
+            if bal > 0:
+                entries.append({'account_code': code, 'debit': 0, 'credit': bal})
+                net_to_retained -= bal
+            elif bal < 0:
+                entries.append({'account_code': code, 'debit': abs(bal), 'credit': 0})
+                net_to_retained -= bal
+
+    if not entries:
+        return {'success': True, 'transaction_id': None, 'message': f'No revenue/expense activity in {y}. Nothing to close.', 'net_profit': 0}
+
+    net_to_retained = _round2(net_to_retained)
+    # Balance to Retained Earnings (3100)
+    if net_to_retained > 0:
+        # Profit → CR 3100
+        entries.append({'account_code': '3100', 'debit': 0, 'credit': net_to_retained})
+    elif net_to_retained < 0:
+        # Loss → DR 3100
+        entries.append({'account_code': '3100', 'debit': abs(net_to_retained), 'credit': 0})
+    else:
+        # Break-even: still post to properly close accounts
+        entries.append({'account_code': '3100', 'debit': 0, 'credit': 0.01})
+        entries.append({'account_code': '3100', 'debit': 0.01, 'credit': 0})
+
+    desc = f"Year-end closing entry for {y} — Net {'Profit' if net_to_retained >= 0 else 'Loss'}: {abs(net_to_retained):,.2f} EGP"
+    result = post_journal_entry(entry_date, entries, desc, 'year_end_closing', ref_id, user_email)
+
+    if result.get('success'):
+        logger.info("Year-end closing for %s posted (net %.2f) by %s", y, net_to_retained, user_email)
+    return {
+        'success': result.get('success', False),
+        'transaction_id': result.get('transaction_id'),
+        'message': result.get('message', desc),
+        'net_profit': net_to_retained,
+    }
+
+
+@anvil.server.callable
 def get_period_locks(year=None, token_or_email=None):
     """Return list of locked periods. If year given, only that year."""
     is_valid, _, error = _require_permission(token_or_email, 'read')
@@ -569,23 +687,30 @@ def post_journal_entry(entry_date, entries, description, ref_type, ref_id, user_
     transaction_id = _uuid()
     now = get_utc_now()
 
+    # FIX: Wrap ledger writes in a database transaction so that either ALL lines
+    # are written or NONE (atomic). Previously a failure mid-way could leave an
+    # unbalanced journal entry in the ledger.
     try:
-        for e in entries:
-            line_ref_type = _safe_str(e.get('reference_type', ref_type))
-            line_ref_id = _safe_str(e.get('reference_id', ref_id))
-            app_tables.ledger.add_row(
-                id=_uuid(),
-                transaction_id=transaction_id,
-                date=parsed_date,
-                account_code=e['account_code'],
-                debit=_round2(e.get('debit', 0)),
-                credit=_round2(e.get('credit', 0)),
-                description=_safe_str(description),
-                reference_type=line_ref_type,
-                reference_id=line_ref_id,
-                created_by=_safe_str(user_email),
-                created_at=now,
-            )
+        @anvil.tables.in_transaction
+        def _do_post():
+            for e in entries:
+                line_ref_type = _safe_str(e.get('reference_type', ref_type))
+                line_ref_id = _safe_str(e.get('reference_id', ref_id))
+                app_tables.ledger.add_row(
+                    id=_uuid(),
+                    transaction_id=transaction_id,
+                    date=parsed_date,
+                    account_code=e['account_code'],
+                    debit=_round2(e.get('debit', 0)),
+                    credit=_round2(e.get('credit', 0)),
+                    description=_safe_str(description),
+                    reference_type=line_ref_type,
+                    reference_id=line_ref_id,
+                    created_by=_safe_str(user_email),
+                    created_at=now,
+                )
+
+        _do_post()
         logger.info("Journal entry %s posted (%d lines) by %s", transaction_id, len(entries), user_email)
         return {'success': True, 'transaction_id': transaction_id}
     except Exception as e:
@@ -850,19 +975,25 @@ def create_treasury_transaction(transaction_type, amount, transaction_date, desc
         ]
         desc = f"Internal transfer {from_account} → {to_account}: {desc}"
     elif tx_type == 'cash_withdrawal':
+        # Cash withdrawal = internal transfer from bank to cash (NOT an expense).
+        # FIX: Previously posted as DR 6090 (expense) which incorrectly reduced net profit.
+        # Correct treatment: DR 1000 (Cash), CR from_account (Bank) — balance sheet only.
         from_account = _resolve_payment_account(from_account or 'bank')
+        to_account = _resolve_payment_account(to_account or 'cash')
         if not _validate_account_exists(from_account):
             return {'success': False, 'message': f'Account {from_account} not found'}
-        if not _validate_account_exists('6090'):
-            return {'success': False, 'message': 'Account 6090 (Other Expenses) not found'}
+        if not _validate_account_exists(to_account):
+            return {'success': False, 'message': f'Account {to_account} not found'}
+        if from_account == to_account:
+            return {'success': False, 'message': 'From and To account cannot be the same for withdrawal'}
         bal = _get_account_balance_internal(from_account, transaction_date)
         if bal is not None and bal < amount:
             return {'success': False, 'message': f'Insufficient balance. Available: {_round2(bal)}'}
         entries = [
-            {'account_code': '6090', 'debit': amount, 'credit': 0},
+            {'account_code': to_account, 'debit': amount, 'credit': 0},
             {'account_code': from_account, 'debit': 0, 'credit': amount},
         ]
-        desc = f"Cash withdrawal: {desc}"
+        desc = f"Cash withdrawal {from_account} → {to_account}: {desc}"
     elif tx_type == 'bank_deposit':
         from_account = _resolve_payment_account(from_account or 'cash')
         to_account = _resolve_payment_account(to_account or 'bank')
@@ -3271,7 +3402,7 @@ def update_inventory_item(item_id, data, token_or_email=None):
 
 @anvil.server.callable
 def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
-                   token_or_email=None):
+                   token_or_email=None, vat_inclusive=True):
     """
     Record the sale of an inventory item (mark as sold).
     Only items with status 'in_stock' can be sold.
@@ -3280,6 +3411,9 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
     Creates two journal entries:
     1) DR COGS (5000), CR Inventory (1200) — for total_cost (landed cost)
     2) DR Accounts Receivable (1100), CR Sales Revenue (4000) — for selling_price
+
+    vat_inclusive: True (default) = selling_price includes VAT.
+                   False = selling_price is net; VAT is added on top.
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
@@ -3290,6 +3424,26 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
         return {'success': False, 'message': 'Selling price must be greater than zero'}
     if not contract_number:
         return {'success': False, 'message': 'Contract number is required'}
+
+    # --- REVERSE REVENUE DOUBLE-COUNTING GUARD ---
+    # Symmetric protection: block sell_inventory if post_contract_receivable
+    # already recorded revenue (DR 1100) for this contract_number.
+    # The forward guard in post_contract_receivable blocks the opposite order.
+    existing_cr = list(app_tables.ledger.search(
+        account_code='1100',
+        reference_type='contract_receivable',
+        reference_id=_safe_str(contract_number),
+    ))
+    if existing_cr:
+        return {
+            'success': False,
+            'message': (
+                f'تنبيه: تم فتح ذمم هذا العقد مسبقاً عبر contract_receivable. '
+                f'لا يمكن تسجيل بيع مخزون لتجنب ازدواجية الإيراد. | '
+                f'Revenue already opened via contract receivable for contract {contract_number}.'
+            ),
+        }
+    # --- END REVERSE GUARD ---
 
     try:
         row = app_tables.inventory.get(id=item_id)
@@ -3337,40 +3491,57 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
             if not cogs_result.get('success'):
                 return cogs_result
 
-        # Entry 2: Record sales — VAT-inclusive price split: DR 1100 full, CR 4000 net + CR 2100 VAT
+        # Entry 2: Record sales — DR 1100 (total receivable), CR 4000 (net), CR 2100 (VAT)
+        # FIX: Support both VAT-inclusive and VAT-exclusive selling_price.
+        # FIX: Gross profit now correctly uses net_revenue (excluding VAT).
         vat_rate = _get_vat_rate()
-        vat_amount = _round2(selling_price * vat_rate / (100 + vat_rate))
-        net_revenue = _round2(selling_price - vat_amount)  # ensure net_revenue + vat_amount = selling_price
+        if vat_inclusive:
+            # selling_price includes VAT: extract VAT from total
+            vat_amount = _round2(selling_price * vat_rate / (100 + vat_rate))
+            net_revenue = _round2(selling_price - vat_amount)
+            total_receivable = selling_price  # customer pays this amount
+        else:
+            # selling_price is net (VAT-exclusive): add VAT on top
+            net_revenue = selling_price
+            vat_amount = _round2(selling_price * vat_rate / 100)
+            total_receivable = _round2(selling_price + vat_amount)  # customer pays net + VAT
+
+        vat_label = "VAT-incl" if vat_inclusive else "VAT-excl"
         sales_entries = [
-            {'account_code': '1100', 'debit': selling_price, 'credit': 0},
+            {'account_code': '1100', 'debit': total_receivable, 'credit': 0},
             {'account_code': '4000', 'debit': 0, 'credit': net_revenue},
             {'account_code': VAT_OUTPUT_ACCOUNT, 'debit': 0, 'credit': vat_amount},
         ]
         sales_result = post_journal_entry(
             sale_day, sales_entries,
-            f"Sale of {row.get('machine_code', item_id)} — contract {contract_number} (VAT-incl)",
+            f"Sale of {row.get('machine_code', item_id)} — contract {contract_number} ({vat_label})",
             'sales_invoice', item_id, user_email,
         )
         if not sales_result.get('success'):
             return sales_result
 
-        gross_profit = _round2(selling_price - total_cost)
-        margin = _round2((gross_profit / selling_price * 100) if selling_price else 0)
+        # FIX: Gross profit = Net Revenue (excl VAT) - COGS (landed cost)
+        # Previously used selling_price (VAT-inclusive) which overstated profit.
+        gross_profit = _round2(net_revenue - total_cost)
+        margin = _round2((gross_profit / net_revenue * 100) if net_revenue else 0)
 
         row.update(
             contract_number=_safe_str(contract_number),
-            selling_price=selling_price,
+            selling_price=total_receivable,
             status='sold',
             updated_at=get_utc_now(),
         )
-        logger.info("Inventory %s sold to contract %s (revenue %.2f, COGS %.2f, profit %.2f) by %s",
-                     item_id, contract_number, selling_price, total_cost, gross_profit, user_email)
+        logger.info("Inventory %s sold to contract %s (net_revenue %.2f, total_receivable %.2f, COGS %.2f, profit %.2f) by %s",
+                     item_id, contract_number, net_revenue, total_receivable, total_cost, gross_profit, user_email)
         return {
             'success': True,
             'gross_profit': gross_profit,
             'margin_pct': margin,
             'landed_cost': total_cost,
-            'revenue': selling_price,
+            'net_revenue': net_revenue,
+            'vat_amount': vat_amount,
+            'total_receivable': total_receivable,
+            'revenue': total_receivable,  # backward-compatible key
         }
     except Exception as e:
         logger.exception("sell_inventory error")
@@ -3420,17 +3591,20 @@ def _get_all_balances(as_of_date=None, date_from=None):
         }
 
     # Aggregate from ledger only: sum(debit) and sum(credit) per account; no reference_type filter.
+    # FIX: Use DB-level date filtering instead of full table scan for performance.
     try:
-        for entry in app_tables.ledger.search():
+        import anvil.tables.query as q
+        search_kwargs = {}
+        if start and cutoff:
+            search_kwargs['date'] = q.all_of(q.greater_than_or_equal_to(start), q.less_than_or_equal_to(cutoff))
+        elif cutoff:
+            search_kwargs['date'] = q.less_than_or_equal_to(cutoff)
+        elif start:
+            search_kwargs['date'] = q.greater_than_or_equal_to(start)
+
+        for entry in app_tables.ledger.search(**search_kwargs):
             code = entry.get('account_code')
             if code not in accounts:
-                continue
-            row_date = entry.get('date')
-            if isinstance(row_date, datetime):
-                row_date = row_date.date()
-            if cutoff and row_date and row_date > cutoff:
-                continue
-            if start and row_date and row_date < start:
                 continue
             d_val = _round2(entry.get('debit', 0))
             c_val = _round2(entry.get('credit', 0))
@@ -3535,16 +3709,17 @@ def get_income_statement(date_from, date_to, token_or_email=None):
         d_from = _safe_date(date_from)
         d_to = _safe_date(date_to)
 
-        # Aggregate by account for the period
+        # FIX: Use DB-level date filtering instead of full table scan for performance.
+        import anvil.tables.query as q
         acct_totals = {}
-        for entry in app_tables.ledger.search():
-            row_date = entry.get('date')
-            if isinstance(row_date, datetime):
-                row_date = row_date.date()
-            if row_date is None:
-                continue
-            if row_date < d_from or row_date > d_to:
-                continue
+        search_kwargs = {}
+        if d_from and d_to:
+            search_kwargs['date'] = q.all_of(q.greater_than_or_equal_to(d_from), q.less_than_or_equal_to(d_to))
+        elif d_from:
+            search_kwargs['date'] = q.greater_than_or_equal_to(d_from)
+        elif d_to:
+            search_kwargs['date'] = q.less_than_or_equal_to(d_to)
+        for entry in app_tables.ledger.search(**search_kwargs):
             code = entry.get('account_code', '')
             if code not in acct_totals:
                 acct_totals[code] = {'debit': 0.0, 'credit': 0.0}
@@ -3642,12 +3817,16 @@ def get_cash_flow_report(date_from, date_to, token_or_email=None):
         op_totals = {'Supplier payments': 0.0, 'Customer receipts': 0.0, 'Expenses': 0.0}
         inv_totals = {'Inventory (1200)': 0.0, 'Inventory (1210)': 0.0}
         fin_totals = {'Capital / Equity': 0.0, 'Loans received': 0.0}
-        for entry in app_tables.ledger.search():
-            row_date = entry.get('date')
-            if isinstance(row_date, datetime):
-                row_date = row_date.date()
-            if row_date is None or row_date < d_from or row_date > d_to:
-                continue
+        # FIX: Use DB-level date filtering instead of full table scan for performance.
+        import anvil.tables.query as q
+        cf_search = {}
+        if d_from and d_to:
+            cf_search['date'] = q.all_of(q.greater_than_or_equal_to(d_from), q.less_than_or_equal_to(d_to))
+        elif d_from:
+            cf_search['date'] = q.greater_than_or_equal_to(d_from)
+        elif d_to:
+            cf_search['date'] = q.less_than_or_equal_to(d_to)
+        for entry in app_tables.ledger.search(**cf_search):
             code = _safe_str(entry.get('account_code', ''))
             d = _round2(entry.get('debit', 0))
             c = _round2(entry.get('credit', 0))
@@ -4751,6 +4930,116 @@ def get_unrealized_fx(current_rate_provider, token_or_email=None):
         return {'success': True, 'data': results}
     except Exception as e:
         logger.exception("get_unrealized_fx error")
+        return {'success': False, 'message': str(e)}
+
+
+# ===========================================================================
+# 9B. FX RECONCILIATION REPORT
+# ===========================================================================
+
+@anvil.server.callable
+def get_fx_reconciliation(token_or_email=None):
+    """
+    FX Reconciliation Report: for each non-EGP purchase invoice, show:
+    - Original amount, invoice rate, supplier_amount_egp (book value)
+    - Total paid (from ledger DR 2000), remaining
+    - Realized FX gain/loss from ledger (sum of 4110 credits - 6110 debits per invoice)
+    - Expected FX (sum of liability_slices - sum of actual payments in EGP)
+    - Variance (realized vs expected) — should be 0; non-zero means reconciliation error.
+
+    This helps verify that partial payments with different exchange rates are correctly
+    tracked and that no FX gain/loss was missed or double-counted.
+    """
+    is_valid, _, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        results = []
+        total_realized_gain = 0.0
+        total_realized_loss = 0.0
+        total_variance = 0.0
+
+        for inv in app_tables.purchase_invoices.search():
+            inv_id = inv.get('id')
+            currency = _safe_str(inv.get('currency_code') or '').upper()
+            if not currency or currency == 'EGP':
+                continue  # Only non-EGP invoices have FX
+
+            original_amount = _round2(inv.get('original_amount') or inv.get('total') or 0)
+            supplier_egp = _round2(inv.get('supplier_amount_egp') or 0)
+            inv_rate_raw = inv.get('exchange_rate_usd_to_egp') or inv.get('exchange_rate')
+            try:
+                inv_rate = _round2(float(inv_rate_raw)) if inv_rate_raw not in (None, '') else 0
+            except (TypeError, ValueError):
+                inv_rate = 0
+
+            # Ledger: AP posted (CR 2000, purchase_invoice) and paid (DR 2000, payment)
+            posted_egp = 0.0
+            paid_egp = 0.0
+            for e in app_tables.ledger.search(account_code='2000', reference_id=inv_id, reference_type='purchase_invoice'):
+                posted_egp += _round2(e.get('credit', 0))
+            for e in app_tables.ledger.search(account_code='2000', reference_id=inv_id, reference_type='payment'):
+                paid_egp += _round2(e.get('debit', 0))
+            remaining_egp = _round2(posted_egp - paid_egp)
+
+            # Realized FX: credits to 4110 (gain) and debits to 6110 (loss) for this invoice
+            realized_gain = 0.0
+            realized_loss = 0.0
+            for e in app_tables.ledger.search(account_code='4110', reference_id=inv_id, reference_type='payment'):
+                realized_gain += _round2(e.get('credit', 0))
+            for e in app_tables.ledger.search(account_code='6110', reference_id=inv_id, reference_type='payment'):
+                realized_loss += _round2(e.get('debit', 0))
+
+            # Actual bank payments (CR to cash/bank accounts for this invoice)
+            actual_bank_paid = 0.0
+            for e in app_tables.ledger.search(reference_id=inv_id, reference_type='payment'):
+                code = e.get('account_code', '')
+                if code.startswith('100') or code.startswith('101'):
+                    actual_bank_paid += _round2(e.get('credit', 0))
+
+            # Expected FX = paid_egp (DR 2000, book value cleared) - actual_bank_paid (actual cash)
+            expected_fx = _round2(paid_egp - actual_bank_paid)
+            net_realized = _round2(realized_gain - realized_loss)
+            variance = _round2(net_realized - expected_fx)
+
+            total_realized_gain += realized_gain
+            total_realized_loss += realized_loss
+            total_variance += abs(variance)
+
+            if posted_egp > 0 or paid_egp > 0:
+                results.append({
+                    'invoice_id': inv_id,
+                    'invoice_number': inv.get('invoice_number', ''),
+                    'currency': currency,
+                    'original_amount': original_amount,
+                    'invoice_rate': inv_rate,
+                    'supplier_amount_egp': supplier_egp,
+                    'posted_egp': posted_egp,
+                    'paid_egp': paid_egp,
+                    'remaining_egp': remaining_egp,
+                    'actual_bank_paid': actual_bank_paid,
+                    'realized_gain': realized_gain,
+                    'realized_loss': realized_loss,
+                    'net_realized_fx': net_realized,
+                    'expected_fx': expected_fx,
+                    'variance': variance,
+                    'status': 'OK' if abs(variance) < 0.02 else 'MISMATCH',
+                })
+
+        return {
+            'success': True,
+            'data': results,
+            'count': len(results),
+            'summary': {
+                'total_realized_gain': _round2(total_realized_gain),
+                'total_realized_loss': _round2(total_realized_loss),
+                'net_realized': _round2(total_realized_gain - total_realized_loss),
+                'total_variance': _round2(total_variance),
+                'all_reconciled': total_variance < 0.02,
+            },
+        }
+    except Exception as e:
+        logger.exception("get_fx_reconciliation error")
         return {'success': False, 'message': str(e)}
 
 
@@ -5999,6 +6288,7 @@ def post_contract_receivable(contract_number, amount_egp, description=None, toke
     فتح ذمم العقد — تسجيل إيراد العقد (المستحق على العميل) في الدفتر.
     لما العقد يكون عليه دفعات ومفيش تسليم/صنف مخزون، الرصيد بيبقى 0 لأن مفيش قيد مبيعات.
     استدعاء هذه الدالة يسجل: مدين 1100 (ذمم مدينة)، دائن 4000 (إيراد مبيعات) فيصبح الرصيد يظهر حتى يسجل المستخدم التحصيلات.
+    SAFETY: Prevents double revenue if sell_inventory was already called for this contract.
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
@@ -6010,6 +6300,39 @@ def post_contract_receivable(contract_number, amount_egp, description=None, toke
         contract = app_tables.contracts.get(contract_number=contract_number)
         if not contract:
             return {'success': False, 'message': f'العقد غير موجود: {contract_number}'}
+
+        # --- REVENUE DOUBLE-COUNTING GUARD ---
+        # Check if sell_inventory already posted revenue (sales_invoice) for this contract.
+        # sell_inventory posts to 1100 with reference_type='sales_invoice'.
+        # Also check if contract_receivable was already posted for this contract.
+        for inv_item in app_tables.inventory.search(contract_number=contract_number, status='sold'):
+            item_id = inv_item.get('id')
+            if item_id:
+                existing_sales = list(app_tables.ledger.search(
+                    account_code='1100', reference_type='sales_invoice', reference_id=item_id
+                ))
+                if existing_sales:
+                    return {
+                        'success': False,
+                        'message': (
+                            f'تنبيه: تم تسجيل إيراد هذا العقد بالفعل عن طريق بيع المخزون. '
+                            f'لا يمكن فتح الذمم مرة أخرى لتجنب ازدواجية الإيراد. | '
+                            f'Revenue already recorded via inventory sale for contract {contract_number}.'
+                        ),
+                    }
+        existing_receivable = list(app_tables.ledger.search(
+            account_code='1100', reference_type='contract_receivable', reference_id=contract_number
+        ))
+        if existing_receivable:
+            return {
+                'success': False,
+                'message': (
+                    f'تم فتح ذمم هذا العقد مسبقاً. لا يمكن التكرار. | '
+                    f'Contract receivable already posted for {contract_number}.'
+                ),
+            }
+        # --- END GUARD ---
+
         client_name = contract.get('client_name', contract_number)
         desc = description or f"Contract receivable — {client_name} — {contract_number}"
         entries = [

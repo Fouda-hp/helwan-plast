@@ -76,11 +76,17 @@ def _get_rp_id():
 
 
 def _get_origin():
-    """Get the full origin URL (https://xxx.anvil.app)."""
+    """Get the origin URL (scheme + host only, NO path)."""
     try:
-        return anvil.server.get_app_origin()
+        origin = anvil.server.get_app_origin()
+        if origin:
+            from urllib.parse import urlparse
+            parsed = urlparse(origin)
+            # WebAuthn origin = scheme + hostname (no path, no trailing slash)
+            return f"{parsed.scheme}://{parsed.hostname}"
     except Exception:
-        return "https://helwanplast.anvil.app"
+        pass
+    return "https://o5xpeyexwjg4zlhg.anvil.app"
 
 
 def _b64url_decode(s):

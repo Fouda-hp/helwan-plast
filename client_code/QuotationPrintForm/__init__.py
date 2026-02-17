@@ -106,7 +106,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       return
 
     # Clear and add default option
-    select.innerHTML = '<option value="">-- Select Quotation (' + str(len(quotations)) + ') --</option>'
+    select.innerHTML = '<option value="">-- Select Quotation (' + str(int(len(quotations))) + ') --</option>'
 
     for q in quotations:
       opt = anvil.js.window.document.createElement('option')

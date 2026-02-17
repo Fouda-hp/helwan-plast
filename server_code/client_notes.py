@@ -253,12 +253,20 @@ def set_client_tags(client_code, tags, token_or_email=None):
         return {'success': False, 'message': str(e)}
 
 
+import time as _time_mod
+_tags_cache = {'data': None, 'timestamp': 0}
+_TAGS_CACHE_TTL = 30  # seconds
+
 @anvil.server.callable
 def get_all_tags(token_or_email=None):
-    """جلب كل الوسوم المستخدمة عبر كل العملاء"""
+    """جلب كل الوسوم المستخدمة عبر كل العملاء (cached 30s)"""
     is_valid, user_email, error = _require_permission(token_or_email, 'view')
     if not is_valid:
         return error
+
+    now = _time_mod.time()
+    if _tags_cache['data'] is not None and (now - _tags_cache['timestamp']) < _TAGS_CACHE_TTL:
+        return _tags_cache['data']
 
     try:
         all_tags = set()
@@ -269,7 +277,10 @@ def get_all_tags(token_or_email=None):
                     if t and str(t).strip():
                         all_tags.add(str(t).strip())
 
-        return {'success': True, 'tags': sorted(list(all_tags))}
+        result = {'success': True, 'tags': sorted(list(all_tags))}
+        _tags_cache['data'] = result
+        _tags_cache['timestamp'] = now
+        return result
 
     except Exception as e:
         logger.exception("get_all_tags error: %s", e)

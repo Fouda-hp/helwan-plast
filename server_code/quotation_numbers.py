@@ -286,6 +286,7 @@ def get_quotation_number_if_needed(current_number, model, token_or_email=None):
 # ==========================================================================
 
 @anvil.server.callable
+@anvil.tables.in_transaction
 def resync_numbering_counters(token_or_email=None):
     """
     إعادة مزامنة عدّادي العملاء والعروض مع الجداول الفعلية. تتطلب صلاحية أدمن.

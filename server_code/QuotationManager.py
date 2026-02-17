@@ -157,9 +157,8 @@ def yes_no(v):
     return "YES" if v else "NO"
 
 
-@anvil.server.callable
 def phone_exists(phone, exclude_client_code=None):
-    """التحقق من وجود الهاتف (باستثناء المحذوف)"""
+    """التحقق من وجود الهاتف (باستثناء المحذوف) — internal only"""
     phone = safe_strip(phone)
     if not phone:
         return False
@@ -176,9 +175,8 @@ def phone_exists(phone, exclude_client_code=None):
     return False
 
 
-@anvil.server.callable
 def client_exists(client_code):
-    """التحقق من وجود العميل (غير محذوف)"""
+    """التحقق من وجود العميل (غير محذوف) — internal only"""
     if not client_code:
         return False
 
@@ -187,9 +185,8 @@ def client_exists(client_code):
     return row is not None and not row.get('is_deleted', False)
 
 
-@anvil.server.callable
 def quotation_exists(quotation_number):
-    """التحقق من وجود العرض (غير محذوف)"""
+    """التحقق من وجود العرض (غير محذوف) — internal only"""
     if not quotation_number:
         return False
 

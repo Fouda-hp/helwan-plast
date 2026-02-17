@@ -72,7 +72,6 @@ def _parse_date(date_str):
 # =========================================================
 # Follow-up CRUD
 # =========================================================
-@anvil.server.callable
 def _invalidate_dashboard_cache():
     _dashboard_cache['data'] = None
     _dashboard_cache['timestamp'] = 0
@@ -354,9 +353,11 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
         return {'success': False, 'message': str(e), 'stats': {}, 'data': []}
 
 
+_MAX_OVERDUE_NOTIFICATIONS = 20  # limit per run to avoid email flood
+
 @anvil.server.callable
 def check_overdue_followups(token_or_email=None):
-    """فحص المتابعات المتأخرة وإرسال إشعارات"""
+    """فحص المتابعات المتأخرة وإرسال إشعارات (max 20 per run)"""
     is_valid, user_email, error = _require_permission(token_or_email, 'view')
     if not is_valid:
         return error
@@ -366,6 +367,9 @@ def check_overdue_followups(token_or_email=None):
         notified = 0
 
         for row in app_tables.quotations.search(is_deleted=False):
+            if notified >= _MAX_OVERDUE_NOTIFICATIONS:
+                break
+
             fu_date_str = row.get('follow_up_date', '')
             fu_status = (row.get('follow_up_status', '') or '').strip().lower()
 
@@ -400,7 +404,7 @@ def check_overdue_followups(token_or_email=None):
             except Exception as _e:
                 logger.debug("Suppressed: %s", _e)
 
-        return {'success': True, 'notified': notified}
+        return {'success': True, 'notified': notified, 'capped': notified >= _MAX_OVERDUE_NOTIFICATIONS}
 
     except Exception as e:
         logger.exception("check_overdue_followups error: %s", e)

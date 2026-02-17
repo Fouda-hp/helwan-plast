@@ -72,11 +72,11 @@ def _get_global_otp_channel():
   return 'email'
 
 
-@anvil.server.callable
 def get_otp_channel(user_email=None):
   """
   قراءة قناة إرسال OTP: إن وُجد user_email وله otp_method (email|sms|whatsapp) نستخدمها،
   وإلا القناة العامة من الإعدادات. authenticator لا يُستخدم هنا (يُعالج في تسجيل الدخول).
+  Internal use only — not callable from client.
   """
   if user_email:
     user = app_tables.users.get(email=user_email)

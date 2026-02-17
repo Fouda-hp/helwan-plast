@@ -9,6 +9,7 @@ notifications.py - نظام الإشعارات (Enterprise / SaaS)
 
 import uuid
 import json
+import html as _html_mod
 import logging
 from datetime import datetime
 
@@ -61,10 +62,10 @@ def _send_notification_email(user_email, notif_type, payload):
         if not isinstance(payload, dict):
             payload = {}
 
-        qn = payload.get('quotation_number', '')
-        client_name = payload.get('client_name', '') or 'N/A'
-        fu_date = payload.get('follow_up_date', '') or 'N/A'
-        created_by = payload.get('created_by', '') or 'N/A'
+        qn = _html_mod.escape(str(payload.get('quotation_number', '')))
+        client_name = _html_mod.escape(str(payload.get('client_name', '') or 'N/A'))
+        fu_date = _html_mod.escape(str(payload.get('follow_up_date', '') or 'N/A'))
+        created_by = _html_mod.escape(str(payload.get('created_by', '') or 'N/A'))
 
         # Build subject
         if notif_type == 'followup_set':

@@ -133,8 +133,12 @@ class LauncherForm(LauncherFormTemplate):
                 anvil.js.window.location.hash = "#launcher"
             except Exception:
                 pass
-            open_form('LauncherForm')
+            return  # Already on LauncherForm — no need to re-open
+
+        # لا نفتح LauncherForm مرة أخرى لتجنب الحلقة اللانهائية
+        if form_name == 'LauncherForm':
             return
+
         open_form(form_name)
 
     def form_show(self, **event_args):

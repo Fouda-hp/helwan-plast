@@ -83,6 +83,15 @@ def _get_origin():
         return "https://helwanplast.anvil.app"
 
 
+def _b64url_decode(s):
+    """Decode base64url string (with or without padding) to bytes."""
+    import base64
+    s = str(s)
+    # Add padding if needed
+    s += '=' * (4 - len(s) % 4) if len(s) % 4 else ''
+    return base64.urlsafe_b64decode(s)
+
+
 def _cleanup_expired_challenges():
     """Remove expired challenges from memory and database."""
     now = time.time()
@@ -251,7 +260,7 @@ def webauthn_register_start(token):
             try:
                 exclude_creds.append(
                     PublicKeyCredentialDescriptor(
-                        id=base64url_to_bytes(cred['credential_id']),
+                        id=_b64url_decode(cred['credential_id']),
                     )
                 )
             except Exception:
@@ -336,12 +345,27 @@ def webauthn_register_complete(token, credential_json, device_info=None):
             if parts:
                 nickname = ' - '.join(parts)
 
+        # Convert bytes to base64url strings for database storage
+        import base64
+        cred_id_raw = verification.credential_id
+        pub_key_raw = verification.credential_public_key
+        # py_webauthn >= 2.0 returns bytes; convert to base64url string
+        if isinstance(cred_id_raw, bytes):
+            cred_id_str = base64.urlsafe_b64encode(cred_id_raw).rstrip(b'=').decode('ascii')
+        else:
+            cred_id_str = str(cred_id_raw)
+        if isinstance(pub_key_raw, bytes):
+            pub_key_str = base64.urlsafe_b64encode(pub_key_raw).rstrip(b'=').decode('ascii')
+        else:
+            pub_key_str = str(pub_key_raw)
+        sign_count_val = int(verification.sign_count) if verification.sign_count else 0
+
         # Store the credential
         app_tables.webauthn_credentials.add_row(
-            credential_id=verification.credential_id,
+            credential_id=cred_id_str,
             user_email=user_email,
-            public_key=verification.credential_public_key,
-            sign_count=verification.sign_count,
+            public_key=pub_key_str,
+            sign_count=sign_count_val,
             created_at=get_utc_now(),
             last_used=None,
             transports=json.dumps(transports),
@@ -350,7 +374,7 @@ def webauthn_register_complete(token, credential_json, device_info=None):
         )
 
         log_audit(
-            'WEBAUTHN_REGISTER', 'webauthn_credentials', verification.credential_id,
+            'WEBAUTHN_REGISTER', 'webauthn_credentials', cred_id_str,
             None, {'user_email': user_email, 'device': nickname}, user_email, ''
         )
 
@@ -406,7 +430,7 @@ def webauthn_auth_start(email):
                         pass
                 allow_creds.append(
                     PublicKeyCredentialDescriptor(
-                        id=base64url_to_bytes(cred['credential_id']),
+                        id=_b64url_decode(cred['credential_id']),
                         transports=transport_enums if transport_enums else None,
                     )
                 )
@@ -487,13 +511,13 @@ def webauthn_auth_complete(email, assertion_json):
             expected_challenge=challenge_bytes,
             expected_rp_id=_get_rp_id(),
             expected_origin=_get_origin(),
-            credential_public_key=base64url_to_bytes(cred_row['public_key']),
-            credential_current_sign_count=cred_row['sign_count'] or 0,
+            credential_public_key=_b64url_decode(cred_row['public_key']),
+            credential_current_sign_count=int(cred_row['sign_count'] or 0),
         )
 
         # Update sign count + last_used
         cred_row.update(
-            sign_count=verification.new_sign_count,
+            sign_count=int(verification.new_sign_count) if verification.new_sign_count else 0,
             last_used=get_utc_now(),
         )
 

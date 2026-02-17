@@ -613,9 +613,9 @@ function renderDashCharts(acct) {
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'passkeyModal';
-      modal.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;';
+      modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;';
       modal.innerHTML =
-        '<div style="max-width:600px;width:95%;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">' +
+        '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);max-width:600px;width:92%;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;max-height:90vh;overflow-y:auto;">' +
           '<div class="modal-header">' +
             '<h3 id="passkeyModalTitle">🔐 Passkeys</h3>' +
             '<button class="modal-close" onclick="closeModal(\'passkeyModal\')">&times;</button>' +
@@ -643,7 +643,7 @@ function renderDashCharts(acct) {
       document.body.appendChild(modal);
     }
     document.getElementById('passkeyUserInfo').textContent = (userName || '') + ' (' + email + ')';
-    modal.style.display = 'flex';
+    modal.style.display = 'block';
     loadPasskeyList(email);
   };
 

@@ -58,6 +58,16 @@ except ImportError:
     from auth_rate_limit import check_rate_limit
 
 # =========================================================
+# Centralized permission helpers (من auth_permissions.py)
+# =========================================================
+try:
+    from .auth_permissions import require_authenticated as _require_authenticated
+    from .auth_permissions import require_permission_full as _require_permission
+except ImportError:
+    from auth_permissions import require_authenticated as _require_authenticated
+    from auth_permissions import require_permission_full as _require_permission
+
+# =========================================================
 # إعداد نظام التسجيل (Logging)
 # =========================================================
 logging.basicConfig(level=logging.INFO)
@@ -81,53 +91,12 @@ def get_client_ip():
     return AuthManager.get_client_ip()
 
 
-# =========================================================
-# دوال مساعدة للتحقق من الصلاحيات
-# =========================================================
-def _require_authenticated(token_or_email):
-    """
-    التحقق من أن المستخدم مسجل دخول (أي دور ما عدا viewer)
-    يُرجع tuple: (is_valid, user_email, error_response)
-    """
-    if not token_or_email:
-        return False, None, {'success': False, 'message': 'Authentication required'}
-
-    # محاولة التحقق من الجلسة (token)
-    result = AuthManager.validate_token(token_or_email)
-    if result and result.get('valid'):
-        user = result.get('user', {})
-        return True, user.get('email', 'unknown'), None
-
-    # ⛔ لا يتم قبول البريد الإلكتروني كتوكن - يجب استخدام session token فقط
-    return False, None, {'success': False, 'message': 'Invalid or expired session'}
-
-
-def _require_permission(token_or_email, permission):
-    """
-    التحقق من أن المستخدم لديه صلاحية معينة
-    يُرجع tuple: (is_valid, user_email, error_response)
-    """
-    is_valid, user_email, error = _require_authenticated(token_or_email)
-    if not is_valid:
-        return False, None, error
-
-    # الأدمن لديه كل الصلاحيات
-    if AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(token_or_email):
-        return True, user_email, None
-
-    # التحقق من الصلاحية المطلوبة
-    if AuthManager.check_permission(token_or_email, permission):
-        return True, user_email, None
-
-    return False, user_email, {'success': False, 'message': f'Permission denied: {permission} access required'}
-
-
 def check_delete_permission(token_or_email):
     """
     التحقق من صلاحية الحذف.
     يُرجع (has_permission, error_dict, scope) حيث scope = 'full' (أدمن أو delete) أو 'own' (delete_own فقط).
     """
-    if AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(token_or_email):
+    if AuthManager.is_admin(token_or_email):
         return True, None, 'full'
     if token_or_email and AuthManager.check_permission(token_or_email, 'delete'):
         return True, None, 'full'

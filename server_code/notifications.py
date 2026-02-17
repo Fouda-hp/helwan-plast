@@ -335,7 +335,7 @@ def get_all_notifications_admin(token_or_email, limit=50):
     if not user_email:
         return {'success': False, 'data': [], 'message': 'Authentication required'}
     # Verify admin
-    is_admin = AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(user_email)
+    is_admin = AuthManager.is_admin(token_or_email)
     if not is_admin:
         return {'success': False, 'data': [], 'message': 'Admin access required'}
     try:

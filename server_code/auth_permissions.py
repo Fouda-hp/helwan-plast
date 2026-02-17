@@ -82,3 +82,37 @@ def require_permission(token, permission):
     if not check_permission(token, permission):
         return False, {'success': False, 'message': f'Permission denied: {permission}'}
     return True, None
+
+
+# =========================================================
+# Centralized permission functions — الدوال الموحدة (token-only)
+# تُستخدم من كل server modules بدلاً من التعريفات المحلية المكررة
+# =========================================================
+
+def require_authenticated(token):
+    """
+    التحقق من صلاحية الجلسة (token فقط).
+    يُرجع: (is_valid: bool, user_email: str, error_dict أو None)
+    """
+    if not token:
+        return False, None, {'success': False, 'message': 'Authentication required'}
+    session = validate_session(token)
+    if not session:
+        return False, None, {'success': False, 'message': 'Invalid or expired session'}
+    return True, session.get('email', 'unknown'), None
+
+
+def require_permission_full(token, permission):
+    """
+    التحقق من صلاحية معينة مع بيانات المستخدم (token-only).
+    يُرجع: (is_valid: bool, user_email: str, error_dict أو None)
+    ملاحظة: لا يستخدم is_admin_by_email — فقط token-based checks.
+    """
+    is_valid, user_email, error = require_authenticated(token)
+    if not is_valid:
+        return False, None, error
+    if is_admin(token):
+        return True, user_email, None
+    if check_permission(token, permission):
+        return True, user_email, None
+    return False, user_email, {'success': False, 'message': f'Permission denied: {permission} access required'}

@@ -21,17 +21,18 @@ logger = logging.getLogger(__name__)
 
 
 def _require_auth(token_or_email):
-    """التحقق من الجلسة؛ يُرجع (user_email, None) أو (None, error_dict)."""
-    if not token_or_email:
-        return None, {"success": False, "message": "Authentication required"}
+    """التحقق من الجلسة؛ يُرجع (user_email, None) أو (None, error_dict).
+    يستخدم الدالة المركزية من auth_permissions."""
     try:
-        from . import AuthManager
-        result = AuthManager.validate_token(token_or_email)
-        if result and result.get("valid"):
-            return (result.get("user") or {}).get("email"), None
+        try:
+            from .auth_permissions import require_authenticated
+        except ImportError:
+            from auth_permissions import require_authenticated
+        is_valid, email, err = require_authenticated(token_or_email)
+        return (email, None) if is_valid else (None, err)
     except Exception as e:
         logger.warning("quotation_numbers auth check: %s", e)
-    return None, {"success": False, "message": "Invalid or expired session"}
+        return None, {"success": False, "message": "Invalid or expired session"}
 
 
 def _require_admin(token_or_email):

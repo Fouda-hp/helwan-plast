@@ -29,29 +29,15 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-
 # =========================================================
-# Permission helpers (same pattern as QuotationManager)
+# Centralized permission helpers (من auth_permissions.py)
 # =========================================================
-def _require_authenticated(token_or_email):
-    if not token_or_email:
-        return False, None, {'success': False, 'message': 'Authentication required'}
-    result = AuthManager.validate_token(token_or_email)
-    if result and result.get('valid'):
-        user = result.get('user', {})
-        return True, user.get('email', 'unknown'), None
-    return False, None, {'success': False, 'message': 'Invalid or expired session'}
-
-
-def _require_permission(token_or_email, permission):
-    is_valid, user_email, error = _require_authenticated(token_or_email)
-    if not is_valid:
-        return False, None, error
-    if AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(token_or_email):
-        return True, user_email, None
-    if AuthManager.check_permission(token_or_email, permission):
-        return True, user_email, None
-    return False, user_email, {'success': False, 'message': f'Permission denied: {permission} access required'}
+try:
+    from .auth_permissions import require_authenticated as _require_authenticated
+    from .auth_permissions import require_permission_full as _require_permission
+except ImportError:
+    from auth_permissions import require_authenticated as _require_authenticated
+    from auth_permissions import require_permission_full as _require_permission
 
 
 def _get_client_ip():
@@ -175,7 +161,7 @@ def delete_client_note(client_code, note_id, token_or_email=None):
             return {'success': False, 'message': 'Note not found'}
 
         # Only author or admin can delete
-        is_admin = AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(token_or_email)
+        is_admin = AuthManager.is_admin(token_or_email)
         if not is_admin and target_note.get('author_email') != user_email:
             return {'success': False, 'message': 'You can only delete your own notes'}
 

@@ -36,36 +36,20 @@ except ImportError:
     import pdf_reports
 
 # ---------------------------------------------------------------------------
+# Centralized permission helpers (من auth_permissions.py)
+# ---------------------------------------------------------------------------
+try:
+    from .auth_permissions import require_authenticated as _require_authenticated
+    from .auth_permissions import require_permission_full as _require_permission
+except ImportError:
+    from auth_permissions import require_authenticated as _require_authenticated
+    from auth_permissions import require_permission_full as _require_permission
+
+# ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Auth helpers (mirroring QuotationManager pattern)
-# ---------------------------------------------------------------------------
-def _require_authenticated(token_or_email):
-    """Validate that the user is logged in. Returns (is_valid, user_email, error_dict)."""
-    if not token_or_email:
-        return False, None, {'success': False, 'message': 'Authentication required'}
-    result = AuthManager.validate_token(token_or_email)
-    if result and result.get('valid'):
-        user = result.get('user', {})
-        return True, user.get('email', 'unknown'), None
-    return False, None, {'success': False, 'message': 'Invalid or expired session'}
-
-
-def _require_permission(token_or_email, permission):
-    """Validate that the user has a specific permission. Returns (is_valid, user_email, error_dict)."""
-    is_valid, user_email, error = _require_authenticated(token_or_email)
-    if not is_valid:
-        return False, None, error
-    if AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(token_or_email):
-        return True, user_email, None
-    if AuthManager.check_permission(token_or_email, permission):
-        return True, user_email, None
-    return False, user_email, {'success': False, 'message': f'Permission denied: {permission} access required'}
 
 
 # ---------------------------------------------------------------------------
@@ -5717,7 +5701,7 @@ def get_user_permissions(token_or_email=None):
         return {'success': False, 'can_view': False, 'can_create': False, 'can_edit': False,
                 'can_delete': False, 'can_export': False, 'is_admin': False, 'role': 'none'}
     try:
-        is_admin = AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(token_or_email)
+        is_admin = AuthManager.is_admin(token_or_email)
         user_row = app_tables.users.get(email=user_email)
         role = (user_row.get('role') or 'viewer').strip().lower() if user_row else 'viewer'
         return {

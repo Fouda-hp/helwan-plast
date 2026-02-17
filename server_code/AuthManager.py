@@ -43,9 +43,9 @@ from .auth_sessions import generate_session_token, create_session, validate_sess
 from .auth_rate_limit import check_rate_limit
 # استيراد مطلق متوافق مع Anvil (الوحدة قد لا تُحمّل كـ Helwan_Plast.auth_permissions)
 try:
-    from .auth_permissions import check_permission, is_admin, is_admin_by_email, require_admin, require_permission
+    from .auth_permissions import check_permission, is_admin, is_admin_by_email, require_admin, require_permission, require_authenticated, require_permission_full
 except ImportError:
-    from auth_permissions import check_permission, is_admin, is_admin_by_email, require_admin, require_permission
+    from auth_permissions import check_permission, is_admin, is_admin_by_email, require_admin, require_permission, require_authenticated, require_permission_full
 try:
     from . import auth_totp
 except ImportError:

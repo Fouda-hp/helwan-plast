@@ -30,26 +30,15 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Centralized permission helpers (من auth_permissions.py)
+try:
+    from .auth_permissions import require_permission_full as _require_permission
+except ImportError:
+    from auth_permissions import require_permission_full as _require_permission
+
 # Simple server-side cache for dashboard data
 _dashboard_cache = {'data': None, 'timestamp': 0, 'filter': None, 'user': None}
 _DASHBOARD_CACHE_TTL_SECONDS = 90
-
-
-# =========================================================
-# Permission helpers
-# =========================================================
-def _require_permission(token_or_email, permission):
-    if not token_or_email:
-        return False, None, {'success': False, 'message': 'Authentication required'}
-    result = AuthManager.validate_token(token_or_email)
-    if not (result and result.get('valid')):
-        return False, None, {'success': False, 'message': 'Invalid or expired session'}
-    user_email = result.get('user', {}).get('email', 'unknown')
-    if AuthManager.is_admin(token_or_email) or AuthManager.is_admin_by_email(token_or_email):
-        return True, user_email, None
-    if AuthManager.check_permission(token_or_email, permission):
-        return True, user_email, None
-    return False, user_email, {'success': False, 'message': f'Permission denied: {permission}'}
 
 
 def _get_client_ip():

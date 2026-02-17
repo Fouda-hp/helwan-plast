@@ -113,8 +113,32 @@ class LauncherForm(LauncherFormTemplate):
             if not credential_json:
                 return {'success': False, 'error': 'Registration was cancelled'}
 
-            # Step 3: Verify and store on server
-            verify = anvil.server.call('webauthn_register_complete', auth_token, credential_json)
+            # Step 3: Collect device info from browser
+            import json as _json
+            device_info = {}
+            try:
+                device_info = _json.loads(anvil.js.window.eval("""
+                    (function(){
+                        var ua = navigator.userAgent || '';
+                        var browser = 'Unknown';
+                        if (ua.indexOf('Edg/') > -1) browser = 'Edge';
+                        else if (ua.indexOf('Chrome/') > -1) browser = 'Chrome';
+                        else if (ua.indexOf('Firefox/') > -1) browser = 'Firefox';
+                        else if (ua.indexOf('Safari/') > -1) browser = 'Safari';
+                        var os = 'Unknown';
+                        if (ua.indexOf('Windows') > -1) os = 'Windows';
+                        else if (ua.indexOf('Mac OS') > -1) os = 'macOS';
+                        else if (ua.indexOf('Android') > -1) os = 'Android';
+                        else if (ua.indexOf('iPhone') > -1 || ua.indexOf('iPad') > -1) os = 'iOS';
+                        else if (ua.indexOf('Linux') > -1) os = 'Linux';
+                        return JSON.stringify({browser: browser, os: os});
+                    })()
+                """))
+            except Exception:
+                pass
+
+            # Step 4: Verify and store on server
+            verify = anvil.server.call('webauthn_register_complete', auth_token, credential_json, device_info)
             return verify
 
         except Exception as e:

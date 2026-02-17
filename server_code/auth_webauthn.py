@@ -197,9 +197,10 @@ def webauthn_register_start(token):
 
 
 @anvil.server.callable
-def webauthn_register_complete(token, credential_json):
+def webauthn_register_complete(token, credential_json, device_info=None):
     """
     Step 2 of registration: Verify the browser's response and store credential.
+    device_info: optional dict with {browser, os, device_type} from client.
     Returns: {success, message}
     """
     err = _require_webauthn()
@@ -236,6 +237,17 @@ def webauthn_register_complete(token, credential_json):
         except Exception:
             pass
 
+        # Build nickname from device info
+        nickname = 'Passkey'
+        if device_info and isinstance(device_info, dict):
+            parts = []
+            if device_info.get('browser'):
+                parts.append(str(device_info['browser']))
+            if device_info.get('os'):
+                parts.append(str(device_info['os']))
+            if parts:
+                nickname = ' - '.join(parts)
+
         # Store the credential
         app_tables.webauthn_credentials.add_row(
             credential_id=verification.credential_id,
@@ -245,16 +257,16 @@ def webauthn_register_complete(token, credential_json):
             created_at=get_utc_now(),
             last_used=None,
             transports=json.dumps(transports),
-            nickname='Passkey',
+            nickname=nickname,
             is_active=True,
         )
 
         log_audit(
             'WEBAUTHN_REGISTER', 'webauthn_credentials', verification.credential_id,
-            None, {'user_email': user_email}, user_email, ''
+            None, {'user_email': user_email, 'device': nickname}, user_email, ''
         )
 
-        logger.info("WebAuthn credential registered for: %s", user_email)
+        logger.info("WebAuthn credential registered for: %s (device: %s)", user_email, nickname)
         return {'success': True, 'message': 'Passkey registered successfully!'}
 
     except Exception as e:
@@ -507,6 +519,69 @@ def webauthn_remove_credential(token, credential_id_prefix):
                 log_audit(
                     'WEBAUTHN_REMOVE', 'webauthn_credentials', c['credential_id'],
                     None, {'user_email': user_email}, user_email, ''
+                )
+                return {'success': True, 'message': 'Passkey removed.'}
+        return {'success': False, 'error': 'Credential not found.'}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+# ── Admin Management (Admin-only) ───────────────────────────────
+
+def _is_admin_session(token):
+    """Validate session and check admin role. Returns session dict or None."""
+    session = validate_session(token)
+    if not session:
+        return None
+    if (session.get('role') or '').strip().lower() != 'admin':
+        return None
+    return session
+
+
+@anvil.server.callable
+def webauthn_admin_list_credentials(token, user_email):
+    """Admin: List all registered passkeys for any user by email."""
+    admin = _is_admin_session(token)
+    if not admin:
+        return {'success': False, 'error': 'Admin access required.', 'credentials': []}
+
+    try:
+        creds = list(app_tables.webauthn_credentials.search(
+            user_email=user_email, is_active=True
+        ))
+        result = []
+        for c in creds:
+            cred_id = c['credential_id'] or ''
+            result.append({
+                'credential_id': cred_id[:16],
+                'credential_id_display': cred_id[:16] + '...' if len(cred_id) > 16 else cred_id,
+                'nickname': c['nickname'] or 'Passkey',
+                'created_at': str(c['created_at'] or ''),
+                'last_used': str(c['last_used'] or 'Never'),
+            })
+        return {'success': True, 'credentials': result}
+    except Exception as e:
+        return {'success': False, 'error': str(e), 'credentials': []}
+
+
+@anvil.server.callable
+def webauthn_admin_remove_credential(token, user_email, credential_id_prefix):
+    """Admin: Remove (deactivate) a passkey for any user."""
+    admin = _is_admin_session(token)
+    if not admin:
+        return {'success': False, 'error': 'Admin access required.'}
+
+    try:
+        creds = list(app_tables.webauthn_credentials.search(
+            user_email=user_email, is_active=True
+        ))
+        for c in creds:
+            if c['credential_id'] and c['credential_id'].startswith(credential_id_prefix):
+                c.update(is_active=False)
+                log_audit(
+                    'WEBAUTHN_ADMIN_REMOVE', 'webauthn_credentials', c['credential_id'],
+                    None, {'user_email': user_email, 'admin': admin['email']},
+                    admin['email'], ''
                 )
                 return {'success': True, 'message': 'Passkey removed.'}
         return {'success': False, 'error': 'Credential not found.'}

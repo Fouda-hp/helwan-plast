@@ -513,7 +513,10 @@ function renderDashCharts(acct) {
   };
 
   window.closeModal = function(id) {
-  document.getElementById(id).classList.remove('show');
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('show');
+    if (el.id === 'passkeyModal') el.style.display = 'none';
   };
 
   window.confirmRoleChange = async function() {
@@ -611,8 +614,9 @@ function renderDashCharts(acct) {
       modal = document.createElement('div');
       modal.id = 'passkeyModal';
       modal.className = 'modal-overlay';
+      modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;';
       modal.innerHTML =
-        '<div class="modal-box" style="max-width:600px;">' +
+        '<div class="modal-box" style="max-width:600px;margin:auto;position:relative;">' +
           '<div class="modal-header">' +
             '<h3 id="passkeyModalTitle">🔐 Passkeys</h3>' +
             '<button class="modal-close" onclick="closeModal(\'passkeyModal\')">&times;</button>' +
@@ -638,6 +642,7 @@ function renderDashCharts(acct) {
       document.body.appendChild(modal);
     }
     document.getElementById('passkeyUserInfo').textContent = (userName || '') + ' (' + email + ')';
+    modal.style.display = 'flex';
     modal.classList.add('show');
     loadPasskeyList(email);
   };

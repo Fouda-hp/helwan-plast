@@ -1296,6 +1296,7 @@ container:
                   // Check: does user have passkey AND browser supports it?
                   var hasPasskey = result.has_passkey || false;
                   var browserSupports = window.isWebAuthnSupported && window.isWebAuthnSupported();
+                  console.log('[PASSKEY DEBUG] result.has_passkey=', result.has_passkey, 'hasPasskey=', hasPasskey, 'browserSupports=', browserSupports, 'full result keys=', Object.keys(result));
 
                   if (hasPasskey && browserSupports) {
                     // ── QUICK SIGN IN: Passkey mode (skip OTP entirely) ──

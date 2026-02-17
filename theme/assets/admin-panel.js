@@ -1625,12 +1625,17 @@ html += '</div>'; // End Machine Defaults
   if (window.logoutUser) {
   await window.logoutUser();
   }
+  // Preserve passkey_email for quick biometric re-login
+  var _pkEmail = localStorage.getItem('passkey_email');
   localStorage.clear();
+  if (_pkEmail) localStorage.setItem('passkey_email', _pkEmail);
   sessionStorage.clear();
   window.location.hash = '#login';
   } catch (e) {
   console.error('Logout error:', e);
+  var _pkEmail2 = localStorage.getItem('passkey_email');
   localStorage.clear();
+  if (_pkEmail2) localStorage.setItem('passkey_email', _pkEmail2);
   window.location.hash = '#login';
   }
   };

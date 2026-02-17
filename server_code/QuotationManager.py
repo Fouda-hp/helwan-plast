@@ -105,6 +105,28 @@ def check_delete_permission(token_or_email):
     return False, {'success': False, 'message': 'Permission denied: delete or delete_own required'}, None
 
 
+# =========================================================
+# Helper: البحث في العقود مع استبعاد المحذوفة (soft delete)
+# =========================================================
+_contracts_has_is_deleted = None  # cached column check
+
+def _contracts_search_active(**kwargs):
+    """
+    البحث في جدول العقود مع استبعاد is_deleted=True تلقائياً.
+    يفحص وجود العمود مرة واحدة ويحفظ النتيجة (cache).
+    """
+    global _contracts_has_is_deleted
+    if _contracts_has_is_deleted is None:
+        try:
+            cols = [col['name'] for col in app_tables.contracts.list_columns()]
+            _contracts_has_is_deleted = 'is_deleted' in cols
+        except Exception:
+            _contracts_has_is_deleted = False
+    if _contracts_has_is_deleted:
+        kwargs['is_deleted'] = False
+    return app_tables.contracts.search(**kwargs)
+
+
 # دوال الترقيم: من quotation_numbers.get_next_number_atomic (ذرّي، بدون دوبليكيت)
 # =========================================================
 # دوال التحقق المساعدة
@@ -1132,7 +1154,7 @@ def get_dashboard_stats(token_or_email=None):
 
     try:
         year = now.year
-        for row in app_tables.contracts.search():
+        for row in _contracts_search_active():
             total_contracts += 1
             try:
                 total_price_val = row.get('total_price')
@@ -2124,9 +2146,9 @@ def get_quotations_list_without_contract(search='', token_or_email=None, page=1,
     if not is_valid:
         return {'success': False, 'data': [], 'message': 'Permission denied', 'total_count': 0}
     try:
-        # Build exclusion set by streaming contracts (not list())
+        # Build exclusion set by streaming active contracts (not list())
         quoted_ids = set()
-        for row in app_tables.contracts.search():
+        for row in _contracts_search_active():
             qn = row.get('quotation_number')
             if qn is not None:
                 try:
@@ -2626,7 +2648,7 @@ def _get_next_contract_serial_from_table():
     year = datetime.now().year
     max_serial = 0
     try:
-        for row in app_tables.contracts.search():
+        for row in _contracts_search_active():
             cn = (row.get('contract_number') or '').strip()
             # تنسيق: C - رقم الكوتيشن / متسلسل - السنة
             m = re.match(r'C\s*-\s*\d+\s*/\s*(\d+)\s*-\s*(\d+)', cn)
@@ -2657,11 +2679,17 @@ def get_next_contract_serial_preview(token_or_email=None):
 
 
 @anvil.server.callable
+@anvil.tables.in_transaction
 def delete_contract(quotation_number, token_or_email=None):
     """
-    حذف العقد وبيناته بالكامل من الجدول — يتطلب صلاحية delete
+    حذف العقد (soft delete إذا العمود موجود، وإلا hard delete) — يتطلب صلاحية delete
+    ملفوفة بـ @in_transaction لضمان atomicity: soft delete + audit في نفس الـ transaction
     """
-    has_permission, error, _ = check_delete_permission(token_or_email)
+    is_valid, user_email, auth_err = _require_authenticated(token_or_email)
+    if not is_valid:
+        return auth_err or {"success": False, "message": "Authentication required"}
+
+    has_permission, error, scope = check_delete_permission(token_or_email)
     if not has_permission:
         return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied: delete required'}
     try:
@@ -2674,18 +2702,61 @@ def delete_contract(quotation_number, token_or_email=None):
             return {'success': False, 'message': 'العقد غير موجود', 'message_en': 'Contract not found'}
         contract_number = row['contract_number']
         old_data = {'contract_number': contract_number, 'quotation_number': q_num}
-        row.delete()
-        user_email = None
-        try:
-            is_valid, user_email, _ = _require_permission(token_or_email, 'view')
-        except Exception as _e:
-            logger.debug("Suppressed: %s", _e)
-        log_audit('DELETE', 'contracts', contract_number, old_data, None, user_email or 'unknown', get_client_ip())
-        logger.info(f"Contract {contract_number} (quotation {q_num}) deleted")
-        return {'success': True, 'message': 'تم حذف العقد وبيناته بالكامل', 'message_en': 'Contract and all its data have been deleted'}
+        ip_address = get_client_ip()
+
+        # فحص صريح لوجود العمود is_deleted في الـ schema
+        table_columns = [col['name'] for col in app_tables.contracts.list_columns()]
+        has_soft_delete = 'is_deleted' in table_columns
+
+        if has_soft_delete:
+            row.update(is_deleted=True, deleted_at=get_utc_now(), deleted_by=user_email)
+            audit_action = 'SOFT_DELETE'
+            msg_ar = 'تم حذف العقد (يمكن استرجاعه)'
+            msg_en = 'Contract soft-deleted (can be restored)'
+        else:
+            row.delete()
+            audit_action = 'DELETE'
+            msg_ar = 'تم حذف العقد نهائياً'
+            msg_en = 'Contract permanently deleted'
+            logger.warning("contracts table missing is_deleted column - used hard delete")
+
+        # Audit يتسجل في نفس الـ transaction
+        log_audit(audit_action, 'contracts', contract_number, old_data, None, user_email or 'unknown', ip_address)
+        logger.info(f"Contract {contract_number} (quotation {q_num}) {audit_action.lower()}")
+        return {'success': True, 'message': msg_ar, 'message_en': msg_en}
     except Exception as e:
         logger.error(f"Error deleting contract: {e}")
         return {'success': False, 'message': f'فشل الحذف: {str(e)}', 'message_en': f'Delete failed: {str(e)}'}
+
+
+@anvil.server.callable
+def restore_contract(quotation_number, token_or_email=None):
+    """استعادة عقد محذوف (يتطلب صلاحية الحذف)"""
+    is_valid, user_email, auth_err = _require_authenticated(token_or_email)
+    if not is_valid:
+        return auth_err or {"success": False, "message": "Authentication required"}
+
+    has_permission, error, scope = check_delete_permission(token_or_email)
+    if not has_permission:
+        return error
+
+    ip_address = get_client_ip()
+    try:
+        q_num = int(quotation_number)
+    except (TypeError, ValueError):
+        return {'success': False, 'message': 'رقم العرض غير صالح'}
+
+    row = app_tables.contracts.get(quotation_number=q_num)
+    if not row:
+        return {"success": False, "message": "Contract not found"}
+
+    if not row.get('is_deleted', False):
+        return {"success": False, "message": "Contract is not deleted"}
+
+    contract_number = row['contract_number']
+    row.update(is_deleted=False, deleted_at=None, deleted_by=None)
+    log_audit('RESTORE', 'contracts', contract_number, {"is_deleted": True}, {"is_deleted": False}, user_email, ip_address)
+    return {"success": True, "message": "تم استعادة العقد بنجاح", "message_en": "Contract restored successfully"}
 
 
 @anvil.server.callable
@@ -2702,9 +2773,9 @@ def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
 
         # Use DB-level ordering instead of loading all into memory
         try:
-            c_iter = app_tables.contracts.search(order_by=[anvil_order_by('created_at', False)])
+            c_iter = _contracts_search_active(order_by=[anvil_order_by('created_at', False)])
         except Exception:
-            c_iter = app_tables.contracts.search()
+            c_iter = _contracts_search_active()
 
         # Single-pass: stream through results with search filter + pagination
         search_lower = (search or '').strip().lower()
@@ -2886,8 +2957,8 @@ def get_payment_dashboard_data(token_or_email=None):
         return _payment_dashboard_cache['data']
 
     try:
-        # Stream contracts instead of loading all into memory
-        c_iter = app_tables.contracts.search()
+        # Stream active contracts instead of loading all into memory
+        c_iter = _contracts_search_active()
         now = get_utc_now()
         year = now.year
         today = now.date() if hasattr(now, 'date') else now
@@ -3379,6 +3450,47 @@ def restore_backup(token_or_email, backup_media):
         except Exception as e:
             logger.debug("Suppressed: %s", e)
     stats = {'clients': 0, 'quotations': 0, 'contracts': 0, 'settings': 0, 'machine_specs': 0}
+
+    # ===== FAIL-FAST: Validate backup data BEFORE any deletion =====
+    # This block MUST come before ANY clear_table() or delete() call
+    clients_data = data.get('clients', [])
+    quotations_data = data.get('quotations', [])
+    contracts_data = data.get('contracts', [])
+    invoices_data = data.get('invoices', [])
+
+    if not clients_data and not quotations_data:
+        return {'success': False, 'message': 'النسخة الاحتياطية فارغة - لا توجد بيانات عملاء أو عروض'}
+
+    # Validate clients (check up to 3 samples)
+    if clients_data:
+        for i, sample in enumerate(clients_data[:3]):
+            if not isinstance(sample, dict):
+                return {'success': False, 'message': f'بيانات العملاء غير صالحة - العنصر {i+1} ليس dict'}
+            if 'Client Code' not in sample:
+                return {'success': False, 'message': f'بيانات العملاء غير صالحة - العنصر {i+1} مفتاح Client Code مفقود'}
+
+    # Validate quotations (check up to 3 samples)
+    if quotations_data:
+        for i, sample in enumerate(quotations_data[:3]):
+            if not isinstance(sample, dict):
+                return {'success': False, 'message': f'بيانات العروض غير صالحة - العنصر {i+1} ليس dict'}
+            if 'Quotation#' not in sample:
+                return {'success': False, 'message': f'بيانات العروض غير صالحة - العنصر {i+1} مفتاح Quotation# مفقود'}
+
+    # Validate contracts if present
+    if contracts_data:
+        for i, sample in enumerate(contracts_data[:3]):
+            if not isinstance(sample, dict):
+                return {'success': False, 'message': f'بيانات العقود غير صالحة - العنصر {i+1} ليس dict'}
+
+    # Validate invoices if present
+    if invoices_data:
+        for i, sample in enumerate(invoices_data[:3]):
+            if not isinstance(sample, dict):
+                return {'success': False, 'message': f'بيانات الفواتير غير صالحة - العنصر {i+1} ليس dict'}
+
+    # ===== البيانات صالحة → يمكن بدء الاستعادة =====
+
     try:
         def clear_table(table):
             for row in list(table.search()):

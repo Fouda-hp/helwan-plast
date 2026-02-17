@@ -12,6 +12,18 @@
   var _restoreClientAPI = window.restoreClient;
   var _restoreQuotationAPI = window.restoreQuotation;
 
+  // XSS Protection: escape user data before inserting into HTML
+  function escapeHtml(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+  // Per-action async busy flags to prevent double-click
+  var _adminBusy = {};
+  async function withBusy(actionKey, fn) {
+    if (_adminBusy[actionKey]) return;
+    _adminBusy[actionKey] = true;
+    try { return await fn(); }
+    finally { _adminBusy[actionKey] = false; }
+  }
+
   // ============================================
   // NOTIFICATION SYSTEM
   // ============================================
@@ -27,8 +39,8 @@
   toast.innerHTML =
   '<span class="icon">' + icons[type] + '</span>' +
   '<div class="content">' +
-  '<div class="title">' + title + '</div>' +
-  '<div class="message">' + message + '</div>' +
+  '<div class="title">' + escapeHtml(title) + '</div>' +
+  '<div class="message">' + escapeHtml(message) + '</div>' +
   '</div>' +
   '<button class="close-btn" onclick="this.parentElement.remove()">×</button>';
 
@@ -100,7 +112,7 @@
   };
 
   function initUser() {
-  var name = localStorage.getItem('user_name') || 'Admin';
+  var name = sessionStorage.getItem('user_name') || localStorage.getItem('user_name') || 'Admin';
   var userNameEl = document.getElementById('userName');
   if (userNameEl) {
   userNameEl.textContent = name;
@@ -291,7 +303,7 @@ function renderDashCharts(acct) {
   try {
   var result = await window.getPendingUsers();
   if (!result.success) {
-  container.innerHTML = '<div class="empty-state"><h4>' + result.message + '</h4></div>';
+  container.innerHTML = '<div class="empty-state"><h4>' + escapeHtml(result.message) + '</h4></div>';
   return;
   }
 
@@ -307,18 +319,27 @@ function renderDashCharts(acct) {
   var html = '<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th><th>Actions</th></tr></thead><tbody>';
   result.users.forEach(function(u) {
   html += '<tr>';
-  html += '<td>' + u.full_name + '</td>';
-  html += '<td>' + u.email + '</td>';
-  html += '<td>' + (u.phone || '-') + '</td>';
-  html += '<td>' + u.created_at.split('T')[0] + '</td>';
+  html += '<td>' + escapeHtml(u.full_name) + '</td>';
+  html += '<td>' + escapeHtml(u.email) + '</td>';
+  html += '<td>' + escapeHtml(u.phone || '-') + '</td>';
+  html += '<td>' + escapeHtml(u.created_at.split('T')[0]) + '</td>';
   html += '<td class="actions">';
-  html += '<button class="btn-sm approve" onclick="showApprovalModal(\'' + u.user_id + '\')" style="background:#e8f5e9;color:#2e7d32;">✓ Approve</button>';
-  html += '<button class="btn-sm reject" onclick="rejectUserAction(\'' + u.user_id + '\')">✕ Reject</button>';
+  html += '<button class="btn-sm approve" data-action="approve" data-uid="' + escapeHtml(u.user_id) + '" style="background:#e8f5e9;color:#2e7d32;">✓ Approve</button>';
+  html += '<button class="btn-sm reject" data-action="reject" data-uid="' + escapeHtml(u.user_id) + '">✕ Reject</button>';
   html += '</td></tr>';
   });
   html += '</tbody></table>';
   container.innerHTML = html;
+  container.querySelectorAll('[data-action]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var action = this.getAttribute('data-action');
+      var uid = this.getAttribute('data-uid');
+      if(action==='approve') showApprovalModal(uid);
+      else if(action==='reject') rejectUserAction(uid);
+    });
+  });
   } catch (e) {
+  console.error('loadPendingUsers:', e);
   container.innerHTML = '<div class="empty-state"><h4>Error loading users</h4></div>';
   }
   };
@@ -358,22 +379,25 @@ function renderDashCharts(acct) {
   };
 
   window.confirmApproval = async function() {
-  var role = document.getElementById('approvalRole').value;
-  closeModal('approvalModal');
-  showNotification('info', 'Processing', 'Approving user...');
+  await withBusy('approve', async function() {
+    var role = document.getElementById('approvalRole').value;
+    closeModal('approvalModal');
+    showNotification('info', 'Processing', 'Approving user...');
 
-  try {
-  var result = await window.approveUserWithRole(selectedUserId, role);
-  if (result.success) {
-  showNotification('success', 'User Approved! ✓', 'Role: ' + role.charAt(0).toUpperCase() + role.slice(1));
-  loadPendingUsers();
-  loadDashboard();
-  } else {
-  showNotification('error', 'Error', result.message);
-  }
-  } catch (e) {
-  showNotification('error', 'Error', 'Failed to approve user');
-  }
+    try {
+    var result = await window.approveUserWithRole(selectedUserId, role);
+    if (result.success) {
+    showNotification('success', 'User Approved!', 'Role: ' + role.charAt(0).toUpperCase() + role.slice(1));
+    loadPendingUsers();
+    loadDashboard();
+    } else {
+    showNotification('error', 'Error', result.message);
+    }
+    } catch (e) {
+    console.error('confirmApproval:', e);
+    showNotification('error', 'Error', 'Failed to approve user');
+    }
+  });
   };
 
   window.rejectUserAction = async function(userId) {
@@ -381,19 +405,22 @@ function renderDashCharts(acct) {
   var userName = user ? user.full_name : 'this user';
   if (!confirm('Are you sure you want to reject ' + userName + '?\nThis action cannot be undone.')) return;
 
-  showNotification('info', 'Processing', 'Rejecting user...');
-  try {
-  var result = await window.rejectUserAPI(userId);
-  if (result.success) {
-  showNotification('success', 'User Rejected', userName + ' has been removed');
-  loadPendingUsers();
-  loadDashboard();
-  } else {
-  showNotification('error', 'Error', result.message);
-  }
-  } catch (e) {
-  showNotification('error', 'Error', 'Failed to reject user');
-  }
+  await withBusy('reject_' + userId, async function() {
+    showNotification('info', 'Processing', 'Rejecting user...');
+    try {
+    var result = await window.rejectUserAPI(userId);
+    if (result.success) {
+    showNotification('success', 'User Rejected', userName + ' has been removed');
+    loadPendingUsers();
+    loadDashboard();
+    } else {
+    showNotification('error', 'Error', result.message);
+    }
+    } catch (e) {
+    console.error('rejectUserAction:', e);
+    showNotification('error', 'Error', 'Failed to reject user');
+    }
+  });
   };
 
   // ============================================
@@ -406,7 +433,7 @@ function renderDashCharts(acct) {
   try {
   var result = await window.getAllUsers();
   if (!result.success) {
-  container.innerHTML = '<div class="empty-state"><h4>' + result.message + '</h4></div>';
+  container.innerHTML = '<div class="empty-state"><h4>' + escapeHtml(result.message) + '</h4></div>';
   return;
   }
 
@@ -419,13 +446,13 @@ function renderDashCharts(acct) {
   result.users.forEach(function(u) {
   var status = u.is_approved ? (u.is_active ? 'active' : 'inactive') : 'pending';
   html += '<tr>';
-  html += '<td>' + u.full_name + '</td>';
-  html += '<td>' + u.email + '</td>';
-  html += '<td>' + u.role + '</td>';
+  html += '<td>' + escapeHtml(u.full_name) + '</td>';
+  html += '<td>' + escapeHtml(u.email) + '</td>';
+  html += '<td>' + escapeHtml(u.role) + '</td>';
   html += '<td><span class="status ' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
-  html += '<td>' + (u.last_login === 'Never' ? 'Never' : u.last_login.split('T')[0]) + '</td>';
+  html += '<td>' + escapeHtml(u.last_login === 'Never' ? 'Never' : u.last_login.split('T')[0]) + '</td>';
   var om = (u.otp_method || '');
-  html += '<td><select class="otp-method-select" data-email="' + (u.email || '').replace(/"/g, '&quot;') + '" onchange="updateUserOtpMethod(this)" style="padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px;min-width:120px;">';
+  html += '<td><select class="otp-method-select" data-email="' + escapeHtml(u.email || '') + '" onchange="updateUserOtpMethod(this)" style="padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px;min-width:120px;">';
   html += '<option value=""' + (om === '' ? ' selected' : '') + '>Default</option>';
   html += '<option value="email"' + (om === 'email' ? ' selected' : '') + '>Email</option>';
   html += '<option value="sms"' + (om === 'sms' ? ' selected' : '') + '>SMS</option>';
@@ -433,17 +460,28 @@ function renderDashCharts(acct) {
   html += '<option value="authenticator"' + (om === 'authenticator' ? ' selected' : '') + '>Authenticator</option>';
   html += '</select></td>';
   html += '<td class="actions">';
-  html += '<button class="btn-sm edit" onclick="showRoleModal(\'' + u.user_id + '\', \'' + u.role + '\')">Role</button>';
-  html += '<button class="btn-sm edit" onclick="showPasswordModal(\'' + u.user_id + '\')">Password</button>';
+  html += '<button class="btn-sm edit" data-action="role" data-uid="' + escapeHtml(u.user_id) + '" data-role="' + escapeHtml(u.role) + '">Role</button>';
+  html += '<button class="btn-sm edit" data-action="password" data-uid="' + escapeHtml(u.user_id) + '">Password</button>';
   if (u.is_approved) {
-  html += '<button class="btn-sm ' + (u.is_active ? 'reject' : 'approve') + '" onclick="toggleActive(\'' + u.user_id + '\')">' + (u.is_active ? 'Disable' : 'Enable') + '</button>';
+  html += '<button class="btn-sm ' + (u.is_active ? 'reject' : 'approve') + '" data-action="toggle" data-uid="' + escapeHtml(u.user_id) + '">' + (u.is_active ? 'Disable' : 'Enable') + '</button>';
   }
-  html += '<button class="btn-sm reject" onclick="confirmDeleteUser(\'' + u.user_id + '\', \'' + u.full_name + '\')">Delete</button>';
+  html += '<button class="btn-sm reject" data-action="deleteuser" data-uid="' + escapeHtml(u.user_id) + '" data-name="' + escapeHtml(u.full_name) + '">Delete</button>';
   html += '</td></tr>';
   });
   html += '</tbody></table>';
   container.innerHTML = html;
+  container.querySelectorAll('[data-action]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var action = this.getAttribute('data-action');
+      var uid = this.getAttribute('data-uid');
+      if(action==='role') showRoleModal(uid, this.getAttribute('data-role'));
+      else if(action==='password') showPasswordModal(uid);
+      else if(action==='toggle') toggleActive(uid);
+      else if(action==='deleteuser') confirmDeleteUser(uid, this.getAttribute('data-name'));
+    });
+  });
   } catch (e) {
+  console.error('loadAllUsers:', e);
   container.innerHTML = '<div class="empty-state"><h4>Error loading users</h4></div>';
   }
   };
@@ -477,14 +515,22 @@ function renderDashCharts(acct) {
   };
 
   window.confirmRoleChange = async function() {
-  var role = document.getElementById('newRole').value;
-  var result = await window.updateUserRole(selectedUserId, role);
-  closeModal('roleModal');
-  if (result.success) {
-  loadAllUsers();
-  } else {
-  (window.showNotification&&window.showNotification('error','',result.message));
-  }
+  await withBusy('roleChange', async function() {
+    var role = document.getElementById('newRole').value;
+    try {
+    var result = await window.updateUserRole(selectedUserId, role);
+    closeModal('roleModal');
+    if (result.success) {
+    loadAllUsers();
+    } else {
+    (window.showNotification&&window.showNotification('error','',result.message));
+    }
+    } catch (e) {
+    console.error('confirmRoleChange:', e);
+    closeModal('roleModal');
+    (window.showNotification&&window.showNotification('error','','Failed to change role'));
+    }
+  });
   };
 
   window.confirmPasswordReset = async function() {
@@ -493,22 +539,37 @@ function renderDashCharts(acct) {
   if(window.showNotification)window.showNotification('error','','Password must be at least 6 characters');
   return;
   }
-  var result = await window.resetUserPassword(selectedUserId, password);
-  closeModal('passwordModal');
-  if (result.success) {
-  if(window.showNotification)window.showNotification('success','','Password reset successfully');
-  } else {
-  (window.showNotification&&window.showNotification('error','',result.message));
-  }
+  await withBusy('passwordReset', async function() {
+    try {
+    var result = await window.resetUserPassword(selectedUserId, password);
+    closeModal('passwordModal');
+    if (result.success) {
+    if(window.showNotification)window.showNotification('success','','Password reset successfully');
+    } else {
+    (window.showNotification&&window.showNotification('error','',result.message));
+    }
+    } catch (e) {
+    console.error('confirmPasswordReset:', e);
+    closeModal('passwordModal');
+    (window.showNotification&&window.showNotification('error','','Failed to reset password'));
+    }
+  });
   };
 
   window.toggleActive = async function(userId) {
-  var result = await window.toggleUserActive(userId);
-  if (result.success) {
-  loadAllUsers();
-  } else {
-  (window.showNotification&&window.showNotification('error','',result.message));
-  }
+  await withBusy('toggle_' + userId, async function() {
+    try {
+    var result = await window.toggleUserActive(userId);
+    if (result.success) {
+    loadAllUsers();
+    } else {
+    (window.showNotification&&window.showNotification('error','',result.message));
+    }
+    } catch (e) {
+    console.error('toggleActive:', e);
+    (window.showNotification&&window.showNotification('error','','Failed to toggle user status'));
+    }
+  });
   };
 
   window.confirmDeleteUser = function(userId, userName) {
@@ -518,18 +579,21 @@ function renderDashCharts(acct) {
   };
 
   window.deleteUserPermanently = async function(userId) {
-  try {
-  var result = await window.deleteUser(userId);
-  if (result.success) {
-  showNotification('success', 'User Deleted', 'User has been permanently deleted');
-  loadAllUsers();
-  loadDashboard();
-  } else {
-  (window.showNotification&&window.showNotification('error','',result.message));
-  }
-  } catch (e) {
-  (window.showNotification?window.showNotification('error','','Error deleting user: ' + e.message):null);
-  }
+  await withBusy('deleteUser_' + userId, async function() {
+    try {
+    var result = await window.deleteUser(userId);
+    if (result.success) {
+    showNotification('success', 'User Deleted', 'User has been permanently deleted');
+    loadAllUsers();
+    loadDashboard();
+    } else {
+    (window.showNotification&&window.showNotification('error','',result.message));
+    }
+    } catch (e) {
+    console.error('deleteUserPermanently:', e);
+    (window.showNotification?window.showNotification('error','','Error deleting user: ' + e.message):null);
+    }
+  });
   };
 
   // ============================================
@@ -564,29 +628,37 @@ function renderDashCharts(acct) {
   result.data.forEach(function(c) {
   var status = c.is_deleted ? 'deleted' : 'active';
   html += '<tr>';
-  html += '<td>' + c['Client Code'] + '</td>';
-  html += '<td>' + c['Client Name'] + '</td>';
-  html += '<td>' + c['Company'] + '</td>';
-  html += '<td>' + c['Phone'] + '</td>';
-  html += '<td>' + (c['Country'] || '-') + '</td>';
+  html += '<td>' + escapeHtml(c['Client Code']) + '</td>';
+  html += '<td>' + escapeHtml(c['Client Name']) + '</td>';
+  html += '<td>' + escapeHtml(c['Company']) + '</td>';
+  html += '<td>' + escapeHtml(c['Phone']) + '</td>';
+  html += '<td>' + escapeHtml(c['Country'] || '-') + '</td>';
   html += '<td><span class="status ' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
   html += '<td class="actions">';
   if (c.is_deleted) {
-  html += '<button class="btn-sm restore" onclick="restoreClient(\'' + c['Client Code'] + '\')">Restore</button>';
+  html += '<button class="btn-sm restore" data-action="restoreclient" data-code="' + escapeHtml(c['Client Code']) + '">Restore</button>';
   } else {
-  html += '<button class="btn-sm delete" onclick="deleteClient(\'' + c['Client Code'] + '\')">Delete</button>';
+  html += '<button class="btn-sm delete" data-action="deleteclient" data-code="' + escapeHtml(c['Client Code']) + '">Delete</button>';
   }
   html += '</td></tr>';
   });
   html += '</tbody></table>';
 
   html += '<div class="pagination">';
-  html += '<button ' + (result.page <= 1 ? 'disabled' : '') + ' onclick="loadClients(' + (result.page - 1) + ')">Previous</button>';
+  html += '<button ' + (result.page <= 1 ? 'disabled' : '') + ' data-action="pageclients" data-page="' + (result.page - 1) + '">Previous</button>';
   html += '<span class="page-info">Page ' + result.page + ' of ' + result.total_pages + ' (' + result.total + ' items)</span>';
-  html += '<button ' + (result.page >= result.total_pages ? 'disabled' : '') + ' onclick="loadClients(' + (result.page + 1) + ')">Next</button>';
+  html += '<button ' + (result.page >= result.total_pages ? 'disabled' : '') + ' data-action="pageclients" data-page="' + (result.page + 1) + '">Next</button>';
   html += '</div>';
 
   container.innerHTML = html;
+  container.querySelectorAll('[data-action]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var action = this.getAttribute('data-action');
+      if(action==='restoreclient') restoreClient(this.getAttribute('data-code'));
+      else if(action==='deleteclient') deleteClient(this.getAttribute('data-code'));
+      else if(action==='pageclients') loadClients(parseInt(this.getAttribute('data-page')));
+    });
+  });
   }
 
   window.searchClients = function() {
@@ -596,21 +668,35 @@ function renderDashCharts(acct) {
 
   window.deleteClient = async function(code) {
   if (!confirm('Delete this client?')) return;
-  var result = await window.softDeleteClient(code);
-  if (result.success) {
-  loadClients(clientsPage);
-  } else {
-  (window.showNotification&&window.showNotification('error','',result.message));
-  }
+  await withBusy('deleteClient_' + code, async function() {
+    try {
+    var result = await window.softDeleteClient(code);
+    if (result.success) {
+    loadClients(clientsPage);
+    } else {
+    (window.showNotification&&window.showNotification('error','',result.message));
+    }
+    } catch (e) {
+    console.error('deleteClient:', e);
+    (window.showNotification&&window.showNotification('error','','Failed to delete client'));
+    }
+  });
   };
 
   window.restoreClient = async function(code) {
-  var result = _restoreClientAPI ? await _restoreClientAPI(code) : { success: false, message: 'Bridge not ready' };
-  if (result.success) {
-  loadClients(clientsPage);
-  } else {
-  (window.showNotification&&window.showNotification('error','',result.message));
-  }
+  await withBusy('restoreClient_' + code, async function() {
+    try {
+    var result = _restoreClientAPI ? await _restoreClientAPI(code) : { success: false, message: 'Bridge not ready' };
+    if (result.success) {
+    loadClients(clientsPage);
+    } else {
+    (window.showNotification&&window.showNotification('error','',result.message));
+    }
+    } catch (e) {
+    console.error('restoreClient:', e);
+    (window.showNotification&&window.showNotification('error','','Failed to restore client'));
+    }
+  });
   };
 
   window.exportClients = async function() {
@@ -648,29 +734,37 @@ function renderDashCharts(acct) {
   result.data.forEach(function(q) {
   var status = q.is_deleted ? 'deleted' : 'active';
   html += '<tr>';
-  html += '<td>' + q['Quotation#'] + '</td>';
-  html += '<td>' + q['Date'] + '</td>';
-  html += '<td>' + q['Client Name'] + '</td>';
-  html += '<td>' + (q['Model'] || '-') + '</td>';
-  html += '<td>' + (q['Agreed Price'] ? q['Agreed Price'].toLocaleString() : '-') + '</td>';
+  html += '<td>' + escapeHtml(q['Quotation#']) + '</td>';
+  html += '<td>' + escapeHtml(q['Date']) + '</td>';
+  html += '<td>' + escapeHtml(q['Client Name']) + '</td>';
+  html += '<td>' + escapeHtml(q['Model'] || '-') + '</td>';
+  html += '<td>' + (q['Agreed Price'] ? escapeHtml(q['Agreed Price'].toLocaleString()) : '-') + '</td>';
   html += '<td><span class="status ' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
   html += '<td class="actions">';
   if (q.is_deleted) {
-  html += '<button class="btn-sm restore" onclick="restoreQuotation(' + q['Quotation#'] + ')">Restore</button>';
+  html += '<button class="btn-sm restore" data-action="restorequot" data-num="' + escapeHtml(q['Quotation#']) + '">Restore</button>';
   } else {
-  html += '<button class="btn-sm delete" onclick="deleteQuotation(' + q['Quotation#'] + ')">Delete</button>';
+  html += '<button class="btn-sm delete" data-action="deletequot" data-num="' + escapeHtml(q['Quotation#']) + '">Delete</button>';
   }
   html += '</td></tr>';
   });
   html += '</tbody></table>';
 
   html += '<div class="pagination">';
-  html += '<button ' + (result.page <= 1 ? 'disabled' : '') + ' onclick="loadQuotations(' + (result.page - 1) + ')">Previous</button>';
+  html += '<button ' + (result.page <= 1 ? 'disabled' : '') + ' data-action="pagequots" data-page="' + (result.page - 1) + '">Previous</button>';
   html += '<span class="page-info">Page ' + result.page + ' of ' + result.total_pages + ' (' + result.total + ' items)</span>';
-  html += '<button ' + (result.page >= result.total_pages ? 'disabled' : '') + ' onclick="loadQuotations(' + (result.page + 1) + ')">Next</button>';
+  html += '<button ' + (result.page >= result.total_pages ? 'disabled' : '') + ' data-action="pagequots" data-page="' + (result.page + 1) + '">Next</button>';
   html += '</div>';
 
   container.innerHTML = html;
+  container.querySelectorAll('[data-action]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var action = this.getAttribute('data-action');
+      if(action==='restorequot') restoreQuotation(parseInt(this.getAttribute('data-num')));
+      else if(action==='deletequot') deleteQuotation(parseInt(this.getAttribute('data-num')));
+      else if(action==='pagequots') loadQuotations(parseInt(this.getAttribute('data-page')));
+    });
+  });
   }
 
   window.searchQuotations = function() {
@@ -680,21 +774,35 @@ function renderDashCharts(acct) {
 
   window.deleteQuotation = async function(num) {
   if (!confirm('Delete this quotation?')) return;
-  var result = await window.softDeleteQuotation(num);
-  if (result.success) {
-  loadQuotations(quotationsPage);
-  } else {
-  (window.showNotification&&window.showNotification('error','',result.message));
-  }
+  await withBusy('deleteQuot_' + num, async function() {
+    try {
+    var result = await window.softDeleteQuotation(num);
+    if (result.success) {
+    loadQuotations(quotationsPage);
+    } else {
+    (window.showNotification&&window.showNotification('error','',result.message));
+    }
+    } catch (e) {
+    console.error('deleteQuotation:', e);
+    (window.showNotification&&window.showNotification('error','','Failed to delete quotation'));
+    }
+  });
   };
 
   window.restoreQuotation = async function(num) {
-  var result = _restoreQuotationAPI ? await _restoreQuotationAPI(num) : { success: false, message: 'Bridge not ready' };
-  if (result.success) {
-  loadQuotations(quotationsPage);
-  } else {
-  (window.showNotification&&window.showNotification('error','',result.message));
-  }
+  await withBusy('restoreQuot_' + num, async function() {
+    try {
+    var result = _restoreQuotationAPI ? await _restoreQuotationAPI(num) : { success: false, message: 'Bridge not ready' };
+    if (result.success) {
+    loadQuotations(quotationsPage);
+    } else {
+    (window.showNotification&&window.showNotification('error','',result.message));
+    }
+    } catch (e) {
+    console.error('restoreQuotation:', e);
+    (window.showNotification&&window.showNotification('error','','Failed to restore quotation'));
+    }
+  });
   };
 
   window.exportQuotations = async function() {
@@ -741,32 +849,44 @@ function renderDashCharts(acct) {
   return payments.map(function(p) {
   var d = (p.date || '').toString().split('T')[0] || '-';
   var a = p.amount != null && p.amount !== '' ? formatPrice(p.amount) : (p.value != null ? p.value + '%' : '-');
-  return d + ': ' + a;
+  return escapeHtml(d + ': ' + a);
   }).join(' | ');
   }
+  var lifecycleBg = {'draft':'#e3f2fd','negotiation':'#fff3e0','signed':'#e8f5e9','in_progress':'#e1f5fe','delivered':'#f3e5f5','closed':'#e0e0e0','cancelled':'#ffebee'};
+  var lifecycleColor = {'draft':'#1565c0','negotiation':'#ef6c00','signed':'#2e7d32','in_progress':'#0277bd','delivered':'#7b1fa2','closed':'#616161','cancelled':'#c62828'};
   var html = '<table class="data-table"><thead><tr><th>Contract #</th><th>Quotation #</th><th>Client</th><th>Total Price</th><th>#</th><th>Payment schedule (date: amount)</th><th>Delivery Date</th><th>Created</th><th>Lifecycle</th><th>Actions</th></tr></thead><tbody>';
   result.data.forEach(function(c) {
+  var ls = c.lifecycle_status || 'draft';
   html += '<tr>';
-  html += '<td>' + (c.contract_number || '-') + '</td>';
-  html += '<td>' + (c.quotation_number != null ? c.quotation_number : '-') + '</td>';
-  html += '<td>' + (c.client_name || '-') + '</td>';
-  html += '<td>' + formatPrice(c.total_price) + '</td>';
-  html += '<td>' + (c.num_payments != null ? c.num_payments : '-') + '</td>';
+  html += '<td>' + escapeHtml(c.contract_number || '-') + '</td>';
+  html += '<td>' + escapeHtml(c.quotation_number != null ? c.quotation_number : '-') + '</td>';
+  html += '<td>' + escapeHtml(c.client_name || '-') + '</td>';
+  html += '<td>' + escapeHtml(formatPrice(c.total_price)) + '</td>';
+  html += '<td>' + escapeHtml(c.num_payments != null ? c.num_payments : '-') + '</td>';
   html += '<td style="max-width:320px;font-size:12px;">' + (c.payments ? formatPaymentsSchedule(c.payments) : '-') + '</td>';
-  html += '<td>' + (c.delivery_date || '-') + '</td>';
-  html += '<td>' + (c.created_at ? String(c.created_at).split('T')[0] : '-') + '</td></td><td><span style="padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;background:' + ({'draft':'#e3f2fd','negotiation':'#fff3e0','signed':'#e8f5e9','in_progress':'#e1f5fe','delivered':'#f3e5f5','closed':'#e0e0e0','cancelled':'#ffebee'}[c.lifecycle_status||'draft']||'#e3f2fd') + ';color:' + ({'draft':'#1565c0','negotiation':'#ef6c00','signed':'#2e7d32','in_progress':'#0277bd','delivered':'#7b1fa2','closed':'#616161','cancelled':'#c62828'}[c.lifecycle_status||'draft']||'#1565c0') + '">' + (c.lifecycle_status||'draft') + '</span>';
-  html += '<td class="actions"><button style="padding:4px 10px;border:none;border-radius:4px;cursor:pointer;background:#667eea;color:#fff;font-size:12px;margin-right:4px;" onclick="showContractTimeline(\'' + c.contract_number + '\')">Timeline</button><button class="btn-sm delete" onclick="deleteContractRow(' + (c.quotation_number != null ? c.quotation_number : '') + ')">Delete</button></td>';
+  html += '<td>' + escapeHtml(c.delivery_date || '-') + '</td>';
+  html += '<td>' + escapeHtml(c.created_at ? String(c.created_at).split('T')[0] : '-') + '</td>';
+  html += '<td><span style="padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;background:' + (lifecycleBg[ls]||'#e3f2fd') + ';color:' + (lifecycleColor[ls]||'#1565c0') + '">' + escapeHtml(ls) + '</span></td>';
+  html += '<td class="actions"><button style="padding:4px 10px;border:none;border-radius:4px;cursor:pointer;background:#667eea;color:#fff;font-size:12px;margin-right:4px;" data-action="timeline" data-contract="' + escapeHtml(c.contract_number) + '">Timeline</button><button class="btn-sm delete" data-action="deletecontract" data-quotnum="' + escapeHtml(c.quotation_number != null ? c.quotation_number : '') + '">Delete</button></td>';
   html += '</tr>';
   });
   html += '</tbody></table>';
   html += '<div class="pagination">';
   var totalPages = result.total_pages != null ? result.total_pages : 1;
   var totalCount = result.total != null ? result.total : 0;
-  html += '<button ' + (result.page <= 1 ? 'disabled' : '') + ' onclick="loadContracts(' + (result.page - 1) + ')">Previous</button>';
+  html += '<button ' + (result.page <= 1 ? 'disabled' : '') + ' data-action="pagecontracts" data-page="' + (result.page - 1) + '">Previous</button>';
   html += '<span class="page-info">Page ' + result.page + ' of ' + totalPages + ' (' + totalCount + ' items)</span>';
-  html += '<button ' + (result.page >= totalPages ? 'disabled' : '') + ' onclick="loadContracts(' + (result.page + 1) + ')">Next</button>';
+  html += '<button ' + (result.page >= totalPages ? 'disabled' : '') + ' data-action="pagecontracts" data-page="' + (result.page + 1) + '">Next</button>';
   html += '</div>';
   container.innerHTML = html;
+  container.querySelectorAll('[data-action]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var action = this.getAttribute('data-action');
+      if(action==='timeline') showContractTimeline(this.getAttribute('data-contract'));
+      else if(action==='deletecontract') deleteContractRow(parseInt(this.getAttribute('data-quotnum')));
+      else if(action==='pagecontracts') loadContracts(parseInt(this.getAttribute('data-page')));
+    });
+  });
   }
   window.searchContracts = function() {
   clearTimeout(searchTimeout);
@@ -780,18 +900,21 @@ function renderDashCharts(acct) {
 
   window.deleteContractRow = async function(quotationNumber) {
   if (!confirm('حذف هذا العقد بالكامل من الجدول؟ لا يمكن التراجع.')) return;
-  try {
-  var result = await window.deleteContractAdmin(quotationNumber);
-  if (result && result.success) {
-  if (window.showNotification) showNotification('success', 'تم', result.message || 'تم حذف العقد');
-  loadContracts(contractsPage);
-  if (window.loadDashboard) loadDashboard();
-  } else {
-  if (window.showNotification) showNotification('error', 'خطأ', result ? (result.message || result.message_en || '') : 'فشل الحذف');
-  }
-  } catch (e) {
-  if (window.showNotification) showNotification('error', 'خطأ', e.message || 'فشل الحذف');
-  }
+  await withBusy('deleteContract_' + quotationNumber, async function() {
+    try {
+    var result = await window.deleteContractAdmin(quotationNumber);
+    if (result && result.success) {
+    if (window.showNotification) showNotification('success', 'تم', result.message || 'تم حذف العقد');
+    loadContracts(contractsPage);
+    if (window.loadDashboard) loadDashboard();
+    } else {
+    if (window.showNotification) showNotification('error', 'خطأ', result ? (result.message || result.message_en || '') : 'فشل الحذف');
+    }
+    } catch (e) {
+    console.error('deleteContractRow:', e);
+    if (window.showNotification) showNotification('error', 'خطأ', e.message || 'فشل الحذف');
+    }
+  });
   };
 
   // ============================================
@@ -805,7 +928,7 @@ function renderDashCharts(acct) {
   try {
   var result = await window.getAuditLogs(50, (auditPage - 1) * 50, null);
   if (!result.success) {
-  container.innerHTML = '<div class="empty-state"><h4>' + result.message + '</h4></div>';
+  container.innerHTML = '<div class="empty-state"><h4>' + escapeHtml(result.message) + '</h4></div>';
   return;
   }
 
@@ -817,17 +940,18 @@ function renderDashCharts(acct) {
   var html = '<table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Table</th><th>Record ID</th></tr></thead><tbody>';
   result.logs.forEach(function(l) {
   html += '<tr>';
-  html += '<td>' + l.timestamp.replace('T', ' ').substring(0, 19) + '</td>';
-  html += '<td>' + l.user_email + '</td>';
-  html += '<td>' + l.action + '</td>';
-  html += '<td>' + l.table_name + '</td>';
-  html += '<td>' + (l.record_id || '-') + '</td>';
+  html += '<td>' + escapeHtml(l.timestamp.replace('T', ' ').substring(0, 19)) + '</td>';
+  html += '<td>' + escapeHtml(l.user_email) + '</td>';
+  html += '<td>' + escapeHtml(l.action) + '</td>';
+  html += '<td>' + escapeHtml(l.table_name) + '</td>';
+  html += '<td>' + escapeHtml(l.record_id || '-') + '</td>';
   html += '</tr>';
   });
   html += '</tbody></table>';
 
   container.innerHTML = html;
   } catch (e) {
+  console.error('loadAuditLogs:', e);
   container.innerHTML = '<div class="empty-state"><h4>Error loading audit logs</h4></div>';
   }
   };
@@ -849,7 +973,7 @@ function renderDashCharts(acct) {
   var result = await window.getAllSettings();
   if (!result || !result.success) {
   var errorMsg = result ? result.message : 'Error loading settings';
-  container.innerHTML = '<div class="empty-state"><h4>' + errorMsg + '</h4></div>';
+  container.innerHTML = '<div class="empty-state"><h4>' + escapeHtml(errorMsg) + '</h4></div>';
   return;
   }
 
@@ -923,42 +1047,42 @@ function renderDashCharts(acct) {
   html += '<div class="form-group">';
   html += '<label>Company Name (Arabic)</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_company_name_ar" value="' + (settings.company_name_ar || 'شركة حلوان بلاست ذ.م.م') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
+  html += '<input type="text" id="setting_company_name_ar" value="' + escapeHtml(settings.company_name_ar || 'شركة حلوان بلاست ذ.م.م') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
   html += '<button class="action-btn" onclick="saveSettingText(\'company_name_ar\')">Save</button>';
   html += '</div></div>';
 
   html += '<div class="form-group">';
   html += '<label>Company Name (English)</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_company_name_en" value="' + (settings.company_name_en || 'Helwan Plast LLC') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
+  html += '<input type="text" id="setting_company_name_en" value="' + escapeHtml(settings.company_name_en || 'Helwan Plast LLC') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
   html += '<button class="action-btn" onclick="saveSettingText(\'company_name_en\')">Save</button>';
   html += '</div></div>';
 
   html += '<div class="form-group">';
   html += '<label>Company Address (Arabic)</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_company_address_ar" value="' + (settings.company_address_ar || 'المنطقة الصناعية الثانية - قطعة ٢٠') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
+  html += '<input type="text" id="setting_company_address_ar" value="' + escapeHtml(settings.company_address_ar || 'المنطقة الصناعية الثانية - قطعة ٢٠') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
   html += '<button class="action-btn" onclick="saveSettingText(\'company_address_ar\')">Save</button>';
   html += '</div></div>';
 
   html += '<div class="form-group">';
   html += '<label>Company Address (English)</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_company_address_en" value="' + (settings.company_address_en || 'Second Industrial Zone – Plot 20') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
+  html += '<input type="text" id="setting_company_address_en" value="' + escapeHtml(settings.company_address_en || 'Second Industrial Zone – Plot 20') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
   html += '<button class="action-btn" onclick="saveSettingText(\'company_address_en\')">Save</button>';
   html += '</div></div>';
 
   html += '<div class="form-group">';
   html += '<label>Company Email</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="email" id="setting_company_email" value="' + (settings.company_email || 'sales@helwanplast.com') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
+  html += '<input type="email" id="setting_company_email" value="' + escapeHtml(settings.company_email || 'sales@helwanplast.com') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
   html += '<button class="action-btn" onclick="saveSettingText(\'company_email\')">Save</button>';
   html += '</div></div>';
 
   html += '<div class="form-group" style="margin-bottom:0;">';
   html += '<label>Company Website</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_company_website" value="' + (settings.company_website || 'www.helwanplast.com') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
+  html += '<input type="text" id="setting_company_website" value="' + escapeHtml(settings.company_website || 'www.helwanplast.com') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
   html += '<button class="action-btn" onclick="saveSettingText(\'company_website\')">Save</button>';
   html += '</div></div>';
 
@@ -971,14 +1095,14 @@ function renderDashCharts(acct) {
   html += '<div class="form-group">';
   html += '<label>Quotation Location (Arabic)</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_quotation_location_ar" value="' + (settings.quotation_location_ar || 'القاهرة') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
+  html += '<input type="text" id="setting_quotation_location_ar" value="' + escapeHtml(settings.quotation_location_ar || 'القاهرة') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
   html += '<button class="action-btn" onclick="saveSettingText(\'quotation_location_ar\')">Save</button>';
   html += '</div></div>';
 
   html += '<div class="form-group">';
   html += '<label>Quotation Location (English)</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_quotation_location_en" value="' + (settings.quotation_location_en || 'Cairo') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
+  html += '<input type="text" id="setting_quotation_location_en" value="' + escapeHtml(settings.quotation_location_en || 'Cairo') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
   html += '<button class="action-btn" onclick="saveSettingText(\'quotation_location_en\')">Save</button>';
   html += '</div></div>';
 
@@ -1032,42 +1156,42 @@ function renderDashCharts(acct) {
   html += '<div class="form-group">';
   html += '<label>Country of Origin (Arabic)</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_country_origin_ar" value="' + (settings.country_origin_ar || 'الصين') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
+  html += '<input type="text" id="setting_country_origin_ar" value="' + escapeHtml(settings.country_origin_ar || 'الصين') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
   html += '<button class="action-btn" onclick="saveSettingText(\'country_origin_ar\')">Save</button>';
   html += '</div></div>';
 
   html += '<div class="form-group">';
   html += '<label>Country of Origin (English)</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_country_origin_en" value="' + (settings.country_origin_en || 'China') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
+  html += '<input type="text" id="setting_country_origin_en" value="' + escapeHtml(settings.country_origin_en || 'China') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
   html += '<button class="action-btn" onclick="saveSettingText(\'country_origin_en\')">Save</button>';
   html += '</div></div>';
 
   html += '<div class="form-group">';
   html += '<label>Anilox Type (Arabic)</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_anilox_type_ar" value="' + (settings.anilox_type_ar || 'انيلوكس سيراميك') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
+  html += '<input type="text" id="setting_anilox_type_ar" value="' + escapeHtml(settings.anilox_type_ar || 'انيلوكس سيراميك') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;" dir="rtl">';
   html += '<button class="action-btn" onclick="saveSettingText(\'anilox_type_ar\')">Save</button>';
   html += '</div></div>';
 
   html += '<div class="form-group">';
   html += '<label>Anilox Type (English)</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_anilox_type_en" value="' + (settings.anilox_type_en || 'Ceramic anilox') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
+  html += '<input type="text" id="setting_anilox_type_en" value="' + escapeHtml(settings.anilox_type_en || 'Ceramic anilox') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
   html += '<button class="action-btn" onclick="saveSettingText(\'anilox_type_en\')">Save</button>';
   html += '</div></div>';
 
   html += '<div class="form-group">';
   html += '<label>Brake Power - Single Winder</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_single_winder_brake_power" value="' + (settings.single_winder_brake_power || '1 pc (10kg) + 1 pc (5kg)') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
+  html += '<input type="text" id="setting_single_winder_brake_power" value="' + escapeHtml(settings.single_winder_brake_power || '1 pc (10kg) + 1 pc (5kg)') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
   html += '<button class="action-btn" onclick="saveSettingText(\'single_winder_brake_power\')">Save</button>';
   html += '</div></div>';
 
   html += '<div class="form-group" style="margin-bottom:0;">';
   html += '<label>Brake Power - Double Winder</label>';
   html += '<div style="display:flex;gap:10px;align-items:center;">';
-  html += '<input type="text" id="setting_double_winder_brake_power" value="' + (settings.double_winder_brake_power || '2 pc (10kg) + 2 pc (5kg)') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
+  html += '<input type="text" id="setting_double_winder_brake_power" value="' + escapeHtml(settings.double_winder_brake_power || '2 pc (10kg) + 2 pc (5kg)') + '" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:6px;">';
   html += '<button class="action-btn" onclick="saveSettingText(\'double_winder_brake_power\')">Save</button>';
   html += '</div></div>';
 
@@ -1086,7 +1210,7 @@ html += '</div>'; // End Machine Defaults
   if (settings.technical_specs) {
   savedTechSpecs = JSON.parse(settings.technical_specs);
   }
-  } catch(e) { savedTechSpecs = {}; }
+  } catch(e) { console.error('parse technical_specs:', e); savedTechSpecs = {}; }
 
   html += '<div style="background:#fff;padding:15px;border-radius:8px;overflow-x:auto;">';
   html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
@@ -1131,8 +1255,8 @@ html += '</div>'; // End Machine Defaults
 
   html += '<tr>';
   html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;font-weight:bold;">' + spec.num + '</td>';
-  html += '<td style="padding:8px;border:1px solid #ddd;"><input type="text" id="tech_' + spec.num + '_label_ar" value="' + labelAr + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;" dir="rtl"></td>';
-  html += '<td style="padding:8px;border:1px solid #ddd;"><input type="text" id="tech_' + spec.num + '_label_en" value="' + labelEn + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;"></td>';
+  html += '<td style="padding:8px;border:1px solid #ddd;"><input type="text" id="tech_' + spec.num + '_label_ar" value="' + escapeHtml(labelAr) + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;" dir="rtl"></td>';
+  html += '<td style="padding:8px;border:1px solid #ddd;"><input type="text" id="tech_' + spec.num + '_label_en" value="' + escapeHtml(labelEn) + '" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;"></td>';
   html += '<td style="padding:8px;border:1px solid #ddd;">';
   html += '<select id="tech_' + spec.num + '_source" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;">';
   html += '<option value="field"' + (valueSource === 'field' ? ' selected' : '') + '>From Quotation Field</option>';
@@ -1358,7 +1482,7 @@ window.showContractTimeline = async function(contractNum) {
     var current = res.current_status || 'draft';
     var transitions = res.valid_transitions || [];
     var history = res.data || [];
-    var html = '<div style="padding:20px;max-width:600px;"><h3>Contract ' + contractNum + ' - Lifecycle</h3>';
+    var html = '<div style="padding:20px;max-width:600px;"><h3>Contract ' + escapeHtml(contractNum) + ' - Lifecycle</h3>';
     // Stepper
     html += '<div style="display:flex;gap:4px;margin:16px 0;flex-wrap:wrap;">';
     var stateColors = {draft:'#1565c0',negotiation:'#ef6c00',signed:'#2e7d32',in_progress:'#0277bd',delivered:'#7b1fa2',closed:'#616161',cancelled:'#c62828'};
@@ -1366,15 +1490,15 @@ window.showContractTimeline = async function(contractNum) {
       var isCurrent = (s === current);
       var bg = isCurrent ? (stateColors[s]||'#667eea') : '#e0e0e0';
       var color = isCurrent ? '#fff' : '#666';
-      html += '<span style="padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;background:' + bg + ';color:' + color + ';">' + s + '</span>';
+      html += '<span style="padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;background:' + bg + ';color:' + color + ';">' + escapeHtml(s) + '</span>';
     });
     html += '</div>';
     // Timeline
     if (history.length > 0) {
       html += '<div style="margin:16px 0;border-left:3px solid #667eea;padding-left:16px;">';
       history.forEach(function(h) {
-        html += '<div style="margin-bottom:12px;"><strong style="color:#667eea;">' + h.from + ' → ' + h.to + '</strong><br><span style="font-size:12px;color:#666;">' + (h.date||'').split('T')[0] + ' by ' + (h.user||'') + '</span>';
-        if (h.notes) html += '<br><span style="font-size:12px;color:#999;">' + h.notes + '</span>';
+        html += '<div style="margin-bottom:12px;"><strong style="color:#667eea;">' + escapeHtml(h.from) + ' → ' + escapeHtml(h.to) + '</strong><br><span style="font-size:12px;color:#666;">' + escapeHtml((h.date||'').split('T')[0]) + ' by ' + escapeHtml(h.user||'') + '</span>';
+        if (h.notes) html += '<br><span style="font-size:12px;color:#999;">' + escapeHtml(h.notes) + '</span>';
         html += '</div>';
       });
       html += '</div>';
@@ -1383,7 +1507,7 @@ window.showContractTimeline = async function(contractNum) {
     if (transitions.length > 0) {
       html += '<div style="margin-top:16px;"><strong>Change status to:</strong><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">';
       transitions.forEach(function(t) {
-        html += '<button style="padding:6px 14px;border:none;border-radius:6px;cursor:pointer;background:' + (stateColors[t]||'#667eea') + ';color:#fff;font-size:12px;" onclick="changeContractStatus(\'' + contractNum + '\',\'' + t + '\')">' + t + '</button>';
+        html += '<button style="padding:6px 14px;border:none;border-radius:6px;cursor:pointer;background:' + (stateColors[t]||'#667eea') + ';color:#fff;font-size:12px;" data-action="changestatus" data-contract="' + escapeHtml(contractNum) + '" data-status="' + escapeHtml(t) + '">' + escapeHtml(t) + '</button>';
       });
       html += '</div></div>';
     }
@@ -1395,9 +1519,14 @@ window.showContractTimeline = async function(contractNum) {
     var modal = document.createElement('div');
     modal.style.cssText = 'background:#fff;border-radius:12px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);';
     modal.innerHTML = html;
+    modal.querySelectorAll('[data-action="changestatus"]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        changeContractStatus(this.getAttribute('data-contract'), this.getAttribute('data-status'));
+      });
+    });
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
-  } catch(e) { alert('Error: ' + e); }
+  } catch(e) { console.error('showContractTimeline:', e); alert('Error: ' + e); }
 };
 window.changeContractStatus = async function(contractNum, newStatus) {
   var notes = prompt('Notes for this change (optional):') || '';

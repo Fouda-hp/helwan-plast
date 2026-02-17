@@ -1343,12 +1343,7 @@ container:
           };
 
           function completeLogin(result) {
-            // Store session in localStorage to persist across browser restarts
-            localStorage.setItem('auth_token', result.token);
-            localStorage.setItem('user_email', result.user.email);
-            localStorage.setItem('user_name', result.user.full_name);
-            localStorage.setItem('user_role', result.user.role);
-            // Also store in sessionStorage for immediate availability
+            // Store session in sessionStorage only (cleared on browser close for security)
             sessionStorage.setItem('auth_token', result.token);
             sessionStorage.setItem('user_email', result.user.email);
             sessionStorage.setItem('user_name', result.user.full_name);

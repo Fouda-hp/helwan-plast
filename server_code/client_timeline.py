@@ -30,6 +30,22 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Helper: البحث في العقود مع استبعاد المحذوفة (soft delete)
+_contracts_has_is_deleted = None
+
+def _contracts_search_active(**kwargs):
+    """البحث في جدول العقود مع استبعاد is_deleted=True تلقائياً."""
+    global _contracts_has_is_deleted
+    if _contracts_has_is_deleted is None:
+        try:
+            cols = [col['name'] for col in app_tables.contracts.list_columns()]
+            _contracts_has_is_deleted = 'is_deleted' in cols
+        except Exception:
+            _contracts_has_is_deleted = False
+    if _contracts_has_is_deleted:
+        kwargs['is_deleted'] = False
+    return app_tables.contracts.search(**kwargs)
+
 
 def _safe_isoformat(val):
     """Convert date/datetime to ISO string safely."""
@@ -149,7 +165,7 @@ def get_client_detail(client_code, token_or_email=None):
         valid_qns = [qn for qn in q_numbers if qn is not None]
         if valid_qns:
             try:
-                all_contracts = list(app_tables.contracts.search(quotation_number=q.any_of(*valid_qns)))
+                all_contracts = list(_contracts_search_active(quotation_number=q.any_of(*valid_qns)))
             except Exception:
                 all_contracts = []
             contracts_by_qn = {c['quotation_number']: c for c in all_contracts}
@@ -231,7 +247,7 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
             valid_qns = [qn for qn in q_numbers if qn is not None]
             if valid_qns:
                 try:
-                    all_contracts = list(app_tables.contracts.search(quotation_number=q.any_of(*valid_qns)))
+                    all_contracts = list(_contracts_search_active(quotation_number=q.any_of(*valid_qns)))
                 except Exception:
                     all_contracts = []
                 contracts_by_qn = {c['quotation_number']: c for c in all_contracts}

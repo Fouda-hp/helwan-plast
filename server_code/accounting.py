@@ -53,6 +53,24 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Helper: البحث في العقود مع استبعاد المحذوفة (soft delete)
+# ---------------------------------------------------------------------------
+_contracts_has_is_deleted = None  # cached column check
+
+def _contracts_search_active(**kwargs):
+    """البحث في جدول العقود مع استبعاد is_deleted=True تلقائياً."""
+    global _contracts_has_is_deleted
+    if _contracts_has_is_deleted is None:
+        try:
+            cols = [col['name'] for col in app_tables.contracts.list_columns()]
+            _contracts_has_is_deleted = 'is_deleted' in cols
+        except Exception:
+            _contracts_has_is_deleted = False
+    if _contracts_has_is_deleted:
+        kwargs['is_deleted'] = False
+    return app_tables.contracts.search(**kwargs)
+
+# ---------------------------------------------------------------------------
 # Financial report cache (keyed by report_name + date params + user)
 # ---------------------------------------------------------------------------
 import time as _report_time
@@ -5529,9 +5547,9 @@ def migrate_old_contracts(supplier_id, currency='USD', dry_run=False, token_or_e
         if not supplier:
             return {'success': False, 'message': f'Supplier {supplier_id} not found'}
 
-        # Find all contracts without a purchase invoice
+        # Find all active contracts without a purchase invoice
         contracts = []
-        for c in app_tables.contracts.search():
+        for c in _contracts_search_active():
             pi_id = c.get('purchase_invoice_id')
             if pi_id and _safe_str(pi_id):
                 continue  # Already has a purchase invoice
@@ -6436,9 +6454,9 @@ def get_customer_summary(token_or_email=None):
         return error
 
     try:
-        # 1. Build map: client_name -> [contract_numbers]
+        # 1. Build map: client_name -> [contract_numbers] (active only)
         client_contracts = {}
-        for c in app_tables.contracts.search():
+        for c in _contracts_search_active():
             cname = c.get('client_name', '').strip()
             cnum = c.get('contract_number', '')
             if not cname or not cnum:
@@ -6632,7 +6650,7 @@ def _get_customer_entity_ref_ids(client_name):
     """Return set of reference_ids that belong to this customer (client_name) for ledger 1100."""
     ref_ids = {_safe_str(client_name)}
     client_contracts = []
-    for c in app_tables.contracts.search():
+    for c in _contracts_search_active():
         if _safe_str(c.get('client_name')) == _safe_str(client_name):
             cnum = c.get('contract_number', '')
             if cnum:
@@ -6865,7 +6883,7 @@ def get_advanced_account_statement(
         if entity_id is None:
             if is_customer:
                 client_contracts = {}
-                for c in app_tables.contracts.search():
+                for c in _contracts_search_active():
                     cname = c.get('client_name', '').strip()
                     cnum = c.get('contract_number', '')
                     if cname and cnum:

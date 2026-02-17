@@ -128,7 +128,6 @@ class AdminPanel(AdminPanelTemplate):
                     display_name = em.split('@')[0]
             if display_name:
                 anvil.js.window.sessionStorage.setItem('user_name', display_name)
-                anvil.js.window.localStorage.setItem('user_name', display_name)
         except Exception:
             pass
 

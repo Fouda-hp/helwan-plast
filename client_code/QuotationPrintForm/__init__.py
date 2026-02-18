@@ -248,6 +248,16 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     winder_type_display = get_winder_type()
 
+    # Helper: convert English digits to Arabic digits
+    def to_ar(val):
+      """Convert 0-9 to ٠-٩"""
+      ar_digits = {'0': '٠', '1': '١', '2': '٢', '3': '٣', '4': '٤', '5': '٥', '6': '٦', '7': '٧', '8': '٨', '9': '٩'}
+      return ''.join(ar_digits.get(ch, ch) for ch in str(val))
+
+    def num_span(val):
+      """Wrap a number/value in a LTR span so it doesn't reverse in RTL / html2canvas"""
+      return '<span dir="ltr" style="unicode-bidi:embed;display:inline-block;">' + str(val) + '</span>'
+
     # ==================== PAGE 1 ====================
     html = '<div class="template-page ' + ("" if is_ar else "ltr") + '">'
 
@@ -268,7 +278,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     # Quotation Info
     html += '<div class="quotation-info">'
-    html += '<div class="quotation-number">' + ("عرض سعر رقم" if is_ar else "Quotation No.:") + ' <span>' + str(data.get("quotation_number", "")) + '</span></div>'
+    html += '<div class="quotation-number">' + ("عرض سعر رقم" if is_ar else "Quotation No.:") + ' <span>' + num_span(data.get("quotation_number", "")) + '</span></div>'
     client_name = data.get("client_name", "") or ""
     company = data.get("client_company", "") or ""
     client_display = (str(client_name) + " - " + str(company)).strip(" - ") if company else client_name
@@ -287,24 +297,24 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       html += '<tr><th>نوع الماكينة :</th><td>' + str(machine_type_display) + '</td></tr>'
       html += '<tr><th>الموديل :</th><td>' + str(data.get("model", "")) + '</td></tr>'
       html += '<tr><th>بلد المنشأ :</th><td>' + str(c.get("country_origin_ar", "")) + '</td></tr>'
-      html += '<tr><th>عدد الألوان :</th><td>' + str(data.get("colors_count", "")) + '</td></tr>'
+      html += '<tr><th>عدد الألوان :</th><td>' + num_span(data.get("colors_count", "")) + '</td></tr>'
       html += '<tr><th>الوندر :</th><td>' + str(data.get("winder", "")) + '</td></tr>'
       html += '<tr><th>نوع الوندر :</th><td>' + str(winder_type_display) + '</td></tr>'
-      html += '<tr><th>عرض الماكينة :</th><td>' + str(data.get("machine_width", "")) + ' سم</td></tr>'
+      html += '<tr><th>عرض الماكينة :</th><td>' + num_span(data.get("machine_width", "")) + ' سم</td></tr>'
     else:
       # English: label on far left, value next to it
       html += '<tr><th>Machine Type:</th><td>' + str(machine_type_display) + '</td></tr>'
       html += '<tr><th>Model:</th><td>' + str(data.get("model", "")) + '</td></tr>'
       html += '<tr><th>Country of Origin:</th><td>' + str(c.get("country_origin_en", "")) + '</td></tr>'
-      html += '<tr><th>Number of Colors:</th><td>' + str(data.get("colors_count", "")) + '</td></tr>'
+      html += '<tr><th>Number of Colors:</th><td>' + num_span(data.get("colors_count", "")) + '</td></tr>'
       html += '<tr><th>Winder:</th><td>' + str(data.get("winder", "")) + '</td></tr>'
       html += '<tr><th>Winder Type:</th><td>' + str(winder_type_display) + '</td></tr>'
-      html += '<tr><th>Machine Width:</th><td>' + str(data.get("machine_width", "")) + ' CM</td></tr>'
+      html += '<tr><th>Machine Width:</th><td>' + num_span(data.get("machine_width", "")) + ' CM</td></tr>'
     html += '</table>'
 
     # ==================== 17 SPECIFICATIONS ====================
     html += '<div class="section-title">' + ("المواصفات الفنية:" if is_ar else "Technical Specifications:") + '</div>'
-    html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
+    html += '<div class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
 
     # Helper: Belt/Gear drive for item 13 (uses is_metal_anilox, is_nonwoven from above)
     def get_drive_type():
@@ -369,9 +379,10 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     specs = specs_ar if is_ar else specs_en
     for i, spec in enumerate(specs, 1):
-      html += '<li>' + str(spec) + '</li>'
+      spec_num = num_span(to_ar(i)) if is_ar else num_span(i)
+      html += '<div class="spec-item">' + spec_num + ' - ' + str(spec) + '</div>'
 
-    html += '</ol>'
+    html += '</div>'
     html += '</div>'  # End Page 1
 
     # ==================== PAGE 2 - Technical Table ====================
@@ -425,12 +436,6 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     double_winder_brake_power = c.get('double_winder_brake_power', '2 pc (10kg) + 2 pc (5kg)')
     dryer_capacity = c.get('dryer_capacity', '2.2kw air blower × 2 units')
     main_motor_power = c.get('main_motor_power', '5 HP')
-
-    # Helper: convert English digits to Arabic digits
-    def to_ar(val):
-      """Convert 0-9 to ٠-٩"""
-      ar_digits = {'0': '٠', '1': '١', '2': '٢', '3': '٣', '4': '٤', '5': '٥', '6': '٦', '7': '٧', '8': '٨', '9': '٩'}
-      return ''.join(ar_digits.get(ch, ch) for ch in str(val))
 
     # Calculate values based on rules
     # Number of Colors format
@@ -690,7 +695,8 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       if value_upper in ['NO', 'لا', 'N/A', '-', '']:
         continue
       val_style = ' style="text-align:right;"' if is_ar else ''
-      html += '<tr><td class="row-num">' + str(row_num) + '</td><th>' + str(label) + '</th><td class="value"' + str(val_style) + '>' + str(value_text) + '</td></tr>'
+      row_display = num_span(to_ar(row_num)) if is_ar else num_span(row_num)
+      html += '<tr><td class="row-num">' + row_display + '</td><th>' + str(label) + '</th><td class="value"' + str(val_style) + '>' + str(value_text) + '</td></tr>'
       row_num += 1
     html += '</table>'
 
@@ -704,7 +710,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         cyl = cylinders[i]
         size = cyl.get("size", "")
         count = cyl.get("count", "")
-        html += '<tr><td style="border: 1px solid #ddd;">' + str(size) + '</td><td style="border: 1px solid #ddd;">' + str(count) + '</td></tr>'
+        html += '<tr><td style="border: 1px solid #ddd;">' + num_span(size) + '</td><td style="border: 1px solid #ddd;">' + num_span(count) + '</td></tr>'
       else:
         html += '<tr><td style="border: none;"></td><td style="border: none;"></td></tr>'
     html += '</table>'
@@ -736,7 +742,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     is_in_stock = 'STOCK' in pricing_mode
 
     html += '<div class="financial-box">'
-    html += '<div class="total-price">' + str(data.get("total_price", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</div>'
+    html += '<div class="total-price">' + num_span(data.get("total_price", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</div>'
     price_note = 'السعر شامل التوريد والتركيب والضمان' if is_ar else 'The price includes: supply, installation, and warranty'
     html += '<div class="price-notes">' + str(price_note) + '</div>'
 
@@ -748,9 +754,9 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       html += '</ul>'
     else:
       html += '<table class="payment-table">'
-      html += '<tr><th>' + ("مقدم تعاقد" if is_ar else "Down Payment") + '</th><td>' + str(data.get("down_payment_percent", "")) + '%</td><td class="amount">' + str(data.get("down_payment_amount", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</td></tr>'
-      html += '<tr><th>' + ("قبل الشحن" if is_ar else "Before Shipping") + '</th><td>' + str(data.get("before_shipping_percent", "")) + '%</td><td class="amount">' + str(data.get("before_shipping_amount", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</td></tr>'
-      html += '<tr><th>' + ("قبل التسليم" if is_ar else "Before Delivery") + '</th><td>' + str(data.get("before_delivery_percent", "")) + '%</td><td class="amount">' + str(data.get("before_delivery_amount", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</td></tr>'
+      html += '<tr><th>' + ("مقدم تعاقد" if is_ar else "Down Payment") + '</th><td>' + num_span(str(data.get("down_payment_percent", "")) + '%') + '</td><td class="amount">' + num_span(data.get("down_payment_amount", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</td></tr>'
+      html += '<tr><th>' + ("قبل الشحن" if is_ar else "Before Shipping") + '</th><td>' + num_span(str(data.get("before_shipping_percent", "")) + '%') + '</td><td class="amount">' + num_span(data.get("before_shipping_amount", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</td></tr>'
+      html += '<tr><th>' + ("قبل التسليم" if is_ar else "Before Delivery") + '</th><td>' + num_span(str(data.get("before_delivery_percent", "")) + '%') + '</td><td class="amount">' + num_span(data.get("before_delivery_amount", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</td></tr>'
       html += '</table>'
 
     html += '</div>'
@@ -772,7 +778,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     html += '<div class="info-box">'
     html += '<h4>' + ("الضمان وخدمة ما بعد البيع:" if is_ar else "Warranty & After-Sales Service:") + '</h4>'
-    warranty_text = ('يسري الضمان لمدة <strong>' + str(c.get("warranty_months", "")) + '</strong> شهر ضد عيوب الصناعة') if is_ar else ('The warranty is valid for <strong>' + str(c.get("warranty_months", "")) + '</strong> months against manufacturing defects')
+    warranty_text = ('يسري الضمان لمدة <strong>' + num_span(c.get("warranty_months", "")) + '</strong> شهر ضد عيوب الصناعة') if is_ar else ('The warranty is valid for <strong>' + num_span(c.get("warranty_months", "")) + '</strong> months against manufacturing defects')
     html += '<p>' + str(warranty_text) + '</p>'
     html += '</div>'
     html += '</div>'
@@ -781,7 +787,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     html += '<div class="notes-section">'
     html += '<h4>' + ("ملاحظات:" if is_ar else "Notes:") + '</h4>'
     html += '<div class="notes-list">'
-    note1 = ('عرض السعر ساري لمدة ' + str(c.get("validity_days", "")) + ' يوم من تاريخ عرض السعر') if is_ar else ('This quotation is valid for ' + str(c.get("validity_days", "")) + ' days from the quotation date')
+    note1 = ('عرض السعر ساري لمدة ' + num_span(c.get("validity_days", "")) + ' يوم من تاريخ عرض السعر') if is_ar else ('This quotation is valid for ' + num_span(c.get("validity_days", "")) + ' days from the quotation date')
     note2 = 'يتم تعديل السعر في حالة ارتفاع سعر صرف الدولار بقيمة تزيد عن ٥٠ قرش' if is_ar else 'The price may be adjusted in case of an increase in the USD exchange rate exceeding EGP 0.50'
     note3 = 'هذا العرض استرشادي وغير ملزم إلا بعد توقيع العقد النهائي' if is_ar else 'This quotation is indicative and non-binding until the final contract is signed'
     html += '<p>• ' + str(note1) + '</p>'
@@ -870,6 +876,9 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                     return;
                 }
 
+                var pageHeight = 297; // A4 height in mm
+                var isFirstPdfPage = true;
+
                 for (let i = 0; i < pages.length; i++) {
                     const page = pages[i];
 
@@ -888,11 +897,23 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                     const imgWidth = 210; // A4 width in mm
                     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-                    if (i > 0) {
-                        pdf.addPage();
+                    if (imgHeight <= pageHeight) {
+                        // Fits in one PDF page
+                        if (!isFirstPdfPage) pdf.addPage();
+                        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+                        isFirstPdfPage = false;
+                    } else {
+                        // Content taller than A4 — split across multiple PDF pages
+                        var position = 0;
+                        var remaining = imgHeight;
+                        while (remaining > 0) {
+                            if (!isFirstPdfPage) pdf.addPage();
+                            pdf.addImage(imgData, 'JPEG', 0, -position, imgWidth, imgHeight);
+                            position += pageHeight;
+                            remaining -= pageHeight;
+                            isFirstPdfPage = false;
+                        }
                     }
-
-                    pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
                 }
 
                 element.classList.remove('pdf-export-mode');

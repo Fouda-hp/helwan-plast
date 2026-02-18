@@ -891,6 +891,16 @@ class ContractPrintForm(ContractPrintFormTemplate):
             return ' / '.join(parts)
 
         winder_type_display = get_winder_type()
+
+        # Helper: convert English digits to Arabic digits
+        def to_ar(val):
+            ar_digits = {'0': '٠', '1': '١', '2': '٢', '3': '٣', '4': '٤', '5': '٥', '6': '٦', '7': '٧', '8': '٨', '9': '٩'}
+            return ''.join(ar_digits.get(ch, ch) for ch in str(val))
+
+        def num_span(val):
+            """Wrap a number/value in a LTR span so it doesn't reverse in RTL / html2canvas"""
+            return '<span dir="ltr" style="unicode-bidi:embed;display:inline-block;">' + str(val) + '</span>'
+
         q_num = data.get('quotation_number', '')
 
         # رقم العقد: C - رقم الكوتيشن / متسلسل (من جدول CONTRACTS) - السنة
@@ -926,7 +936,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         # Contract Info (رقم العقد بالتنسيق: C - رقم الكوتيشن / متسلسل - السنة)
         html += '<div class="quotation-info">'
-        html += '<div class="quotation-number">' + ('عقد رقم' if is_ar else 'Contract No.:') + ' <span>' + str(_h(contract_display)) + '</span></div>'
+        html += '<div class="quotation-number">' + ('عقد رقم' if is_ar else 'Contract No.:') + ' <span>' + num_span(_h(contract_display)) + '</span></div>'
         client_name = data.get("client_name", "") or ""
         company = data.get("client_company", "") or ""
         client_display = (str(client_name) + ' - ' + str(company)).strip(" - ") if company else client_name
@@ -944,23 +954,23 @@ class ContractPrintForm(ContractPrintFormTemplate):
             html += '<tr><th>نوع الماكينة :</th><td>' + str(machine_type_display) + '</td></tr>'
             html += '<tr><th>الموديل :</th><td>' + str(data.get("model", "")) + '</td></tr>'
             html += '<tr><th>بلد المنشأ :</th><td>' + str(c.get("country_origin_ar", "")) + '</td></tr>'
-            html += '<tr><th>عدد الألوان :</th><td>' + str(data.get("colors_count", "")) + '</td></tr>'
+            html += '<tr><th>عدد الألوان :</th><td>' + num_span(data.get("colors_count", "")) + '</td></tr>'
             html += '<tr><th>الوندر :</th><td>' + str(data.get("winder", "")) + '</td></tr>'
             html += '<tr><th>نوع الوندر :</th><td>' + str(winder_type_display) + '</td></tr>'
-            html += '<tr><th>عرض الماكينة :</th><td>' + str(data.get("machine_width", "")) + ' سم</td></tr>'
+            html += '<tr><th>عرض الماكينة :</th><td>' + num_span(data.get("machine_width", "")) + ' سم</td></tr>'
         else:
             html += '<tr><th>Machine Type:</th><td>' + str(machine_type_display) + '</td></tr>'
             html += '<tr><th>Model:</th><td>' + str(data.get("model", "")) + '</td></tr>'
             html += '<tr><th>Country of Origin:</th><td>' + str(c.get("country_origin_en", "")) + '</td></tr>'
-            html += '<tr><th>Number of Colors:</th><td>' + str(data.get("colors_count", "")) + '</td></tr>'
+            html += '<tr><th>Number of Colors:</th><td>' + num_span(data.get("colors_count", "")) + '</td></tr>'
             html += '<tr><th>Winder:</th><td>' + str(data.get("winder", "")) + '</td></tr>'
             html += '<tr><th>Winder Type:</th><td>' + str(winder_type_display) + '</td></tr>'
-            html += '<tr><th>Machine Width:</th><td>' + str(data.get("machine_width", "")) + ' CM</td></tr>'
+            html += '<tr><th>Machine Width:</th><td>' + num_span(data.get("machine_width", "")) + ' CM</td></tr>'
         html += '</table>'
 
         # ==================== 17 SPECIFICATIONS (Same as Quotation - FULL VERSION) ====================
         html += '<div class="section-title">' + ('المواصفات الفنية:' if is_ar else 'Technical Specifications:') + '</div>'
-        html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
+        html += '<div class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
 
         # Helper function to determine Belt/Gear drive for item 13
         def get_drive_type():
@@ -1029,9 +1039,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         specs = specs_ar if is_ar else specs_en
         for i, spec in enumerate(specs, 1):
-            html += '<li>' + str(spec) + '</li>'
+            spec_num = num_span(to_ar(i)) if is_ar else num_span(i)
+            html += '<div class="spec-item">' + spec_num + ' - ' + str(spec) + '</div>'
 
-        html += '</ol>'
+        html += '</div>'
         html += '</div>'  # End Page 1
 
         # ==================== PAGE 2 - Technical Table (Same as Quotation) ====================
@@ -1076,11 +1087,6 @@ class ContractPrintForm(ContractPrintFormTemplate):
         double_winder_brake_power = c.get('double_winder_brake_power', '2 pc (10kg) + 2 pc (5kg)')
         dryer_capacity = c.get('dryer_capacity', '2.2kw air blower × 2 units')
         main_motor_power = c.get('main_motor_power', '5 HP')
-
-        # Helper: convert English digits to Arabic digits
-        def to_ar(val):
-            ar_digits = {'0': '٠', '1': '١', '2': '٢', '3': '٣', '4': '٤', '5': '٥', '6': '٦', '7': '٧', '8': '٨', '9': '٩'}
-            return ''.join(ar_digits.get(ch, ch) for ch in str(val))
 
         # Calculate values - Number of Colors format (same as Quotation)
         if colors_count == 8:
@@ -1355,7 +1361,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 continue
 
             val_style = ' style="text-align:right;"' if is_ar else ''
-            html += '<tr><td class="row-num">' + str(row_num) + '</td><th>' + str(label) + '</th><td class="value"' + str(val_style) + '>' + str(value_text) + '</td></tr>'
+            row_display = num_span(to_ar(row_num)) if is_ar else num_span(row_num)
+            html += '<tr><td class="row-num">' + row_display + '</td><th>' + str(label) + '</th><td class="value"' + str(val_style) + '>' + str(value_text) + '</td></tr>'
             row_num += 1
         html += '</table>'
 
@@ -1370,7 +1377,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 cyl = cylinders[i]
                 size = cyl.get("size", "")
                 count = cyl.get("count", "")
-                html += '<tr><td style="border: 1px solid #ddd; padding:6px; text-align:center;">' + str(size) + '</td><td style="border: 1px solid #ddd; padding:6px; text-align:center;">' + str(count) + '</td></tr>'
+                html += '<tr><td style="border: 1px solid #ddd; padding:6px; text-align:center;">' + num_span(size) + '</td><td style="border: 1px solid #ddd; padding:6px; text-align:center;">' + num_span(count) + '</td></tr>'
             else:
                 html += '<tr><td style="border: none;"></td><td style="border: none;"></td></tr>'
         html += '</table>'
@@ -1399,7 +1406,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         html += '<div class="financial-box">'
         total_price = data.get("total_price", "")
-        html += '<div class="total-price">' + str(total_price) + ' ' + ('ج.م' if is_ar else 'EGP') + '</div>'
+        html += '<div class="total-price">' + num_span(total_price) + ' ' + ('ج.م' if is_ar else 'EGP') + '</div>'
         html += '</div>'
 
         # Payment Schedule
@@ -1419,11 +1426,11 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 label = p.get('label_ar' if is_ar else 'label_en', '')
                 bg = '#f8f9fa' if i % 2 == 0 else 'white'
                 html += '<tr style="background:' + str(bg) + ';">'
-                html += '<td style="padding:8px;text-align:center;">' + str(i+1) + '</td>'
+                html += '<td style="padding:8px;text-align:center;">' + num_span(i+1) + '</td>'
                 html += '<td style="padding:8px;">' + str(label) + '</td>'
-                html += '<td style="padding:8px;text-align:center;">' + "{:.1f}".format(p.get("percentage", 0)) + '%</td>'
-                html += '<td style="padding:8px;text-align:center;">' + "{:,.0f}".format(p.get("amount", 0)) + ' ' + str(currency) + '</td>'
-                html += '<td style="padding:8px;text-align:center;">' + str(p.get("date", "")) + '</td>'
+                html += '<td style="padding:8px;text-align:center;">' + num_span("{:.1f}".format(p.get("percentage", 0)) + '%') + '</td>'
+                html += '<td style="padding:8px;text-align:center;">' + num_span("{:,.0f}".format(p.get("amount", 0))) + ' ' + str(currency) + '</td>'
+                html += '<td style="padding:8px;text-align:center;">' + num_span(p.get("date", "")) + '</td>'
                 html += '</tr>'
             html += '</table>'
 
@@ -1438,7 +1445,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         html += '<div class="info-box">'
         html += '<h4>' + ('الضمان:' if is_ar else 'Warranty:') + '</h4>'
-        warranty_text = ('يسري الضمان لمدة <strong>' + str(c.get("warranty_months", "12")) + '</strong> شهر') if is_ar else ('Warranty: <strong>' + str(c.get("warranty_months", "12")) + '</strong> months')
+        warranty_text = ('يسري الضمان لمدة <strong>' + num_span(c.get("warranty_months", "12")) + '</strong> شهر') if is_ar else ('Warranty: <strong>' + num_span(c.get("warranty_months", "12")) + '</strong> months')
         html += '<p>' + str(warranty_text) + '</p>'
         support_text = 'دعم فني كامل مع توافر قطع الغيار عند الطلب' if is_ar else 'Full technical support with spare parts availability upon request'
         html += '<p style="margin-top:8px; color:#555;">' + str(support_text) + '</p>'
@@ -1511,6 +1518,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const pages = element.querySelectorAll('.template-page');
 
+                var pageHeight = 297; // A4 height in mm
+                var isFirstPdfPage = true;
+
                 for (let i = 0; i < pages.length; i++) {
                     const canvas = await html2canvas(pages[i], {
                         scale: 2, useCORS: true, backgroundColor: '#ffffff'
@@ -1518,8 +1528,22 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     const imgData = canvas.toDataURL('image/jpeg', 0.95);
                     const imgWidth = 210;
                     const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                    if (i > 0) pdf.addPage();
-                    pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+
+                    if (imgHeight <= pageHeight) {
+                        if (!isFirstPdfPage) pdf.addPage();
+                        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+                        isFirstPdfPage = false;
+                    } else {
+                        var position = 0;
+                        var remaining = imgHeight;
+                        while (remaining > 0) {
+                            if (!isFirstPdfPage) pdf.addPage();
+                            pdf.addImage(imgData, 'JPEG', 0, -position, imgWidth, imgHeight);
+                            position += pageHeight;
+                            remaining -= pageHeight;
+                            isFirstPdfPage = false;
+                        }
+                    }
                 }
 
                 element.classList.remove('pdf-export-mode');

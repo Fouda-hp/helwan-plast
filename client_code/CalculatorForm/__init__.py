@@ -186,6 +186,17 @@ class CalculatorForm(CalculatorFormTemplate):
     return anvil.server.call("get_active_users_for_dropdown", auth)
 
   # =================================================
+  # Loading overlay helper
+  # =================================================
+  def _hide_loading(self):
+    """Hide the global loading overlay."""
+    try:
+      if hasattr(anvil.js.window, 'hideLoadingOverlay') and anvil.js.window.hideLoadingOverlay:
+        anvil.js.window.hideLoadingOverlay()
+    except Exception:
+      pass
+
+  # =================================================
   # Settings application helper (بدون eval)
   # =================================================
   def _apply_settings_with_retry(self, parsed):
@@ -254,6 +265,12 @@ class CalculatorForm(CalculatorFormTemplate):
   # =================================================
   def form_show(self, **event_args):
     """جلب كل الإعدادات من السيرفر في استدعاء واحد وتمريرها للصفحة."""
+    # --- Show loading overlay immediately (block user interaction) ---
+    try:
+      if hasattr(anvil.js.window, 'showLoadingOverlay') and anvil.js.window.showLoadingOverlay:
+        anvil.js.window.showLoadingOverlay()
+    except Exception:
+      pass
     try:
       ls = anvil.js.window.localStorage
       if ls:
@@ -265,6 +282,7 @@ class CalculatorForm(CalculatorFormTemplate):
       logger.info("CalculatorForm form_show: auth=%s", auth[:12] + '...' if auth and len(auth) > 12 else auth)
       if not auth:
         logger.warning("CalculatorForm form_show: missing auth token")
+        self._hide_loading()
         return
       data = anvil.server.call("get_calculator_settings", auth)
       logger.info("CalculatorForm form_show: success=%s, has_priceOptions=%s, has_machinePrices=%s, message=%s",
@@ -311,6 +329,7 @@ class CalculatorForm(CalculatorFormTemplate):
           except Exception:
             pass
           # Do NOT apply settings. Do NOT enable calculator.
+          self._hide_loading()
           return
         else:
           logger.warning("CalculatorForm: get_calculator_settings failed: %s", data.get('message') if data else 'no data')
@@ -323,6 +342,7 @@ class CalculatorForm(CalculatorFormTemplate):
               anvil.js.window.showOkModal(fail_msg)
           except Exception:
             pass
+          self._hide_loading()
           return
 
       # --- SUCCESS: Build and apply settings payload ---
@@ -390,5 +410,8 @@ class CalculatorForm(CalculatorFormTemplate):
         logger.error("form_show: FAILED to set __calculatorSettingsFromPython: %s", e)
       # تطبيق الإعدادات بدون eval — Python مباشر مع retry عبر setTimeout
       self._apply_settings_with_retry(parsed)
+      # --- Hide loading overlay after settings applied successfully ---
+      self._hide_loading()
     except Exception as e:
       logger.debug("CalculatorForm form_show error: %s", e)
+      self._hide_loading()

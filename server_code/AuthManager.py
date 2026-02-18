@@ -2157,13 +2157,22 @@ def update_setting(token_or_email, key, value):
 
     old_value = setting['setting_value']
     new_value = value
-    if setting.get('setting_type') == 'json' and isinstance(value, (dict, list)):
+    new_type = setting.get('setting_type', 'text')
+    if isinstance(value, (dict, list)):
         new_value = json.dumps(value)
+        new_type = 'json'
+    elif isinstance(value, bool):
+        new_value = str(value).lower()
+        new_type = 'bool'
+    elif isinstance(value, (int, float)):
+        new_value = str(value)
+        new_type = 'number'
     else:
         new_value = str(value)
 
     setting.update(
         setting_value=new_value,
+        setting_type=new_type,
         updated_by=admin_email,
         updated_at=get_utc_now()
     )
@@ -2200,6 +2209,15 @@ def _get_setting_value(key):
             return value
     elif setting_type == 'bool':
         return str(value).lower() in ('true', '1', 'yes')
+
+    # Fallback: if setting_type is 'text' but value looks like JSON, try to parse it
+    if value and isinstance(value, str):
+        stripped = value.strip()
+        if stripped.startswith('{') or stripped.startswith('['):
+            try:
+                return json.loads(stripped)
+            except (json.JSONDecodeError, TypeError):
+                pass
 
     return value
 
@@ -2266,24 +2284,44 @@ def get_calculator_settings(token_or_email=None):
         result['tax_rate'] = get_setting('tax_rate')
         result['bank_commission'] = get_setting('bank_commission')
         # تعديلات الأسعار والنسب (JSON)
+        def _ensure_dict(val):
+            """Convert value to dict if it's a JSON string, or return as-is if already dict."""
+            if isinstance(val, dict):
+                return val
+            if isinstance(val, str):
+                try:
+                    parsed = json.loads(val)
+                    if isinstance(parsed, dict):
+                        return parsed
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            return None
+
         ma = get_setting('material_adjustments')
-        if ma and isinstance(ma, dict):
-            result['materialAdjustments'] = ma
+        logger.info("get_calculator_settings: material_adjustments raw type=%s, val=%s", type(ma).__name__, str(ma)[:200] if ma else None)
+        ma_dict = _ensure_dict(ma)
+        if ma_dict:
+            result['materialAdjustments'] = ma_dict
         wa = get_setting('winder_adjustment')
-        if wa and isinstance(wa, dict):
-            result['winderAdjustment'] = wa
+        logger.info("get_calculator_settings: winder_adjustment raw type=%s, val=%s", type(wa).__name__, str(wa)[:200] if wa else None)
+        wa_dict = _ensure_dict(wa)
+        if wa_dict:
+            result['winderAdjustment'] = wa_dict
         oa = get_setting('optional_adjustments')
-        if oa and isinstance(oa, dict):
-            result['optionalAdjustments'] = oa
+        logger.info("get_calculator_settings: optional_adjustments raw type=%s, val=%s", type(oa).__name__, str(oa)[:200] if oa else None)
+        oa_dict = _ensure_dict(oa)
+        if oa_dict:
+            result['optionalAdjustments'] = oa_dict
         # نسب الربح (أرقام فردية)
         for mk in ['markup_overseas', 'markup_local_instock_4color', 'markup_local_instock_other',
                     'markup_local_neworder_4color', 'markup_local_neworder_other']:
             val = get_setting(mk)
+            logger.info("get_calculator_settings: %s raw type=%s, val=%s", mk, type(val).__name__, val)
             if val is not None:
                 try:
                     result[mk] = float(val)
                 except (ValueError, TypeError):
-                    pass
+                    logger.warning("get_calculator_settings: %s cannot convert to float: %s", mk, val)
         cfg = get_machine_config()
         if cfg and cfg.get('success') and cfg.get('config'):
             result['config'] = cfg['config']

@@ -411,6 +411,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 return 0.0
         
         total_contract = safe_float(self.current_data.get('total_price', 0)) if self.current_data else 0
+        _is_overseas = self.current_data.get('is_overseas', False) if self.current_data else False
         
         total_el = anvil.js.window.document.getElementById('totalPercentage')
         total_unit = anvil.js.window.document.getElementById('totalUnit')
@@ -436,12 +437,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     total_el.style.color = '#ff9800'  # Orange when under 100%
 
             if entered_el:
-                currency = 'ج.م' if is_ar else 'EGP'
+                currency = ("دولار" if is_ar else "USD") if _is_overseas else ('ج.م' if is_ar else 'EGP')
                 entered_el.textContent = "{:,.0f}".format(entered_amount) + ' ' + currency
                 entered_el.style.color = '#2196F3'
 
             if remaining_el:
-                currency = 'ج.م' if is_ar else 'EGP'
+                currency = ("دولار" if is_ar else "USD") if _is_overseas else ('ج.م' if is_ar else 'EGP')
                 remaining_el.textContent = "{:,.0f}".format(remaining_amount) + ' ' + currency
                 if remaining_amount == 0:
                     remaining_el.style.color = '#4caf50'  # Green when done
@@ -452,9 +453,9 @@ class ContractPrintForm(ContractPrintFormTemplate):
         else:
             # Amount mode
             remaining_amount = total_contract - total_entered
-            
+
             if total_el:
-                currency = 'ج.م' if is_ar else 'EGP'
+                currency = ("دولار" if is_ar else "USD") if _is_overseas else ('ج.م' if is_ar else 'EGP')
                 total_el.textContent = "{:,.0f}".format(total_entered)
                 if total_unit:
                     total_unit.textContent = currency
@@ -467,12 +468,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     total_el.style.color = '#ff9800'  # Orange when under
 
             if entered_el:
-                currency = 'ج.م' if is_ar else 'EGP'
+                currency = ("دولار" if is_ar else "USD") if _is_overseas else ('ج.م' if is_ar else 'EGP')
                 entered_el.textContent = "{:,.0f}".format(total_entered) + ' ' + currency
                 entered_el.style.color = '#2196F3'
 
             if remaining_el:
-                currency = 'ج.م' if is_ar else 'EGP'
+                currency = ("دولار" if is_ar else "USD") if _is_overseas else ('ج.م' if is_ar else 'EGP')
                 remaining_el.textContent = "{:,.0f}".format(remaining_amount) + ' ' + currency
                 if remaining_amount == 0:
                     remaining_el.style.color = '#4caf50'
@@ -1403,9 +1404,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         html += '<div class="section-title">' + ('القيمة المالية:' if is_ar else 'Contract Value:') + '</div>'
 
+        is_overseas = data.get('is_overseas', False)
+        contract_currency = ("دولار" if is_ar else "USD") if is_overseas else ("ج.م" if is_ar else "EGP")
+
         html += '<div class="financial-box">'
         total_price = data.get("total_price", "")
-        html += '<div class="total-price">' + num_span(total_price) + ' ' + ('ج.م' if is_ar else 'EGP') + '</div>'
+        html += '<div class="total-price">' + num_span(total_price) + ' ' + contract_currency + '</div>'
         html += '</div>'
 
         # Payment Schedule
@@ -1419,8 +1423,8 @@ class ContractPrintForm(ContractPrintFormTemplate):
             html += '<th style="padding:10px;color:white;">' + ('المبلغ' if is_ar else 'Amount') + '</th>'
             html += '<th style="padding:10px;color:white;">' + ('التاريخ' if is_ar else 'Date') + '</th>'
             html += '</tr>'
-            
-            currency = 'ج.م' if is_ar else 'EGP'
+
+            currency = contract_currency
             for i, p in enumerate(self.payment_data):
                 label = p.get('label_ar' if is_ar else 'label_en', '')
                 bg = '#f8f9fa' if i % 2 == 0 else 'white'

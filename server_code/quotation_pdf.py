@@ -93,6 +93,8 @@ def build_pdf_data(q_data, user_info, sales_rep_info, company_settings, machine_
         'total_price': format_number(total_price),
         'total_price_raw': total_price,
         'pricing_mode': q_data.get('Pricing Mode', ''),
+        'is_overseas': bool(q_data.get('Overseas clients')),
+        'overseas_price_usd': q_data.get('FOB price for over seas clients', 0),
         'down_payment_percent': down_percent,
         'down_payment_amount': format_number(down_amount),
         'before_shipping_percent': shipping_percent,

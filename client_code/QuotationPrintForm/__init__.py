@@ -737,26 +737,42 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     html += '<div class="section-title">' + ("العرض المالي:" if is_ar else "Financial Offer:") + '</div>'
 
-    # Get pricing mode
+    # Get pricing mode and overseas flag
     pricing_mode = str(data.get('pricing_mode', '')).upper()
     is_in_stock = 'STOCK' in pricing_mode
+    is_overseas = data.get('is_overseas', False)
+    currency_label = ("دولار" if is_ar else "USD") if is_overseas else ("ج.م" if is_ar else "EGP")
 
     html += '<div class="financial-box">'
-    html += '<div class="total-price">' + num_span(data.get("total_price", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</div>'
+    html += '<div class="total-price">' + num_span(data.get("total_price", "")) + ' ' + currency_label + '</div>'
     price_note = 'السعر شامل التوريد والتركيب والضمان' if is_ar else 'The price includes: supply, installation, and warranty'
     html += '<div class="price-notes">' + str(price_note) + '</div>'
 
     html += '<div class="section-title">' + ("طريقة الدفع:" if is_ar else "Payment Terms:") + '</div>'
-    if is_in_stock:
+    if is_overseas:
+      # Overseas: 30% down + 70% before shipping (USD)
+      total_raw = float(data.get('total_price_raw', 0) or 0)
+      overseas_down = total_raw * 0.30
+      overseas_ship = total_raw * 0.70
+      def _fmt(n):
+        try:
+          return "{:,.0f}".format(float(n))
+        except Exception:
+          return str(n)
+      html += '<table class="payment-table">'
+      html += '<tr><th>' + ("مقدم تعاقد" if is_ar else "Down Payment") + '</th><td>' + num_span('30%') + '</td><td class="amount">' + num_span(_fmt(overseas_down)) + ' ' + currency_label + '</td></tr>'
+      html += '<tr><th>' + ("قبل الشحن" if is_ar else "Before Shipping") + '</th><td>' + num_span('70%') + '</td><td class="amount">' + num_span(_fmt(overseas_ship)) + ' ' + currency_label + '</td></tr>'
+      html += '</table>'
+    elif is_in_stock:
       html += '<ul class="payment-list-simple" style="list-style: disc; padding-left: 25px; font-size: 14px; line-height: 1.8;">'
       html += '<li>' + ("مقدم تعاقد" if is_ar else "Down Payment") + '</li>'
       html += '<li>' + ("الدفع قبل الشحن" if is_ar else "Payment before shipping") + '</li>'
       html += '</ul>'
     else:
       html += '<table class="payment-table">'
-      html += '<tr><th>' + ("مقدم تعاقد" if is_ar else "Down Payment") + '</th><td>' + num_span(str(data.get("down_payment_percent", "")) + '%') + '</td><td class="amount">' + num_span(data.get("down_payment_amount", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</td></tr>'
-      html += '<tr><th>' + ("قبل الشحن" if is_ar else "Before Shipping") + '</th><td>' + num_span(str(data.get("before_shipping_percent", "")) + '%') + '</td><td class="amount">' + num_span(data.get("before_shipping_amount", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</td></tr>'
-      html += '<tr><th>' + ("قبل التسليم" if is_ar else "Before Delivery") + '</th><td>' + num_span(str(data.get("before_delivery_percent", "")) + '%') + '</td><td class="amount">' + num_span(data.get("before_delivery_amount", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</td></tr>'
+      html += '<tr><th>' + ("مقدم تعاقد" if is_ar else "Down Payment") + '</th><td>' + num_span(str(data.get("down_payment_percent", "")) + '%') + '</td><td class="amount">' + num_span(data.get("down_payment_amount", "")) + ' ' + currency_label + '</td></tr>'
+      html += '<tr><th>' + ("قبل الشحن" if is_ar else "Before Shipping") + '</th><td>' + num_span(str(data.get("before_shipping_percent", "")) + '%') + '</td><td class="amount">' + num_span(data.get("before_shipping_amount", "")) + ' ' + currency_label + '</td></tr>'
+      html += '<tr><th>' + ("قبل التسليم" if is_ar else "Before Delivery") + '</th><td>' + num_span(str(data.get("before_delivery_percent", "")) + '%') + '</td><td class="amount">' + num_span(data.get("before_delivery_amount", "")) + ' ' + currency_label + '</td></tr>'
       html += '</table>'
 
     html += '</div>'
@@ -791,7 +807,8 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     note2 = 'يتم تعديل السعر في حالة ارتفاع سعر صرف الدولار بقيمة تزيد عن ٥٠ قرش' if is_ar else 'The price may be adjusted in case of an increase in the USD exchange rate exceeding EGP 0.50'
     note3 = 'هذا العرض استرشادي وغير ملزم إلا بعد توقيع العقد النهائي' if is_ar else 'This quotation is indicative and non-binding until the final contract is signed'
     html += '<p>• ' + str(note1) + '</p>'
-    html += '<p>• ' + str(note2) + '</p>'
+    if not is_overseas:
+      html += '<p>• ' + str(note2) + '</p>'
     html += '<p>• ' + str(note3) + '</p>'
     html += '</div>'
     html += '</div>'

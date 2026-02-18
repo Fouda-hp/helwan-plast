@@ -491,6 +491,7 @@ def save_client_data(client_code, form_data, is_new, user_email='system', ip_add
         'Email': safe_strip(form_data.get('Email')),
         'Sales Rep': safe_strip(form_data.get('sales_rep') or form_data.get('Sales Rep')),
         'Source': safe_strip(form_data.get('Source')),
+        'Overseas clients': safe_strip(form_data.get('Overseas clients') or form_data.get('overseas_clients')),
         'is_deleted': False,
         'updated_by': user_email,
         'updated_at': get_utc_now()
@@ -1014,6 +1015,7 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
                 "Date": r.get("Date").isoformat() if r.get("Date") and hasattr(r.get("Date"), 'isoformat') else str(r.get("Date") or ""),
                 "is_deleted": r.get("is_deleted", False),
                 "tags_json": r.get("tags_json", "[]"),
+                "Overseas clients": r.get("Overseas clients", ""),
             })
 
         return {"success": True, "message": "", "data": rows, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}

@@ -2289,6 +2289,15 @@ DEFAULT_IMPORT_COST_TYPES = [
 
 VALID_COST_TYPES = ('shipping', 'customs', 'insurance', 'clearance', 'transport', 'vat', 'other')
 
+# H-02 FIX: Broader VAT detection — any cost_type containing these keywords → account 2110
+VAT_COST_TYPE_KEYWORDS = ('vat', 'tax', 'ضريبة')
+
+
+def _is_vat_cost_type(cost_type_raw):
+    """Check if a cost_type string indicates VAT (broad matching)."""
+    ct = (cost_type_raw or '').lower().strip()
+    return any(kw in ct for kw in VAT_COST_TYPE_KEYWORDS)
+
 
 def _get_import_cost_types_table():
     """Return import_cost_types table if it exists."""
@@ -2514,6 +2523,7 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
                 raise
 
         _update_inventory_import_totals(inventory_id=inv_id, purchase_invoice_id=pi_id)
+        _recalc_supplier_amount_egp(pi_id)  # H-01: keep invoice row in sync
 
         logger.info("Import cost %s (%.2f EGP) added by %s; pay via Pay Import Costs to post to ledger", cost_type_name, amount_egp, user_email)
         return {'success': True, 'id': cost_id, 'transaction_id': None, 'amount_egp': amount_egp}
@@ -2646,7 +2656,7 @@ def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, to
 
         pi_id = row.get('purchase_invoice_id')
         cost_type_raw = (row.get('cost_type') or '').lower().strip()
-        is_vat = cost_type_raw == 'vat'
+        is_vat = _is_vat_cost_type(cost_type_raw)
         if is_vat:
             if not _validate_account_exists('2110'):
                 return {'success': False, 'message': 'Account 2110 (VAT Input Recoverable) not found'}
@@ -2662,6 +2672,18 @@ def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, to
                 if not _validate_account_exists('1210'):
                     return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found'}
                 debit_account = '1210'
+
+        # H-03 FIX: Ledger-level duplicate check — prevent same import cost posted twice
+        try:
+            existing_ledger = list(app_tables.ledger.search(
+                reference_type='import_cost_payment', reference_id=import_cost_id
+            ))
+            if existing_ledger:
+                ledger_total = _round2(sum(_round2(e.get('debit', 0)) for e in existing_ledger))
+                if ledger_total >= amt_egp:
+                    return {'success': False, 'message': 'This import cost is already fully posted to the ledger. | هذه التكلفة مسجلة بالكامل بالفعل في الدفتر.'}
+        except Exception:
+            pass  # If ledger search fails, proceed with payment (table-level check is primary)
 
         cost_type_name = row.get('cost_type', 'import cost')
         desc = f"Import cost payment ({cost_type_name}): {_safe_str(row.get('description', ''))}"
@@ -2680,6 +2702,7 @@ def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, to
         except Exception as upd_err:
             logger.warning("Could not update import_costs.paid_amount: %s", upd_err)
         _update_inventory_import_totals(purchase_invoice_id=row.get('purchase_invoice_id'))
+        _recalc_supplier_amount_egp(row.get('purchase_invoice_id'))  # H-01: keep invoice row in sync
         logger.info("Import cost %s paid %.2f EGP by %s [DR %s, CR %s]", import_cost_id, amount_egp, user_email, debit_account, credit_account)
         return {'success': True, 'transaction_id': je_result.get('transaction_id'), 'paid_amount': new_paid}
     except Exception as e:
@@ -2717,6 +2740,43 @@ def sync_import_costs_paid_amount(token_or_email=None):
         return {'success': False, 'message': str(e)}
 
 
+def _recalc_supplier_amount_egp(purchase_invoice_id):
+    """
+    H-01 FIX: Recalculate supplier_amount_egp on the purchase invoice row after import costs change.
+    supplier_amount_egp = total_egp - sum(non-VAT import costs in EGP).
+    Only updates if the invoice is already posted (has supplier_amount_egp set).
+    """
+    if not purchase_invoice_id:
+        return
+    try:
+        inv = app_tables.purchase_invoices.get(id=purchase_invoice_id)
+        if not inv or inv.get('status') != 'posted':
+            return  # Only recalculate for posted invoices
+        total_egp = _round2(inv.get('total_egp') or 0)
+        if total_egp <= 0:
+            return
+        # Sum non-VAT import costs
+        import_costs_egp = 0.0
+        for ic in app_tables.import_costs.search(purchase_invoice_id=purchase_invoice_id):
+            if _is_vat_cost_type(ic.get('cost_type')):
+                continue
+            amt = _round2(ic.get('amount_egp') or ic.get('amount', 0))
+            if amt > 0:
+                import_costs_egp += amt
+        new_supplier_amount = _round2(total_egp - import_costs_egp)
+        if new_supplier_amount != _round2(inv.get('supplier_amount_egp') or 0):
+            try:
+                inv.update(supplier_amount_egp=new_supplier_amount, updated_at=get_utc_now())
+                logger.info("Recalculated supplier_amount_egp for %s: %.2f → %.2f",
+                            inv.get('invoice_number', purchase_invoice_id),
+                            _round2(inv.get('supplier_amount_egp') or 0), new_supplier_amount)
+            except Exception as col_err:
+                if 'supplier_amount_egp' not in str(col_err):
+                    raise
+    except Exception as e:
+        logger.warning("_recalc_supplier_amount_egp error for %s: %s", purchase_invoice_id, e)
+
+
 def _update_inventory_import_totals(purchase_invoice_id=None, inventory_id=None):
     """
     Recalculate import_costs_total and total_cost (EGP). Guarantee: total_cost = purchase_cost + import_costs_total.
@@ -2727,7 +2787,7 @@ def _update_inventory_import_totals(purchase_invoice_id=None, inventory_id=None)
         return _round2(r.get('amount_egp') or r.get('amount', 0))
 
     def _is_vat(r):
-        return (r.get('cost_type') or '').lower().strip() == 'vat'
+        return _is_vat_cost_type(r.get('cost_type'))
 
     try:
         if inventory_id:
@@ -6391,10 +6451,14 @@ def post_contract_receivable(contract_number, amount_egp, description=None, toke
             return {'success': False, 'message': f'العقد غير موجود: {contract_number}'}
 
         # --- REVENUE DOUBLE-COUNTING GUARD ---
-        # Check if sell_inventory already posted revenue (sales_invoice) for this contract.
-        # sell_inventory posts to 1100 with reference_type='sales_invoice'.
-        # Also check if contract_receivable was already posted for this contract.
-        for inv_item in app_tables.inventory.search(contract_number=contract_number, status='sold'):
+        # H-04 FIX: Check ledger directly (not just inventory table status) to prevent
+        # bypass via soft-deleted inventory items. Search ALL inventory items for this contract
+        # (including soft-deleted) and check ledger for sales_invoice entries.
+        try:
+            all_inv_items = list(app_tables.inventory.search(contract_number=contract_number))
+        except Exception:
+            all_inv_items = []
+        for inv_item in all_inv_items:
             item_id = inv_item.get('id')
             if item_id:
                 existing_sales = list(app_tables.ledger.search(

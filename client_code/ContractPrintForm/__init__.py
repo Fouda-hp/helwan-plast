@@ -202,13 +202,12 @@ class ContractPrintForm(ContractPrintFormTemplate):
                     contract_res = anvil.server.call('get_contract', q_num, auth)
                     if contract_res and contract_res.get('success') and contract_res.get('data'):
                         self.display_contract_number = contract_res['data'].get('contract_number')
-                    else:
                     # جلب المتسلسل التالي من جدول العقود للمعاينة (مكان الشرطة)
                     preview_res = anvil.server.call('get_next_contract_serial_preview', auth)
                     if preview_res and preview_res.get('success'):
                         self.preview_contract_serial = preview_res.get('next_serial', 2)
-            except Exception:
-                pass
+                except Exception:
+                    pass
             self.render_template()
             # Update pricing mode UI based on quotation data
             pricing_mode = self.current_data.get('pricing_mode', '') or ''

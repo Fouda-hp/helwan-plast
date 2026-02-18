@@ -217,6 +217,8 @@ DEFAULT_ACCOUNTS = [
     ('6030', 'Office Supplies',    'مستلزمات مكتبية',   'expense',  None),
     ('6040', 'Travel',             'السفر',             'expense',  None),
     ('6050', 'Maintenance',        'الصيانة',           'expense',  None),
+    ('6060', 'Transport',          'النقل',             'expense',  None),
+    ('6070', 'Marketing',          'التسويق',           'expense',  None),
     ('6090', 'Other Expenses',     'مصروفات أخرى',      'expense',  None),
     ('6110', 'Exchange Loss',      'خسائر فروق العملة',  'expense',  None),
 ]
@@ -249,18 +251,23 @@ def _resolve_payment_account(payment_method):
 
 
 def _get_rate_to_egp(currency_code):
-    """Return exchange rate to EGP for the given currency. EGP or missing => 1.0."""
+    """Return exchange rate to EGP for the given currency. EGP or missing => raise ValueError."""
     if not currency_code or _safe_str(currency_code).upper() == 'EGP':
         return 1.0
+    cc = _safe_str(currency_code).upper()
     try:
-        r = app_tables.currency_exchange_rates.get(currency_code=_safe_str(currency_code).upper())
-        if r and r.get('rate_to_egp'):
-            return _round2(float(r.get('rate_to_egp', 1)))
+        # Fetch only active rates; pick latest effective_date if multiple exist
+        active_rows = list(app_tables.currency_exchange_rates.search(currency_code=cc, is_active=True))
+        if active_rows:
+            best = max(active_rows, key=lambda r: r.get('effective_date') or datetime.min)
+            rate = _round2(float(best.get('rate_to_egp', 0)))
+            if rate > 0:
+                return rate
     except Exception:
         pass
     raise ValueError(
-        f"Exchange rate for {_safe_str(currency_code).upper()} not found in currency_exchange_rates table. "
-        f"سعر الصرف غير موجود للعملة {_safe_str(currency_code).upper()}. "
+        f"Exchange rate for {cc} not found in currency_exchange_rates table. "
+        f"سعر الصرف غير موجود للعملة {cc}. "
         f"Cannot convert to EGP — add the rate first."
     )
 
@@ -410,6 +417,14 @@ def _validate_account_exists(code):
     """Return True if the account code exists and is active."""
     acct = app_tables.chart_of_accounts.get(code=code)
     return acct is not None and acct.get('is_active', True)
+
+
+def _get_account_names_map():
+    """Build {code: name_en} map from chart_of_accounts table."""
+    try:
+        return {r['code']: r.get('name_en', '') for r in app_tables.chart_of_accounts.search(is_active=True)}
+    except Exception:
+        return {code: name_en for code, name_en, _, _, _ in DEFAULT_ACCOUNTS}
 
 
 # Tolerance for residual balance comparisons (e.g. treat tiny remainder as zero)
@@ -760,7 +775,7 @@ def post_journal_entry(entry_date, entries, description, ref_type, ref_id, user_
                     account_code=e['account_code'],
                     debit=_round2(e.get('debit', 0)),
                     credit=_round2(e.get('credit', 0)),
-                    description=_safe_str(description),
+                    description=_safe_str(e.get('description', description)),
                     reference_type=line_ref_type,
                     reference_id=line_ref_id,
                     created_by=_safe_str(user_email),
@@ -2216,19 +2231,16 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
             return {'success': False, 'message': 'Account 2000 not found'}
 
         parsed_date = _safe_date(payment_date) or date.today()
-        desc = f"Payment for purchase invoice {row.get('invoice_number', invoice_id)}"
+        # Base description (without bank fee or FX — those get per-line descriptions)
+        inv_num = row.get('invoice_number', invoice_id)
+        base_desc = f"Payment for purchase invoice {inv_num}"
         if is_paid_in_full:
-            desc += " (تسوية كاملة)"
+            base_desc += " (تسوية كاملة)"
         if currency_code != 'EGP':
-            desc += f" — {amount_in:,.2f} {currency_code} @ {payment_rate} = {payment_egp:,.2f} EGP"
-        if bank_fee > 0:
-            desc += f" — Bank fee: {bank_fee:,.2f} EGP"
+            base_desc += f" — {amount_in:,.2f} {currency_code} @ {payment_rate} = {payment_egp:,.2f} EGP"
         if notes:
-            desc += f" — {notes}"
-        if fx_diff > 0:
-            desc += f" — أرباح فروق عملة (FX Gain): {fx_diff:,.2f} EGP"
-        elif fx_diff < 0:
-            desc += f" — خسائر فروق عملة (FX Loss): {-fx_diff:,.2f} EGP"
+            base_desc += f" — {notes}"
+        desc = base_desc  # default for AP and main bank lines
 
         # 4) Entries: DR 2000 = liability_slice_egp, CR Bank = payment_egp; then 4110/6110 if fx_diff != 0; then bank fee if any
         entries = [
@@ -2238,16 +2250,19 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
         if fx_diff > 0:
             if not _validate_account_exists('4110'):
                 return {'success': False, 'message': 'Account 4110 (Exchange Gain) not found. Run seed_default_accounts.'}
-            entries.append({'account_code': '4110', 'debit': 0, 'credit': fx_diff})
+            fx_desc = base_desc + f" — أرباح فروق عملة (FX Gain): {fx_diff:,.2f} EGP"
+            entries.append({'account_code': '4110', 'debit': 0, 'credit': fx_diff, 'description': fx_desc})
         elif fx_diff < 0:
             if not _validate_account_exists('6110'):
                 return {'success': False, 'message': 'Account 6110 (Exchange Loss) not found. Run seed_default_accounts.'}
-            entries.append({'account_code': '6110', 'debit': -fx_diff, 'credit': 0})
+            fx_desc = base_desc + f" — خسائر فروق عملة (FX Loss): {-fx_diff:,.2f} EGP"
+            entries.append({'account_code': '6110', 'debit': -fx_diff, 'credit': 0, 'description': fx_desc})
         if bank_fee > 0:
             if not _validate_account_exists('6090'):
                 return {'success': False, 'message': 'Account 6090 (Other Expenses) not found for bank fees. Run seed_default_accounts.'}
-            entries.append({'account_code': '6090', 'debit': bank_fee, 'credit': 0})
-            entries.append({'account_code': cash_account, 'debit': 0, 'credit': bank_fee})
+            fee_desc = f"Bank fee for purchase invoice {inv_num} — {bank_fee:,.2f} EGP"
+            entries.append({'account_code': '6090', 'debit': bank_fee, 'credit': 0, 'description': fee_desc})
+            entries.append({'account_code': cash_account, 'debit': 0, 'credit': bank_fee, 'description': fee_desc})
 
         result = post_journal_entry(
             parsed_date, entries, desc,
@@ -2986,16 +3001,20 @@ EXPENSE_COLS = [
     'reference', 'account_code', 'status', 'created_by', 'created_at',
 ]
 
-VALID_EXPENSE_CATEGORIES = ('rent', 'utilities', 'salaries', 'office', 'travel', 'maintenance', 'other')
+VALID_EXPENSE_CATEGORIES = ('salary', 'rent', 'utilities', 'transport', 'office', 'marketing', 'maintenance', 'other',
+                            'salaries', 'travel')  # backward compatibility aliases
 VALID_PAYMENT_METHODS = ('cash', 'bank', 'check')
 
 # Map expense categories to default account codes
 CATEGORY_ACCOUNT_MAP = {
+    'salary': '6020',
+    'salaries': '6020',      # backward compatibility
     'rent': '6000',
     'utilities': '6010',
-    'salaries': '6020',
+    'transport': '6060',
+    'travel': '6040',        # backward compatibility
     'office': '6030',
-    'travel': '6040',
+    'marketing': '6070',
     'maintenance': '6050',
     'other': '6090',
 }
@@ -4246,8 +4265,13 @@ def generate_report(report_name, filters, token_or_email=None):
             if not data.get('success'):
                 return {'success': False, 'message': data.get('message', '')}
             data_list = data.get('data', [])
+            acct_map = _get_account_names_map()
             columns = ['Date', 'Account', 'Description', 'Debit', 'Credit']
-            rows = [{'Date': str(r.get('date', '')), 'Account': r.get('account_code', ''), 'Description': r.get('description', ''), 'Debit': _round2(r.get('debit', 0)), 'Credit': _round2(r.get('credit', 0))} for r in data_list]
+            rows = []
+            for r in data_list:
+                code = r.get('account_code', '')
+                label = acct_map.get(code, '')
+                rows.append({'Date': str(r.get('date', '')), 'Account': f"{code} - {label}" if label else code, 'Description': r.get('description', ''), 'Debit': _round2(r.get('debit', 0)), 'Credit': _round2(r.get('credit', 0))})
             out = {'title': 'General Ledger', 'columns': columns, 'rows': rows, 'summary': {'count': data.get('count', 0)}}
         elif report_name == 'exchange_rates':
             data = get_exchange_rates(token_or_email=token_or_email)
@@ -4255,7 +4279,7 @@ def generate_report(report_name, filters, token_or_email=None):
                 return {'success': False, 'message': data.get('message', '')}
             data_list = data.get('data', [])
             columns = ['Currency', 'Rate to EGP', 'Last Updated']
-            rows = [{'Currency': r.get('currency_code', ''), 'Rate to EGP': _round2(r.get('rate_to_egp', 0)), 'Last Updated': str(r.get('updated_at', ''))} for r in data_list]
+            rows = [{'Currency': r.get('currency_code', ''), 'Rate to EGP': _round2(r.get('rate_to_egp', 0)), 'Last Updated': str(r.get('updated_at') or r.get('effective_date') or '')} for r in data_list]
             out = {'title': 'Exchange Rates', 'columns': columns, 'rows': rows, 'summary': {}}
         elif report_name == 'cash_bank_statement':
             data = get_cash_bank_statement(account_code=filters.get('account_code'), date_from=filters.get('date_from'), date_to=filters.get('date_to'), token_or_email=token_or_email)
@@ -5800,10 +5824,9 @@ def get_exchange_rates(token_or_email=None):
         rates = []
         for r in app_tables.currency_exchange_rates.search():
             rates.append({
-                'id': r.get('id', ''),
                 'currency_code': r.get('currency_code', ''),
                 'rate_to_egp': _round2(r.get('rate_to_egp', 0)),
-                'updated_at': r.get('updated_at').isoformat() if r.get('updated_at') else '',
+                'updated_at': r.get('effective_date').isoformat() if r.get('effective_date') else '',
             })
         rates.sort(key=lambda x: x.get('currency_code', ''))
         return {'success': True, 'data': rates}
@@ -5823,17 +5846,18 @@ def set_exchange_rate(currency_code, rate_to_egp, token_or_email=None):
     if not currency_code or rate_to_egp <= 0:
         return {'success': False, 'message': 'Currency code and valid rate are required'}
     try:
-        existing = app_tables.currency_exchange_rates.get(currency_code=currency_code)
         now = get_utc_now()
-        if existing:
-            existing.update(rate_to_egp=rate_to_egp, updated_at=now)
-        else:
-            app_tables.currency_exchange_rates.add_row(
-                id=_uuid(),
-                currency_code=currency_code,
-                rate_to_egp=rate_to_egp,
-                updated_at=now,
-            )
+        # Deactivate any existing active rows for this currency
+        for existing in app_tables.currency_exchange_rates.search(currency_code=currency_code, is_active=True):
+            existing.update(is_active=False)
+        # Add new active row
+        app_tables.currency_exchange_rates.add_row(
+            currency_code=currency_code,
+            rate_to_egp=rate_to_egp,
+            effective_date=now,
+            created_by=_safe_str(user_email),
+            is_active=True,
+        )
         logger.info("Exchange rate %s = %s EGP set by %s", currency_code, rate_to_egp, user_email)
         return {'success': True}
     except Exception as e:
@@ -6918,7 +6942,7 @@ def get_advanced_account_statement(
                 running += (e['credit'] - e['debit'])
             running = _round2(running)
             rows.append({
-                'date': e['date'],
+                'date': e['date'] or e.get('created_at'),
                 'reference_type': e['reference_type'],
                 'reference_id': e['reference_id'],
                 'description': e['description'],

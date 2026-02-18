@@ -316,6 +316,20 @@ class CalculatorForm(CalculatorFormTemplate):
             pass
       if markups:
         settings_payload["markups"] = markups
+      # Settings version for traceability
+      if data.get("settingsVersion"):
+        settings_payload["settingsVersion"] = data["settingsVersion"]
+      # Warn about missing settings
+      if data.get("missing_settings"):
+        logger.warning("form_show: MISSING required settings: %s", data["missing_settings"])
+        try:
+          warn_msg = data.get("settings_warning", "Some calculator settings are missing. Check Admin > Settings.")
+          if hasattr(anvil.js.window, 'showNotification') and anvil.js.window.showNotification:
+            anvil.js.window.showNotification('warning', '', warn_msg)
+          elif hasattr(anvil.js.window, 'showOkModal') and anvil.js.window.showOkModal:
+            anvil.js.window.showOkModal('warning', warn_msg)
+        except Exception:
+          pass
       # تمرير البيانات مباشرة عبر anvil.js بدون eval
       logger.info("form_show: settings_payload keys=%s, has priceOptions=%s", list(settings_payload.keys()), bool(settings_payload.get("priceOptions")))
       try:

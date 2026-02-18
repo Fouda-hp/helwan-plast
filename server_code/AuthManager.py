@@ -2088,8 +2088,9 @@ def get_all_settings(token_or_email):
 @anvil.server.callable
 def repair_cylinder_prices(token_or_email):
     """
-    إصلاح أسعار السلندرات إذا كانت كلها أصفار — يعيدها للقيم الافتراضية.
+    إصلاح أسعار السلندرات إذا كانت كلها أصفار — يعيدها للقيم الافتراضية في DB.
     للأدمن فقط. يُستدعى مرة واحدة ثم يمكن حذف الدالة.
+    NOTE: These defaults are ONLY written to DB, NOT used as JS fallbacks.
     """
     is_authorized, error = require_admin(token_or_email)
     if not is_authorized:
@@ -2308,6 +2309,34 @@ def get_calculator_settings(token_or_email=None):
         cp = get_setting('cylinder_prices')
         if cp and isinstance(cp, dict):
             result['cylinderPrices'] = cp
+        # --- Validate required settings (no hardcoded fallbacks in JS) ---
+        missing = []
+        if result.get('exchangeRate') is None:
+            missing.append('exchange_rate')
+        for cfg_key in ['shipping_sea', 'ths_cost', 'clearance_expenses', 'tax_rate', 'bank_commission']:
+            if result.get(cfg_key) is None:
+                missing.append(cfg_key)
+        if not result.get('materialAdjustments'):
+            missing.append('material_adjustments')
+        if not result.get('winderAdjustment'):
+            missing.append('winder_adjustment')
+        if not result.get('optionalAdjustments'):
+            missing.append('optional_adjustments')
+        for mk in ['markup_overseas', 'markup_local_instock_4color', 'markup_local_instock_other',
+                    'markup_local_neworder_4color', 'markup_local_neworder_other']:
+            if result.get(mk) is None:
+                missing.append(mk)
+        if not result.get('machinePrices'):
+            missing.append('machine_prices')
+        if not result.get('cylinderPrices'):
+            missing.append('cylinder_prices')
+        if missing:
+            logger.warning("get_calculator_settings: MISSING required settings: %s", missing)
+            result['missing_settings'] = missing
+            result['settings_warning'] = f"Missing calculator settings: {', '.join(missing)}. Configure in Admin > Settings."
+        # --- Settings version for traceability ---
+        import datetime
+        result['settingsVersion'] = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')
         result['success'] = True
         return result
     except Exception as e:

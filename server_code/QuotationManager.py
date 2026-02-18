@@ -2096,7 +2096,7 @@ def get_quotations_list(search='', include_deleted=False, token_or_email=None, p
         search_lower = (search or '').strip().lower()
 
         try:
-            q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by('Quotation#', False)]) if not include_deleted else app_tables.quotations.search(order_by=[anvil_order_by('Quotation#', False)])
+            q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by('Quotation#', ascending=False)]) if not include_deleted else app_tables.quotations.search(order_by=[anvil_order_by('Quotation#', ascending=False)])
         except Exception:
             q_iter = app_tables.quotations.search(is_deleted=False) if not include_deleted else app_tables.quotations.search()
 
@@ -2178,7 +2178,7 @@ def get_quotations_list_without_contract(search='', token_or_email=None, page=1,
         page_size = max(1, min(1000, int(page_size) if page_size is not None else 500))
         search_lower = (search or '').strip().lower()
         try:
-            q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by('Quotation#', False)])
+            q_iter = app_tables.quotations.search(is_deleted=False, order_by=[anvil_order_by('Quotation#', ascending=False)])
         except Exception:
             q_iter = app_tables.quotations.search(is_deleted=False)
         # Pass 1: collect page rows (without client lookups)
@@ -2793,7 +2793,7 @@ def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
 
         # Use DB-level ordering instead of loading all into memory
         try:
-            c_iter = _contracts_search_active(order_by=[anvil_order_by('created_at', False)])
+            c_iter = _contracts_search_active(order_by=[anvil_order_by('created_at', ascending=False)])
         except Exception:
             c_iter = _contracts_search_active()
 

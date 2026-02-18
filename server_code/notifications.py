@@ -245,7 +245,7 @@ def get_user_notifications(token_or_email, limit=50, unread_only=False):
         limit = max(1, min(200, int(limit) if limit is not None else 50))
         rows = []
         try:
-            search_iter = app_tables.notifications.search(user_email=user_email, order_by=[anvil_order_by('created_at', False)])
+            search_iter = app_tables.notifications.search(user_email=user_email, order_by=[anvil_order_by('created_at', ascending=False)])
             for r in search_iter:
                 if unread_only and r.get('read_at') is not None:
                     continue
@@ -411,7 +411,7 @@ def get_all_notifications_admin(token_or_email, limit=50):
         limit = max(1, min(200, int(limit) if limit is not None else 50))
         rows = []
         try:
-            search_iter = app_tables.notifications.search(order_by=[anvil_order_by('created_at', False)])
+            search_iter = app_tables.notifications.search(order_by=[anvil_order_by('created_at', ascending=False)])
             for r in search_iter:
                 rows.append(r)
                 if len(rows) >= limit:

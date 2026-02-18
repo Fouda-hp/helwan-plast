@@ -28,15 +28,14 @@ def _is_admin():
 
 
 def _get_all_notifications():
-    """Fetch notifications — admin gets ALL, normal user gets own."""
+    """Fetch notifications — every user (including admin) sees ONLY their own."""
     token = _get_token()
     if not token:
         return {'success': False, 'data': []}
     try:
-        if _is_admin():
-            res = anvil.server.call('get_all_notifications_admin', token, 50)
-        else:
-            res = anvil.server.call('get_user_notifications', token, 50, False)
+        # الأدمن يشوف إشعاراته هو فقط — مش إشعارات كل الأدمن
+        # (create_notification_for_all_admins بيعمل إشعار لكل أدمن على حدة)
+        res = anvil.server.call('get_user_notifications', token, 50, False)
 
         if not res or not res.get('success'):
             return res or {'success': False, 'data': []}
@@ -135,8 +134,7 @@ def _delete_all_notifications():
     token = _get_token()
     if not token:
         return {'success': False}
-    if _is_admin():
-        return anvil.server.call('delete_all_notifications_admin', token)
+    # كل مستخدم (حتى الأدمن) يحذف إشعاراته هو فقط
     return anvil.server.call('delete_all_my_notifications', token)
 
 

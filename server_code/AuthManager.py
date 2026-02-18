@@ -2642,7 +2642,7 @@ def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
 
     try:
         from anvil.tables import order_by as _ob
-        log_iter = app_tables.audit_log.search(order_by=[_ob('timestamp', False)], **search_kwargs)
+        log_iter = app_tables.audit_log.search(order_by=[_ob('timestamp', ascending=False)], **search_kwargs)
     except Exception:
         log_iter = app_tables.audit_log.search(**search_kwargs)
 

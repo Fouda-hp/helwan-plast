@@ -1106,13 +1106,15 @@ function renderDashCharts(acct) {
   // ============================================
   // AUDIT LOG
   // ============================================
+  var AUDIT_PAGE_SIZE = 50;
+
   window.loadAuditLogs = async function(page) {
   auditPage = page || 1;
   var container = document.getElementById('auditContent');
   container.innerHTML = '<div style="text-align:center;padding:30px;"><div class="hp-code-loader" style="font-size:1.5em;font-weight:900;"><span>&lt;</span><span>LOADING...</span><span>/&gt;</span></div></div>';
 
   try {
-  var result = await window.getAuditLogs(50, (auditPage - 1) * 50, null);
+  var result = await window.getAuditLogs(AUDIT_PAGE_SIZE, (auditPage - 1) * AUDIT_PAGE_SIZE, null);
   if (!result.success) {
   container.innerHTML = '<div class="empty-state"><h4>' + escapeHtml(result.message) + '</h4></div>';
   return;
@@ -1123,18 +1125,28 @@ function renderDashCharts(acct) {
   return;
   }
 
+  var totalRows = result.total || 0;
+  var totalPages = Math.ceil(totalRows / AUDIT_PAGE_SIZE) || 1;
+
   var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Description</th><th>Table</th><th>Record ID</th><th>IP</th></tr></thead><tbody>';
   result.logs.forEach(function(l) {
   html += '<tr>';
-  html += '<td>' + escapeHtml(l.timestamp.replace('T', ' ').substring(0, 19)) + '</td>';
+  html += '<td style="white-space:nowrap;">' + escapeHtml(l.timestamp.replace('T', ' ').substring(0, 19)) + '</td>';
   html += '<td>' + escapeHtml(l.user_name || l.user_email || '-') + '</td>';
   html += '<td>' + escapeHtml(l.action_description || l.action || '-') + '</td>';
   html += '<td>' + escapeHtml(l.table_name || '-') + '</td>';
-  html += '<td>' + escapeHtml(l.record_id || '-') + '</td>';
-  html += '<td>' + escapeHtml(l.ip_address || '-') + '</td>';
+  html += '<td style="font-size:12px;">' + escapeHtml(l.record_id || '-') + '</td>';
+  html += '<td style="white-space:nowrap;">' + escapeHtml(l.ip_address || '-') + '</td>';
   html += '</tr>';
   });
   html += '</tbody></table></div>';
+
+  // Pagination controls
+  html += '<div class="pagination" style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid #e0e0e0;">';
+  html += '<button class="filter-btn" style="padding:8px 16px;" onclick="loadAuditLogs(' + (auditPage - 1) + ')" ' + (auditPage <= 1 ? 'disabled' : '') + '>&laquo; Previous</button>';
+  html += '<span style="color:#555;font-size:14px;">Page <strong>' + auditPage + '</strong> of <strong>' + totalPages + '</strong> &nbsp;(' + totalRows + ' records)</span>';
+  html += '<button class="filter-btn" style="padding:8px 16px;" onclick="loadAuditLogs(' + (auditPage + 1) + ')" ' + (auditPage >= totalPages ? 'disabled' : '') + '>Next &raquo;</button>';
+  html += '</div>';
 
   container.innerHTML = html;
   } catch (e) {

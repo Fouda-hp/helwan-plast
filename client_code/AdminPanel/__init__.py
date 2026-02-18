@@ -1360,38 +1360,43 @@ class AdminPanel(AdminPanelTemplate):
           // ==========================================
           // Audit Log Filters Enhancement
           // ==========================================
+          var _auditFilterPage = 1;
+          var _auditFilterCache = null; // {filters, ...} when filters active
+
           function enhanceAuditLogPanel() {
             var auditPanel = document.getElementById('audit-panel');
             if (!auditPanel) return;
-            
+
             var panelBody = auditPanel.querySelector('.panel-body');
             if (!panelBody) return;
-            
+
             // Check if filters already added
             if (document.getElementById('auditFilters')) return;
-            
+
             // Create filters HTML
             var filtersHtml = '<div id="auditFilters" style="margin-bottom:20px;background:#f8f9fa;padding:15px;border-radius:10px;">';
             filtersHtml += '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;align-items:end;">';
-            
+
             // Date From
             filtersHtml += '<div class="form-group" style="margin:0;">';
             filtersHtml += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">From Date</label>';
             filtersHtml += '<input type="date" id="auditDateFrom" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
             filtersHtml += '</div>';
-            
+
             // Date To
             filtersHtml += '<div class="form-group" style="margin:0;">';
             filtersHtml += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">To Date</label>';
             filtersHtml += '<input type="date" id="auditDateTo" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
             filtersHtml += '</div>';
-            
-            // User Filter
+
+            // User Filter — dropdown (populated async)
             filtersHtml += '<div class="form-group" style="margin:0;">';
             filtersHtml += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">User</label>';
-            filtersHtml += '<input type="text" id="auditUserFilter" placeholder="Filter by user..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
+            filtersHtml += '<select id="auditUserFilter" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">';
+            filtersHtml += '<option value="">All Users</option>';
+            filtersHtml += '</select>';
             filtersHtml += '</div>';
-            
+
             // Action Filter
             filtersHtml += '<div class="form-group" style="margin:0;">';
             filtersHtml += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Action</label>';
@@ -1406,7 +1411,7 @@ class AdminPanel(AdminPanelTemplate):
             filtersHtml += '<option value="IMPORT">IMPORT</option>';
             filtersHtml += '</select>';
             filtersHtml += '</div>';
-            
+
             // Table Filter
             filtersHtml += '<div class="form-group" style="margin:0;">';
             filtersHtml += '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Table</label>';
@@ -1419,39 +1424,70 @@ class AdminPanel(AdminPanelTemplate):
             filtersHtml += '<option value="settings">Settings</option>';
             filtersHtml += '</select>';
             filtersHtml += '</div>';
-            
+
             filtersHtml += '</div>'; // End grid
-            
+
             // Filter buttons
             filtersHtml += '<div style="margin-top:12px;display:flex;gap:10px;">';
-            filtersHtml += '<button class="action-btn" onclick="withButtonLock(this, function(){ return applyAuditFilters(); })" style="padding:8px 20px;" data-loading-text="...">🔍 Apply Filters</button>';
+            filtersHtml += '<button class="action-btn" onclick="withButtonLock(this, function(){ return applyAuditFilters(); })" style="padding:8px 20px;" data-loading-text="...">Apply Filters</button>';
             filtersHtml += '<button class="filter-btn" onclick="withButtonLock(this, function(){ clearAuditFilters(); })" style="padding:8px 20px;">Clear</button>';
             filtersHtml += '</div>';
-            
+
             filtersHtml += '</div>'; // End filters container
-            
+
             // Insert filters before content
             var auditContent = document.getElementById('auditContent');
             if (auditContent) {
               panelBody.insertAdjacentHTML('afterbegin', filtersHtml);
             }
+
+            // Populate user dropdown async
+            _populateAuditUserDropdown();
           }
-          
-          window.applyAuditFilters = async function() {
+
+          function _populateAuditUserDropdown() {
+            if (!window.getAllUsers) return;
+            try {
+              var p = window.getAllUsers();
+              if (p && typeof p.then === 'function') {
+                p.then(function(res) {
+                  if (!res || !res.success) return;
+                  var sel = document.getElementById('auditUserFilter');
+                  if (!sel) return;
+                  var users = (res.users || []).slice();
+                  users.sort(function(a, b) {
+                    return (a.full_name || a.email || '').localeCompare(b.full_name || b.email || '');
+                  });
+                  users.forEach(function(u) {
+                    var opt = document.createElement('option');
+                    var name = (u.full_name || '').trim();
+                    var email = (u.email || '').trim();
+                    opt.value = email;
+                    opt.textContent = name ? (name + ' (' + email + ')') : email;
+                    sel.appendChild(opt);
+                  });
+                });
+              }
+            } catch(e) { /* ignore */ }
+          }
+
+          window.applyAuditFilters = async function(page) {
             function escapeHtml(s) {
               if (s == null || s === '') return '';
               var t = String(s);
               return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             }
+            _auditFilterPage = page || 1;
+            var PAGE_SIZE = 50;
             var dateFrom = document.getElementById('auditDateFrom').value;
             var dateTo = document.getElementById('auditDateTo').value;
-            var userFilter = document.getElementById('auditUserFilter').value.toLowerCase();
+            var userFilter = document.getElementById('auditUserFilter').value;
             var actionFilter = document.getElementById('auditActionFilter').value;
             var tableFilter = document.getElementById('auditTableFilter').value;
-            
+
             var container = document.getElementById('auditContent');
             container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:40px;">' + (window.HAND_LOADER_HTML || 'Loading...') + '</div>';
-            
+
             try {
               var filters = {};
               if (dateFrom) filters.date_from = dateFrom;
@@ -1459,59 +1495,58 @@ class AdminPanel(AdminPanelTemplate):
               if (actionFilter) filters.action = actionFilter;
               if (tableFilter) filters.table_name = tableFilter;
               if (userFilter) filters.user_email = userFilter;
-              
-              var result = await window.getAuditLogs(100, 0, filters);
+
+              var offset = (_auditFilterPage - 1) * PAGE_SIZE;
+              var result = await window.getAuditLogs(PAGE_SIZE, offset, filters);
               if (!result.success) {
-                var msg = (result && result.message) ? result.message : 'فشل تحميل سجل التدقيق';
-                container.innerHTML = '<div class="empty-state"><h4>' + escapeHtml(msg || '—') + '</h4></div>';
+                var msg = (result && result.message) ? result.message : 'Failed to load audit logs';
+                container.innerHTML = '<div class="empty-state"><h4>' + escapeHtml(msg || '-') + '</h4></div>';
                 return;
               }
-              
+
               var logs = result.logs || [];
-              
-              // فلترة حسب الاسم (من نفّذ الإجراء)
-              if (userFilter) {
-                logs = logs.filter(function(l) {
-                  return (l.user_name && l.user_name.toLowerCase().includes(userFilter)) ||
-                         (l.user_email && l.user_email.toLowerCase().includes(userFilter));
-                });
-              }
-              
+              var totalRows = result.total || 0;
+              var totalPages = Math.ceil(totalRows / PAGE_SIZE) || 1;
+
               if (logs.length === 0) {
                 container.innerHTML = '<div class="empty-state"><h4>No logs found</h4><p>Try different filters</p></div>';
                 return;
               }
-              
-              var html = '<table class="data-table"><thead><tr><th>Time</th><th>User (name)</th><th>Action</th><th>Table</th><th>Record ID</th></tr></thead><tbody>';
+
+              var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Description</th><th>Table</th><th>Record ID</th><th>IP</th></tr></thead><tbody>';
               logs.forEach(function(l) {
-                var actionClass = '';
-                if (l.action === 'CREATE') actionClass = 'style="color:#2e7d32;"';
-                else if (l.action === 'UPDATE') actionClass = 'style="color:#1565c0;"';
-                else if (l.action === 'SOFT_DELETE') actionClass = 'style="color:#c62828;"';
-                else if (l.action === 'RESTORE') actionClass = 'style="color:#f57f17;"';
-                var displayUser = (l.user_name && l.user_name !== '—') ? l.user_name : (l.user_email || '—');
                 html += '<tr>';
-                html += '<td>' + escapeHtml((l.timestamp || '').replace('T', ' ').substring(0, 19)) + '</td>';
-                html += '<td>' + escapeHtml(displayUser || '—') + '</td>';
-                html += '<td ' + actionClass + '><strong>' + escapeHtml(l.action || '') + '</strong></td>';
-                html += '<td>' + escapeHtml(l.table_name || '') + '</td>';
-                html += '<td>' + escapeHtml(l.record_id || '-') + '</td>';
+                html += '<td style="white-space:nowrap;">' + escapeHtml((l.timestamp || '').replace('T', ' ').substring(0, 19)) + '</td>';
+                html += '<td>' + escapeHtml(l.user_name || l.user_email || '-') + '</td>';
+                html += '<td>' + escapeHtml(l.action_description || l.action || '-') + '</td>';
+                html += '<td>' + escapeHtml(l.table_name || '-') + '</td>';
+                html += '<td style="font-size:12px;">' + escapeHtml(l.record_id || '-') + '</td>';
+                html += '<td style="white-space:nowrap;">' + escapeHtml(l.ip_address || '-') + '</td>';
                 html += '</tr>';
               });
-              html += '</tbody></table>';
+              html += '</tbody></table></div>';
+
+              // Pagination
+              html += '<div class="pagination" style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid #e0e0e0;">';
+              html += '<button class="filter-btn" style="padding:8px 16px;" onclick="applyAuditFilters(' + (_auditFilterPage - 1) + ')" ' + (_auditFilterPage <= 1 ? 'disabled' : '') + '>&laquo; Previous</button>';
+              html += '<span style="color:#555;font-size:14px;">Page <strong>' + _auditFilterPage + '</strong> of <strong>' + totalPages + '</strong> &nbsp;(' + totalRows + ' records)</span>';
+              html += '<button class="filter-btn" style="padding:8px 16px;" onclick="applyAuditFilters(' + (_auditFilterPage + 1) + ')" ' + (_auditFilterPage >= totalPages ? 'disabled' : '') + '>Next &raquo;</button>';
+              html += '</div>';
+
               container.innerHTML = html;
             } catch (e) {
-              var errMsg = (e && (e.message || e.toString && e.toString())) ? (e.message || e.toString()) : 'خطأ غير معروف';
-              container.innerHTML = '<div class="empty-state"><h4>خطأ في تحميل سجل التدقيق</h4><p>' + escapeHtml(errMsg) + '</p></div>';
+              var errMsg = (e && (e.message || e.toString && e.toString())) ? (e.message || e.toString()) : 'Unknown error';
+              container.innerHTML = '<div class="empty-state"><h4>Error loading audit logs</h4><p>' + escapeHtml(errMsg) + '</p></div>';
             }
           };
-          
+
           window.clearAuditFilters = function() {
             document.getElementById('auditDateFrom').value = '';
             document.getElementById('auditDateTo').value = '';
             document.getElementById('auditUserFilter').value = '';
             document.getElementById('auditActionFilter').value = '';
             document.getElementById('auditTableFilter').value = '';
+            _auditFilterPage = 1;
             window.loadAuditLogs();
           };
 

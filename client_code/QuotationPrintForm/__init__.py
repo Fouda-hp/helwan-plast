@@ -259,7 +259,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       return '<span dir="ltr" style="unicode-bidi:embed;display:inline-block;">' + str(val) + '</span>'
 
     # ==================== PAGE 1 ====================
-    html = '<div class="template-page ' + ("" if is_ar else "ltr") + '">'
+    html = '<div class="template-page ' + ("" if is_ar else "ltr") + '" style="padding:15px 25px;">'
 
     # Header
     html += '<div class="header">'
@@ -314,7 +314,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     # ==================== 17 SPECIFICATIONS ====================
     html += '<div class="section-title">' + ("المواصفات الفنية:" if is_ar else "Technical Specifications:") + '</div>'
-    html += '<div class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
+    html += '<div class="specs-list" style="font-size: 11px; line-height: 1.35; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
 
     # Helper: Belt/Gear drive for item 13 (uses is_metal_anilox, is_nonwoven from above)
     def get_drive_type():
@@ -380,7 +380,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     specs = specs_ar if is_ar else specs_en
     for i, spec in enumerate(specs, 1):
       spec_num = num_span(to_ar(i)) if is_ar else num_span(i)
-      html += '<div class="spec-item">' + spec_num + ' - ' + str(spec) + '</div>'
+      html += '<div class="spec-item" style="margin-bottom:1px;">' + spec_num + ' - ' + str(spec) + '</div>'
 
     html += '</div>'
     html += '</div>'  # End Page 1

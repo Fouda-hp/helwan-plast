@@ -2142,7 +2142,7 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
             return {'success': False, 'message': f"Cannot record payment for invoice with status '{row.get('status')}'"}
 
         remaining_egp = _get_supplier_remaining_egp(invoice_id)
-        if remaining_egp <= 0:
+        if remaining_egp < RESIDUAL_TOLERANCE:  # M-02: tolerance for floating-point residuals
             return {'success': False, 'message': 'No remaining balance to pay for this invoice'}
         if is_paid_in_full and amount_in <= 0:
             return {'success': False, 'message': 'For settlement in full, enter the actual payment amount'}
@@ -2179,7 +2179,7 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
             liability_slice_egp = remaining_egp
         elif pct is not None:
             liability_slice_egp = _round2(remaining_egp * (pct / 100.0))
-            if liability_slice_egp <= 0:
+            if liability_slice_egp < RESIDUAL_TOLERANCE:  # M-02: tolerance for floating-point residuals
                 return {'success': False, 'message': 'Resulting payment amount is zero'}
             liability_slice_egp = min(liability_slice_egp, remaining_egp)
         else:
@@ -2190,7 +2190,7 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
                 # Book value of this payment = amount in foreign * invoice rate
                 liability_slice_egp = _round2(amount_in * invoice_rate)
             liability_slice_egp = min(liability_slice_egp, remaining_egp)
-            if liability_slice_egp <= 0:
+            if liability_slice_egp < RESIDUAL_TOLERANCE:  # M-02: tolerance for floating-point residuals
                 return {'success': False, 'message': 'Payment amount must be greater than zero'}
 
         # 2) payment_egp = actual amount paid at payment rate

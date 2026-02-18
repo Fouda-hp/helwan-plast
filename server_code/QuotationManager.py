@@ -732,7 +732,7 @@ def restore_quotation(quotation_number, token_or_email=None):
 
     if scope == 'own':
         created_by = (row.get('created_by') or '').strip().lower()
-        if created_by != user_email:
+        if created_by != (user_email or '').strip().lower():  # M-20: case-insensitive email comparison
             return {"success": False, "message": "Permission denied: you can only restore records you created"}
 
     # M-19: preserve deleted_by/deleted_at for audit trail, add restored_by/restored_at

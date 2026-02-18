@@ -187,17 +187,22 @@ class ContractPrintForm(ContractPrintFormTemplate):
         except (ValueError, TypeError):
             self._show_msg('Invalid quotation number selected')
             return
-        result = self.load_quotation_for_print(q_num)
-        if result and result.get('success'):
-            self.current_data = result.get('data', {})
-            self.display_contract_number = None
-            self.preview_contract_serial = None
-            try:
-                auth = anvil.js.window.sessionStorage.getItem('auth_token') or None
-                contract_res = anvil.server.call('get_contract', q_num, auth)
-                if contract_res and contract_res.get('success') and contract_res.get('data'):
-                    self.display_contract_number = contract_res['data'].get('contract_number')
-                else:
+        try:
+            anvil.js.window.showLoadingOverlay()
+        except Exception:
+            pass
+        try:
+            result = self.load_quotation_for_print(q_num)
+            if result and result.get('success'):
+                self.current_data = result.get('data', {})
+                self.display_contract_number = None
+                self.preview_contract_serial = None
+                try:
+                    auth = anvil.js.window.sessionStorage.getItem('auth_token') or None
+                    contract_res = anvil.server.call('get_contract', q_num, auth)
+                    if contract_res and contract_res.get('success') and contract_res.get('data'):
+                        self.display_contract_number = contract_res['data'].get('contract_number')
+                    else:
                     # ط¬ظ„ط¨ ط§ظ„ظ…طھط³ظ„ط³ظ„ ط§ظ„طھط§ظ„ظٹ ظ…ظ† ط¬ط¯ظˆظ„ ط§ظ„ط¹ظ‚ظˆط¯ ظ„ظ„ظ…ط¹ط§ظٹظ†ط© (ظ…ظƒط§ظ† ط§ظ„ط´ط±ط·ط©)
                     preview_res = anvil.server.call('get_next_contract_serial_preview', auth)
                     if preview_res and preview_res.get('success'):
@@ -222,6 +227,13 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 total_el.textContent = "{:,.2f}".format(total)
             # Also trigger calculation to update entered/remaining
             self.calculate_total_percentage()
+        except Exception as e:
+            self._show_msg(str(e))
+        finally:
+            try:
+                anvil.js.window.hideLoadingOverlay()
+            except Exception:
+                pass
 
     def switch_language(self, lang):
         self.current_lang = lang

@@ -127,6 +127,22 @@ def _contracts_search_active(**kwargs):
     return app_tables.contracts.search(**kwargs)
 
 
+def _contracts_get_active(**kwargs):
+    """
+    جلب عقد واحد مع استبعاد المحذوف — بديل آمن لـ app_tables.contracts.get().
+    """
+    global _contracts_has_is_deleted
+    if _contracts_has_is_deleted is None:
+        try:
+            cols = [col['name'] for col in app_tables.contracts.list_columns()]
+            _contracts_has_is_deleted = 'is_deleted' in cols
+        except Exception:
+            _contracts_has_is_deleted = False
+    if _contracts_has_is_deleted:
+        kwargs['is_deleted'] = False
+    return app_tables.contracts.get(**kwargs)
+
+
 # دوال الترقيم: من quotation_numbers.get_next_number_atomic (ذرّي، بدون دوبليكيت)
 # =========================================================
 # دوال التحقق المساعدة
@@ -2283,7 +2299,7 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
         # البحث عن عقد موجود بنفس رقم العرض (تحديث) أو إنشاء جديد برقم عقد: C - رقم الكوتيشن / متسلسل - السنة
         existing = None
         try:
-            existing = app_tables.contracts.get(quotation_number=quotation_number)
+            existing = _contracts_get_active(quotation_number=quotation_number)
         except Exception as e:
             logger.warning(f"Contract lookup by quotation_number failed: {e}")
         if existing:
@@ -2542,7 +2558,7 @@ def update_contract(contract_data, user_email='system', token_or_email=None):
             return {'success': False, 'message': 'المشكلة: رقم العرض يجب أن يكون رقماً (Quotation number must be numeric)'}
         existing = None
         try:
-            existing = app_tables.contracts.get(quotation_number=quotation_number)
+            existing = _contracts_get_active(quotation_number=quotation_number)
         except Exception as e:
             logger.warning(f"Contract lookup failed: {e}")
         if not existing:
@@ -2611,14 +2627,14 @@ def get_contract(quotation_number, token_or_email=None):
             q_num = int(quotation_number)
         except (TypeError, ValueError):
             return {'success': False, 'message': 'Invalid quotation number'}
-        row = app_tables.contracts.get(quotation_number=q_num)
+        row = _contracts_get_active(quotation_number=q_num)
         if row:
             payments = []
             try:
                 payments = json.loads(row['payments_json'] or '[]')
             except Exception as e:
                 logger.debug("Suppressed: %s", e)
-            
+
             return {'success': True, 'data': {
                 'contract_number': row['contract_number'],
                 'quotation_number': row['quotation_number'],
@@ -2733,6 +2749,7 @@ def delete_contract(quotation_number, token_or_email=None):
 
 
 @anvil.server.callable
+@anvil.tables.in_transaction
 def restore_contract(quotation_number, token_or_email=None):
     """استعادة عقد محذوف (يتطلب صلاحية الحذف)"""
     is_valid, user_email, auth_err = _require_authenticated(token_or_email)
@@ -3120,7 +3137,7 @@ def update_payment_status(quotation_number, payment_index, new_status, paid_date
         return {'success': False, 'message': 'Invalid quotation number'}
 
     try:
-        row = app_tables.contracts.get(quotation_number=q_num)
+        row = _contracts_get_active(quotation_number=q_num)
         if not row:
             return {'success': False, 'message': 'Contract not found'}
 
@@ -3420,6 +3437,7 @@ def diagnose_backup_drive(token_or_email):
 
 
 @anvil.server.callable
+@anvil.tables.in_transaction
 def restore_backup(token_or_email, backup_media):
     """
     استعادة كاملة من نسخة احتياطية (Restore Point).
@@ -3713,7 +3731,7 @@ def update_contract_status(quotation_number, new_status, notes='', token_or_emai
         if new_status not in CONTRACT_LIFECYCLE_STATES:
             return {'success': False, 'message': f'Invalid status: {new_status}'}
 
-        contract = app_tables.contracts.get(contract_number=quotation_number)
+        contract = _contracts_get_active(contract_number=quotation_number)
         if not contract:
             return {'success': False, 'message': 'Contract not found'}
 
@@ -3762,7 +3780,7 @@ def get_contract_timeline(quotation_number, token_or_email=None):
     if not is_valid:
         return {'success': False, 'data': [], 'message': error or 'Permission denied'}
     try:
-        contract = app_tables.contracts.get(contract_number=quotation_number)
+        contract = _contracts_get_active(contract_number=quotation_number)
         if not contract:
             return {'success': False, 'data': [], 'message': 'Contract not found'}
         history_raw = contract.get('status_history_json') or '[]'

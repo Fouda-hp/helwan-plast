@@ -127,13 +127,32 @@ def _send_notification_email(user_email, notif_type, payload):
         logger.warning("Notification email failed for %s: %s", user_email, e)
 
 
-def _is_duplicate_notification(user_email, notif_type, payload_json, seconds=5):
-    """تحقق من عدم وجود إشعار مطابق خلال آخر N ثوان (منع التكرار)."""
+def _dedup_key(notif_type, payload_json):
+    """مفتاح مختصر لمنع التكرار — يعتمد على النوع + أهم الحقول فقط."""
     try:
+        pl = json.loads(payload_json) if isinstance(payload_json, str) else (payload_json or {})
+    except Exception:
+        pl = {}
+    # لإشعارات الـ audit: المقارنة بالـ action فقط (مش الـ record_id الكامل)
+    if notif_type == 'audit_action':
+        return notif_type + '|' + str(pl.get('action', ''))
+    # لباقي الأنواع: المقارنة بأول 3 قيم من الـ payload
+    keys = sorted(pl.keys())[:3]
+    parts = [notif_type]
+    for k in keys:
+        parts.append(str(k) + '=' + str(pl.get(k, ''))[:50])
+    return '|'.join(parts)
+
+
+def _is_duplicate_notification(user_email, notif_type, payload_json, seconds=60):
+    """تحقق من عدم وجود إشعار مشابه خلال آخر N ثانية (منع التكرار)."""
+    try:
+        new_key = _dedup_key(notif_type, payload_json)
         cutoff = get_utc_now() - timedelta(seconds=seconds)
         for r in app_tables.notifications.search(user_email=user_email, type=notif_type):
             if r.get('created_at') and r['created_at'] >= cutoff:
-                if r.get('payload') == payload_json:
+                existing_key = _dedup_key(notif_type, r.get('payload'))
+                if existing_key == new_key:
                     return True
         return False
     except Exception:

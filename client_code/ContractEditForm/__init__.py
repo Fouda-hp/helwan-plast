@@ -115,47 +115,59 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
         except (ValueError, TypeError):
             self._show_msg('Invalid selection')
             return
-        auth = self._get_auth_token()
-        contract_res = anvil.server.call('get_contract', q_num, auth)
-        if not contract_res or not contract_res.get('success'):
-            self._show_msg(contract_res.get('message', 'Contract not found') if contract_res else 'Error')
-            return
-        pdf_res = self.load_quotation_for_print(q_num)
-        if not pdf_res or not pdf_res.get('success'):
-            self._show_msg('Could not load quotation data')
-            return
-        contract_data = contract_res.get('data', {})
-        pdf_data = pdf_res.get('data', {})
-        pdf_data['quotation_number'] = q_num
-        pdf_data['client_name'] = contract_data.get('client_name') or pdf_data.get('client_name', '')
-        pdf_data['client_company'] = contract_data.get('company') or pdf_data.get('client_company', '')
-        pdf_data['total_price'] = contract_data.get('total_price') or pdf_data.get('total_price', '')
-        pdf_data['contract_number'] = contract_data.get('contract_number', '')
-        self.current_data = pdf_data
-        self.display_contract_number = contract_data.get('contract_number')
-        self.payment_data = list(contract_data.get('payments', []))
-        self.payment_method = (contract_data.get('payment_method') or 'percentage').strip() or 'percentage'
-        num_payments_el = anvil.js.window.document.getElementById('numPayments')
-        if num_payments_el and self.payment_data:
-            num_payments_el.value = str(len(self.payment_data))
-        radios = anvil.js.window.document.querySelectorAll('input[name="paymentMethod"]')
-        for r in radios:
-            if r and str(r.value) == self.payment_method:
-                r.checked = True
-                break
-        delivery_el = anvil.js.window.document.getElementById('deliveryDateInput')
-        if delivery_el:
-            delivery_el.value = contract_data.get('delivery_date') or ''
-        self.render_template()
-        total_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
         try:
-            total = float(total_str) if total_str else 0
+            anvil.js.window.showLoadingOverlay()
         except Exception:
-            total = 0
-        total_el = anvil.js.window.document.getElementById('totalContractAmount')
-        if total_el:
-            total_el.textContent = "{:,.2f}".format(total)
-        self.calculate_total_percentage()
+            pass
+        try:
+            auth = self._get_auth_token()
+            contract_res = anvil.server.call('get_contract', q_num, auth)
+            if not contract_res or not contract_res.get('success'):
+                self._show_msg(contract_res.get('message', 'Contract not found') if contract_res else 'Error')
+                return
+            pdf_res = self.load_quotation_for_print(q_num)
+            if not pdf_res or not pdf_res.get('success'):
+                self._show_msg('Could not load quotation data')
+                return
+            contract_data = contract_res.get('data', {})
+            pdf_data = pdf_res.get('data', {})
+            pdf_data['quotation_number'] = q_num
+            pdf_data['client_name'] = contract_data.get('client_name') or pdf_data.get('client_name', '')
+            pdf_data['client_company'] = contract_data.get('company') or pdf_data.get('client_company', '')
+            pdf_data['total_price'] = contract_data.get('total_price') or pdf_data.get('total_price', '')
+            pdf_data['contract_number'] = contract_data.get('contract_number', '')
+            self.current_data = pdf_data
+            self.display_contract_number = contract_data.get('contract_number')
+            self.payment_data = list(contract_data.get('payments', []))
+            self.payment_method = (contract_data.get('payment_method') or 'percentage').strip() or 'percentage'
+            num_payments_el = anvil.js.window.document.getElementById('numPayments')
+            if num_payments_el and self.payment_data:
+                num_payments_el.value = str(len(self.payment_data))
+            radios = anvil.js.window.document.querySelectorAll('input[name="paymentMethod"]')
+            for r in radios:
+                if r and str(r.value) == self.payment_method:
+                    r.checked = True
+                    break
+            delivery_el = anvil.js.window.document.getElementById('deliveryDateInput')
+            if delivery_el:
+                delivery_el.value = contract_data.get('delivery_date') or ''
+            self.render_template()
+            total_str = str(self.current_data.get('total_price', 0) or 0).replace(',', '').replace('،', '')
+            try:
+                total = float(total_str) if total_str else 0
+            except Exception:
+                total = 0
+            total_el = anvil.js.window.document.getElementById('totalContractAmount')
+            if total_el:
+                total_el.textContent = "{:,.2f}".format(total)
+            self.calculate_total_percentage()
+        except Exception as e:
+            self._show_msg(str(e))
+        finally:
+            try:
+                anvil.js.window.hideLoadingOverlay()
+            except Exception:
+                pass
 
     def update_contract(self):
         if not self.current_data:

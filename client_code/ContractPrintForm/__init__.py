@@ -124,6 +124,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
     def load_quotations_list(self):
         """ط¹ظ‚ط¯ ط¬ط¯ظٹط¯: ظپظ‚ط· ط§ظ„ط¹ط±ظˆط¶ ط§ظ„طھظٹ ظ„ظ… ظٹظڈظ†ط´ط£ ظ„ظ‡ط§ ط¹ظ‚ط¯. ط؛ظٹط± ط°ظ„ظƒ: ظƒظ„ ط§ظ„ط¹ط±ظˆط¶ (ظ„ظ„طھظˆط§ظپظ‚ ظ…ط¹ ط§ظ„ط±ظˆط§ط¨ط· ط§ظ„ظ‚ط¯ظٹظ…ط©)."""
         try:
+            anvil.js.window.showLoadingOverlay()
+        except Exception:
+            pass
+        try:
             auth = anvil.js.window.sessionStorage.getItem('auth_token') or None
             try:
                 hash_val = (anvil.js.window.location.hash or '').strip()
@@ -138,20 +142,26 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 self.populate_dropdown(self.all_quotations)
         except Exception as e:
             logger.debug("Error loading quotations: %s", e)
+        finally:
+            try:
+                anvil.js.window.hideLoadingOverlay()
+            except Exception:
+                pass
 
     def populate_dropdown(self, quotations):
         select = anvil.js.window.document.getElementById('quotationSelect')
         if not select:
             return
-        select.innerHTML = '<option value="">-- Select Quotation (' + str(_h(len(quotations))) + ') --</option>'
-        for q in quotations:
-            q_num = _h(q.get('Quotation#', ''))
-            client_name = _h(q.get('Client Name', ''))
-            company = _h(q.get('Company', ''))
+        opts = ['<option value="">-- Select Quotation (' + str(_h(len(quotations))) + ') --</option>']
+        for quot in quotations:
+            q_num = _h(quot.get('Quotation#', ''))
+            client_name = _h(quot.get('Client Name', ''))
+            company = _h(quot.get('Company', ''))
             client_display = (str(client_name) + ' - ' + str(company)).strip(' - ') if company else client_name
-            model = _h(q.get('Model', ''))
+            model = _h(quot.get('Model', ''))
             option_text = '#' + str(q_num) + ' - ' + str(client_display) + ' - ' + str(model)
-            select.innerHTML += '<option value="' + str(q_num) + '">' + str(option_text) + '</option>'
+            opts.append('<option value="' + str(q_num) + '">' + str(option_text) + '</option>')
+        select.innerHTML = ''.join(opts)
 
     def filter_quotations(self):
         search_input = anvil.js.window.document.getElementById('searchInput')
@@ -737,6 +747,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
         }
         
         try:
+            anvil.js.window.showLoadingOverlay()
+        except Exception:
+            pass
+        try:
             user_email = anvil.js.window.sessionStorage.getItem('user_email') or 'system'
             auth = anvil.js.window.sessionStorage.getItem('auth_token') or user_email
             result = anvil.server.call('save_contract', contract_data, user_email, auth)
@@ -772,6 +786,11 @@ class ContractPrintForm(ContractPrintFormTemplate):
             else:
                 msg = 'Save failed. Details: ' + str(detail)
             self._show_msg(msg)
+        finally:
+            try:
+                anvil.js.window.hideLoadingOverlay()
+            except Exception:
+                pass
 
     def delete_contract(self):
         """ط­ط°ظپ ط§ظ„ط¹ظ‚ط¯ ظˆط¨ظٹظ†ط§طھظ‡ ط¨ط§ظ„ظƒط§ظ…ظ„ ظ…ظ† ط§ظ„ط¬ط¯ظˆظ„ (ظٹطھط·ظ„ط¨ طµظ„ط§ط­ظٹط© delete)"""

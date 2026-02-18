@@ -310,9 +310,16 @@ def add_account(code, name_en, name_ar, account_type, parent_code=None, token_or
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
         return error
-    code = _safe_str(code)
+    code = _safe_str(code).strip()
+    name_en = _safe_str(name_en).strip()
     if not code or not name_en:
         return {'success': False, 'message': 'Account code and English name are required'}
+    # Validate account code format: 1-20 chars, alphanumeric + dash/dot only
+    import re
+    if len(code) > 20:
+        return {'success': False, 'message': 'Account code must be 20 characters or less'}
+    if not re.match(r'^[A-Za-z0-9.\-]+$', code):
+        return {'success': False, 'message': 'Account code can only contain letters, numbers, dots and dashes'}
     if account_type not in ('asset', 'liability', 'equity', 'revenue', 'expense'):
         return {'success': False, 'message': f'Invalid account_type: {account_type}'}
     try:
@@ -336,6 +343,7 @@ def add_account(code, name_en, name_ar, account_type, parent_code=None, token_or
 
 
 @anvil.server.callable("seed_accounts")
+@anvil.tables.in_transaction
 def seed_default_accounts(token_or_email=None):
     """Seed the chart of accounts with the default Helwan Plast accounts. Skips existing codes."""
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
@@ -431,6 +439,7 @@ def is_period_locked(entry_date):
 
 
 @anvil.server.callable
+@anvil.tables.in_transaction
 def lock_period(year, month, token_or_email=None):
     """Lock an accounting period (year, month). No posting allowed for that month."""
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
@@ -451,6 +460,7 @@ def lock_period(year, month, token_or_email=None):
 
 
 @anvil.server.callable
+@anvil.tables.in_transaction
 def unlock_period(year, month, token_or_email=None):
     """Unlock an accounting period (year, month)."""
     is_valid, user_email, error = _require_permission(token_or_email, 'create')

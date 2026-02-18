@@ -151,11 +151,11 @@ def get_client_detail(client_code, token_or_email=None):
         q_numbers = []
         last_activity = _to_datetime(row.get('Date'))
 
-        for q in quotations:
-            q_numbers.append(q.get('Quotation#'))
-            agreed = _parse_price(q.get('Agreed Price'))
+        for quot in quotations:
+            q_numbers.append(quot.get('Quotation#'))
+            agreed = _parse_price(quot.get('Agreed Price'))
             total_value += agreed
-            q_dt = _to_datetime(q.get('Date') or q.get('created_at'))
+            q_dt = _to_datetime(quot.get('Date') or quot.get('created_at'))
             if q_dt and (last_activity is None or q_dt > last_activity):
                 last_activity = q_dt
 
@@ -225,17 +225,17 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
         try:
             quotations = list(app_tables.quotations.search(**{'Client Code': client_code, 'is_deleted': False}))
             q_numbers = []
-            for q in quotations:
-                qn = q.get('Quotation#')
+            for quot in quotations:
+                qn = quot.get('Quotation#')
                 q_numbers.append(qn)
-                q_date = q.get('Date') or q.get('created_at')
-                agreed = _parse_price(q.get('Agreed Price'))
+                q_date = quot.get('Date') or quot.get('created_at')
+                agreed = _parse_price(quot.get('Agreed Price'))
 
                 events.append({
                     'date': _safe_isoformat(q_date),
                     'type': 'quotation',
-                    'summary_en': f'Quotation #{qn} - {q.get("Model", "")} - {agreed:,.0f} {cur}',
-                    'summary_ar': f'عرض سعر #{qn} - {q.get("Model", "")} - {agreed:,.0f} {cur}',
+                    'summary_en': f'Quotation #{qn} - {quot.get("Model", "")} - {agreed:,.0f} {cur}',
+                    'summary_ar': f'عرض سعر #{qn} - {quot.get("Model", "")} - {agreed:,.0f} {cur}',
                     'detail_id': str(qn),
                     'detail_type': 'quotation',
                 })

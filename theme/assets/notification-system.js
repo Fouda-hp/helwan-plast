@@ -13,11 +13,12 @@
     c.innerHTML = '<style>#notificationContainer .hp-t{pointer-events:auto;padding:12px 16px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);border-left:4px solid #667eea;background:#fff;}#notificationContainer .hp-t.suc{border-left-color:#4caf50;}#notificationContainer .hp-t.err{border-left-color:#f44336;}#notificationContainer .hp-t.warn{border-left-color:#ff9800;}#notificationContainer .hp-t.inf{border-left-color:#2196f3;}</style>';
     document.body.appendChild(c);
   }
+  function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   if (!window.showNotification) {
     window.showNotification = function(type, title, msg) {
       var el = document.createElement('div');
       el.className = 'hp-t ' + (type === 'success' ? 'suc' : type === 'error' ? 'err' : type === 'warning' ? 'warn' : 'inf');
-      el.innerHTML = (title ? '<strong style="display:block;margin-bottom:4px;">' + title + '</strong>' : '') + (msg || '');
+      el.innerHTML = (title ? '<strong style="display:block;margin-bottom:4px;">' + _esc(title) + '</strong>' : '') + _esc(msg || '');
       c.appendChild(el);
       setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 4500);
     };

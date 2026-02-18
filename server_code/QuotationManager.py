@@ -249,6 +249,12 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
     # لذلك نبحث بالتليفون كمصدر أساسي لتحديد العميل الموجود
     existing_client_row = None
     phone = safe_strip(form_data.get('Phone'))
+    # Validate phone format: only digits, +, -, spaces, parens; max 20 chars
+    if phone:
+        import re as _re_phone
+        phone = phone.strip()[:20]
+        if not _re_phone.match(r'^[0-9+\-\s()]+$', phone):
+            phone = _re_phone.sub(r'[^0-9+\-\s()]', '', phone)[:20]
 
     # أولاً: بحث بالتليفون (أدق طريقة لتحديد العميل)
     if phone:

@@ -15,6 +15,14 @@ import anvil.server
 class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
     def __init__(self, **properties):
         ContractPrintForm.__init__(self, **properties)
+        # فحص تسجيل الدخول — إذا مفيش توكن نرجّع لصفحة اللوجن
+        try:
+            token = anvil.js.window.sessionStorage.getItem('auth_token')
+            if not token:
+                anvil.js.window.location.hash = '#login'
+                return
+        except Exception:
+            pass
         anvil.js.window.saveContract = self.update_contract
         anvil.js.window.deleteContract = self.delete_contract
 
@@ -53,6 +61,10 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
 
     def load_contracts_list(self):
         try:
+            anvil.js.window.showLoadingOverlay()
+        except Exception:
+            pass
+        try:
             auth = self._get_auth_token()
             result = anvil.server.call('get_contracts_list', '', auth, 1, 500)
             if result and result.get('success'):
@@ -64,6 +76,11 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
         except Exception as e:
             self.all_contracts = []
             self._populate_contracts_dropdown()
+        finally:
+            try:
+                anvil.js.window.hideLoadingOverlay()
+            except Exception:
+                pass
 
     def _populate_contracts_dropdown(self):
         select = anvil.js.window.document.getElementById('quotationSelect')
@@ -75,7 +92,7 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
                 pass
             return
         is_ar = self.current_lang == 'ar'
-        select.innerHTML = '<option value="">-- ' + ('اختر عقداً' if is_ar else 'Select Contract') + ' --</option>'
+        opts = ['<option value="">-- ' + ('اختر عقداً' if is_ar else 'Select Contract') + ' --</option>']
         for c in self.all_contracts:
             cnum = (c.get('contract_number') or '').strip()
             qnum = c.get('quotation_number')
@@ -83,7 +100,8 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
             if not cnum and qnum is not None:
                 cnum = 'C - ' + str(qnum) + ' / ? - ?'
             option_text = str(cnum) + ' - ' + str(client)
-            select.innerHTML += '<option value="' + str(qnum) + '">' + str(option_text) + '</option>'
+            opts.append('<option value="' + str(qnum) + '">' + str(option_text) + '</option>')
+        select.innerHTML = ''.join(opts)
 
     def load_selected_quotation(self):
         self.load_selected_contract()
@@ -189,6 +207,10 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
             'language': self.current_lang
         }
         try:
+            anvil.js.window.showLoadingOverlay()
+        except Exception:
+            pass
+        try:
             user_email = anvil.js.window.sessionStorage.getItem('user_email') or 'system'
             auth = anvil.js.window.sessionStorage.getItem('auth_token') or user_email
             result = anvil.server.call('update_contract', contract_data, user_email, auth)
@@ -204,6 +226,11 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
         except Exception as e:
             is_ar = self.current_lang == 'ar'
             self._show_msg('فشل التحديث: ' + str(e) if is_ar else 'Update failed: ' + str(e))
+        finally:
+            try:
+                anvil.js.window.hideLoadingOverlay()
+            except Exception:
+                pass
 
     def _inject_delete_button(self):
         """Inject a Delete button next to Update button (admin-only on server)"""
@@ -245,6 +272,10 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
             self._show_msg('Invalid contract')
             return
         try:
+            anvil.js.window.showLoadingOverlay()
+        except Exception:
+            pass
+        try:
             auth = self._get_auth_token()
             result = anvil.server.call('delete_contract', q_num, auth)
             is_ar = self.current_lang == 'ar'
@@ -270,6 +301,11 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
         except Exception as e:
             is_ar = self.current_lang == 'ar'
             self._show_msg('فشل الحذف: ' + str(e) if is_ar else 'Delete failed: ' + str(e))
+        finally:
+            try:
+                anvil.js.window.hideLoadingOverlay()
+            except Exception:
+                pass
 
     def filter_quotations(self):
         search_input = anvil.js.window.document.getElementById('searchInput')
@@ -286,10 +322,11 @@ class ContractEditForm(ContractEditFormTemplate, ContractPrintForm):
         if not select:
             return
         is_ar = self.current_lang == 'ar'
-        select.innerHTML = '<option value="">-- ' + ('اختر عقداً' if is_ar else 'Select Contract') + ' --</option>'
+        opts = ['<option value="">-- ' + ('اختر عقداً' if is_ar else 'Select Contract') + ' --</option>']
         for c in filtered:
             cnum = (c.get('contract_number') or '').strip()
             qnum = c.get('quotation_number')
             client = (c.get('client_name') or '').strip()
             option_text = str(cnum) + ' - ' + str(client)
-            select.innerHTML += '<option value="' + str(qnum) + '">' + str(option_text) + '</option>'
+            opts.append('<option value="' + str(qnum) + '">' + str(option_text) + '</option>')
+        select.innerHTML = ''.join(opts)

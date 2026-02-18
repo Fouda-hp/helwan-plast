@@ -259,10 +259,10 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       return '<span dir="ltr" style="unicode-bidi:embed;display:inline-block;">' + str(val) + '</span>'
 
     # ==================== PAGE 1 ====================
-    html = '<div class="template-page ' + ("" if is_ar else "ltr") + '" style="padding:15px 25px;">'
+    html = '<div class="template-page ' + ("" if is_ar else "ltr") + '" style="padding:10px 25px;">'
 
     # Header
-    html += '<div class="header">'
+    html += '<div class="header" style="margin-bottom:8px; padding-bottom:6px;">'
     html += '<div class="header-right">'
     html += '<div class="location-date">' + str(_h(c.get("quotation_location_ar" if is_ar else "quotation_location_en", ""))) + ' / ' + str(_h(data.get("quotation_date_ar" if is_ar else "quotation_date_en", ""))) + '</div>'
     html += '<div class="address">' + str(_h(c.get("company_address_ar" if is_ar else "company_address_en", ""))) + '</div>'
@@ -270,27 +270,27 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     html += '<div class="contact">' + str(_h(data.get("sales_rep_email", ""))) + '</div>'
     html += '</div>'
     html += '<div class="header-left">'
-    html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo">'
+    html += '<img src="_/theme/helwan_logo.png" class="logo" alt="Logo" style="width:70px; margin-bottom:4px;">'
     html += '<div class="company-name">' + str(_h(c.get("company_name_ar" if is_ar else "company_name_en", ""))) + '</div>'
     html += '<div class="website">' + str(_h(c.get("company_website", ""))) + '</div>'
     html += '</div>'
     html += '</div>'
 
     # Quotation Info
-    html += '<div class="quotation-info">'
-    html += '<div class="quotation-number">' + ("عرض سعر رقم" if is_ar else "Quotation No.:") + ' <span>' + num_span(data.get("quotation_number", "")) + '</span></div>'
+    html += '<div class="quotation-info" style="margin-bottom:4px;">'
+    html += '<div class="quotation-number" style="margin-bottom:4px;">' + ("عرض سعر رقم" if is_ar else "Quotation No.:") + ' <span>' + num_span(data.get("quotation_number", "")) + '</span></div>'
     client_name = data.get("client_name", "") or ""
     company = data.get("client_company", "") or ""
     client_display = (str(client_name) + " - " + str(company)).strip(" - ") if company else client_name
-    html += '<div class="client-info">' + ("السادة - شركة /" if is_ar else "To: / Company:") + ' <span>' + str(_h(client_display)) + '</span></div>'
-    html += '<div class="greeting">' + ("تحية طيبة وبعد،" if is_ar else "Dear Sir/Madam,") + '</div>'
+    html += '<div class="client-info" style="margin-bottom:4px;">' + ("السادة - شركة /" if is_ar else "To: / Company:") + ' <span>' + str(_h(client_display)) + '</span></div>'
+    html += '<div class="greeting" style="margin-bottom:2px;">' + ("تحية طيبة وبعد،" if is_ar else "Dear Sir/Madam,") + '</div>'
     intro = 'نحن نتشرف بتقديم عرض السعر التالي لماكينة الطباعة طبقاً للمواصفات الموضحة أدناه:' if is_ar else 'We are pleased to submit our quotation for the following printing machine in accordance with the specifications detailed below:'
     html += '<div class="intro-text">' + str(intro) + '</div>'
     html += '</div>'
 
     # Machine Details
-    html += '<div class="section-title">' + ("تفاصيل الماكينة :" if is_ar else "Machine Details") + '</div>'
-    html += '<table class="details-table">'
+    html += '<div class="section-title" style="margin:6px 0 4px; padding:3px 0;">' + ("تفاصيل الماكينة :" if is_ar else "Machine Details") + '</div>'
+    html += '<table class="details-table" style="margin-bottom:4px; font-size:11px;">'
 
     # Both Arabic and English: label (th) on left, value (td) on right
     if is_ar:
@@ -313,8 +313,8 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     html += '</table>'
 
     # ==================== 17 SPECIFICATIONS ====================
-    html += '<div class="section-title">' + ("المواصفات الفنية:" if is_ar else "Technical Specifications:") + '</div>'
-    html += '<div class="specs-list" style="font-size: 11px; line-height: 1.35; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
+    html += '<div class="section-title" style="margin:6px 0 4px; padding:3px 0;">' + ("المواصفات الفنية:" if is_ar else "Technical Specifications:") + '</div>'
+    html += '<div class="specs-list" style="font-size: 10px; line-height: 1.3; padding-right: 14px; padding-left: 14px; white-space: normal; word-break: break-word;">'
 
     # Helper: Belt/Gear drive for item 13 (uses is_metal_anilox, is_nonwoven from above)
     def get_drive_type():
@@ -380,7 +380,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     specs = specs_ar if is_ar else specs_en
     for i, spec in enumerate(specs, 1):
       spec_num = num_span(to_ar(i)) if is_ar else num_span(i)
-      html += '<div class="spec-item" style="margin-bottom:1px;">' + spec_num + ' - ' + str(spec) + '</div>'
+      html += '<div class="spec-item" style="margin-bottom:0px; padding:0;">' + spec_num + ' - ' + str(spec) + '</div>'
 
     html += '</div>'
     html += '</div>'  # End Page 1

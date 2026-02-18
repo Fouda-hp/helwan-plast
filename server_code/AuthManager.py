@@ -2664,14 +2664,12 @@ def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
             except ValueError:
                 pass
 
-    # Single-pass streaming with pagination
-    total = 0
-    page_logs = []
-    skip = offset
+    # Collect all matching rows, then sort in Python to guarantee order
+    matched = []
     MAX_SCAN = 50000  # safety limit
 
     for log in log_iter:
-        if total >= MAX_SCAN:
+        if len(matched) >= MAX_SCAN:
             break
         # Apply remaining filters that can't be pushed to DB
         if user_filter:
@@ -2694,12 +2692,13 @@ def get_audit_logs(token_or_email, limit=100, offset=0, filters=None):
                     continue
             except Exception as _e:
                 logger.debug("Suppressed: %s", _e)
-        total += 1
-        if skip > 0:
-            skip -= 1
-            continue
-        if len(page_logs) < limit:
-            page_logs.append(log)
+        matched.append(log)
+
+    # Sort in Python — newest first (guaranteed regardless of DB order_by)
+    matched.sort(key=lambda r: r.get('timestamp') or datetime.min, reverse=True)
+
+    total = len(matched)
+    page_logs = matched[offset:offset + limit]
 
     logs = []
     for log in page_logs:

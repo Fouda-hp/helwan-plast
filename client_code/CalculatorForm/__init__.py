@@ -294,15 +294,15 @@ class CalculatorForm(CalculatorFormTemplate):
               user_role = ''
           if user_role == 'admin':
             missing_list = data.get('missing_settings', [])
-            items_str = '\\n'.join(['• ' + str(m) for m in missing_list])
-            msg = 'Calculator configuration incomplete. Missing settings:\\n\\n' + items_str + '\\n\\nPlease configure them in Admin > Settings.'
+            items_str = '\n'.join(['- ' + str(m) for m in missing_list])
+            msg = 'Calculator configuration incomplete. Missing settings:\n\n' + items_str + '\n\nPlease configure them in Admin > Settings.'
           else:
             msg = 'Calculator configuration incomplete. Please contact administrator.'
           try:
-            if hasattr(anvil.js.window, 'showOkModal') and anvil.js.window.showOkModal:
-              anvil.js.window.showOkModal('error', msg)
-            elif hasattr(anvil.js.window, 'showNotification') and anvil.js.window.showNotification:
-              anvil.js.window.showNotification('error', '', msg)
+            if hasattr(anvil.js.window, 'showAlert') and anvil.js.window.showAlert:
+              anvil.js.window.showAlert('error', msg)
+            elif hasattr(anvil.js.window, 'showOkModal') and anvil.js.window.showOkModal:
+              anvil.js.window.showOkModal(msg)
           except Exception:
             pass
           # Show blocking banner
@@ -317,8 +317,10 @@ class CalculatorForm(CalculatorFormTemplate):
           # Non-CONFIG_INCOMPLETE failure (auth error, etc.) — also block
           try:
             fail_msg = data.get('message', 'Failed to load calculator settings.') if data else 'Failed to load calculator settings.'
-            if hasattr(anvil.js.window, 'showOkModal') and anvil.js.window.showOkModal:
-              anvil.js.window.showOkModal('error', fail_msg)
+            if hasattr(anvil.js.window, 'showAlert') and anvil.js.window.showAlert:
+              anvil.js.window.showAlert('error', fail_msg)
+            elif hasattr(anvil.js.window, 'showOkModal') and anvil.js.window.showOkModal:
+              anvil.js.window.showOkModal(fail_msg)
           except Exception:
             pass
           return

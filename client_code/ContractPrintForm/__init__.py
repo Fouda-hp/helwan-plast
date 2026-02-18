@@ -969,7 +969,7 @@ class ContractPrintForm(ContractPrintFormTemplate):
 
         # ==================== 17 SPECIFICATIONS (Same as Quotation - FULL VERSION) ====================
         html += '<div class="section-title">' + ('المواصفات الفنية:' if is_ar else 'Technical Specifications:') + '</div>'
-        html += '<div class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
+        html += '<div class="specs-list" style="font-size: 10px; line-height: 1.3; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
 
         # Helper function to determine Belt/Gear drive for item 13
         def get_drive_type():

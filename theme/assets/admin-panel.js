@@ -79,15 +79,8 @@
   initNavigation();
   setupLogoutButton();
 
-  console.log('Waiting for Python bridge...');
-  setTimeout(function() {
-  console.log('Loading dashboard...');
-  if (window.loadDashboard) {
-  window.loadDashboard();
-  } else {
-  console.warn('loadDashboard not available yet');
-  }
-  }, 500);
+  console.log('Admin panel JS init complete — awaiting Python bridge for dashboard load.');
+  window.__adminPanelJSReady = true;
   }
 
   // Test function - can be called from console

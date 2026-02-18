@@ -113,7 +113,10 @@ class AdminPanel(AdminPanelTemplate):
             open_form('LauncherForm')
 
     def _finish_admin_init(self):
-        """إكمال تهيئة الأدمن بعد التأكد من الصلاحية."""
+        """إكمال تهيئة الأدمن بعد التأكد من الصلاحية. Runs at most once."""
+        if getattr(self, '_admin_init_completed', False):
+            return
+        self._admin_init_completed = True
         # جهّز الـ JS bridges أولاً حتى لا يفشل التحميل الأول للداشبورد
         self._setup_js_bridges()
         self._inject_admin_panel_enhancements()
@@ -183,16 +186,20 @@ class AdminPanel(AdminPanelTemplate):
                   var run = function(attempt){
                     if (_loaded) return;
                     try {
-                      if (window.loadDashboard) {
+                      if (window.loadDashboard && window._dashboardPatched) {
                         _loaded = true;
                         window.loadDashboard();
                         if (window.refreshNotificationBell) window.refreshNotificationBell();
-                      } else if (attempt < 3) {
-                        setTimeout(function(){ run(attempt + 1); }, 400);
+                      } else if (attempt < 8) {
+                        setTimeout(function(){ run(attempt + 1); }, 150);
+                      } else if (window.loadDashboard) {
+                        _loaded = true;
+                        window.loadDashboard();
+                        if (window.refreshNotificationBell) window.refreshNotificationBell();
                       }
                     } catch(e) {}
                   };
-                  setTimeout(function(){ run(0); }, 150);
+                  setTimeout(function(){ run(0); }, 100);
                 })();
             """)
         except Exception:
@@ -1051,15 +1058,36 @@ class AdminPanel(AdminPanelTemplate):
             if (!window.loadSettings || window.loadSettings.__patched) return;
             var original = window.loadSettings;
             window.loadSettings = async function() {
-              await original();
-              // بناء كل الأقسام أولاً
-              await enhanceTechSpecsSettings();
-              await addMachinePricesSection();
-              await addCylinderPricesSection();
-              await addMachineConfigSection();
-              await addPricingAdjustmentsSection();
-              // ثم إعادة الترتيب مع visual headers
-              setTimeout(reorderSettingsPage, 100);
+              var container = document.getElementById('settingsContent');
+              if (!container) { await original(); return; }
+
+              // Phase 1: إخفاء المحتوى + عرض loader
+              container.style.visibility = 'hidden';
+              container.style.position = 'relative';
+              container.style.minHeight = container.offsetHeight ? (container.offsetHeight + 'px') : '400px';
+              var spinner = document.createElement('div');
+              spinner.id = '_settingsLoadingOverlay';
+              spinner.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.95);z-index:10;visibility:visible;';
+              spinner.innerHTML = '<div class="hp-code-loader" style="font-size:1.5em;font-weight:900;"><span>&lt;</span><span>LOADING...</span><span>/&gt;</span></div>';
+              container.parentNode.insertBefore(spinner, container);
+
+              try {
+                // Phase 2: بناء كل حاجة وهو مخفي
+                await original();
+                await enhanceTechSpecsSettings();
+                await addMachinePricesSection();
+                await addCylinderPricesSection();
+                await addPricingAdjustmentsSection();
+
+                // Phase 3: ترتيب synchronous (بدون setTimeout)
+                reorderSettingsPage();
+              } finally {
+                // Phase 4: إظهار في paint واحد
+                container.style.visibility = '';
+                container.style.minHeight = '';
+                var overlay = document.getElementById('_settingsLoadingOverlay');
+                if (overlay) overlay.remove();
+              }
             };
             window.loadSettings.__patched = true;
           }
@@ -1661,9 +1689,15 @@ class AdminPanel(AdminPanelTemplate):
               var saveResult = await window.saveMachineConfig(config);
               if (saveResult.success) {
                 nameInput.value = '';
-                window.showNotification('success', 'Added!', 'New machine type added. Refresh Settings to see changes.');
-                // Reload settings panel
-                setTimeout(function() { window.loadSettings(); }, 500);
+                window.showNotification('success', 'Added!', 'New machine type added.');
+                // Targeted rebuild of affected sections only
+                setTimeout(function() {
+                    var el = document.getElementById('machinePricesSection');
+                    if (el) el.remove();
+                    var el2 = document.getElementById('machineConfigSection');
+                    if (el2) el2.remove();
+                    addMachinePricesSection();
+                }, 300);
               } else {
                 if (window.showNotification) window.showNotification('error', 'Error', saveResult.message || 'Error saving');
               }
@@ -1702,8 +1736,15 @@ class AdminPanel(AdminPanelTemplate):
               var saveResult = await window.saveMachineConfig(config);
               if (saveResult.success) {
                 input.value = '';
-                window.showNotification('success', 'Added!', 'New color count added. Refresh Settings to see changes.');
-                setTimeout(function() { window.loadSettings(); }, 500);
+                window.showNotification('success', 'Added!', 'New color count added.');
+                // Targeted rebuild of affected sections only
+                setTimeout(function() {
+                    var el = document.getElementById('machinePricesSection');
+                    if (el) el.remove();
+                    var el2 = document.getElementById('machineConfigSection');
+                    if (el2) el2.remove();
+                    addMachinePricesSection();
+                }, 300);
               } else {
                 if (window.showNotification) window.showNotification('error', 'Error', saveResult.message || 'Error saving');
               }
@@ -1742,8 +1783,15 @@ class AdminPanel(AdminPanelTemplate):
               var saveResult = await window.saveMachineConfig(config);
               if (saveResult.success) {
                 input.value = '';
-                window.showNotification('success', 'Added!', 'New width added. Refresh Settings to see changes.');
-                setTimeout(function() { window.loadSettings(); }, 500);
+                window.showNotification('success', 'Added!', 'New width added.');
+                // Targeted rebuild of affected sections only
+                setTimeout(function() {
+                    var el = document.getElementById('machinePricesSection');
+                    if (el) el.remove();
+                    var el2 = document.getElementById('machineConfigSection');
+                    if (el2) el2.remove();
+                    addMachinePricesSection();
+                }, 300);
               } else {
                 if (window.showNotification) window.showNotification('error', 'Error', saveResult.message || 'Error saving');
               }

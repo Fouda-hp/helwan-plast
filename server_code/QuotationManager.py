@@ -575,6 +575,11 @@ def save_quotation_data(client_code, quotation_number, form_data, is_new, user_e
         'updated_at': get_utc_now()
     }
 
+    # --- Settings version for audit traceability ---
+    sv = safe_strip(form_data.get('settings_version'))
+    if sv:
+        data['settings_version'] = sv
+
     # حفظ بيانات المتابعة إن وُجدت
     fu_date = form_data.get('follow_up_date')
     if fu_date is not None:

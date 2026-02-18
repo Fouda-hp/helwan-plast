@@ -2309,10 +2309,17 @@ def get_calculator_settings(token_or_email=None):
         cp = get_setting('cylinder_prices')
         if cp and isinstance(cp, dict):
             result['cylinderPrices'] = cp
-        # --- Validate required settings (no hardcoded fallbacks in JS) ---
+        # --- Validate required settings (HARD STOP - no partial payload) ---
         missing = []
         if result.get('exchangeRate') is None:
             missing.append('exchange_rate')
+        else:
+            try:
+                er_val = float(result['exchangeRate'])
+                if er_val <= 0:
+                    missing.append('exchange_rate (must be > 0)')
+            except (ValueError, TypeError):
+                missing.append('exchange_rate (invalid number)')
         for cfg_key in ['shipping_sea', 'ths_cost', 'clearance_expenses', 'tax_rate', 'bank_commission']:
             if result.get(cfg_key) is None:
                 missing.append(cfg_key)
@@ -2326,14 +2333,31 @@ def get_calculator_settings(token_or_email=None):
                     'markup_local_neworder_4color', 'markup_local_neworder_other']:
             if result.get(mk) is None:
                 missing.append(mk)
+            else:
+                try:
+                    mk_val = float(result[mk])
+                    if mk_val <= 0:
+                        missing.append(f'{mk} (must be > 0)')
+                except (ValueError, TypeError):
+                    missing.append(f'{mk} (invalid number)')
         if not result.get('machinePrices'):
             missing.append('machine_prices')
+        elif not isinstance(result.get('machinePrices'), dict):
+            missing.append('machine_prices (invalid structure)')
         if not result.get('cylinderPrices'):
             missing.append('cylinder_prices')
+        elif not isinstance(result.get('cylinderPrices'), dict):
+            missing.append('cylinder_prices (invalid structure)')
+        # --- HARD STOP: Do NOT return partial settings ---
         if missing:
-            logger.warning("get_calculator_settings: MISSING required settings: %s", missing)
-            result['missing_settings'] = missing
-            result['settings_warning'] = f"Missing calculator settings: {', '.join(missing)}. Configure in Admin > Settings."
+            logger.error("get_calculator_settings: HARD STOP - MISSING required settings: %s", missing)
+            return {
+                'success': False,
+                'error_type': 'CONFIG_INCOMPLETE',
+                'error_message': 'Calculator configuration incomplete',
+                'missing_settings': missing,
+                'user_role': role,
+            }
         # --- Settings version for traceability ---
         import datetime
         result['settingsVersion'] = datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S')

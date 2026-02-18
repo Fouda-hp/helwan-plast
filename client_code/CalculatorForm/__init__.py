@@ -144,7 +144,11 @@ class CalculatorForm(CalculatorFormTemplate):
   # =================================================
   def save_button_click(self, **event_args):
     try:
-      form_data = dict(anvil.js.window.collectFormData())
+      raw = anvil.js.window.collectFormData()
+      if raw is None:
+        # collectFormData returned null — pricing validation failed (NaN/zero)
+        return {"success": False, "message": "Pricing validation failed. Cannot save."}
+      form_data = dict(raw)
     except Exception as e:
       return {"success": False, "message": str(e)}
 
@@ -268,9 +272,58 @@ class CalculatorForm(CalculatorFormTemplate):
                   bool(data.get('priceOptions')) if data else False,
                   bool(data.get('machinePrices')) if data else False,
                   data.get('message', '') if data else 'no data')
+
+      # --- HARD STOP: If server says CONFIG_INCOMPLETE, block calculator entirely ---
       if not data or data.get("success") is False:
-        logger.warning("CalculatorForm: get_calculator_settings failed: %s", data.get('message') if data else 'no data')
-        data = {} if not data else {k: v for k, v in data.items() if k not in ("success", "message")}
+        error_type = data.get('error_type', '') if data else ''
+        if error_type == 'CONFIG_INCOMPLETE':
+          logger.error("CalculatorForm: CONFIG_INCOMPLETE - missing: %s", data.get('missing_settings'))
+          # Reset stale UI state (PART 6)
+          try:
+            anvil.js.window._settingsLoaded = False
+            anvil.js.window.CALCULATOR_READY = False
+            anvil.js.window.eval("(function(){var el=document.getElementById('exchange_rate');if(el)el.value='';['std_price','price_with_cylinders','overseas_price','local_price','new_order_price'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});if(window.STATE){Object.keys(window.STATE).forEach(function(k){window.STATE[k]=0;});};})()")
+          except Exception:
+            pass
+          # Role-based error message (PART 2)
+          user_role = (data.get('user_role') or '').strip().lower()
+          if not user_role:
+            try:
+              user_role = (anvil.js.window.sessionStorage.getItem('user_role') or '').strip().lower()
+            except Exception:
+              user_role = ''
+          if user_role == 'admin':
+            missing_list = data.get('missing_settings', [])
+            items_str = '\\n'.join(['• ' + str(m) for m in missing_list])
+            msg = 'Calculator configuration incomplete. Missing settings:\\n\\n' + items_str + '\\n\\nPlease configure them in Admin > Settings.'
+          else:
+            msg = 'Calculator configuration incomplete. Please contact administrator.'
+          try:
+            if hasattr(anvil.js.window, 'showOkModal') and anvil.js.window.showOkModal:
+              anvil.js.window.showOkModal('error', msg)
+            elif hasattr(anvil.js.window, 'showNotification') and anvil.js.window.showNotification:
+              anvil.js.window.showNotification('error', '', msg)
+          except Exception:
+            pass
+          # Show blocking banner
+          try:
+            anvil.js.window.eval("(function(){var b=document.getElementById('settings-not-loaded-banner');if(!b){b=document.createElement('div');b.id='settings-not-loaded-banner';b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#c00000;color:#fff;text-align:center;padding:12px 20px;font-size:16px;font-weight:bold;';document.body.appendChild(b);}b.textContent='\\u26A0 Calculator settings incomplete. Calculator is disabled.';})()")
+          except Exception:
+            pass
+          # Do NOT apply settings. Do NOT enable calculator.
+          return
+        else:
+          logger.warning("CalculatorForm: get_calculator_settings failed: %s", data.get('message') if data else 'no data')
+          # Non-CONFIG_INCOMPLETE failure (auth error, etc.) — also block
+          try:
+            fail_msg = data.get('message', 'Failed to load calculator settings.') if data else 'Failed to load calculator settings.'
+            if hasattr(anvil.js.window, 'showOkModal') and anvil.js.window.showOkModal:
+              anvil.js.window.showOkModal('error', fail_msg)
+          except Exception:
+            pass
+          return
+
+      # --- SUCCESS: Build and apply settings payload ---
       settings_payload = {}
       if data.get("exchangeRate") is not None:
         try:
@@ -319,17 +372,6 @@ class CalculatorForm(CalculatorFormTemplate):
       # Settings version for traceability
       if data.get("settingsVersion"):
         settings_payload["settingsVersion"] = data["settingsVersion"]
-      # Warn about missing settings
-      if data.get("missing_settings"):
-        logger.warning("form_show: MISSING required settings: %s", data["missing_settings"])
-        try:
-          warn_msg = data.get("settings_warning", "Some calculator settings are missing. Check Admin > Settings.")
-          if hasattr(anvil.js.window, 'showNotification') and anvil.js.window.showNotification:
-            anvil.js.window.showNotification('warning', '', warn_msg)
-          elif hasattr(anvil.js.window, 'showOkModal') and anvil.js.window.showOkModal:
-            anvil.js.window.showOkModal('warning', warn_msg)
-        except Exception:
-          pass
       # تمرير البيانات مباشرة عبر anvil.js بدون eval
       logger.info("form_show: settings_payload keys=%s, has priceOptions=%s", list(settings_payload.keys()), bool(settings_payload.get("priceOptions")))
       try:

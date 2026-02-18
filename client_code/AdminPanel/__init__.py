@@ -1097,11 +1097,19 @@ class AdminPanel(AdminPanelTemplate):
             var prices = pricesResult && pricesResult.prices ? pricesResult.prices : {};
             if (Object.keys(prices).length === 0) {
               prices = {
-                "Metal anilox": {"4": {"80": 15000, "100": 16000, "120": 17500}, "6": {"80": 25000, "100": 26000, "120": 29000}, "8": {"80": 29000, "100": 32000, "120": 33000}},
-                "Ceramic anilox Single Doctor Blade": {"4": {"80": 18000, "100": 19000, "120": 20500}, "6": {"80": 28000, "100": 29000, "120": 32000}, "8": {"80": 32000, "100": 35000, "120": 36000}},
-                "Ceramic anilox Chamber Doctor Blade": {"4": {"80": 21168, "100": 22960, "120": 25252}, "6": {"80": 32752, "100": 34940, "120": 39128}, "8": {"80": 38336, "100": 42920, "120": 45504}}
+                "Metal anilox": {"4": {"80": 15000, "100": 16000, "120": 17500}, "6": {"80": 25000, "100": 26000, "120": 29000}, "8": {"80": 29000, "100": 32000, "120": 33000}}
               };
             }
+            // Filter: only show Metal anilox table (Ceramic prices are computed from settings)
+            var filteredPrices = {};
+            if (prices['Metal anilox']) {
+              filteredPrices['Metal anilox'] = prices['Metal anilox'];
+            } else {
+              // Fallback: show first type if Metal anilox key is different
+              var firstKey = Object.keys(prices)[0];
+              if (firstKey) filteredPrices[firstKey] = prices[firstKey];
+            }
+            prices = filteredPrices;
             var firstGrid = container.querySelector('div[style*="grid-template-columns"]');
             if (!firstGrid) return;
             var leftCol = firstGrid.querySelector('div[style*="background:#f8f9fa"]');
@@ -1766,6 +1774,7 @@ class AdminPanel(AdminPanelTemplate):
             // Load current values from settings
             var matAdj = null, winAdj = null, optAdj = null;
             var mkOverseas = null, mkInstock4 = null, mkInstockOther = null, mkNew4 = null, mkNewOther = null;
+            var ceramicPremium = null, ceramicChamberPerMeter = null;
             try {
               if (window.getSetting) {
                 matAdj = await window.getSetting('material_adjustments');
@@ -1776,8 +1785,12 @@ class AdminPanel(AdminPanelTemplate):
                 mkInstockOther = await window.getSetting('markup_local_instock_other');
                 mkNew4 = await window.getSetting('markup_local_neworder_4color');
                 mkNewOther = await window.getSetting('markup_local_neworder_other');
+                ceramicPremium = await window.getSetting('ceramic_anilox_premium');
+                ceramicChamberPerMeter = await window.getSetting('ceramic_chamber_per_meter');
               }
             } catch(e) { console.error('Load pricing adjustments error:', e); }
+            if (ceramicPremium == null) ceramicPremium = 3000;
+            if (ceramicChamberPerMeter == null) ceramicChamberPerMeter = 990;
 
             // Defaults
             if (!matAdj || typeof matAdj !== 'object') matAdj = {"PP":9000,"Nonwoven":4000,"Paper to 100g":1500,"Paper to 200g":4750,"Paper to 300g":11050};
@@ -1835,7 +1848,22 @@ class AdminPanel(AdminPanelTemplate):
             html += '<div style="margin-top:10px;text-align:center;"><button onclick="withButtonLock(this, function(){ return saveOptionalAdjustments(); })" style="padding:8px 24px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;" data-loading-text="...">💾 Save Equipment Adjustments</button></div>';
             html += '</div>';
 
-            // === Section 4: Profit Markup Percentages ===
+            // === Section 4: Ceramic Anilox Pricing ===
+            html += '<h4 style="margin:15px 0 10px;color:#880e4f;">🔵 Ceramic Anilox Pricing (USD)</h4>';
+            html += '<p style="margin:0 0 10px;color:#ad1457;font-size:12px;">أسعار Ceramic تُحسب تلقائياً من سعر Metal anilox + القيم هنا. لا يوجد جدول منفصل.</p>';
+            html += '<div style="background:#fff;padding:15px;border-radius:8px;margin-bottom:20px;">';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#e3f2fd;"><th style="padding:8px;border:1px solid #ddd;">Setting</th><th style="padding:8px;border:1px solid #ddd;">Value (USD)</th><th style="padding:8px;border:1px solid #ddd;">Description</th></tr></thead><tbody>';
+            html += '<tr><td style="padding:8px;border:1px solid #ddd;font-weight:600;">Ceramic anilox Single Premium</td>';
+            html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;"><input type="number" id="adj_ceramic_anilox_premium" value="' + parseFloat(ceramicPremium) + '" step="100" min="0" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:4px;text-align:center;"></td>';
+            html += '<td style="padding:8px;border:1px solid #ddd;font-size:11px;color:#666;">Fixed cost added to Metal base for Ceramic Single<br>المبلغ الثابت المضاف لسعر Metal عند اختيار Ceramic Single</td></tr>';
+            html += '<tr><td style="padding:8px;border:1px solid #ddd;font-weight:600;">Ceramic Chamber $/Meter/Color</td>';
+            html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;"><input type="number" id="adj_ceramic_chamber_per_meter" value="' + parseFloat(ceramicChamberPerMeter) + '" step="10" min="0" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:4px;text-align:center;"></td>';
+            html += '<td style="padding:8px;border:1px solid #ddd;font-size:11px;color:#666;">Cost per meter per color for Chamber<br>المعادلة: (value/100 × width_cm × colors)<br>السعر لكل متر لكل لون للـ Chamber</td></tr>';
+            html += '</tbody></table>';
+            html += '<div style="margin-top:10px;text-align:center;"><button onclick="withButtonLock(this, function(){ return saveCeramicSettings(); })" style="padding:8px 24px;background:#4caf50;color:#fff;border:none;border-radius:6px;cursor:pointer;" data-loading-text="...">💾 Save Ceramic Settings</button></div>';
+            html += '</div>';
+
+            // === Section 5: Profit Markup Percentages ===
             html += '<h4 style="margin:15px 0 10px;color:#880e4f;">📊 Profit Markup Percentages</h4>';
             html += '<p style="margin:0 0 10px;color:#ad1457;font-size:12px;">نسب الربح المطبقة على الأسعار. مثال: 1.25 = ربح 25%</p>';
             html += '<div style="background:#fff;padding:15px;border-radius:8px;">';
@@ -1963,6 +1991,35 @@ class AdminPanel(AdminPanelTemplate):
                 if (window.showNotification) window.showNotification('error', 'Error', result ? result.message : 'Error saving');
               }
             } catch(e) { if (window.showNotification) window.showNotification('error', 'Error', 'Error: ' + e); }
+          };
+
+          window.saveCeramicSettings = async function() {
+            var keys = ['ceramic_anilox_premium', 'ceramic_chamber_per_meter'];
+            var allOk = true;
+            for (var i = 0; i < keys.length; i++) {
+              var inp = document.getElementById('adj_' + keys[i]);
+              if (!inp) continue;
+              var val = parseFloat(inp.value);
+              if (isNaN(val) || val <= 0) {
+                if (window.showNotification) window.showNotification('error', 'Error', 'Value must be > 0 for ' + keys[i]);
+                allOk = false;
+                break;
+              }
+              try {
+                var result = await window.updateSetting(keys[i], val);
+                if (!result || !result.success) {
+                  allOk = false;
+                  if (window.showNotification) window.showNotification('error', 'Error', 'Failed to save ' + keys[i]);
+                  break;
+                }
+                broadcastSettingChange(keys[i], val);
+              } catch(e) {
+                allOk = false;
+                if (window.showNotification) window.showNotification('error', 'Error', 'Error saving ' + keys[i] + ': ' + e);
+                break;
+              }
+            }
+            if (allOk && window.showNotification) window.showNotification('success', 'Saved!', 'Ceramic pricing settings saved');
           };
 
           window.saveMarkupPercentages = async function() {

@@ -391,6 +391,14 @@ class CalculatorForm(CalculatorFormTemplate):
             pass
       if markups:
         settings_payload["markups"] = markups
+      # Ceramic anilox pricing settings
+      for ck in ["ceramic_anilox_premium", "ceramic_chamber_per_meter"]:
+        val = data.get(ck)
+        if val is not None:
+          try:
+            settings_payload[ck] = float(val)
+          except (ValueError, TypeError):
+            pass
       # Settings version for traceability
       if data.get("settingsVersion"):
         settings_payload["settingsVersion"] = data["settingsVersion"]

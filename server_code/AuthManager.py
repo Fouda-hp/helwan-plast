@@ -2274,7 +2274,9 @@ def get_calculator_settings(token_or_email=None):
         'markup_local_instock_4color': None,
         'markup_local_instock_other': None,
         'markup_local_neworder_4color': None,
-        'markup_local_neworder_other': None
+        'markup_local_neworder_other': None,
+        'ceramic_anilox_premium': None,
+        'ceramic_chamber_per_meter': None,
     }
     try:
         result['exchangeRate'] = get_setting('exchange_rate')
@@ -2322,6 +2324,15 @@ def get_calculator_settings(token_or_email=None):
                     result[mk] = float(val)
                 except (ValueError, TypeError):
                     logger.warning("get_calculator_settings: %s cannot convert to float: %s", mk, val)
+        # Ceramic anilox pricing settings (numeric)
+        for ck in ['ceramic_anilox_premium', 'ceramic_chamber_per_meter']:
+            val = get_setting(ck)
+            logger.info("get_calculator_settings: %s raw type=%s, val=%s", ck, type(val).__name__, val)
+            if val is not None:
+                try:
+                    result[ck] = float(val)
+                except (ValueError, TypeError):
+                    logger.warning("get_calculator_settings: %s cannot convert to float: %s", ck, val)
         cfg = get_machine_config()
         if cfg and cfg.get('success') and cfg.get('config'):
             result['config'] = cfg['config']
@@ -2378,6 +2389,17 @@ def get_calculator_settings(token_or_email=None):
                         missing.append(f'{mk} (must be > 0)')
                 except (ValueError, TypeError):
                     missing.append(f'{mk} (invalid number)')
+        # Ceramic anilox settings (must be > 0)
+        for ck in ['ceramic_anilox_premium', 'ceramic_chamber_per_meter']:
+            if result.get(ck) is None:
+                missing.append(ck)
+            else:
+                try:
+                    ck_val = float(result[ck])
+                    if ck_val <= 0:
+                        missing.append(f'{ck} (must be > 0)')
+                except (ValueError, TypeError):
+                    missing.append(f'{ck} (invalid number)')
         if not result.get('machinePrices'):
             missing.append('machine_prices')
         elif not isinstance(result.get('machinePrices'), dict):
@@ -2432,12 +2454,19 @@ def _options_from_machine_prices(prices):
     """
     استخراج الخيارات المتاحة للكالكتور من جدول الأسعار (فقط المقاسات ذات سعر > 0).
     يرجع: types, typeColors[type], typeColorWidths[type][color] — كل المفاتيح نصوص.
+
+    الأسعار مخزنة فقط لـ Metal anilox. Ceramic Single و Chamber يستخدمان نفس
+    الألوان والمقاسات المتاحة لـ Metal (حيث سعرهم = Metal base + premium).
     """
     if not prices or not isinstance(prices, dict):
         return {'types': [], 'typeColors': {}, 'typeColorWidths': {}}
     types = []
     type_colors = {}
     type_color_widths = {}
+    # الأسعار الأساسية في Metal anilox فقط
+    metal_key = 'Metal anilox'
+    ceramic_single = 'Ceramic anilox Single Doctor Blade'
+    ceramic_chamber = 'Ceramic anilox Chamber Doctor Blade'
     for mtype, by_color in prices.items():
         if not by_color or not isinstance(by_color, dict):
             continue
@@ -2455,6 +2484,15 @@ def _options_from_machine_prices(prices):
         if colors_with_price:
             types.append(mtype_str)
             type_colors[mtype_str] = sorted(colors_with_price, key=lambda x: int(x) if str(x).isdigit() else 0)
+    # Ceramic types share Metal anilox colors/widths (prices computed in JS)
+    if metal_key in type_colors:
+        for derived_type in [ceramic_single, ceramic_chamber]:
+            if derived_type not in types:
+                types.append(derived_type)
+            type_colors[derived_type] = type_colors[metal_key][:]
+            type_color_widths[derived_type] = {
+                c: ws[:] for c, ws in type_color_widths.get(metal_key, {}).items()
+            }
     return {'types': types, 'typeColors': type_colors, 'typeColorWidths': type_color_widths}
 
 
@@ -2473,16 +2511,6 @@ def get_machine_prices(token_or_email=None):
             "4": {"80": 15000, "100": 16000, "120": 17500},
             "6": {"80": 25000, "100": 26000, "120": 29000},
             "8": {"80": 29000, "100": 32000, "120": 33000}
-        },
-        "Ceramic anilox Single Doctor Blade": {
-            "4": {"80": 18000, "100": 19000, "120": 20500},
-            "6": {"80": 28000, "100": 29000, "120": 32000},
-            "8": {"80": 32000, "100": 35000, "120": 36000}
-        },
-        "Ceramic anilox Chamber Doctor Blade": {
-            "4": {"80": 21168, "100": 22960, "120": 25252},
-            "6": {"80": 32752, "100": 34940, "120": 39128},
-            "8": {"80": 38336, "100": 42920, "120": 45504}
         }
     }
     try:
@@ -2566,11 +2594,16 @@ def save_machine_prices(token_or_email, prices):
     is_authorized, error = require_admin(token_or_email)
     if not is_authorized:
         return error
-    
+
     try:
         ip_address = get_client_ip()
         admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
-        
+        # Strip Ceramic types — only Metal anilox base prices are stored;
+        # Ceramic Single and Chamber are computed from settings.
+        if isinstance(prices, dict):
+            for ck in ['Ceramic anilox Single Doctor Blade', 'Ceramic anilox Chamber Doctor Blade']:
+                prices.pop(ck, None)
+
         setting = app_tables.settings.get(setting_key='machine_prices')
         old_value = None
         
@@ -2674,28 +2707,26 @@ def save_machine_config(token_or_email, config):
                 prices = json.loads(prices_setting['setting_value'])
                 updated = False
                 
-                # Add new types with default prices
+                # Add new types with default prices (only Metal anilox stored;
+                # Ceramic prices are computed from settings)
+                _skip_types = ['Ceramic anilox Single Doctor Blade', 'Ceramic anilox Chamber Doctor Blade']
                 for machine_type in config.get('types', []):
+                    if machine_type in _skip_types:
+                        continue
                     if machine_type not in prices:
                         prices[machine_type] = {}
                         updated = True
-                    
+
                     # Add new colors for each type
                     for color in config.get('colors', []):
                         if color not in prices[machine_type]:
                             prices[machine_type][color] = {}
                             updated = True
-                        
+
                         # Add new widths for each color
                         for width in config.get('widths', []):
                             if width not in prices[machine_type][color]:
-                                # Default price based on type and size
                                 base_price = 15000
-                                if 'Ceramic' in machine_type:
-                                    base_price = 18000
-                                    if 'Chamber' in machine_type:
-                                        base_price = 21000
-                                
                                 color_mult = 1 + (int(color) - 4) * 0.3
                                 width_mult = 1 + (int(width) - 80) * 0.01
                                 default_price = int(base_price * color_mult * width_mult)

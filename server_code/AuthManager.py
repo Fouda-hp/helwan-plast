@@ -2086,6 +2086,43 @@ def get_all_settings(token_or_email):
 
 
 @anvil.server.callable
+def repair_cylinder_prices(token_or_email):
+    """
+    إصلاح أسعار السلندرات إذا كانت كلها أصفار — يعيدها للقيم الافتراضية.
+    للأدمن فقط. يُستدعى مرة واحدة ثم يمكن حذف الدالة.
+    """
+    is_authorized, error = require_admin(token_or_email)
+    if not is_authorized:
+        return error
+    defaults = {'80': 3.49, '100': 3.59, '120': 4.05, '130': 4.5, '140': 5.026, '160': 5.4}
+    setting = app_tables.settings.get(setting_key='cylinder_prices')
+    if not setting:
+        app_tables.settings.add_row(
+            setting_key='cylinder_prices',
+            setting_value=json.dumps(defaults),
+            setting_type='json',
+            description='Cylinder prices per CM',
+            updated_by='repair',
+            updated_at=get_utc_now()
+        )
+        return {'success': True, 'message': 'Created cylinder_prices with defaults', 'prices': defaults}
+    try:
+        current = json.loads(setting['setting_value']) if isinstance(setting['setting_value'], str) else setting['setting_value']
+    except Exception:
+        current = {}
+    # Check if all zero
+    all_zero = all(float(v or 0) == 0 for v in (current or {}).values()) if current else True
+    if all_zero:
+        setting.update(
+            setting_value=json.dumps(defaults),
+            updated_by='repair',
+            updated_at=get_utc_now()
+        )
+        return {'success': True, 'message': 'Restored default cylinder prices (were all zero)', 'prices': defaults}
+    return {'success': True, 'message': 'Cylinder prices already have values, no change needed', 'prices': current}
+
+
+@anvil.server.callable
 def update_setting(token_or_email, key, value):
     """
     تحديث أو إنشاء إعداد معين (upsert)
@@ -2138,25 +2175,18 @@ def update_setting(token_or_email, key, value):
     return {'success': True, 'message': 'Setting updated successfully'}
 
 
-@anvil.server.callable
-def get_setting(key, token_or_email=None):
+def _get_setting_value(key):
     """
-    الحصول على قيمة إعداد معين - يتطلب مصادقة
+    Internal helper — قراءة إعداد من الـ DB بدون تحقق من المصادقة.
+    تُستدعى من server functions أخرى (مثل get_calculator_settings).
     """
-    if not token_or_email:
-        return None
-    session = validate_session(token_or_email)
-    if not session:
-        return None
     setting = app_tables.settings.get(setting_key=key)
-
     if not setting:
         return None
 
     value = setting['setting_value']
-    setting_type = setting['setting_type']
+    setting_type = setting.get('setting_type', 'text')
 
-    # تحويل القيمة حسب النوع
     if setting_type == 'number':
         try:
             return float(value)
@@ -2168,9 +2198,24 @@ def get_setting(key, token_or_email=None):
         except (json.JSONDecodeError, TypeError):
             return value
     elif setting_type == 'bool':
-        return value.lower() in ('true', '1', 'yes')
+        return str(value).lower() in ('true', '1', 'yes')
 
     return value
+
+
+@anvil.server.callable
+def get_setting(key, token_or_email=None):
+    """
+    الحصول على قيمة إعداد معين.
+    عند الاستدعاء من الكلاينت يتطلب token للمصادقة.
+    عند الاستدعاء الداخلي من السيرفر (بدون token) يعمل مباشرة.
+    """
+    if token_or_email:
+        session = validate_session(token_or_email)
+        if not session:
+            return None
+
+    return _get_setting_value(key)
 
 
 @anvil.server.callable

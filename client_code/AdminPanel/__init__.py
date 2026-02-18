@@ -278,6 +278,7 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.saveMachinePrices = self.save_machine_prices
         anvil.js.window.getMachineConfig = self.get_machine_config
         anvil.js.window.saveMachineConfig = self.save_machine_config
+        anvil.js.window.repairCylinderPrices = self.repair_cylinder_prices
 
         # Navigation
         anvil.js.window.openDataImport = self.open_data_import
@@ -1270,9 +1271,20 @@ class AdminPanel(AdminPanelTemplate):
             try {
               if (window.getSetting) cp = await window.getSetting('cylinder_prices') || {};
             } catch(e) {}
-            if (typeof cp !== 'object' || cp === null) cp = {80: 3.49, 100: 3.59, 120: 4.05, 130: 4.5, 140: 5.026, 160: 5.4};
+            if (typeof cp !== 'object' || cp === null) cp = {};
+            // Auto-repair: if all prices are zero or empty, restore defaults
+            var allZero = Object.keys(cp).length === 0 || Object.values(cp).every(function(v) { return !v || parseFloat(v) === 0; });
+            if (allZero && window.repairCylinderPrices) {
+              try {
+                var repairResult = await window.repairCylinderPrices();
+                if (repairResult && repairResult.success && repairResult.prices) {
+                  cp = repairResult.prices;
+                  if (window.showNotification) window.showNotification('info', 'تنبيه', 'تم استعادة أسعار السلندرات الافتراضية (كانت أصفار)');
+                }
+              } catch(re) {}
+            }
+            if (typeof cp !== 'object' || cp === null || Object.keys(cp).length === 0) cp = {'80': 3.49, '100': 3.59, '120': 4.05, '130': 4.5, '140': 5.026, '160': 5.4};
             var widths = Object.keys(cp).sort(function(a,b){ return parseInt(a,10) - parseInt(b,10); });
-            if (widths.length === 0) widths = ['80', '100', '120'];
             var html = '<div id="cylinderPricesSection" style="background:linear-gradient(180deg,#f1f8e9 0%,#e8f5e9 100%);padding:24px;border-radius:16px;margin-top:24px;border:1px solid #a5d6a7;box-shadow:0 2px 12px rgba(46,125,50,0.12);">';
             html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">';
             html += '<span style="width:32px;height:32px;background:#2e7d32;color:#fff;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;">🔧</span>';
@@ -2717,7 +2729,17 @@ class AdminPanel(AdminPanelTemplate):
 
     def get_setting(self, key):
         """الحصول على قيمة إعداد معين"""
-        return anvil.server.call('get_setting', key)
+        auth = self.get_auth()
+        if not auth:
+            return None
+        return anvil.server.call('get_setting', key, auth)
+
+    def repair_cylinder_prices(self):
+        """إصلاح أسعار السلندرات إذا كانت أصفار"""
+        auth = self.get_auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated'}
+        return anvil.server.call('repair_cylinder_prices', auth)
 
     def get_machine_prices(self):
         """الحصول على أسعار المكن"""

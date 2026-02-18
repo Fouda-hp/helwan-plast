@@ -2320,7 +2320,7 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
             }
         
         # عقد جديد: المتسلسل من جدول CONTRACTS (أكبر متسلسل للسنة الحالية + 1)
-        serial = _get_next_contract_serial_from_table()
+        serial = get_next_contract_serial()
         contract_number = f"C - {quotation_number} / {serial} - {current_year}"
         try:
             app_tables.contracts.add_row(

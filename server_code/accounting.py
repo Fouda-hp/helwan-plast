@@ -258,7 +258,11 @@ def _get_rate_to_egp(currency_code):
             return _round2(float(r.get('rate_to_egp', 1)))
     except Exception:
         pass
-    return 1.0
+    raise ValueError(
+        f"Exchange rate for {_safe_str(currency_code).upper()} not found in currency_exchange_rates table. "
+        f"سعر الصرف غير موجود للعملة {_safe_str(currency_code).upper()}. "
+        f"Cannot convert to EGP — add the rate first."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -666,6 +670,14 @@ def _ensure_vat_accounts():
             logger.warning("Could not create account %s: %s", code, e)
 
 
+VALID_REFERENCE_TYPES = frozenset({
+    'journal', 'treasury', 'purchase_invoice', 'payment',
+    'import_cost_payment', 'vat_settlement', 'expense',
+    'import_cost_migration', 'sales_invoice', 'customer_collection',
+    'contract_receivable', 'opening_balance', 'year_end_closing',
+})
+
+
 def post_journal_entry(entry_date, entries, description, ref_type, ref_id, user_email):
     """
     Core double-entry posting function (internal, not callable directly).
@@ -725,6 +737,9 @@ def post_journal_entry(entry_date, entries, description, ref_type, ref_id, user_
 
     if is_period_locked(parsed_date):
         return {'success': False, 'message': 'Accounting period is locked.'}
+
+    if ref_type and ref_type not in VALID_REFERENCE_TYPES:
+        return {'success': False, 'message': f"Invalid reference_type '{ref_type}'. Valid types: {sorted(VALID_REFERENCE_TYPES)}"}
 
     transaction_id = _uuid()
     now = get_utc_now()
@@ -1236,8 +1251,8 @@ def _register_posted_purchase_invoice(invoice_id, user_email):
         err = str(e).lower()
         if 'unique' in err or 'duplicate' in err or 'constraint' in err:
             return False
-        logger.warning("posted_purchase_invoice_ids register: %s", e)
-        return True
+        logger.warning("posted_purchase_invoice_ids register (BLOCKED — fail-closed): %s", e)
+        return False
 
 
 def _unregister_posted_purchase_invoice(invoice_id):
@@ -2154,6 +2169,10 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
         if currency_code != 'EGP' and pct is None and not is_paid_in_full:
             if invoice_rate <= 0:
                 return {'success': False, 'message': 'Invoice exchange rate is required for foreign-currency payment by amount.'}
+        # FIX: Percentage + foreign currency + amount — also require valid invoice_rate for FX calc
+        if currency_code != 'EGP' and pct is not None and amount_in > 0:
+            if invoice_rate <= 0:
+                return {'success': False, 'message': 'Invoice exchange rate is required for foreign-currency percentage payment (for FX gain/loss calculation).'}
 
         # 1) liability_slice_egp = portion of remaining being cleared (book value)
         if is_paid_in_full:
@@ -2206,6 +2225,10 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
             desc += f" — Bank fee: {bank_fee:,.2f} EGP"
         if notes:
             desc += f" — {notes}"
+        if fx_diff > 0:
+            desc += f" — أرباح فروق عملة (FX Gain): {fx_diff:,.2f} EGP"
+        elif fx_diff < 0:
+            desc += f" — خسائر فروق عملة (FX Loss): {-fx_diff:,.2f} EGP"
 
         # 4) Entries: DR 2000 = liability_slice_egp, CR Bank = payment_egp; then 4110/6110 if fx_diff != 0; then bank fee if any
         entries = [
@@ -2600,7 +2623,12 @@ def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, to
         if amt_egp is None or _round2(amt_egp) <= 0:
             inv_id = row.get('purchase_invoice_id')
             inv = app_tables.purchase_invoices.get(id=inv_id) if inv_id else None
-            rate = _round2(float(inv.get('exchange_rate_usd_to_egp') or 0)) if inv and inv.get('exchange_rate_usd_to_egp') else _get_rate_to_egp('USD')
+            if inv and inv.get('exchange_rate_usd_to_egp'):
+                rate = _round2(float(inv.get('exchange_rate_usd_to_egp') or 0))
+            else:
+                return {'success': False, 'message': 'Cannot compute import cost EGP amount: invoice exchange rate is missing. Set the rate on the purchase invoice first. | لا يمكن حساب المبلغ بالجنيه: سعر الصرف غير موجود في الفاتورة.'}
+            if rate <= 0:
+                return {'success': False, 'message': 'Invoice exchange rate is zero or invalid. Update the purchase invoice exchange rate. | سعر الصرف صفر أو غير صالح.'}
             amt = _round2(row.get('amount', 0))
             curr = _safe_str(row.get('currency') or 'EGP').upper()
             amt_egp = _round2(amt * (rate if curr == 'USD' else 1))
@@ -7214,11 +7242,15 @@ def post_opening_balances(financial_year, token_or_email=None):
         elif entity_type == 'customer':
             if not _validate_account_exists('1100'):
                 continue
+            if amount < 0:
+                return {'success': False, 'message': f'Customer opening balance for "{name}" is negative ({amount}). Use a positive amount or adjust manually.'}
             lines.append({'account_code': '1100', 'debit': amount, 'credit': 0, 'reference_id': name or ref_id})
             total_debit += amount
         elif entity_type == 'supplier':
             if not _validate_account_exists('2000'):
                 continue
+            if amount < 0:
+                return {'success': False, 'message': f'Supplier opening balance for "{name}" is negative ({amount}). Use a positive amount or adjust manually.'}
             lines.append({'account_code': '2000', 'debit': 0, 'credit': amount, 'reference_id': name or ref_id})
             total_credit += amount
 

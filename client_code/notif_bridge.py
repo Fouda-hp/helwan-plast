@@ -59,6 +59,8 @@ def _get_all_notifications():
             else:
                 description = payload.get(msg_key, '') or payload.get('message_en', '') or _type_label(notif_type, payload, lang)
             ts = (item.get('created_at') or '').replace('T', ' ')[:19]
+            # Include user_name from payload (for audit_action) for better display
+            user_name = payload.get('user_name', '') if notif_type == 'audit_action' else ''
             notifications.append({
                 'id': item.get('id', ''),
                 'timestamp': ts,
@@ -66,6 +68,7 @@ def _get_all_notifications():
                 'action': notif_type,
                 'read_at': item.get('read_at'),
                 'user_email': item.get('user_email', ''),
+                'user_name': user_name,
             })
         return {'success': True, 'notifications': notifications}
     except Exception as e:
@@ -93,10 +96,14 @@ def _type_label(notif_type, payload, lang):
         'contract_saved': ('Contract saved', 'تم حفظ عقد'),
         'followup_set': ('Follow-up set', 'تم تعيين متابعة'),
         'followup_overdue': ('Follow-up overdue', 'متابعة متأخرة'),
+        'followup_snoozed': ('Follow-up snoozed', 'تم تأجيل المتابعة'),
+        'followup_completed': ('Follow-up completed', 'تم إتمام المتابعة'),
         'user_approved': ('User approved', 'تمت الموافقة على مستخدم'),
         'user_rejected': ('User rejected', 'تم رفض مستخدم'),
         'backup_created': ('Backup created', 'تم إنشاء نسخة احتياطية'),
         'backup_restored': ('Backup restored', 'تمت استعادة نسخة احتياطية'),
+        'invoice_overdue': ('Invoice OVERDUE', 'فاتورة متأخرة'),
+        'invoice_due_soon': ('Invoice due soon', 'فاتورة قريبة الاستحقاق'),
     }
     pair = labels.get(notif_type, (notif_type, notif_type))
     base = pair[1] if lang == 'ar' else pair[0]

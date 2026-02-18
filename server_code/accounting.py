@@ -6121,19 +6121,16 @@ def run_daily_notification_check(token_or_email=None):
 
 
 def _create_notification_for_admins(notification_type, message, data=None):
-    """Create a notification for all admin users."""
+    """Create a notification for all admin users using the correct notifications module."""
     try:
-        for user in app_tables.users.search():
-            role = (user.get('role') or '').strip().lower()
-            if role in ('admin', 'manager'):
-                app_tables.notifications.add_row(
-                    user_email=user.get('email', ''),
-                    type=notification_type,
-                    message=message,
-                    data=json.dumps(data) if data else '',
-                    is_read=False,
-                    created_at=datetime.now()
-                )
+        from . import notifications as notif_mod
+        payload = {
+            'message_en': message,
+            'message_ar': message,
+        }
+        if data and isinstance(data, dict):
+            payload.update(data)
+        notif_mod.create_notification_for_all_admins(notification_type, payload)
     except Exception as e:
         logger.warning("_create_notification_for_admins error: %s", e)
 

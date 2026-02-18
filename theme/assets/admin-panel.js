@@ -1123,14 +1123,15 @@ function renderDashCharts(acct) {
   return;
   }
 
-  var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Table</th><th>Record ID</th></tr></thead><tbody>';
+  var html = '<div class="table-scroll"><table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Description</th><th>Table</th><th>Record ID</th><th>IP</th></tr></thead><tbody>';
   result.logs.forEach(function(l) {
   html += '<tr>';
   html += '<td>' + escapeHtml(l.timestamp.replace('T', ' ').substring(0, 19)) + '</td>';
-  html += '<td>' + escapeHtml(l.user_email) + '</td>';
-  html += '<td>' + escapeHtml(l.action) + '</td>';
-  html += '<td>' + escapeHtml(l.table_name) + '</td>';
+  html += '<td>' + escapeHtml(l.user_name || l.user_email || '-') + '</td>';
+  html += '<td>' + escapeHtml(l.action_description || l.action || '-') + '</td>';
+  html += '<td>' + escapeHtml(l.table_name || '-') + '</td>';
   html += '<td>' + escapeHtml(l.record_id || '-') + '</td>';
+  html += '<td>' + escapeHtml(l.ip_address || '-') + '</td>';
   html += '</tr>';
   });
   html += '</tbody></table></div>';

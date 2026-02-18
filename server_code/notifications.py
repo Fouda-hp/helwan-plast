@@ -11,7 +11,7 @@ import uuid
 import json
 import html as _html_mod
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from anvil.tables import app_tables
 
@@ -127,19 +127,36 @@ def _send_notification_email(user_email, notif_type, payload):
         logger.warning("Notification email failed for %s: %s", user_email, e)
 
 
+def _is_duplicate_notification(user_email, notif_type, payload_json, seconds=5):
+    """تحقق من عدم وجود إشعار مطابق خلال آخر N ثوان (منع التكرار)."""
+    try:
+        cutoff = get_utc_now() - timedelta(seconds=seconds)
+        for r in app_tables.notifications.search(user_email=user_email, type=notif_type):
+            if r.get('created_at') and r['created_at'] >= cutoff:
+                if r.get('payload') == payload_json:
+                    return True
+        return False
+    except Exception:
+        return False
+
+
 def create_notification(user_email, notif_type, payload):
     """
     إنشاء إشعار لمستخدم.
-    payload: dict يُحوَّل إلى JSON ويُخزَّن في عمود payload.
+    payload: dict يُحوَّل إلى JSON ويُخزَّن في عمود payload.
     """
     if not user_email or not str(user_email).strip():
         return
     try:
+        email = str(user_email).strip().lower()
+        payload_json = json.dumps(payload, ensure_ascii=False, default=str)
+        if _is_duplicate_notification(email, notif_type, payload_json):
+            return
         app_tables.notifications.add_row(
             id=str(uuid.uuid4()),
-            user_email=str(user_email).strip().lower(),
+            user_email=email,
             type=str(notif_type),
-            payload=json.dumps(payload, ensure_ascii=False, default=str),
+            payload=payload_json,
             created_at=get_utc_now(),
             read_at=None
         )
@@ -154,13 +171,16 @@ def create_notification_for_all_admins(notif_type, payload):
     يُستدعى تلقائياً من سجل التدقيق أو من دوال الحفظ/التعديل.
     """
     admin_emails = _get_admin_emails()
+    payload_json = json.dumps(payload, ensure_ascii=False, default=str)
     for email in admin_emails:
         try:
+            if _is_duplicate_notification(email, notif_type, payload_json):
+                continue
             app_tables.notifications.add_row(
                 id=str(uuid.uuid4()),
                 user_email=email,
                 type=str(notif_type),
-                payload=json.dumps(payload, ensure_ascii=False, default=str),
+                payload=payload_json,
                 created_at=get_utc_now(),
                 read_at=None
             )

@@ -408,17 +408,28 @@ def verify_backup_code(email, code):
 @anvil.server.callable
 def disable_totp(user_email, auth_token):
   """إلغاء تفعيل تطبيق المصادقة (نفس المستخدم أو أدمن)."""
-  user = app_tables.users.get(email=user_email)
+  ip_address = get_client_ip()
+  # Admin path: can disable TOTP for any user
+  if require_admin(auth_token)[0]:
+    user = app_tables.users.get(email=user_email)
+    if not user:
+      return {'success': False, 'message': 'User not found'}
+    user.update(totp_secret=None)
+    log_audit('DISABLE_TOTP', 'users', user.get('user_id'), {'totp_secret': '***'}, {'totp_secret': None}, user_email, ip_address)
+    logger.info("Admin disabled TOTP for user %s from IP %s", user_email, ip_address)
+    return {'success': True, 'message': 'Authenticator disabled'}
+  # Self-service path: extract email from validated session (ignore user_email parameter)
+  res = validate_token(auth_token)
+  if not res.get('valid'):
+    return {'success': False, 'message': 'Not authorized'}
+  session_email = res.get('user', {}).get('email', '')
+  user = app_tables.users.get(email=session_email)
   if not user:
     return {'success': False, 'message': 'User not found'}
-  if require_admin(auth_token)[0]:
-    user.update(totp_secret=None)
-    return {'success': True, 'message': 'Authenticator disabled'}
-  res = validate_token(auth_token)
-  if res.get('valid') and res.get('user', {}).get('email') == user_email:
-    user.update(totp_secret=None)
-    return {'success': True, 'message': 'Authenticator disabled'}
-  return {'success': False, 'message': 'Not authorized'}
+  user.update(totp_secret=None)
+  log_audit('DISABLE_TOTP', 'users', user.get('user_id'), {'totp_secret': '***'}, {'totp_secret': None}, session_email, ip_address)
+  logger.info("User %s disabled their own TOTP from IP %s", session_email, ip_address)
+  return {'success': True, 'message': 'Authenticator disabled'}
 
 
 def send_admin_notification_email(new_user_email, new_user_name, new_user_phone):
@@ -1896,6 +1907,14 @@ def reset_admin_password_emergency(email, new_password, secret_key):
 
             logger.info(f"Emergency admin created: {email}")
 
+            # Alert existing admins about emergency account creation
+            try:
+                if ADMIN_NOTIFICATION_EMAIL and EMAIL_SERVICE_AVAILABLE:
+                    alert_html = f"<h2>⚠️ Emergency Admin Account Created</h2><p>A new admin account was created via emergency reset:</p><ul><li><b>Email:</b> {email}</li><li><b>IP:</b> {ip_address}</li><li><b>Time:</b> {get_utc_now()}</li></ul><p>If this was not authorized, take immediate action.</p>"
+                    send_email_smtp(ADMIN_NOTIFICATION_EMAIL, '⚠️ Emergency Admin Created — Helwan Plast ERP', alert_html)
+            except Exception:
+                logger.warning("Could not send emergency admin alert email")
+
             return {'success': True, 'message': 'Admin account created successfully. You can now login.'}
 
         # تحديث المستخدم الموجود ليكون أدمن (مع كلمة المرور الجديدة)
@@ -1916,6 +1935,14 @@ def reset_admin_password_emergency(email, new_password, secret_key):
                   {'email': email, 'old_role': old_role}, email, ip_address)
 
         logger.info(f"Emergency admin upgrade/reset for: {email} (was: {old_role})")
+
+        # Alert existing admins about emergency upgrade
+        try:
+            if ADMIN_NOTIFICATION_EMAIL and EMAIL_SERVICE_AVAILABLE:
+                alert_html = f"<h2>⚠️ Emergency Admin Upgrade</h2><p>An account was upgraded to admin via emergency reset:</p><ul><li><b>Email:</b> {email}</li><li><b>Previous Role:</b> {old_role}</li><li><b>IP:</b> {ip_address}</li><li><b>Time:</b> {get_utc_now()}</li></ul><p>If this was not authorized, take immediate action.</p>"
+                send_email_smtp(ADMIN_NOTIFICATION_EMAIL, '⚠️ Emergency Admin Upgrade — Helwan Plast ERP', alert_html)
+        except Exception:
+            logger.warning("Could not send emergency admin alert email")
 
         return {'success': True, 'message': 'Account upgraded to admin successfully. You can now login.'}
 

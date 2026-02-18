@@ -51,7 +51,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     register_notif_bridges()
 
   def _show_msg(self, msg, typ='error'):
-    """ط¹ط±ط¶ ط±ط³ط§ظ„ط© ظ…ظ† ظ†ط¸ط§ظ… ط§ظ„طھط·ط¨ظٹظ‚ ط¨ط¯ظ„ alert ط§ظ„ط¨ط±ط§ظˆط²ط±"""
+    """عرض رسالة من نظام التطبيق بدل alert البراوزر"""
     try:
       anvil.js.window.showNotification(typ, '', str(msg))
     except Exception:
@@ -215,7 +215,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     # Determine machine type prefix - use machine_type field not model
     machine_type_base = data.get('machine_type', '') or data.get('model', '')
-    machine_type_display = ("Flexo Stack With " + str(machine_type_base)) if not is_ar else ("ظپظ„ظٹظƒط³ظˆ ط³طھط§ظƒ ظ…ط¹ " + str(machine_type_base))
+    machine_type_display = ("Flexo Stack With " + str(machine_type_base)) if not is_ar else ("فليكسو ستاك مع " + str(machine_type_base))
 
     # Determine Winder Type based on Unwind/Rewind checkboxes
     def get_winder_type():
@@ -224,19 +224,19 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
       # Check Unwind options
       if str(data.get('pneumatic_unwind', '')).upper() in ['YES', 'TRUE', '1']:
-        unwind_options.append('Pneumatic Unwind' if not is_ar else 'ظپظƒ ظ‡ظˆط§ط¦ظٹ')
+        unwind_options.append('Pneumatic Unwind' if not is_ar else 'فك هوائي')
       if str(data.get('hydraulic_station_unwind', '')).upper() in ['YES', 'TRUE', '1']:
-        unwind_options.append('Hydraulic Station Unwind' if not is_ar else 'ظپظƒ ظ‡ظٹط¯ط±ظˆظ„ظٹظƒ')
+        unwind_options.append('Hydraulic Station Unwind' if not is_ar else 'فك هيدروليك')
 
       # Check Rewind options
       if str(data.get('pneumatic_rewind', '')).upper() in ['YES', 'TRUE', '1']:
-        rewind_options.append('Pneumatic Rewind' if not is_ar else 'ظ„ظپ ظ‡ظˆط§ط¦ظٹ')
+        rewind_options.append('Pneumatic Rewind' if not is_ar else 'لف هوائي')
       if str(data.get('surface_rewind', '')).upper() in ['YES', 'TRUE', '1']:
-        rewind_options.append('Surface Rewind' if not is_ar else 'ظ„ظپ ط³ط·ط­ظٹ')
+        rewind_options.append('Surface Rewind' if not is_ar else 'لف سطحي')
 
       # Build winder type string
       if not unwind_options and not rewind_options:
-        return 'Central' if not is_ar else 'ظ…ط±ظƒط²ظٹ'
+        return 'Central' if not is_ar else 'مركزي'
 
       parts = []
       if unwind_options:
@@ -268,29 +268,29 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     # Quotation Info
     html += '<div class="quotation-info">'
-    html += '<div class="quotation-number">' + ("ط¹ط±ط¶ ط³ط¹ط± ط±ظ‚ظ…" if is_ar else "Quotation No.:") + ' <span>' + str(data.get("quotation_number", "")) + '</span></div>'
+    html += '<div class="quotation-number">' + ("عرض سعر رقم" if is_ar else "Quotation No.:") + ' <span>' + str(data.get("quotation_number", "")) + '</span></div>'
     client_name = data.get("client_name", "") or ""
     company = data.get("client_company", "") or ""
     client_display = (str(client_name) + " - " + str(company)).strip(" - ") if company else client_name
-    html += '<div class="client-info">' + ("ط§ظ„ط³ط§ط¯ط© - ط´ط±ظƒط© /" if is_ar else "To: / Company:") + ' <span>' + str(_h(client_display)) + '</span></div>'
-    html += '<div class="greeting">' + ("طھط­ظٹط© ط·ظٹط¨ط© ظˆط¨ط¹ط¯طŒ" if is_ar else "Dear Sir/Madam,") + '</div>'
-    intro = 'ظ†ط­ظ† ظ†طھط´ط±ظپ ط¨طھظ‚ط¯ظٹظ… ط¹ط±ط¶ ط§ظ„ط³ط¹ط± ط§ظ„طھط§ظ„ظٹ ظ„ظ…ط§ظƒظٹظ†ط© ط§ظ„ط·ط¨ط§ط¹ط© ط·ط¨ظ‚ط§ظ‹ ظ„ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظ…ظˆط¶ط­ط© ط£ط¯ظ†ط§ظ‡:' if is_ar else 'We are pleased to submit our quotation for the following printing machine in accordance with the specifications detailed below:'
+    html += '<div class="client-info">' + ("السادة - شركة /" if is_ar else "To: / Company:") + ' <span>' + str(_h(client_display)) + '</span></div>'
+    html += '<div class="greeting">' + ("تحية طيبة وبعد،" if is_ar else "Dear Sir/Madam,") + '</div>'
+    intro = 'نحن نتشرف بتقديم عرض السعر التالي لماكينة الطباعة طبقاً للمواصفات الموضحة أدناه:' if is_ar else 'We are pleased to submit our quotation for the following printing machine in accordance with the specifications detailed below:'
     html += '<div class="intro-text">' + str(intro) + '</div>'
     html += '</div>'
 
     # Machine Details
-    html += '<div class="section-title">' + ("طھظپط§طµظٹظ„ ط§ظ„ظ…ط§ظƒظٹظ†ط© :" if is_ar else "Machine Details") + '</div>'
+    html += '<div class="section-title">' + ("تفاصيل الماكينة :" if is_ar else "Machine Details") + '</div>'
     html += '<table class="details-table">'
 
     # Both Arabic and English: label (th) on left, value (td) on right
     if is_ar:
-      html += '<tr><th>ظ†ظˆط¹ ط§ظ„ظ…ط§ظƒظٹظ†ط© :</th><td>' + str(machine_type_display) + '</td></tr>'
-      html += '<tr><th>ط§ظ„ظ…ظˆط¯ظٹظ„ :</th><td>' + str(data.get("model", "")) + '</td></tr>'
-      html += '<tr><th>ط¨ظ„ط¯ ط§ظ„ظ…ظ†ط´ط£ :</th><td>' + str(c.get("country_origin_ar", "")) + '</td></tr>'
-      html += '<tr><th>ط¹ط¯ط¯ ط§ظ„ط£ظ„ظˆط§ظ† :</th><td>' + str(data.get("colors_count", "")) + '</td></tr>'
-      html += '<tr><th>ط§ظ„ظˆظ†ط¯ط± :</th><td>' + str(data.get("winder", "")) + '</td></tr>'
-      html += '<tr><th>ظ†ظˆط¹ ط§ظ„ظˆظ†ط¯ط± :</th><td>' + str(winder_type_display) + '</td></tr>'
-      html += '<tr><th>ط¹ط±ط¶ ط§ظ„ظ…ط§ظƒظٹظ†ط© :</th><td>' + str(data.get("machine_width", "")) + ' ط³ظ…</td></tr>'
+      html += '<tr><th>نوع الماكينة :</th><td>' + str(machine_type_display) + '</td></tr>'
+      html += '<tr><th>الموديل :</th><td>' + str(data.get("model", "")) + '</td></tr>'
+      html += '<tr><th>بلد المنشأ :</th><td>' + str(c.get("country_origin_ar", "")) + '</td></tr>'
+      html += '<tr><th>عدد الألوان :</th><td>' + str(data.get("colors_count", "")) + '</td></tr>'
+      html += '<tr><th>الوندر :</th><td>' + str(data.get("winder", "")) + '</td></tr>'
+      html += '<tr><th>نوع الوندر :</th><td>' + str(winder_type_display) + '</td></tr>'
+      html += '<tr><th>عرض الماكينة :</th><td>' + str(data.get("machine_width", "")) + ' سم</td></tr>'
     else:
       # English: label on far left, value next to it
       html += '<tr><th>Machine Type:</th><td>' + str(machine_type_display) + '</td></tr>'
@@ -303,25 +303,25 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     html += '</table>'
 
     # ==================== 17 SPECIFICATIONS ====================
-    html += '<div class="section-title">' + ("ط§ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظپظ†ظٹط©:" if is_ar else "Technical Specifications:") + '</div>'
+    html += '<div class="section-title">' + ("المواصفات الفنية:" if is_ar else "Technical Specifications:") + '</div>'
     html += '<ol class="specs-list" style="font-size: 14px; line-height: 1.8; padding-right: 18px; padding-left: 18px; white-space: normal; word-break: break-word;">'
 
     # Helper: Belt/Gear drive for item 13 (uses is_metal_anilox, is_nonwoven from above)
     def get_drive_type():
       if is_metal_anilox and not is_nonwoven:
-        return ('ظ†ظ‚ظ„ ط§ظ„ط­ط±ظƒظ‡ ظ…ظ† ط§ظ„ظ…ظˆطھظˆط± ط§ظ„ط±ط¦ظٹط³ظٹ ظ„ط£ط¬ط²ط§ط، ط§ظ„ظ…ط§ظƒظٹظ†ط© ط¹ظ† ط·ط±ظٹظ‚ ط§ظ„طھط±ظˆط³' if is_ar else 'Gear drive',
-                'ظ†ظ‚ظ„ ط§ظ„ط­ط±ظƒظ‡ ظ…ظ† ط§ظ„ظ…ظˆطھظˆط± ط§ظ„ط±ط¦ظٹط³ظٹ ط¥ظ„ظ‰ ظ…ظƒظˆظ†ط§طھ ط§ظ„ظ…ط§ظƒظٹظ†ط© ط¹ط¨ط± ط§ظ„طھط±ظˆط³ ظ„ط¶ظ…ط§ظ† ط¹ظ…ط± ط£ط·ظˆظ„طŒ طھظ‚ظ„ظٹظ„ ط§ظ„ط£ط¹ط·ط§ظ„طŒ ظˆطھظ…ظƒظٹظ† ط§ظ„طھط´ط؛ظٹظ„ ط¨ط³ط±ط¹ط© ط¹ط§ظ„ظٹط© ظˆظ‡ط¯ظˆط، ظ…ط¹ طھطµظ…ظٹظ… ط؛ظٹط± ظ…ط¹ظ‚ط¯' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+        return ('نقل الحركه من الموتور الرئيسي لأجزاء الماكينة عن طريق التروس' if is_ar else 'Gear drive',
+                'نقل الحركه من الموتور الرئيسي إلى مكونات الماكينة عبر التروس لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
       else:
-        return ('ظ†ظ‚ظ„ ط§ظ„ط­ط±ظƒظ‡ ظ…ظ† ط§ظ„ظ…ظˆطھظˆط± ط§ظ„ط±ط¦ظٹط³ظٹ ظ„ط£ط¬ط²ط§ط، ط§ظ„ظ…ط§ظƒظٹظ†ط© ط¹ظ† ط·ط±ظٹظ‚ ط§ظ„ط³ظٹظˆط±' if is_ar else 'Belt drive',
-                'ظ†ظ‚ظ„ ط§ظ„ط­ط±ظƒظ‡ ظ…ظ† ط§ظ„ظ…ظˆطھظˆط± ط§ظ„ط±ط¦ظٹط³ظٹ ط¥ظ„ظ‰ ظ…ظƒظˆظ†ط§طھ ط§ظ„ظ…ط§ظƒظٹظ†ط© ط¹ط¨ط± ط§ظ„ط³ظٹظˆط± ظ„ط¶ظ…ط§ظ† ط¹ظ…ط± ط£ط·ظˆظ„طŒ طھظ‚ظ„ظٹظ„ ط§ظ„ط£ط¹ط·ط§ظ„طŒ ظˆطھظ…ظƒظٹظ† ط§ظ„طھط´ط؛ظٹظ„ ط¨ط³ط±ط¹ط© ط¹ط§ظ„ظٹط© ظˆظ‡ط¯ظˆط، ظ…ط¹ طھطµظ…ظٹظ… ط؛ظٹط± ظ…ط¹ظ‚ط¯' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+        return ('نقل الحركه من الموتور الرئيسي لأجزاء الماكينة عن طريق السيور' if is_ar else 'Belt drive',
+                'نقل الحركه من الموتور الرئيسي إلى مكونات الماكينة عبر السيور لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
 
     # Helper function for item 7 (color registration)
     def get_color_registration():
-      is_plc_yes = plc_value in ['YES', 'TRUE', '1', 'ظ†ط¹ظ…']
+      is_plc_yes = plc_value in ['YES', 'TRUE', '1', 'نعم']
       if is_plc_yes:
-        return ('ط¶ط¨ط· طھط³ط¬ظٹظ„ ط§ظ„ط£ظ„ظˆط§ظ† ط§ظ„ط£ظپظ‚ظٹ ظˆط§ظ„ط±ط£ط³ظٹ ط£ظˆطھظˆظ…ط§طھظٹظƒظٹط§ظ‹ ط£ط«ظ†ط§ط، ط§ظ„طھط´ط؛ظٹظ„' if is_ar else 'Automatically horizontal and vertical color registration adjustment during operation')
+        return ('ضبط تسجيل الألوان الأفقي والرأسي أوتوماتيكياً أثناء التشغيل' if is_ar else 'Automatically horizontal and vertical color registration adjustment during operation')
       else:
-        return ('ط¶ط¨ط· طھط³ط¬ظٹظ„ ط§ظ„ط£ظ„ظˆط§ظ† ط§ظ„ط£ظپظ‚ظٹ ظˆط§ظ„ط±ط£ط³ظٹ ظٹط¯ظˆظٹط§ظ‹ ط£ط«ظ†ط§ط، ط§ظ„طھط´ط؛ظٹظ„' if is_ar else 'Manual horizontal and vertical color registration adjustment during operation')
+        return ('ضبط تسجيل الألوان الأفقي والرأسي يدوياً أثناء التشغيل' if is_ar else 'Manual horizontal and vertical color registration adjustment during operation')
 
     drive_type, drive_desc = get_drive_type()
     color_reg = get_color_registration()
@@ -348,23 +348,23 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     ]
 
     specs_ar = [
-        "ظ‡ظٹظƒظ„ ظ…ظ† ط§ظ„ط­ط¯ظٹط¯ ط§ظ„ط²ظ‡ط± ط§ظ„ط«ظ‚ظٹظ„طŒ ط«ط§ط¨طھ ظˆظ…ظ‚ط§ظˆظ… ظ„ظ„ط§ظ‡طھط²ط§ط²ط§طھ",
-        "ظˆط­ط¯ط§طھ طھط­ظƒظ… ط£ظˆطھظˆظ…ط§طھظٹظƒظٹط© ظپظٹ ط´ط¯ ط§ظ„ط®ط§ظ…ط© ظ…ظ†ط§ط³ط¨ط© ظ„ط£ظˆط²ط§ظ† ظˆط³ظ…ط§ظƒط§طھ ظˆظ…ط±ظˆظ†ط§طھ ظ…ط®طھظ„ظپط©طŒ ظ…ط¹ ط®ظٹط§ط± ط§ظ„ط¶ط¨ط· ط§ظ„ظٹط¯ظˆظٹ",
-        "ظˆط­ط¯ط§طھ طھظˆط¬ظٹظ‡ ط§ظ„ط®ط§ظ…ط© (ط§ظ„ظ…طھط£ط±ط¬ط­ط©) ظ„ط¶ظ…ط§ظ† ط¯ظ‚ط© طھظˆط³ظٹط· ط§ظ„ط·ط¨ط§ط¹ط© ط¹ظ„ظ‰ ط§ظ„ط®ط§ظ…ط© ظˆط¥ط¹ط§ط¯ط© ظ„ظپ ط³ظ„ط³ط© ظ„ظ„ظ…ط§ط¯ط© ط§ظ„ظ…ط·ط¨ظˆط¹ط©",
-        "ط§ظ„ط£ط³ط·ظˆط§ظ†ط§طھ ظ…ط¹ط§ظ„ط¬ط© ط¨ط§ظ„ظ„ظٹط²ط± ظ„ظ„طھط´ط؛ظٹظ„ ط§ظ„ط´ط§ظ‚ ظˆط¥ط·ط§ظ„ط© ط¹ظ…ط± ط§ظ„ط®ط¯ظ…ط©",
-        "ظ…ط³طھط´ط¹ط±ط§طھ ط¥ظٹظ‚ط§ظپ ط£ظˆطھظˆظ…ط§طھظٹظƒظٹ ظ„ظ„ظ…ط§ظƒظٹظ†ط© ظپظٹ ط­ط§ظ„ط© ط§ظ†ظ‚ط·ط§ط¹ ط§ظ„ظپظٹظ„ظ… ط£ظˆ ظ†ظپط§ط¯ ط§ظ„ط®ط§ظ…ط©",
-        "ط¶ط؛ط· ط£ط³ط·ظˆط§ظ†ط© ط§ظ„ط·ط¨ط§ط¹ط© ظٹطھظ… ط¹ط¨ط± ظ†ط¸ط§ظ… ط§ظ„ط²ظٹطھ ط§ظ„ظ‡ظٹط¯ط±ظˆظ„ظٹظƒظٹ ظ„طھط¬ظ†ط¨ ظ…ط´ط§ظƒظ„ ط§ظ„ط¶ط؛ط· ط§ظ„ظ‡ظˆط§ط¦ظٹ ظˆطھظ‚ظ„ظٹظ„ ط§ط³طھظ‡ظ„ط§ظƒ ط§ظ„ظƒظ‡ط±ط¨ط§ط، ط§ظ„ظ†ط§طھط¬ ط¹ظ† طھط´ط؛ظٹظ„ ط¶ط§ط؛ط· ط§ظ„ظ‡ظˆط§ط، ط§ظ„ظ…طھظƒط±ط±",
+        "هيكل من الحديد الزهر الثقيل، ثابت ومقاوم للاهتزازات",
+        "وحدات تحكم أوتوماتيكية في شد الخامة مناسبة لأوزان وسماكات ومرونات مختلفة، مع خيار الضبط اليدوي",
+        "وحدات توجيه الخامة (المتأرجحة) لضمان دقة توسيط الطباعة على الخامة وإعادة لف سلسة للمادة المطبوعة",
+        "الأسطوانات معالجة بالليزر للتشغيل الشاق وإطالة عمر الخدمة",
+        "مستشعرات إيقاف أوتوماتيكي للماكينة في حالة انقطاع الفيلم أو نفاد الخامة",
+        "ضغط أسطوانة الطباعة يتم عبر نظام الزيت الهيدروليكي لتجنب مشاكل الضغط الهوائي وتقليل استهلاك الكهرباء الناتج عن تشغيل ضاغط الهواء المتكرر",
         get_color_registration(),
-        "ط±ط§ظپط¹ط§طھ ط¹ظ„ظˆظٹظ‡ ظ…ط¯ظ…ط¬ط© ظ„طھط³ظ‡ظٹظ„ طھط­ظ…ظٹظ„ ظˆطھظپط±ظٹط؛ ط§ظ„ط±ظˆظ„ط§طھ ظˆط£ط³ط·ظˆط§ظ†ط§طھ ط§ظ„ط·ط¨ط§ط¹ط©طŒ ظ…ظ…ط§ ظٹظˆظپط± ط§ظ„ظˆظ‚طھ ظˆط§ظ„ط¬ظ‡ط¯ ظˆط§ظ„ط¹ظ…ط§ظ„ط©",
-        "ظ…ظ†ط§ط³ط¨ط© ظ„ط£ط­ط¨ط§ط± ط§ظ„ظ…ط°ظٹط¨ط§طھ ظˆط§ظ„ط£ط­ط¨ط§ط± ط§ظ„ظ…ط§ط¦ظٹط©",
-        "ط¥ظ†ظپط±طھط±ط§طھ ط¯ظ„طھط§ (طھط§ظٹظˆط§ظ†ظٹ)",
-        "ط¥ظ†ط°ط§ط± ط£ظ…ط§ظ† ظ‚ط¨ظ„ ط¨ط¯ط، طھط´ط؛ظٹظ„ ط§ظ„ظ…ط§ظƒظٹظ†ط© ظ„ظ…ظ†ط¹ ط§ظ„ط¥طµط§ط¨ط§طھ",
-        "ظˆط­ط¯ط§طھ طھط¬ظپظٹظپ ط¨ط§ظ„ظ‡ظˆط§ط، ط§ظ„ط³ط§ط®ظ† ظ…ط¹ ظ…ط³ط§ط± ط®ط§ظ…ط© ظ…ظ…طھط¯ ظ„ط¶ظ…ط§ظ† ط¬ظپط§ظپ ط§ظ„ط­ط¨ط± ط§ظ„ظƒط§ظ…ظ„طŒ ط¨ط§ظ„ط¥ط¶ط§ظپط© ط¥ظ„ظ‰ ظˆط­ط¯ط§طھ طھط¬ظپظٹظپ ط¨ظٹظ† ط§ظ„ط£ظ„ظˆط§ظ†",
+        "رافعات علويه مدمجة لتسهيل تحميل وتفريغ الرولات وأسطوانات الطباعة، مما يوفر الوقت والجهد والعمالة",
+        "مناسبة لأحبار المذيبات والأحبار المائية",
+        "إنفرترات دلتا (تايواني)",
+        "إنذار أمان قبل بدء تشغيل الماكينة لمنع الإصابات",
+        "وحدات تجفيف بالهواء الساخن مع مسار خامة ممتد لضمان جفاف الحبر الكامل، بالإضافة إلى وحدات تجفيف بين الألوان",
         get_drive_type()[1],
-        "ظ…ط¶ط®ط§طھ طھط´ط­ظٹظ… ظ…ط¯ظ…ط¬ط© ظ„ط¶ظ…ط§ظ† طھظˆط²ظٹط¹ ظ…طھظˆط§ط²ظ† ظ„ظ„ط²ظٹطھ ط¹ظ„ظ‰ ط¬ظ…ظٹط¹ ط§ظ„ظ…ظƒظˆظ†ط§طھطŒ طھط´ط؛ظٹظ„ ط³ظ„ط³طŒ ظˆط­ظ…ط§ظٹط© ط¬ظ…ظٹط¹ ط§ظ„ط£ط¬ط²ط§ط، ط§ظ„ظ…طھط­ط±ظƒط©",
-        "ظ…ظˆط§طھظٹط± ط¥ط¹ط§ط¯ط© ظ„ظپ ظ…ظ†ظپطµظ„ط© ط¨طھط­ظƒظ… ظ…ط³طھظ‚ظ„ ظ„ظ„ط³ظ…ط§ط­ ط¨ط§ظ„طھط´ط؛ظٹظ„ ظ…ط¹ ظ…ط±ظˆظ†ط§طھ ظˆط³ظ…ط§ظƒط§طھ ظ…ط®طھظ„ظپط© ظ„ظ„ط®ط§ظ…ط§طھ",
-        "ط£ط³ط·ظˆط§ظ†ط§طھ ظپظƒ/ظ„ظپ ط¨ط´ط§ظپطھ ظ‡ظˆط§ط¦ظٹطŒ ط¨ط§ظ„ط¥ط¶ط§ظپط© ط¥ظ„ظ‰ ط´ط§ظپطھ ظ…ظٹظƒط§ظ†ظٹظƒظٹ ط¥ط¶ط§ظپظٹ ظ„طھظ…ظƒظٹظ† ط§ظ„طھط´ط؛ظٹظ„ ظ…ط¹ ط£ظٹ ط­ط¬ظ… ظƒظˆط±",
-        "ط¥ظ…ظƒط§ظ†ظٹط© ط§ظ„ط·ط¨ط§ط¹ط© ط¹ظ„ظ‰ ط§ظ„ظˆط¬ظ‡ظٹظ†"
+        "مضخات تشحيم مدمجة لضمان توزيع متوازن للزيت على جميع المكونات، تشغيل سلس، وحماية جميع الأجزاء المتحركة",
+        "مواتير إعادة لف منفصلة بتحكم مستقل للسماح بالتشغيل مع مرونات وسماكات مختلفة للخامات",
+        "أسطوانات فك/لف بشافت هوائي، بالإضافة إلى شافت ميكانيكي إضافي لتمكين التشغيل مع أي حجم كور",
+        "إمكانية الطباعة على الوجهين"
     ]
 
     specs = specs_ar if is_ar else specs_en
@@ -392,7 +392,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="section-title">' + ("ط¬ط¯ظˆظ„ ط§ظ„ظ…ظˆط§طµظپط§طھ ط§ظ„ظپظ†ظٹط©:" if is_ar else "General Specifications:") + '</div>'
+    html += '<div class="section-title">' + ("جدول المواصفات الفنية:" if is_ar else "General Specifications:") + '</div>'
 
     # ==================== CALCULATE TABLE VALUES ====================
     # Get values from quotation data
@@ -423,23 +423,23 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     double_winder_roll_dia = int(c.get('double_winder_roll_dia', 800))
     single_winder_brake_power = c.get('single_winder_brake_power', '1 pc (10kg) + 1 pc (5kg)')
     double_winder_brake_power = c.get('double_winder_brake_power', '2 pc (10kg) + 2 pc (5kg)')
-    dryer_capacity = c.get('dryer_capacity', '2.2kw air blower أ— 2 units')
+    dryer_capacity = c.get('dryer_capacity', '2.2kw air blower × 2 units')
     main_motor_power = c.get('main_motor_power', '5 HP')
 
     # Helper: convert English digits to Arabic digits
     def to_ar(val):
-      """Convert 0-9 to ظ -ظ©"""
-      ar_digits = {'0': 'ظ ', '1': 'ظ،', '2': 'ظ¢', '3': 'ظ£', '4': 'ظ¤', '5': 'ظ¥', '6': 'ظ¦', '7': 'ظ§', '8': 'ظ¨', '9': 'ظ©'}
+      """Convert 0-9 to ٠-٩"""
+      ar_digits = {'0': '٠', '1': '١', '2': '٢', '3': '٣', '4': '٤', '5': '٥', '6': '٦', '7': '٧', '8': '٨', '9': '٩'}
       return ''.join(ar_digits.get(ch, ch) for ch in str(val))
 
     # Calculate values based on rules
     # Number of Colors format
     if colors_count == 8:
-      colors_display = "8+0, 7+1, 6+2, 5+3, 4+4 reverse printing" if not is_ar else (to_ar('8+0') + "طŒ " + to_ar('7+1') + "طŒ " + to_ar('6+2') + "طŒ " + to_ar('5+3') + "طŒ " + to_ar('4+4') + " ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©")
+      colors_display = "8+0, 7+1, 6+2, 5+3, 4+4 reverse printing" if not is_ar else (to_ar('8+0') + "، " + to_ar('7+1') + "، " + to_ar('6+2') + "، " + to_ar('5+3') + "، " + to_ar('4+4') + " طباعة عكسية")
     elif colors_count == 6:
-      colors_display = "6+0, 5+1, 4+2, 3+3 reverse printing" if not is_ar else (to_ar('6+0') + "طŒ " + to_ar('5+1') + "طŒ " + to_ar('4+2') + "طŒ " + to_ar('3+3') + " ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©")
+      colors_display = "6+0, 5+1, 4+2, 3+3 reverse printing" if not is_ar else (to_ar('6+0') + "، " + to_ar('5+1') + "، " + to_ar('4+2') + "، " + to_ar('3+3') + " طباعة عكسية")
     elif colors_count == 4:
-      colors_display = "4+0, 3+1, 2+2 reverse printing" if not is_ar else (to_ar('4+0') + "طŒ " + to_ar('3+1') + "طŒ " + to_ar('2+2') + " ط·ط¨ط§ط¹ط© ط¹ظƒط³ظٹط©")
+      colors_display = "4+0, 3+1, 2+2 reverse printing" if not is_ar else (to_ar('4+0') + "، " + to_ar('3+1') + "، " + to_ar('2+2') + " طباعة عكسية")
     else:
       colors_display = str(colors_count) if not is_ar else to_ar(colors_count)
 
@@ -460,25 +460,25 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     max_roll_diameter = double_winder_roll_dia if is_double_winder else single_winder_roll_dia
 
     # Anilox type
-    anilox_display = ("Metal Anilox" if not is_ar else "ط§ظ†ظٹظ„ظˆظƒط³ ظ…ط¹ط¯ظ†ظٹ") if is_metal_anilox else ("Ceramic Anilox" if not is_ar else "ط§ظ†ظٹظ„ظˆظƒط³ ط³ظٹط±ط§ظ…ظٹظƒ")
+    anilox_display = ("Metal Anilox" if not is_ar else "انيلوكس معدني") if is_metal_anilox else ("Ceramic Anilox" if not is_ar else "انيلوكس سيراميك")
 
     # Speed based on drive type (from settings)
     max_machine_speed = belt_max_machine_speed if is_belt_drive else gear_max_machine_speed
     max_print_speed = belt_max_print_speed if is_belt_drive else gear_max_print_speed
 
     # Drive type display
-    drive_display = ("Belt Drive" if not is_ar else "ط³ظٹظˆط±") if is_belt_drive else ("Gear Drive" if not is_ar else "طھط±ظˆط³")
+    drive_display = ("Belt Drive" if not is_ar else "سيور") if is_belt_drive else ("Gear Drive" if not is_ar else "تروس")
 
     # Yes/No fields
     def yes_no_value(field_name):
       val = str(data.get(field_name, '')).upper()
-      if val in ['YES', 'TRUE', '1', 'ظ†ط¹ظ…']:
-        return 'Yes' if not is_ar else 'ظ†ط¹ظ…'
-      return 'No' if not is_ar else 'ظ„ط§'
+      if val in ['YES', 'TRUE', '1', 'نعم']:
+        return 'Yes' if not is_ar else 'نعم'
+      return 'No' if not is_ar else 'لا'
 
     def is_yes_value(field_name):
       val = str(data.get(field_name, '')).upper()
-      return val in ['YES', 'TRUE', '1', 'ظ†ط¹ظ…']
+      return val in ['YES', 'TRUE', '1', 'نعم']
 
     def normalize_values(values):
       if values is None:
@@ -496,26 +496,26 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     def default_specs():
       return [
-        {'label_ar': 'ط§ظ„ظ…ظˆط¯ظٹظ„', 'label_en': 'Model', 'source': 'field', 'values': ['model'], 'active': True},
-        {'label_ar': 'ط¹ط¯ط¯ ط§ظ„ط£ظ„ظˆط§ظ†', 'label_en': 'Number of Colors', 'source': 'field', 'values': ['colors_display'], 'active': True},
-        {'label_ar': 'ط£ظˆط¬ظ‡ ط§ظ„ط·ط¨ط§ط¹ط©', 'label_en': 'Printing Sides', 'source': 'field', 'values': ['printing_sides'], 'active': True},
-        {'label_ar': 'ظˆط­ط¯ط§طھ ط§ظ„طھط­ظƒظ… ظپظٹ ط§ظ„ط´ط¯', 'label_en': 'Tension Control Units', 'source': 'field', 'values': ['tension_units'], 'active': True},
-        {'label_ar': 'ظ†ط¸ط§ظ… ط§ظ„ظپط±ط§ظ…ظ„', 'label_en': 'Brake System', 'source': 'field', 'values': ['brake_system'], 'active': True},
-        {'label_ar': 'ظ‚ظˆط© ط§ظ„ظپط±ط§ظ…ظ„', 'label_en': 'Brake Power', 'source': 'field', 'values': ['brake_power'], 'active': True},
-        {'label_ar': 'ظ†ط¸ط§ظ… طھظˆط¬ظٹظ‡ ط§ظ„ط®ط§ظ…ط© (ط§ظ„ظ†ظˆط¹ ط§ظ„ظ…طھط£ط±ط¬ط­)', 'label_en': 'Web Guiding System (Oscillating Type)', 'source': 'field', 'values': ['web_guiding'], 'active': True},
-        {'label_ar': 'ط£ظ‚طµظ‰ ط¹ط±ط¶ ظ„ظ„ظپظٹظ„ظ…', 'label_en': 'Maximum Film Width', 'source': 'field', 'values': ['max_film_width'], 'active': True},
-        {'label_ar': 'ط£ظ‚طµظ‰ ط¹ط±ط¶ ظ„ظ„ط·ط¨ط§ط¹ط©', 'label_en': 'Maximum Printing Width', 'source': 'field', 'values': ['max_print_width'], 'active': True},
-        {'label_ar': 'ط§ظ„ط­ط¯ ط§ظ„ط£ط¯ظ†ظ‰ ظˆط§ظ„ط£ظ‚طµظ‰ ظ„ط·ظˆظ„ ط§ظ„ط·ط¨ط§ط¹ط©', 'label_en': 'Minimum and Maximum Printing Length', 'source': 'field', 'values': ['print_length'], 'active': True},
-        {'label_ar': 'ط£ظ‚طµظ‰ ظ‚ط·ط± ظ„ظ„ط±ظˆظ„', 'label_en': 'Maximum Roll Diameter', 'source': 'field', 'values': ['max_roll_diameter'], 'active': True},
-        {'label_ar': 'ظ†ظˆط¹ ط§ظ„ط£ظ†ظٹظ„ظˆظƒط³', 'label_en': 'Anilox Type', 'source': 'field', 'values': ['anilox_display'], 'active': True},
-        {'label_ar': 'ط£ظ‚طµظ‰ ط³ط±ط¹ط© ظ„ظ„ظ…ط§ظƒظٹظ†ط©', 'label_en': 'Maximum Machine Speed', 'source': 'field', 'values': ['max_machine_speed'], 'active': True},
-        {'label_ar': 'ط£ظ‚طµظ‰ ط³ط±ط¹ط© ظ„ظ„ط·ط¨ط§ط¹ط©', 'label_en': 'Maximum Printing Speed', 'source': 'field', 'values': ['max_print_speed'], 'active': True},
-        {'label_ar': 'ظ‚ط¯ط±ط© ط§ظ„ظ…ط¬ظپظپ', 'label_en': 'Dryer Capacity', 'source': 'field', 'values': ['dryer_capacity'], 'active': True},
-        {'label_ar': 'ط·ط±ظٹظ‚ط© ظ†ظ‚ظ„ ط§ظ„ظ‚ط¯ط±ط©', 'label_en': 'Power Transmission Method', 'source': 'field', 'values': ['drive_display'], 'active': True},
-        {'label_ar': 'ظ‚ط¯ط±ط© ط§ظ„ظ…ظˆطھظˆط± ط§ظ„ط±ط¦ظٹط³ظٹ', 'label_en': 'Main Motor Power', 'source': 'field', 'values': ['main_motor_power'], 'active': True},
-        {'label_ar': 'ط§ظ„ظپط­طµ ط¨ط§ظ„ظپظٹط¯ظٹظˆ', 'label_en': 'Video Inspection', 'source': 'yes_no', 'values': ['video_inspection'], 'active': True},
+        {'label_ar': 'الموديل', 'label_en': 'Model', 'source': 'field', 'values': ['model'], 'active': True},
+        {'label_ar': 'عدد الألوان', 'label_en': 'Number of Colors', 'source': 'field', 'values': ['colors_display'], 'active': True},
+        {'label_ar': 'أوجه الطباعة', 'label_en': 'Printing Sides', 'source': 'field', 'values': ['printing_sides'], 'active': True},
+        {'label_ar': 'وحدات التحكم في الشد', 'label_en': 'Tension Control Units', 'source': 'field', 'values': ['tension_units'], 'active': True},
+        {'label_ar': 'نظام الفرامل', 'label_en': 'Brake System', 'source': 'field', 'values': ['brake_system'], 'active': True},
+        {'label_ar': 'قوة الفرامل', 'label_en': 'Brake Power', 'source': 'field', 'values': ['brake_power'], 'active': True},
+        {'label_ar': 'نظام توجيه الخامة (النوع المتأرجح)', 'label_en': 'Web Guiding System (Oscillating Type)', 'source': 'field', 'values': ['web_guiding'], 'active': True},
+        {'label_ar': 'أقصى عرض للفيلم', 'label_en': 'Maximum Film Width', 'source': 'field', 'values': ['max_film_width'], 'active': True},
+        {'label_ar': 'أقصى عرض للطباعة', 'label_en': 'Maximum Printing Width', 'source': 'field', 'values': ['max_print_width'], 'active': True},
+        {'label_ar': 'الحد الأدنى والأقصى لطول الطباعة', 'label_en': 'Minimum and Maximum Printing Length', 'source': 'field', 'values': ['print_length'], 'active': True},
+        {'label_ar': 'أقصى قطر للرول', 'label_en': 'Maximum Roll Diameter', 'source': 'field', 'values': ['max_roll_diameter'], 'active': True},
+        {'label_ar': 'نوع الأنيلوكس', 'label_en': 'Anilox Type', 'source': 'field', 'values': ['anilox_display'], 'active': True},
+        {'label_ar': 'أقصى سرعة للماكينة', 'label_en': 'Maximum Machine Speed', 'source': 'field', 'values': ['max_machine_speed'], 'active': True},
+        {'label_ar': 'أقصى سرعة للطباعة', 'label_en': 'Maximum Printing Speed', 'source': 'field', 'values': ['max_print_speed'], 'active': True},
+        {'label_ar': 'قدرة المجفف', 'label_en': 'Dryer Capacity', 'source': 'field', 'values': ['dryer_capacity'], 'active': True},
+        {'label_ar': 'طريقة نقل القدرة', 'label_en': 'Power Transmission Method', 'source': 'field', 'values': ['drive_display'], 'active': True},
+        {'label_ar': 'قدرة الموتور الرئيسي', 'label_en': 'Main Motor Power', 'source': 'field', 'values': ['main_motor_power'], 'active': True},
+        {'label_ar': 'الفحص بالفيديو', 'label_en': 'Video Inspection', 'source': 'yes_no', 'values': ['video_inspection'], 'active': True},
         {'label_ar': 'PLC', 'label_en': 'PLC', 'source': 'yes_no', 'values': ['plc'], 'active': True},
-        {'label_ar': 'ط³ظ„ظٹطھط±', 'label_en': 'Slitter', 'source': 'yes_no', 'values': ['slitter'], 'active': True},
+        {'label_ar': 'سليتر', 'label_en': 'Slitter', 'source': 'yes_no', 'values': ['slitter'], 'active': True},
       ]
 
     def normalize_specs(raw):
@@ -561,7 +561,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     # Arabic brake power formatting
     def ar_brake_power(bp_str):
-      """Convert '2 pc (10kg) + 2 pc (5kg)' to 'ظ¢ ظ‚ط·ط¹ط© (ظ،ظ  ظƒط¬ظ…) + ظ¢ ظ‚ط·ط¹ط© (ظ¥ ظƒط¬ظ…)'"""
+      """Convert '2 pc (10kg) + 2 pc (5kg)' to '٢ قطعة (١٠ كجم) + ٢ قطعة (٥ كجم)'"""
       import re
       parts = str(bp_str).split('+')
       ar_parts = []
@@ -569,27 +569,27 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         part = part.strip()
         m = re.match(r'(\d+)\s*pc\s*\((\d+)kg\)', part)
         if m:
-          ar_parts.append(to_ar(m.group(1)) + " ظ‚ط·ط¹ط© (" + to_ar(m.group(2)) + " ظƒط¬ظ…)")
+          ar_parts.append(to_ar(m.group(1)) + " قطعة (" + to_ar(m.group(2)) + " كجم)")
         else:
           ar_parts.append(to_ar(part))
       return ' + '.join(ar_parts)
 
     # Arabic dryer capacity formatting
     def ar_dryer(dc_str):
-      """Convert '2.2kw air blower أ— 2 units' to 'ظ¢.ظ¢ ظƒظٹظ„ظˆ ظˆط§طھ طھط¬ظپظٹظپ ظ‡ظˆط§ط¦ظٹ أ— ظ¢'"""
+      """Convert '2.2kw air blower × 2 units' to '٢.٢ كيلو وات تجفيف هوائي × ٢'"""
       import re
-      m = re.match(r'([\d.]+)kw\s*air\s*blower\s*[أ—x]\s*(\d+)\s*units?', str(dc_str), re.IGNORECASE)
+      m = re.match(r'([\d.]+)kw\s*air\s*blower\s*[×x]\s*(\d+)\s*units?', str(dc_str), re.IGNORECASE)
       if m:
-        return to_ar(m.group(1)) + " ظƒظٹظ„ظˆ ظˆط§طھ طھط¬ظپظٹظپ ظ‡ظˆط§ط¦ظٹ أ— " + to_ar(m.group(2))
+        return to_ar(m.group(1)) + " كيلو وات تجفيف هوائي × " + to_ar(m.group(2))
       return to_ar(dc_str)
 
     # Arabic print length formatting
     def ar_print_length(pl_str):
-      """Convert '300mm - 1300mm' to 'ظ£ظ ظ  ظ…ظ… - ظ،ظ£ظ ظ  ظ…ظ…'"""
+      """Convert '300mm - 1300mm' to '٣٠٠ مم - ١٣٠٠ مم'"""
       import re
       m = re.match(r'(\d+)\s*mm\s*-\s*(\d+)\s*mm', str(pl_str), re.IGNORECASE)
       if m:
-        return to_ar(m.group(1)) + " ظ…ظ… - " + to_ar(m.group(2)) + " ظ…ظ…"
+        return to_ar(m.group(1)) + " مم - " + to_ar(m.group(2)) + " مم"
       return to_ar(pl_str)
 
     if is_ar:
@@ -597,20 +597,20 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         'model': data.get('model', '-'),
         'colors_display': colors_display,
         'printing_sides': to_ar('2'),
-        'tension_units': to_ar(tension_units) + " ظ‚ط·ط¹ط©",
-        'brake_system': to_ar(brake_system) + " ظ‚ط·ط¹ط©",
+        'tension_units': to_ar(tension_units) + " قطعة",
+        'brake_system': to_ar(brake_system) + " قطعة",
         'brake_power': ar_brake_power(brake_power),
-        'web_guiding': to_ar(web_guiding) + " ظ‚ط·ط¹ط©",
-        'max_film_width': to_ar(max_film_width) + " ظ…ظ…",
-        'max_print_width': to_ar(max_print_width) + " ظ…ظ…",
+        'web_guiding': to_ar(web_guiding) + " قطعة",
+        'max_film_width': to_ar(max_film_width) + " مم",
+        'max_print_width': to_ar(max_print_width) + " مم",
         'print_length': ar_print_length(print_length),
-        'max_roll_diameter': to_ar(max_roll_diameter) + " ظ…ظ…",
+        'max_roll_diameter': to_ar(max_roll_diameter) + " مم",
         'anilox_display': anilox_display,
-        'max_machine_speed': to_ar(max_machine_speed) + " ظ…طھط± ظپظٹ ط§ظ„ط¯ظ‚ظٹظ‚ط©",
-        'max_print_speed': to_ar(max_print_speed) + " ظ…طھط± ظپظٹ ط§ظ„ط¯ظ‚ظٹظ‚ط©",
+        'max_machine_speed': to_ar(max_machine_speed) + " متر في الدقيقة",
+        'max_print_speed': to_ar(max_print_speed) + " متر في الدقيقة",
         'dryer_capacity': ar_dryer(dryer_capacity),
         'drive_display': drive_display,
-        'main_motor_power': to_ar(main_motor_power.replace('HP', '').replace('hp', '').strip()) + " ط­طµط§ظ†",
+        'main_motor_power': to_ar(main_motor_power.replace('HP', '').replace('hp', '').strip()) + " حصان",
       }
     else:
       value_map = {
@@ -655,7 +655,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
         show_row = any(is_yes_value(v) for v in values)
         if not show_row:
           continue
-        value_text = 'ظ†ط¹ظ…' if is_ar else 'Yes'
+        value_text = 'نعم' if is_ar else 'Yes'
       elif source == 'custom':
         condition_field = spec.get('condition_field', '')
         condition_value = str(spec.get('condition_value', '')).upper().strip()
@@ -687,7 +687,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
             value_parts.append(str(resolved))
         value_text = '<br>'.join(value_parts) if value_parts else '-'
       value_upper = str(value_text).strip().upper()
-      if value_upper in ['NO', 'ظ„ط§', 'N/A', '-', '']:
+      if value_upper in ['NO', 'لا', 'N/A', '-', '']:
         continue
       val_style = ' style="text-align:right;"' if is_ar else ''
       html += '<tr><td class="row-num">' + str(row_num) + '</td><th>' + str(label) + '</th><td class="value"' + str(val_style) + '>' + str(value_text) + '</td></tr>'
@@ -696,9 +696,9 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
 
     # Cylinders - 2 columns, 12 rows fixed (border only on filled rows)
     cylinders = data.get('cylinders', [])
-    html += '<div class="section-title">' + ("ط³ظ„ظ†ط¯ط±ط§طھ ط§ظ„ط·ط¨ط§ط¹ط© :" if is_ar else "Printing Cylinders:") + '</div>'
+    html += '<div class="section-title">' + ("سلندرات الطباعة :" if is_ar else "Printing Cylinders:") + '</div>'
     html += '<table class="cylinders-table" style="width: 50%;">'
-    html += '<tr><th>' + ("ظ…ظ‚ط§ط³" if is_ar else "Size") + '</th><th>' + ("ط¹ط¯ط¯" if is_ar else "Count") + '</th></tr>'
+    html += '<tr><th>' + ("مقاس" if is_ar else "Size") + '</th><th>' + ("عدد" if is_ar else "Count") + '</th></tr>'
     for i in range(12):
       if i < len(cylinders):
         cyl = cylinders[i]
@@ -729,28 +729,28 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     html += '</div>'
     html += '</div>'
 
-    html += '<div class="section-title">' + ("ط§ظ„ط¹ط±ط¶ ط§ظ„ظ…ط§ظ„ظٹ:" if is_ar else "Financial Offer:") + '</div>'
+    html += '<div class="section-title">' + ("العرض المالي:" if is_ar else "Financial Offer:") + '</div>'
 
     # Get pricing mode
     pricing_mode = str(data.get('pricing_mode', '')).upper()
     is_in_stock = 'STOCK' in pricing_mode
 
     html += '<div class="financial-box">'
-    html += '<div class="total-price">' + str(data.get("total_price", "")) + ' ' + ("ط¬.ظ…" if is_ar else "EGP") + '</div>'
-    price_note = 'ط§ظ„ط³ط¹ط± ط´ط§ظ…ظ„ ط§ظ„طھظˆط±ظٹط¯ ظˆط§ظ„طھط±ظƒظٹط¨ ظˆط§ظ„ط¶ظ…ط§ظ†' if is_ar else 'The price includes: supply, installation, and warranty'
+    html += '<div class="total-price">' + str(data.get("total_price", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</div>'
+    price_note = 'السعر شامل التوريد والتركيب والضمان' if is_ar else 'The price includes: supply, installation, and warranty'
     html += '<div class="price-notes">' + str(price_note) + '</div>'
 
-    html += '<div class="section-title">' + ("ط·ط±ظٹظ‚ط© ط§ظ„ط¯ظپط¹:" if is_ar else "Payment Terms:") + '</div>'
+    html += '<div class="section-title">' + ("طريقة الدفع:" if is_ar else "Payment Terms:") + '</div>'
     if is_in_stock:
       html += '<ul class="payment-list-simple" style="list-style: disc; padding-left: 25px; font-size: 14px; line-height: 1.8;">'
-      html += '<li>' + ("ظ…ظ‚ط¯ظ… طھط¹ط§ظ‚ط¯" if is_ar else "Down Payment") + '</li>'
-      html += '<li>' + ("ط§ظ„ط¯ظپط¹ ظ‚ط¨ظ„ ط§ظ„ط´ط­ظ†" if is_ar else "Payment before shipping") + '</li>'
+      html += '<li>' + ("مقدم تعاقد" if is_ar else "Down Payment") + '</li>'
+      html += '<li>' + ("الدفع قبل الشحن" if is_ar else "Payment before shipping") + '</li>'
       html += '</ul>'
     else:
       html += '<table class="payment-table">'
-      html += '<tr><th>' + ("ظ…ظ‚ط¯ظ… طھط¹ط§ظ‚ط¯" if is_ar else "Down Payment") + '</th><td>' + str(data.get("down_payment_percent", "")) + '%</td><td class="amount">' + str(data.get("down_payment_amount", "")) + ' ' + ("ط¬.ظ…" if is_ar else "EGP") + '</td></tr>'
-      html += '<tr><th>' + ("ظ‚ط¨ظ„ ط§ظ„ط´ط­ظ†" if is_ar else "Before Shipping") + '</th><td>' + str(data.get("before_shipping_percent", "")) + '%</td><td class="amount">' + str(data.get("before_shipping_amount", "")) + ' ' + ("ط¬.ظ…" if is_ar else "EGP") + '</td></tr>'
-      html += '<tr><th>' + ("ظ‚ط¨ظ„ ط§ظ„طھط³ظ„ظٹظ…" if is_ar else "Before Delivery") + '</th><td>' + str(data.get("before_delivery_percent", "")) + '%</td><td class="amount">' + str(data.get("before_delivery_amount", "")) + ' ' + ("ط¬.ظ…" if is_ar else "EGP") + '</td></tr>'
+      html += '<tr><th>' + ("مقدم تعاقد" if is_ar else "Down Payment") + '</th><td>' + str(data.get("down_payment_percent", "")) + '%</td><td class="amount">' + str(data.get("down_payment_amount", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</td></tr>'
+      html += '<tr><th>' + ("قبل الشحن" if is_ar else "Before Shipping") + '</th><td>' + str(data.get("before_shipping_percent", "")) + '%</td><td class="amount">' + str(data.get("before_shipping_amount", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</td></tr>'
+      html += '<tr><th>' + ("قبل التسليم" if is_ar else "Before Delivery") + '</th><td>' + str(data.get("before_delivery_percent", "")) + '%</td><td class="amount">' + str(data.get("before_delivery_amount", "")) + ' ' + ("ج.م" if is_ar else "EGP") + '</td></tr>'
       html += '</table>'
 
     html += '</div>'
@@ -758,41 +758,41 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     # Delivery & Warranty
     html += '<div class="info-grid">'
     html += '<div class="info-box">'
-    html += '<h4>' + ("ط§ظ„طھط³ظ„ظٹظ… :" if is_ar else "Delivery:") + '</h4>'
-    html += '<p>' + ("ظ…ظƒط§ظ† ط§ظ„طھط³ظ„ظٹظ… :" if is_ar else "Place of delivery:") + ' <span class="highlight">' + str(data.get("delivery_location", "-")) + '</span></p>'
+    html += '<h4>' + ("التسليم :" if is_ar else "Delivery:") + '</h4>'
+    html += '<p>' + ("مكان التسليم :" if is_ar else "Place of delivery:") + ' <span class="highlight">' + str(data.get("delivery_location", "-")) + '</span></p>'
     if is_in_stock:
-      delivery_time = "ط¨ط¶ط§ط¹ظ‡ ط­ط§ط¶ط±ظ‡" if is_ar else "In Stock"
+      delivery_time = "بضاعه حاضره" if is_ar else "In Stock"
     else:
       if self.custom_delivery_date:
         delivery_time = self.custom_delivery_date
       else:
         delivery_time = data.get("expected_delivery_formatted", "-")
-    html += '<p>' + ("ظˆظ‚طھ ط§ظ„طھط³ظ„ظٹظ… ط§ظ„ظ…طھظˆظ‚ط¹ :" if is_ar else "Expected delivery time:") + ' <span class="highlight">' + str(delivery_time) + '</span></p>'
+    html += '<p>' + ("وقت التسليم المتوقع :" if is_ar else "Expected delivery time:") + ' <span class="highlight">' + str(delivery_time) + '</span></p>'
     html += '</div>'
 
     html += '<div class="info-box">'
-    html += '<h4>' + ("ط§ظ„ط¶ظ…ط§ظ† ظˆط®ط¯ظ…ط© ظ…ط§ ط¨ط¹ط¯ ط§ظ„ط¨ظٹط¹:" if is_ar else "Warranty & After-Sales Service:") + '</h4>'
-    warranty_text = ('ظٹط³ط±ظٹ ط§ظ„ط¶ظ…ط§ظ† ظ„ظ…ط¯ط© <strong>' + str(c.get("warranty_months", "")) + '</strong> ط´ظ‡ط± ط¶ط¯ ط¹ظٹظˆط¨ ط§ظ„طµظ†ط§ط¹ط©') if is_ar else ('The warranty is valid for <strong>' + str(c.get("warranty_months", "")) + '</strong> months against manufacturing defects')
+    html += '<h4>' + ("الضمان وخدمة ما بعد البيع:" if is_ar else "Warranty & After-Sales Service:") + '</h4>'
+    warranty_text = ('يسري الضمان لمدة <strong>' + str(c.get("warranty_months", "")) + '</strong> شهر ضد عيوب الصناعة') if is_ar else ('The warranty is valid for <strong>' + str(c.get("warranty_months", "")) + '</strong> months against manufacturing defects')
     html += '<p>' + str(warranty_text) + '</p>'
     html += '</div>'
     html += '</div>'
 
     # Notes
     html += '<div class="notes-section">'
-    html += '<h4>' + ("ظ…ظ„ط§ط­ط¸ط§طھ:" if is_ar else "Notes:") + '</h4>'
+    html += '<h4>' + ("ملاحظات:" if is_ar else "Notes:") + '</h4>'
     html += '<div class="notes-list">'
-    note1 = ('ط¹ط±ط¶ ط§ظ„ط³ط¹ط± ط³ط§ط±ظٹ ظ„ظ…ط¯ط© ' + str(c.get("validity_days", "")) + ' ظٹظˆظ… ظ…ظ† طھط§ط±ظٹط® ط¹ط±ط¶ ط§ظ„ط³ط¹ط±') if is_ar else ('This quotation is valid for ' + str(c.get("validity_days", "")) + ' days from the quotation date')
-    note2 = 'ظٹطھظ… طھط¹ط¯ظٹظ„ ط§ظ„ط³ط¹ط± ظپظٹ ط­ط§ظ„ط© ط§ط±طھظپط§ط¹ ط³ط¹ط± طµط±ظپ ط§ظ„ط¯ظˆظ„ط§ط± ط¨ظ‚ظٹظ…ط© طھط²ظٹط¯ ط¹ظ† ظ¥ظ  ظ‚ط±ط´' if is_ar else 'The price may be adjusted in case of an increase in the USD exchange rate exceeding EGP 0.50'
-    note3 = 'ظ‡ط°ط§ ط§ظ„ط¹ط±ط¶ ط§ط³طھط±ط´ط§ط¯ظٹ ظˆط؛ظٹط± ظ…ظ„ط²ظ… ط¥ظ„ط§ ط¨ط¹ط¯ طھظˆظ‚ظٹط¹ ط§ظ„ط¹ظ‚ط¯ ط§ظ„ظ†ظ‡ط§ط¦ظٹ' if is_ar else 'This quotation is indicative and non-binding until the final contract is signed'
-    html += '<p>â€¢ ' + str(note1) + '</p>'
-    html += '<p>â€¢ ' + str(note2) + '</p>'
-    html += '<p>â€¢ ' + str(note3) + '</p>'
+    note1 = ('عرض السعر ساري لمدة ' + str(c.get("validity_days", "")) + ' يوم من تاريخ عرض السعر') if is_ar else ('This quotation is valid for ' + str(c.get("validity_days", "")) + ' days from the quotation date')
+    note2 = 'يتم تعديل السعر في حالة ارتفاع سعر صرف الدولار بقيمة تزيد عن ٥٠ قرش' if is_ar else 'The price may be adjusted in case of an increase in the USD exchange rate exceeding EGP 0.50'
+    note3 = 'هذا العرض استرشادي وغير ملزم إلا بعد توقيع العقد النهائي' if is_ar else 'This quotation is indicative and non-binding until the final contract is signed'
+    html += '<p>• ' + str(note1) + '</p>'
+    html += '<p>• ' + str(note2) + '</p>'
+    html += '<p>• ' + str(note3) + '</p>'
     html += '</div>'
     html += '</div>'
 
     # Footer
     html += '<div class="template-footer">'
-    html += '<div class="regards">' + ("ظˆطھظپط¶ظ„ظˆط§ ط¨ظ‚ط¨ظˆظ„ ظˆط§ظپط± ط§ظ„ط§ط­طھط±ط§ظ…طŒطŒطŒ" if is_ar else "Yours faithfully,") + '</div>'
+    html += '<div class="regards">' + ("وتفضلوا بقبول وافر الاحترام،،،" if is_ar else "Yours faithfully,") + '</div>'
     html += '<div class="company">' + str(c.get("company_name_ar" if is_ar else "company_name_en", "")) + '</div>'
     html += '</div>'
 
@@ -960,7 +960,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
       return {'success': False, 'message': str(e)}
 
   def get_all_settings(self):
-    """Get all template settings (ظٹظڈظ…ط±ظ‘ط± ط§ظ„طھظˆظƒظ† ظ„طھط­ظ…ظٹظ„ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ)"""
+    """Get all template settings (يُمرّر التوكن لتحميل الإعدادات)"""
     try:
       auth = anvil.js.window.sessionStorage.getItem('auth_token') or None
       result = anvil.server.call('get_all_settings', auth)

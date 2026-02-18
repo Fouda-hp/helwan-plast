@@ -704,8 +704,13 @@ def restore_client(client_code, token_or_email=None):
         if record_owner and record_owner != (user_email or '').strip().lower():
             return {"success": False, "message": "Permission denied: you can only restore records you created"}
 
-    row.update(is_deleted=False, deleted_at=None, deleted_by=None)
-    log_audit('RESTORE', 'clients', client_code, {"is_deleted": True}, {"is_deleted": False}, user_email, ip_address)
+    # M-19: preserve deleted_by/deleted_at for audit trail, add restored_by/restored_at
+    row.update(
+        is_deleted=False,
+        restored_by=user_email,
+        restored_at=get_utc_now()
+    )
+    log_audit('RESTORE', 'clients', client_code, {"is_deleted": True}, {"is_deleted": False, "restored_by": user_email}, user_email, ip_address)
     return {"success": True, "message": "Client restored successfully"}
 
 
@@ -730,13 +735,14 @@ def restore_quotation(quotation_number, token_or_email=None):
         if created_by != user_email:
             return {"success": False, "message": "Permission denied: you can only restore records you created"}
 
+    # M-19: preserve deleted_by/deleted_at for audit trail, add restored_by/restored_at
     row.update(
         is_deleted=False,
-        deleted_at=None,
-        deleted_by=None
+        restored_by=user_email,
+        restored_at=get_utc_now()
     )
 
-    log_audit('RESTORE', 'quotations', quotation_number, {"is_deleted": True}, {"is_deleted": False}, user_email, ip_address)
+    log_audit('RESTORE', 'quotations', quotation_number, {"is_deleted": True}, {"is_deleted": False, "restored_by": user_email}, user_email, ip_address)
 
     return {"success": True, "message": "Quotation restored successfully"}
 
@@ -1027,6 +1033,24 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
 # =========================================================
 # دوال التصدير
 # =========================================================
+def _is_admin_export(token_or_email):
+    """H-06: Check if exporter has admin role — used for PII filtering."""
+    try:
+        return AuthManager.require_admin(token_or_email)[0]
+    except Exception:
+        return False
+
+
+def _redact_pii(value, is_admin):
+    """H-06: Redact PII fields for non-admin exports."""
+    if is_admin or not value:
+        return value
+    s = str(value)
+    if len(s) <= 4:
+        return '***'
+    return s[:2] + '***' + s[-2:]
+
+
 @anvil.server.callable
 def export_clients_data(include_deleted=False, token_or_email=None):
     """تصدير جميع بيانات العملاء لـ CSV/Excel - يتطلب صلاحية export"""
@@ -1035,6 +1059,7 @@ def export_clients_data(include_deleted=False, token_or_email=None):
         return []
 
     try:
+        is_admin = _is_admin_export(token_or_email)
         search_kwargs = {} if include_deleted else {'is_deleted': False}
         data = []
         for r in app_tables.clients.search(**search_kwargs):
@@ -1042,10 +1067,10 @@ def export_clients_data(include_deleted=False, token_or_email=None):
                 "Client Code": r["Client Code"],
                 "Client Name": r["Client Name"],
                 "Company": r["Company"],
-                "Phone": r["Phone"],
+                "Phone": _redact_pii(r["Phone"], is_admin),
                 "Country": r["Country"],
-                "Address": r["Address"],
-                "Email": r["Email"],
+                "Address": _redact_pii(r["Address"], is_admin),
+                "Email": _redact_pii(r["Email"], is_admin),
                 "Sales Rep": r["Sales Rep"],
                 "Source": r["Source"],
                 "Date": str(r["Date"] or "")
@@ -1064,6 +1089,7 @@ def export_quotations_data(include_deleted=False, token_or_email=None):
         return []
 
     try:
+        is_admin = _is_admin_export(token_or_email)
         search_kwargs = {} if include_deleted else {'is_deleted': False}
 
         # Build clients lookup (iterate, don't hold full list)
@@ -1090,7 +1116,7 @@ def export_quotations_data(include_deleted=False, token_or_email=None):
                 "Client Code": client_code,
                 "Client Name": client_name,
                 "Company": (client.get("Company") or "") if client else "",
-                "Phone": (client.get("Phone") or "") if client else "",
+                "Phone": _redact_pii((client.get("Phone") or "") if client else "", is_admin),
                 "Model": r["Model"],
                 "Machine type": r["Machine type"],
                 "Number of colors": r["Number of colors"],
@@ -2892,6 +2918,7 @@ def export_contracts_data(token_or_email=None):
     if not is_valid:
         return []
     try:
+        is_admin = _is_admin_export(token_or_email)
         all_rows = list(app_tables.contracts.search())
         all_rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
         data = []
@@ -2913,7 +2940,7 @@ def export_contracts_data(token_or_email=None):
             data.append({
                 'contract_number': r.get('contract_number') or '',
                 'quotation_number': r.get('quotation_number'),
-                'client_name': r.get('client_name') or '',
+                'client_name': _redact_pii(r.get('client_name') or '', is_admin),
                 'total_price': total_price_val,
                 'num_payments': r.get('num_payments'),
                 'payment_schedule': payments_str,

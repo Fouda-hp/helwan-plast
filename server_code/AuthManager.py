@@ -944,6 +944,12 @@ def complete_login(user, ip_address):
     for old_session in app_tables.sessions.search(user_email=email):
         old_session.delete()
 
+    # M-16: Opportunistic cleanup of ALL expired sessions on each login
+    try:
+        cleanup_expired_sessions()
+    except Exception:
+        pass  # Non-critical — don't fail login if cleanup errors
+
     # إنشاء جلسة جديدة
     token = create_session(email, user['role'], ip_address)
 

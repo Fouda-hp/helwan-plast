@@ -52,4 +52,4 @@ def check_rate_limit(ip_address, endpoint='general'):
         return True
     except Exception as e:
         logger.error("Rate limit check error: %s", e, exc_info=True)
-        return True
+        return False  # M-17: fail-closed — block request when rate-limit state is uncertain

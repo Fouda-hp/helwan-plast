@@ -223,7 +223,10 @@ class ContractPrintForm(ContractPrintFormTemplate):
                 total = 0
             total_el = anvil.js.window.document.getElementById('totalContractAmount')
             if total_el:
-                total_el.textContent = "{:,.2f}".format(total)
+                _ov = self.current_data.get('is_overseas', False) if self.current_data else False
+                _ar = self.current_lang == 'ar'
+                _cur = ("دولار" if _ar else "USD") if _ov else ("ج.م" if _ar else "EGP")
+                total_el.textContent = "{:,.2f}".format(total) + ' ' + _cur
             # Also trigger calculation to update entered/remaining
             self.calculate_total_percentage()
         except Exception as e:

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helwan Plast - Live Monitor</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --border: #334155;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --green: #22c55e;
+            --red: #ef4444;
+            --yellow: #eab308;
+            --blue: #3b82f6;
+            --cyan: #06b6d4;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 24px; background: var(--card); border-radius: 12px;
+            border: 1px solid var(--border); margin-bottom: 20px;
+        }
+        .header h1 { font-size: 1.4em; }
+        .header .status-badge {
+            padding: 6px 16px; border-radius: 20px; font-weight: 600;
+            font-size: 0.9em; text-transform: uppercase;
+        }
+        .status-healthy { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid var(--green); }
+        .status-degraded { background: rgba(234,179,8,0.15); color: var(--yellow); border: 1px solid var(--yellow); }
+        .status-unhealthy { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid var(--red); }
+        .status-loading { background: rgba(59,130,246,0.15); color: var(--blue); border: 1px solid var(--blue); }
+
+        /* Config Panel */
+        .config-panel {
+            background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+            padding: 20px; margin-bottom: 20px;
+        }
+        .config-row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
+        .config-field { flex: 1; min-width: 200px; }
+        .config-field label { display: block; font-size: 0.85em; color: var(--muted); margin-bottom: 4px; }
+        .config-field input, .config-field select {
+            width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);
+            background: var(--bg); color: var(--text); font-size: 0.95em;
+        }
+        .btn {
+            padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer;
+            font-weight: 600; font-size: 0.95em; transition: all 0.2s;
+        }
+        .btn-primary { background: var(--blue); color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-stop { background: var(--red); color: white; }
+        .btn-stop:hover { background: #dc2626; }
+
+        /* Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px; }
+
+        /* Stat Card */
+        .stat-card {
+            background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+            padding: 20px;
+        }
+        .stat-card .label { font-size: 0.85em; color: var(--muted); margin-bottom: 8px; }
+        .stat-card .value { font-size: 2em; font-weight: 700; }
+        .stat-card .sub { font-size: 0.8em; color: var(--muted); margin-top: 4px; }
+
+        /* Cache Table */
+        .table-card {
+            background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+            padding: 20px; margin-bottom: 20px; overflow-x: auto;
+        }
+        .table-card h3 { margin-bottom: 12px; font-size: 1.1em; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 14px; text-align: right; border-bottom: 1px solid var(--border); font-size: 0.9em; }
+        th { color: var(--muted); font-weight: 600; }
+        .progress-bar {
+            width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
+        }
+        .progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+        /* Log */
+        .log-panel {
+            background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+            padding: 20px; margin-bottom: 20px;
+        }
+        .log-panel h3 { margin-bottom: 12px; }
+        .log-entries {
+            max-height: 300px; overflow-y: auto; font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.85em; line-height: 1.6;
+        }
+        .log-entry { padding: 4px 8px; border-radius: 4px; }
+        .log-entry:nth-child(even) { background: rgba(255,255,255,0.02); }
+        .log-ok { color: var(--green); }
+        .log-warn { color: var(--yellow); }
+        .log-err { color: var(--red); }
+        .log-time { color: var(--muted); margin-left: 8px; }
+
+        /* Pulse animation */
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .pulse { animation: pulse 2s infinite; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 10px; text-align: center; }
+            .config-row { flex-direction: column; }
+            .stat-card .value { font-size: 1.5em; }
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <div>
+        <h1>Helwan Plast Monitor</h1>
+        <span id="lastUpdate" style="font-size:0.85em;color:var(--muted)">---</span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+        <span id="statusBadge" class="status-badge status-loading">Loading...</span>
+        <span id="refreshIndicator" class="pulse" style="font-size:1.2em">&#9679;</span>
+    </div>
+</div>
+
+<!-- Config Panel -->
+<div class="config-panel" id="configPanel">
+    <h3 style="margin-bottom:12px">Connection Settings</h3>
+    <div class="config-row">
+        <div class="config-field">
+            <label>App URL</label>
+            <input id="appUrl" type="text" placeholder="https://your-app.anvil.app" value="">
+        </div>
+        <div class="config-field">
+            <label>Session Token (from login)</label>
+            <input id="authToken" type="password" placeholder="Enter your session token">
+        </div>
+        <div class="config-field" style="max-width:120px">
+            <label>Refresh (sec)</label>
+            <select id="refreshInterval">
+                <option value="10">10s</option>
+                <option value="30" selected>30s</option>
+                <option value="60">60s</option>
+                <option value="120">2min</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" id="btnStart" onclick="startMonitoring()">Start</button>
+        <button class="btn btn-stop hidden" id="btnStop" onclick="stopMonitoring()">Stop</button>
+    </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="grid" id="statsGrid">
+    <div class="stat-card">
+        <div class="label">System Status</div>
+        <div class="value" id="sysStatus" style="color:var(--muted)">---</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">DB Latency</div>
+        <div class="value" id="dbLatency">---</div>
+        <div class="sub">ms</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Active Sessions</div>
+        <div class="value" id="activeSessions">---</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">API Response Time</div>
+        <div class="value" id="apiResponseTime">---</div>
+        <div class="sub">ms</div>
+    </div>
+</div>
+
+<!-- Metrics Grid (admin only) -->
+<div class="grid" id="metricsGrid" class="hidden">
+    <div class="stat-card">
+        <div class="label">Total Users</div>
+        <div class="value" id="totalUsers">---</div>
+        <div class="sub" id="activeUsers"></div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Clients</div>
+        <div class="value" id="totalClients">---</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Quotations</div>
+        <div class="value" id="totalQuotations">---</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Contracts</div>
+        <div class="value" id="totalContracts">---</div>
+    </div>
+</div>
+
+<!-- Cache Table -->
+<div class="table-card" id="cacheTable">
+    <h3>Cache Status</h3>
+    <table>
+        <thead><tr><th>Cache</th><th>Size</th><th>Max</th><th>TTL</th><th>Usage</th></tr></thead>
+        <tbody id="cacheBody"></tbody>
+    </table>
+</div>
+
+<!-- Activity Log -->
+<div class="log-panel">
+    <h3>Activity Log</h3>
+    <div class="log-entries" id="logEntries"></div>
+</div>
+
+<script>
+    let timer = null;
+    let isRunning = false;
+    let checkCount = 0;
+    const MAX_LOG = 100;
+
+    function log(msg, type = 'ok') {
+        const el = document.getElementById('logEntries');
+        const time = new Date().toLocaleTimeString('en-GB');
+        const cls = type === 'err' ? 'log-err' : type === 'warn' ? 'log-warn' : 'log-ok';
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `<span class="${cls}">${msg}</span><span class="log-time">${time}</span>`;
+        el.insertBefore(entry, el.firstChild);
+        while (el.children.length > MAX_LOG) el.removeChild(el.lastChild);
+    }
+
+    function getConfig() {
+        return {
+            url: document.getElementById('appUrl').value.replace(/\/+$/, ''),
+            token: document.getElementById('authToken').value,
+            interval: parseInt(document.getElementById('refreshInterval').value) * 1000,
+        };
+    }
+
+    function setStatus(status) {
+        const badge = document.getElementById('statusBadge');
+        badge.textContent = status;
+        badge.className = 'status-badge status-' + (
+            status === 'healthy' ? 'healthy' :
+            status === 'degraded' ? 'degraded' :
+            status === 'unhealthy' ? 'unhealthy' : 'loading'
+        );
+    }
+
+    function setVal(id, val) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val !== undefined && val !== null && val !== -1 ? val : '---';
+    }
+
+    function colorForLatency(ms) {
+        if (ms < 200) return 'var(--green)';
+        if (ms < 500) return 'var(--yellow)';
+        return 'var(--red)';
+    }
+
+    function renderCaches(caches) {
+        const body = document.getElementById('cacheBody');
+        body.innerHTML = '';
+        if (!caches) return;
+        for (const [name, info] of Object.entries(caches)) {
+            const pct = info.max_size > 0 ? Math.round((info.size / info.max_size) * 100) : 0;
+            const color = pct < 60 ? 'var(--green)' : pct < 85 ? 'var(--yellow)' : 'var(--red)';
+            body.innerHTML += `<tr>
+                <td>${name}</td>
+                <td>${info.size}</td>
+                <td>${info.max_size}</td>
+                <td>${info.ttl}s</td>
+                <td style="min-width:120px">
+                    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+                    <span style="font-size:0.8em;color:var(--muted)">${pct}%</span>
+                </td>
+            </tr>`;
+        }
+    }
+
+    async function fetchData(endpoint) {
+        const cfg = getConfig();
+        const url = `${cfg.url}/${endpoint}?token=${encodeURIComponent(cfg.token)}`;
+        const t0 = performance.now();
+        const resp = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+        const elapsed = Math.round(performance.now() - t0);
+        const data = await resp.json();
+        return { data, elapsed, status: resp.status };
+    }
+
+    async function doCheck() {
+        checkCount++;
+        try {
+            // Health check
+            const health = await fetchData('api/health');
+            const h = health.data;
+
+            setVal('apiResponseTime', health.elapsed);
+            document.getElementById('apiResponseTime').style.color = colorForLatency(health.elapsed);
+
+            if (h.success) {
+                setStatus(h.status);
+                const db = h.components?.database || {};
+                setVal('dbLatency', db.latency_ms);
+                document.getElementById('dbLatency').style.color = colorForLatency(db.latency_ms || 0);
+                setVal('activeSessions', h.components?.active_sessions);
+                setVal('sysStatus', h.status === 'healthy' ? 'OK' : h.status);
+                document.getElementById('sysStatus').style.color = h.status === 'healthy' ? 'var(--green)' : 'var(--yellow)';
+                renderCaches(h.components?.caches);
+                log(`Health check #${checkCount}: ${h.status} (DB: ${db.latency_ms}ms, API: ${health.elapsed}ms)`);
+            } else {
+                setStatus('unhealthy');
+                setVal('sysStatus', 'ERROR');
+                document.getElementById('sysStatus').style.color = 'var(--red)';
+                log(`Health check #${checkCount} failed: ${h.message || h.error || 'Unknown'}`, 'err');
+            }
+
+            // Metrics (admin) — try but don't fail
+            try {
+                const metrics = await fetchData('api/metrics');
+                const m = metrics.data;
+                if (m.success && m.tables) {
+                    document.getElementById('metricsGrid').classList.remove('hidden');
+                    setVal('totalUsers', m.tables.users);
+                    setVal('activeUsers', `Active: ${m.tables.users_active || '---'}`);
+                    setVal('totalClients', m.tables.clients);
+                    setVal('totalQuotations', m.tables.quotations);
+                    setVal('totalContracts', m.tables.contracts);
+                    log(`Metrics collected: ${m.collection_time_ms}ms, ${Object.keys(m.tables).length} tables`);
+                }
+            } catch (e) {
+                // Non-admin users won't have metrics access — that's OK
+            }
+
+            document.getElementById('lastUpdate').textContent =
+                `Last update: ${new Date().toLocaleString('ar-EG')} | Check #${checkCount}`;
+
+        } catch (err) {
+            setStatus('unhealthy');
+            setVal('sysStatus', 'OFFLINE');
+            document.getElementById('sysStatus').style.color = 'var(--red)';
+            log(`Connection failed: ${err.message}`, 'err');
+        }
+    }
+
+    function startMonitoring() {
+        const cfg = getConfig();
+        if (!cfg.url || !cfg.token) {
+            alert('Please enter the App URL and Session Token.');
+            return;
+        }
+        // Save to localStorage
+        localStorage.setItem('hp_monitor_url', cfg.url);
+        localStorage.setItem('hp_monitor_interval', cfg.interval);
+
+        isRunning = true;
+        checkCount = 0;
+        document.getElementById('btnStart').classList.add('hidden');
+        document.getElementById('btnStop').classList.remove('hidden');
+        document.getElementById('refreshIndicator').style.color = 'var(--green)';
+        log('Monitoring started (interval: ' + (cfg.interval/1000) + 's)');
+        doCheck();
+        timer = setInterval(doCheck, cfg.interval);
+    }
+
+    function stopMonitoring() {
+        isRunning = false;
+        clearInterval(timer);
+        timer = null;
+        document.getElementById('btnStart').classList.remove('hidden');
+        document.getElementById('btnStop').classList.add('hidden');
+        document.getElementById('refreshIndicator').style.color = 'var(--muted)';
+        setStatus('stopped');
+        log('Monitoring stopped', 'warn');
+    }
+
+    // Restore saved config
+    window.addEventListener('load', () => {
+        const savedUrl = localStorage.getItem('hp_monitor_url');
+        const savedInterval = localStorage.getItem('hp_monitor_interval');
+        if (savedUrl) document.getElementById('appUrl').value = savedUrl;
+        if (savedInterval) document.getElementById('refreshInterval').value = (parseInt(savedInterval)/1000).toString();
+    });
+</script>
+</body>
+</html>

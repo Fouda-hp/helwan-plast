@@ -795,7 +795,7 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
         search_lower = (search or '').strip().lower()
     except Exception as e:
         logger.exception("get_all_quotations params/permission: %s", e)
-        return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
+        return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": "Failed to load quotations. Please try again."}
     # حاول فلترة البحث على مستوى الداتابيز لتسريع الأداء، مع fallback آمن
     search_args = {} if include_deleted else {'is_deleted': False}
     apply_python_search = bool(search_lower)
@@ -915,7 +915,7 @@ def get_all_quotations(page=1, per_page=20, search='', include_deleted=False, to
         return {"success": True, "message": "", "data": rows, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}
     except Exception as e:
         logger.exception("get_all_quotations: %s", e)
-        return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
+        return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": "Failed to load quotations. Please try again."}
 
 
 def _client_matches_search(r, search_lower):
@@ -949,7 +949,7 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
         search_lower = (search or '').strip().lower()
     except Exception as e:
         logger.exception("get_all_clients params/permission: %s", e)
-        return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
+        return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": "Failed to load clients. Please try again."}
     try:
         search_args = {} if include_deleted else {'is_deleted': False}
         apply_python_search = False
@@ -1012,7 +1012,7 @@ def get_all_clients(page=1, per_page=20, search='', include_deleted=False, token
         return {"success": True, "message": "", "data": rows, "page": page, "per_page": per_page, "total": total, "total_pages": total_pages}
     except Exception as e:
         logger.exception("get_all_clients: %s", e)
-        return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": str(e)}
+        return {"data": [], "page": 1, "per_page": 20, "total": 0, "total_pages": 0, "success": False, "message": "Failed to load clients. Please try again."}
 
 
 # =========================================================
@@ -1335,7 +1335,7 @@ def import_csv(file, token_or_email=None):
         data_list = [dict(row) for row in reader]
     except Exception as e:
         logger.exception("import_csv parse: %s", e)
-        return {'success': False, 'msg': f'خطأ في قراءة الملف: {e}'}
+        return {'success': False, 'msg': 'خطأ في قراءة الملف. تأكد من صحة الصيغة.'}
     if not data_list:
         return {'success': False, 'msg': 'الملف لا يحتوي على صفوف'}
     result = import_clients_data(data_list, token_or_email)
@@ -2168,7 +2168,7 @@ def get_quotations_list(search='', include_deleted=False, token_or_email=None, p
 
     except Exception as e:
         logger.exception("get_quotations_list error")
-        return {'success': False, 'message': str(e), 'data': [], 'total_count': 0}
+        return {'success': False, 'message': 'Failed to load quotations list.', 'data': [], 'total_count': 0}
 
 
 @anvil.server.callable
@@ -2250,7 +2250,7 @@ def get_quotations_list_without_contract(search='', token_or_email=None, page=1,
         return {'success': True, 'data': data, 'total_count': total_count, 'page': page, 'page_size': page_size}
     except Exception as e:
         logger.exception("get_quotations_list_without_contract error")
-        return {'success': False, 'message': str(e), 'data': [], 'total_count': 0}
+        return {'success': False, 'message': 'Failed to load uncontracted quotations.', 'data': [], 'total_count': 0}
 
 
 # =========================================================
@@ -2891,7 +2891,7 @@ def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
 
     except Exception as e:
         logger.error(f"Error getting contracts list: {e}")
-        return {'success': False, 'message': str(e), 'data': [], 'total': 0}
+        return {'success': False, 'message': 'Failed to load contracts. Please try again.', 'data': [], 'total': 0}
 
 
 @anvil.server.callable
@@ -3321,7 +3321,7 @@ def list_scheduled_backups(token_or_email):
         return {'success': True, 'data': data}
     except Exception as e:
         logger.exception("list_scheduled_backups: %s", e)
-        return {'success': False, 'message': str(e), 'data': []}
+        return {'success': False, 'message': 'Failed to list backups.', 'data': []}
 
 
 @anvil.server.callable
@@ -3685,7 +3685,7 @@ def list_drive_backups(token_or_email):
         return {'success': True, 'data': files[:100]}
     except Exception as e:
         logger.exception("list_drive_backups: %s", e)
-        return {'success': False, 'message': str(e), 'data': []}
+        return {'success': False, 'message': 'Failed to list drive backups.', 'data': []}
 
 
 @anvil.server.callable
@@ -3807,4 +3807,4 @@ def get_contract_timeline(quotation_number, token_or_email=None):
                 'valid_transitions': CONTRACT_VALID_TRANSITIONS.get(current, [])}
     except Exception as e:
         logger.exception("get_contract_timeline error")
-        return {'success': False, 'data': [], 'message': str(e)}
+        return {'success': False, 'data': [], 'message': 'Failed to load contract timeline.'}

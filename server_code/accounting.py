@@ -6552,7 +6552,7 @@ def get_contract_total(contract_number, token_or_email=None):
         return {'success': True, 'total_price': total}
     except Exception as e:
         logger.exception("get_contract_total error")
-        return {'success': False, 'message': str(e), 'total_price': None}
+        return {'success': False, 'message': 'Failed to calculate contract total.', 'total_price': None}
 
 
 # ===========================================================================

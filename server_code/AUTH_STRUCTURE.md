@@ -24,7 +24,7 @@
 |--------|---------|
 | **shared_utils.py** | دوال مشتركة: `get_client_ip_safe`, `log_audit_safe`, `parse_date`, `to_datetime`, `parse_json_field`, `contracts_search_active`, `contracts_get_active`, `success_response`, `error_response`, `safe_float`, `safe_int`. |
 | **cache_manager.py** | `TTLCache` — thread-safe مع LRU eviction. Instances: `dashboard_cache`, `tags_cache`, `report_cache`, `fx_rate_cache`, `accounting_dashboard_cache`, `payment_dashboard_cache`, `dashboard_stats_cache`. |
-| **monitoring.py** | `health_check` (أي مستخدم authenticated)، `get_system_metrics` (admin only). فحص DB latency، cache stats، table counts. |
+| **monitoring.py** | `health_check` (أي مستخدم authenticated)، `get_system_metrics` (admin only). فحص DB latency، cache stats، table counts. + HTTP endpoints: `/api/health`, `/api/metrics` للمونيتورينج الخارجي. |
 | **structured_logging.py** | `JSONFormatter`, `CorrelationFilter`, `log_request_timing` decorator، `setup_structured_logging()`. JSON output + correlation IDs per request. |
 
 ## وحدات الأعمال (Business)
@@ -55,6 +55,25 @@
 - في **anvil.yaml** تمت إضافة عمودين لجدول `audit_log`: **user_name** (الاسم الكامل)، **action_description** (وصف العملية مقروء).
 - كل عملية تُسجَّل الآن مع: التوقيت، البريد، الاسم الكامل، وصف العملية (مثل "تسجيل دخول"، "إنشاء - العملاء - 123")، الجدول، المعرف، القديم/الجديد، عنوان الـ IP.
 - عرض السجل: `get_audit_logs` يُرجع `user_name` و `action_description` لكل سطر؛ يمكن عرضهما في لوحة الأدمن.
+
+## المونيتورينج الخارجي (External Live Monitoring)
+
+| الملف | المحتوى |
+|--------|---------|
+| **monitoring/dashboard.html** | صفحة HTML مستقلة للمونيتورينج اللايف. تتصل بـ HTTP endpoints وتعرض: حالة النظام، DB latency، active sessions، cache usage، table counts. Auto-refresh كل 10-120 ثانية. |
+
+### HTTP Endpoints
+
+| Endpoint | Method | Auth | الوصف |
+|----------|--------|------|-------|
+| `/api/health?token=TOKEN` | GET | أي مستخدم | حالة النظام السريعة: DB latency، sessions، caches |
+| `/api/metrics?token=TOKEN` | GET | Admin فقط | إحصائيات تفصيلية: table counts، cache stats، collection time |
+
+### طريقة الاستخدام
+1. افتح `monitoring/dashboard.html` في أي براوزر (حتى من جهاز تاني)
+2. أدخل الـ App URL: `https://YOUR-APP.anvil.app`
+3. أدخل الـ Session Token (تحصل عليه من `login_user`)
+4. اختار الـ Refresh Interval واضغط Start
 
 ## النسخ الاحتياطي
 

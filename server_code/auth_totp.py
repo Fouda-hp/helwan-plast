@@ -152,7 +152,7 @@ def setup_totp_start_impl(user_email):
         return {'success': True, 'provisioning_uri': uri, 'qr_base64': qr_base64, 'secret': secret}
     except Exception as e:
         logger.error("TOTP setup start error: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'Failed to start TOTP setup. Please try again.'}
 
 
 def setup_totp_confirm_impl(user_email, code):
@@ -203,4 +203,4 @@ def setup_totp_confirm_impl(user_email, code):
         }
     except Exception as e:
         logger.error("TOTP confirm error: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'Failed to confirm TOTP setup. Please try again.'}

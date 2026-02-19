@@ -238,7 +238,7 @@ def get_unread_notification_count(token_or_email):
         count = min(len(results), 999)
         return {'success': True, 'count': count}
     except Exception as e:
-        return {'success': False, 'count': 0, 'message': str(e)}
+        return {'success': False, 'count': 0, 'message': 'Failed to load notification count.'}
 
 
 @anvil.server.callable
@@ -284,7 +284,7 @@ def get_user_notifications(token_or_email, limit=50, unread_only=False):
             })
         return {'success': True, 'data': data}
     except Exception as e:
-        return {'success': False, 'data': [], 'message': str(e)}
+        return {'success': False, 'data': [], 'message': 'Failed to load notifications.'}
 
 
 @anvil.server.callable
@@ -358,7 +358,7 @@ def delete_all_my_notifications(token_or_email):
         return {'success': True, 'deleted_count': count}
     except Exception as e:
         logger.warning("delete_all_my_notifications: %s", e)
-        return {'success': False, 'message': str(e), 'deleted_count': 0}
+        return {'success': False, 'message': 'Failed to delete notifications.', 'deleted_count': 0}
 
 
 @anvil.server.callable
@@ -379,7 +379,7 @@ def delete_all_notifications_admin(token_or_email):
         return {'success': True, 'deleted_count': count}
     except Exception as e:
         logger.warning("delete_all_notifications_admin: %s", e)
-        return {'success': False, 'message': str(e), 'deleted_count': 0}
+        return {'success': False, 'message': 'Failed to delete all notifications.', 'deleted_count': 0}
 
 
 @anvil.server.callable
@@ -446,4 +446,4 @@ def get_all_notifications_admin(token_or_email, limit=50):
             })
         return {'success': True, 'data': data}
     except Exception as e:
-        return {'success': False, 'data': [], 'message': str(e)}
+        return {'success': False, 'data': [], 'message': 'Failed to load admin notifications.'}

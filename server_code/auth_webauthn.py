@@ -394,7 +394,7 @@ def webauthn_register_complete(token, credential_json, device_info=None):
 
     except Exception as e:
         logger.error("WebAuthn register_complete error: %s", e)
-        return {'success': False, 'error': 'Registration verification failed: ' + str(e)}
+        return {'success': False, 'error': 'Registration verification failed. Please try again.'}
 
 
 # ── Authentication (تسجيل دخول بالبصمة) ────────────────────────

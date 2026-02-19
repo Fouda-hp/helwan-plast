@@ -313,4 +313,4 @@ def get_client_timeline(client_code, type_filter=None, page=1, page_size=20, tok
 
     except Exception as e:
         logger.exception("get_client_timeline error: %s", e)
-        return {'success': False, 'message': str(e), 'data': [], 'total': 0, 'total_pages': 0}
+        return {'success': False, 'message': 'Failed to load timeline. Please try again.', 'data': [], 'total': 0, 'total_pages': 0}

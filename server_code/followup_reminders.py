@@ -327,7 +327,7 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
 
     except Exception as e:
         logger.exception("get_followup_dashboard error: %s", e)
-        return {'success': False, 'message': str(e), 'stats': {}, 'data': []}
+        return {'success': False, 'message': 'Failed to load follow-up dashboard. Please try again.', 'stats': {}, 'data': []}
 
 
 _MAX_OVERDUE_NOTIFICATIONS = 20  # limit per run to avoid email flood
@@ -432,4 +432,4 @@ def get_quotations_for_followup(token_or_email=None, search=''):
 
     except Exception as e:
         logger.exception("get_quotations_for_followup error: %s", e)
-        return {'success': False, 'message': str(e), 'data': []}
+        return {'success': False, 'message': 'Failed to load follow-up data. Please try again.', 'data': []}

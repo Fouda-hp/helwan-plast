@@ -350,7 +350,7 @@ def resync_numbering_counters(token_or_email=None):
         }
     except Exception as e:
         logger.exception("resync_numbering_counters failed")
-        return {"success": False, "message": str(e)}
+        return {"success": False, "message": "Failed to resync numbering counters."}
 
 
 # ==========================================================================

@@ -346,7 +346,7 @@ def verify_otp(user_email, otp, purpose='verification'):
 
   except Exception as e:
     logger.error(f"OTP verification error: {e}")
-    return False, f"Verification failed: {str(e)}"
+    return False, "Verification failed. Please try again."
 
 
 # =========================================================
@@ -1302,7 +1302,7 @@ def get_active_users_for_dropdown(token_or_email=None):
         return {'success': True, 'users': users}
     except Exception as e:
         logger.error(f"Error getting active users: {e}")
-        return {'success': False, 'message': str(e), 'users': []}
+        return {'success': False, 'message': 'Failed to load users. Please try again.', 'users': []}
 
 
 @anvil.server.callable

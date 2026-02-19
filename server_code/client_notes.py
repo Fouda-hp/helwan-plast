@@ -199,7 +199,7 @@ def get_client_notes(client_code, token_or_email=None):
 
     except Exception as e:
         logger.exception("get_client_notes error: %s", e)
-        return {'success': False, 'message': str(e), 'notes': []}
+        return {'success': False, 'message': 'Failed to load notes. Please try again.', 'notes': []}
 
 
 # =========================================================
@@ -282,7 +282,7 @@ def get_all_tags(token_or_email=None):
 
     except Exception as e:
         logger.exception("get_all_tags error: %s", e)
-        return {'success': False, 'message': str(e), 'tags': []}
+        return {'success': False, 'message': 'Failed to load tags. Please try again.', 'tags': []}
 
 
 @anvil.server.callable

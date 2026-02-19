@@ -174,7 +174,7 @@ def get_client_detail(client_code, token_or_email=None):
 
     except Exception as e:
         logger.exception("get_client_detail error: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable

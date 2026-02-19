@@ -161,6 +161,31 @@ def error_response(message, code=None):
     return resp
 
 
+# Generic error messages — never expose internal details to client
+_GENERIC_ERRORS = {
+    'default': 'An error occurred. Please try again later.',
+    'save': 'Failed to save data. Please try again.',
+    'delete': 'Failed to delete record. Please try again.',
+    'load': 'Failed to load data. Please try again.',
+    'export': 'Failed to export data. Please try again.',
+    'auth': 'Authentication error. Please log in again.',
+    'permission': 'Permission denied.',
+    'not_found': 'Record not found.',
+    'import': 'Failed to import data. Please check the file format.',
+}
+
+
+def safe_error(e, logger_ref=None, context='default', log_msg=None):
+    """
+    Log the real exception but return a generic safe message to the client.
+    Usage:  return safe_error(e, logger, 'save', 'save_quotation failed')
+    """
+    msg = _GENERIC_ERRORS.get(context, _GENERIC_ERRORS['default'])
+    if logger_ref:
+        logger_ref.exception(log_msg or "Error [%s]: %s", context, e)
+    return {'success': False, 'message': msg}
+
+
 # =========================================================
 # Safe numeric conversion
 # =========================================================

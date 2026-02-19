@@ -306,7 +306,7 @@ def get_chart_of_accounts(token_or_email=None):
         return {'success': True, 'accounts': accounts}
     except Exception as e:
         logger.exception("get_chart_of_accounts error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -344,7 +344,7 @@ def add_account(code, name_en, name_ar, account_type, parent_code=None, token_or
         return {'success': True, 'code': code}
     except Exception as e:
         logger.exception("add_account error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable("seed_accounts")
@@ -376,7 +376,7 @@ def seed_default_accounts(token_or_email=None):
         return {'success': True, 'created': created, 'skipped': skipped}
     except Exception as e:
         logger.exception("seed_default_accounts error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -469,7 +469,7 @@ def lock_period(year, month, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("lock_period error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -486,7 +486,7 @@ def unlock_period(year, month, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("unlock_period error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -521,7 +521,7 @@ def close_financial_year(year, token_or_email=None):
         return {'success': True, 'message': f'Year {year} closed. All months locked.'}
     except Exception as e:
         logger.exception("close_financial_year error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -657,7 +657,7 @@ def get_period_locks(year=None, token_or_email=None):
         return {'success': True, 'data': result}
     except Exception as e:
         logger.exception("get_period_locks error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def _ensure_vat_accounts():
@@ -782,7 +782,7 @@ def post_journal_entry(entry_date, entries, description, ref_type, ref_id, user_
         return {'success': True, 'transaction_id': transaction_id}
     except Exception as e:
         logger.exception("post_journal_entry error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -835,7 +835,7 @@ def get_ledger_entries(account_code=None, date_from=None, date_to=None, ref_type
         return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
         logger.exception("get_ledger_entries error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -882,7 +882,7 @@ def get_account_balance(account_code, as_of_date=None, token_or_email=None):
         }
     except Exception as e:
         logger.exception("get_account_balance error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def _get_account_balance_internal(account_code, as_of_date=None):
@@ -1132,7 +1132,7 @@ def get_suppliers(search='', token_or_email=None):
         return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
         logger.exception("get_suppliers error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -1165,7 +1165,7 @@ def add_supplier(data, token_or_email=None):
         return {'success': True, 'id': sid}
     except Exception as e:
         logger.exception("add_supplier error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -1188,7 +1188,7 @@ def update_supplier(supplier_id, data, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("update_supplier error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -1206,7 +1206,7 @@ def delete_supplier(supplier_id, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("delete_supplier error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -1303,23 +1303,24 @@ def get_purchase_invoices(status=None, search='', token_or_email=None):
             rows = app_tables.purchase_invoices.search(**search_kwargs)
 
         results = []
-        
-        for r in rows:
-            # Manual filtering removed as DB does it
-            # if search_lower: ... continue
 
+        # Pre-fetch all suppliers once to avoid N+1 queries in the loop
+        _sup_map = {}
+        try:
+            for _s in app_tables.suppliers.search():
+                _sup_map[_s.get('id', '')] = _safe_str(_s.get('name', ''))
+        except Exception:
+            pass
+
+        for r in rows:
             d = _row_to_dict(r, PURCHASE_INVOICE_COLS)
             # Parse items_json for convenience
             try:
                 d['items'] = json.loads(d.get('items_json') or '[]')
             except (json.JSONDecodeError, TypeError):
                 d['items'] = []
-            # Add supplier_name for display
-            try:
-                supplier = app_tables.suppliers.get(id=d.get('supplier_id'))
-                d['supplier_name'] = _safe_str(supplier.get('name', '')) if supplier else ''
-            except Exception:
-                d['supplier_name'] = ''
+            # Add supplier_name from pre-fetched map (no N+1)
+            d['supplier_name'] = _sup_map.get(d.get('supplier_id', ''), '')
             # Parse machine_config_json into dict for frontend
             try:
                 d['machine_config'] = json.loads(d.get('machine_config_json') or '{}')
@@ -1343,7 +1344,7 @@ def get_purchase_invoices(status=None, search='', token_or_email=None):
         return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
         logger.exception("get_purchase_invoices error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -1506,7 +1507,7 @@ def create_purchase_invoice(data, token_or_email=None):
         return {'success': True, 'id': inv_id, 'invoice_number': inv_number}
     except Exception as e:
         logger.exception("create_purchase_invoice error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -1640,7 +1641,7 @@ def post_purchase_invoice(invoice_id, token_or_email=None):
         return {'success': False, 'message': str(ve)}
     except Exception as e:
         logger.exception("post_purchase_invoice error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def _sum_1210_balance_for_invoice(invoice_id):
@@ -1789,7 +1790,7 @@ def move_purchase_to_inventory(invoice_id, token_or_email=None):
         return {'success': True, 'transaction_id': result['transaction_id'], 'total_transit_cost': total_transit_cost}
     except Exception as e:
         logger.exception("move_purchase_to_inventory error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -1997,7 +1998,7 @@ def create_contract_purchase(contract_number, fob_cost, cylinder_cost, supplier_
         }
     except Exception as e:
         logger.exception("create_contract_purchase error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -2074,7 +2075,7 @@ def get_contract_payable_status(contract_number=None, token_or_email=None):
         return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
         logger.exception("get_contract_payable_status error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def _get_supplier_remaining_egp(invoice_id):
@@ -2103,7 +2104,7 @@ def get_supplier_remaining_egp(invoice_id, token_or_email=None):
         return {'success': True, 'remaining_egp': remaining}
     except Exception as e:
         logger.exception("get_supplier_remaining_egp error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -2278,7 +2279,7 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
         return {'success': True, 'paid_amount': new_paid, 'status': new_status, 'transaction_id': result['transaction_id'], 'amount_egp': liability_slice_egp}
     except Exception as e:
         logger.exception("record_supplier_payment error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -2331,7 +2332,7 @@ def get_import_cost_types(token_or_email=None):
         return {'success': True, 'types': [{'id': t['id'], 'name': t['name'], 'default_account': t.get('default_account')} for t in DEFAULT_IMPORT_COST_TYPES]}
     except Exception as e:
         logger.exception("get_import_cost_types error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -2358,7 +2359,7 @@ def seed_import_cost_types(token_or_email=None):
         return {'success': True, 'created': created}
     except Exception as e:
         logger.exception("seed_import_cost_types error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -2540,7 +2541,7 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
         return {'success': False, 'message': str(ve)}
     except Exception as e:
         logger.exception("add_import_cost error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -2573,7 +2574,7 @@ def get_import_costs(purchase_invoice_id=None, inventory_id=None, token_or_email
         return {'success': True, 'costs': costs, 'total': total}
     except Exception as e:
         logger.exception("get_import_costs error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -2618,7 +2619,7 @@ def get_import_costs_for_payment(purchase_invoice_id, token_or_email=None):
         return {'success': True, 'costs': result}
     except Exception as e:
         logger.exception("get_import_costs_for_payment error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -2716,7 +2717,7 @@ def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, to
         return {'success': True, 'transaction_id': je_result.get('transaction_id'), 'paid_amount': new_paid}
     except Exception as e:
         logger.exception("pay_import_cost error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -2746,7 +2747,7 @@ def sync_import_costs_paid_amount(token_or_email=None):
         return {'success': True, 'updated': updated}
     except Exception as e:
         logger.exception("sync_import_costs_paid_amount error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def _recalc_supplier_amount_egp(purchase_invoice_id):
@@ -2916,7 +2917,7 @@ def get_vat_report(as_of_date=None, date_from=None, date_to=None, token_or_email
         }
     except Exception as e:
         logger.exception("get_vat_report error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -2984,7 +2985,7 @@ def settle_vat_for_period(date_from, date_to, settlement_account=None, token_or_
         }
     except Exception as e:
         logger.exception("settle_vat_for_period error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -3047,7 +3048,7 @@ def get_expenses(date_from=None, date_to=None, category=None, token_or_email=Non
         return {'success': True, 'data': results, 'count': len(results), 'total_amount': total_amount}
     except Exception as e:
         logger.exception("get_expenses error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3125,7 +3126,7 @@ def add_expense(data, token_or_email=None):
         return {'success': True, 'id': expense_id, 'transaction_id': je_result['transaction_id']}
     except Exception as e:
         logger.exception("add_expense error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -3162,7 +3163,7 @@ def receive_inventory(item_id, location='', token_or_email=None):
         return {'success': True, 'status': 'in_stock'}
     except Exception as e:
         logger.exception("receive_inventory error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def _is_cash_bank_account_row(r):
@@ -3241,7 +3242,7 @@ def get_bank_accounts(token_or_email=None):
         return {'success': True, 'accounts': deduped}
     except Exception as e:
         logger.exception("get_bank_accounts error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3281,7 +3282,7 @@ def backfill_supplier_amount_egp(token_or_email=None):
         return {'success': True, 'updated': updated}
     except Exception as e:
         logger.exception("backfill_supplier_amount_egp error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3355,7 +3356,7 @@ def migrate_import_costs_to_inventory(token_or_email=None):
         }
     except Exception as e:
         logger.exception("migrate_import_costs_to_inventory error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3393,7 +3394,7 @@ def get_inventory(status=None, search='', token_or_email=None):
         return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
         logger.exception("get_inventory error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3423,7 +3424,7 @@ def get_available_inventory_for_contract(token_or_email=None):
         return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:
         logger.exception("get_available_inventory_for_contract error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3487,7 +3488,7 @@ def add_inventory_item(data, token_or_email=None):
         return {'success': True, 'id': item_id}
     except Exception as e:
         logger.exception("add_inventory_item error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3541,7 +3542,7 @@ def update_inventory_item(item_id, data, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("update_inventory_item error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3689,7 +3690,7 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
         }
     except Exception as e:
         logger.exception("sell_inventory error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3841,7 +3842,7 @@ def get_trial_balance(date_from=None, date_to=None, token_or_email=None):
         return result
     except Exception as e:
         logger.exception("get_trial_balance error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3955,7 +3956,7 @@ def get_income_statement(date_from, date_to, token_or_email=None):
         return result
     except Exception as e:
         logger.exception("get_income_statement error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -4020,7 +4021,7 @@ def get_cash_flow_report(date_from, date_to, token_or_email=None):
         return out
     except Exception as e:
         logger.exception("get_cash_flow_report error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -4141,7 +4142,7 @@ def get_balance_sheet(as_of_date, token_or_email=None):
         return result
     except Exception as e:
         logger.exception("get_balance_sheet error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -4357,7 +4358,7 @@ def generate_report(report_name, filters, token_or_email=None):
         return {'success': True, 'report_name': report_name, 'title': out['title'], 'columns': out['columns'], 'rows': out['rows'], 'summary': out.get('summary', {})}
     except Exception as e:
         logger.exception("generate_report error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def _register_pdf_arabic_font():
@@ -4619,7 +4620,7 @@ def export_report(report_name, filters, format='csv', token_or_email=None):
             return {'success': False, 'message': f'Unsupported format: {format}. Use pdf, excel, or csv.'}
     except Exception as e:
         logger.exception("export_report error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -4726,7 +4727,7 @@ def get_contract_profitability(contract_number=None, token_or_email=None):
         }
     except Exception as e:
         logger.exception("get_contract_profitability error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -4842,7 +4843,7 @@ def get_inventory_valuation(token_or_email=None):
         }
     except Exception as e:
         logger.exception("get_inventory_valuation error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -4923,7 +4924,7 @@ def get_inventory_detailed(token_or_email=None):
         return {'success': True, 'data': results}
     except Exception as e:
         logger.exception("get_inventory_detailed error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -4972,7 +4973,7 @@ def get_supplier_aging(as_of_date=None, token_or_email=None):
         return {'success': True, 'suppliers': list(buckets.values())}
     except Exception as e:
         logger.exception("get_supplier_aging error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -5026,7 +5027,7 @@ def get_fx_report_per_invoice(token_or_email=None):
         return {'success': True, 'data': results}
     except Exception as e:
         logger.exception("get_fx_report_per_invoice error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def _ledger_2000_remaining_by_invoice():
@@ -5100,7 +5101,7 @@ def get_unrealized_fx(current_rate_provider, token_or_email=None):
         return {'success': True, 'data': results}
     except Exception as e:
         logger.exception("get_unrealized_fx error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -5210,7 +5211,7 @@ def get_fx_reconciliation(token_or_email=None):
         }
     except Exception as e:
         logger.exception("get_fx_reconciliation error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -5232,7 +5233,7 @@ def delete_expense(expense_id, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("delete_expense error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -5252,7 +5253,7 @@ def delete_inventory_item(item_id, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("delete_inventory_item error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -5275,7 +5276,7 @@ def get_transit_balance(token_or_email=None):
         return {'success': True, 'transit_balance_egp': balance}
     except Exception as e:
         logger.exception("get_transit_balance error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -5321,7 +5322,7 @@ def get_landed_cost(purchase_invoice_id=None, contract_number=None, token_or_ema
         return {'success': True, **breakdown}
     except Exception as e:
         logger.exception("get_landed_cost error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -5345,7 +5346,7 @@ def get_contracts_list_simple(token_or_email=None):
         return {'success': True, 'data': contracts}
     except Exception as e:
         logger.exception("get_contracts_list_simple error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -5478,7 +5479,7 @@ def update_purchase_invoice(invoice_id, data, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("update_purchase_invoice error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -5498,7 +5499,7 @@ def delete_purchase_invoice(invoice_id, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("delete_purchase_invoice error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -5529,7 +5530,7 @@ def get_suppliers_list_simple(token_or_email=None):
         return {'success': True, 'data': suppliers}
     except Exception as e:
         logger.exception("get_suppliers_list_simple error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -5607,7 +5608,7 @@ def get_invoice_details(invoice_id, token_or_email=None):
         return {'success': True, 'data': d}
     except Exception as e:
         logger.exception("get_invoice_details error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ========================================================================
@@ -5801,7 +5802,7 @@ def migrate_old_contracts(supplier_id, currency='USD', dry_run=False, token_or_e
 
     except Exception as e:
         logger.exception("migrate_old_contracts error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -5826,7 +5827,7 @@ def get_exchange_rates(token_or_email=None):
         return {'success': True, 'data': rates}
     except Exception as e:
         logger.exception("get_exchange_rates error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -5856,7 +5857,7 @@ def set_exchange_rate(currency_code, rate_to_egp, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("set_exchange_rate error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -5873,7 +5874,7 @@ def delete_exchange_rate(currency_code, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("delete_exchange_rate error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ---------------------------------------------------------------------------
@@ -5952,14 +5953,16 @@ def get_accounting_dashboard_stats(token_or_email=None):
             sid = pi.get('supplier_id', '')
             supplier_totals[sid] = supplier_totals.get(sid, 0) + total_pi
         top_suppliers_raw = sorted(supplier_totals.items(), key=lambda x: x[1], reverse=True)[:5]
+        # Pre-fetch all suppliers once to avoid N+1 queries
+        _suppliers_map = {}
+        try:
+            for s in app_tables.suppliers.search():
+                _suppliers_map[s.get('id', '')] = s.get('name', '')
+        except Exception as _sup_err:
+            logger.debug("Could not pre-fetch suppliers: %s", _sup_err)
         top_suppliers = []
         for sid, total in top_suppliers_raw:
-            name = sid
-            try:
-                s = app_tables.suppliers.get(id=sid)
-                if s: name = s.get('name', sid)
-            except:
-                pass
+            name = _suppliers_map.get(sid, sid)
             top_suppliers.append({'name': name, 'total': _round2(total)})
 
         # Monthly totals + profitability in one ledger pass (current year)
@@ -6010,7 +6013,7 @@ def get_accounting_dashboard_stats(token_or_email=None):
         return result
     except Exception as e:
         logger.exception("get_accounting_dashboard_stats error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ---------------------------------------------------------------------------
@@ -6050,14 +6053,17 @@ def export_purchase_invoices_data(token_or_email=None):
     if not is_valid:
         return []
     try:
+        # Pre-fetch all suppliers once to avoid N+1 queries
+        _sup_map = {}
+        try:
+            for _s in app_tables.suppliers.search():
+                _sup_map[_s.get('id', '')] = _s.get('name', '')
+        except Exception:
+            pass
+
         data = []
         for r in app_tables.purchase_invoices.search():
-            supplier_name = ''
-            try:
-                s = app_tables.suppliers.get(id=r.get('supplier_id'))
-                if s: supplier_name = s.get('name', '')
-            except:
-                pass
+            supplier_name = _sup_map.get(r.get('supplier_id', ''), '')
             data.append({
                 'Invoice Number': r.get('invoice_number', ''),
                 'Supplier': supplier_name,
@@ -6123,7 +6129,7 @@ def fetch_exchange_rates_from_api(token_or_email=None):
                 'updated_count': updated_count, 'last_updated': now.isoformat()}
     except Exception as e:
         logger.exception("fetch_exchange_rates_from_api error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ---------------------------------------------------------------------------
@@ -6227,7 +6233,7 @@ def run_daily_notification_check(token_or_email=None):
                 'overdue': count_overdue, 'due_soon': count_due}
     except Exception as e:
         logger.exception("run_daily_notification_check error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def _create_notification_for_admins(notification_type, message, data=None):
@@ -6290,7 +6296,7 @@ def get_purchase_invoice_pdf_data(invoice_id, token_or_email=None):
         return {'success': True, 'data': data}
     except Exception as e:
         logger.exception("get_purchase_invoice_pdf_data error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -6306,7 +6312,7 @@ def get_pnl_report_pdf_data(date_from=None, date_to=None, token_or_email=None):
         return {'success': True, 'data': data}
     except Exception as e:
         logger.exception("get_pnl_report_pdf_data error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -6324,7 +6330,7 @@ def get_supplier_statement_pdf_data(supplier_id, date_from=None, date_to=None, t
         return {'success': True, 'data': data}
     except Exception as e:
         logger.exception("get_supplier_statement_pdf_data error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -6440,7 +6446,7 @@ def record_customer_collection(contract_number, amount, payment_method,
         }
     except Exception as e:
         logger.exception("record_customer_collection error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -6525,7 +6531,7 @@ def post_contract_receivable(contract_number, amount_egp, description=None, toke
         }
     except Exception as e:
         logger.exception("post_contract_receivable error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -6656,7 +6662,7 @@ def get_customer_summary(token_or_email=None):
         }
     except Exception as e:
         logger.exception("get_customer_summary error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -6751,7 +6757,7 @@ def get_supplier_summary(token_or_email=None):
         }
     except Exception as e:
         logger.exception("get_supplier_summary error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ---------------------------------------------------------------------------
@@ -7072,7 +7078,7 @@ def get_advanced_account_statement(
         return out
     except Exception as e:
         logger.exception("get_advanced_account_statement error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -7131,7 +7137,7 @@ def get_treasury_summary(token_or_email=None):
         }
     except Exception as e:
         logger.exception("get_treasury_summary error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 CASH_BANK_ACCOUNTS = ('1000', '1010', '1011', '1012', '1013')
@@ -7231,7 +7237,7 @@ def get_cash_bank_statement(account_code=None, date_from=None, date_to=None, tok
         return {'success': True, 'data': rows, 'count': len(rows)}
     except Exception as e:
         logger.exception("get_cash_bank_statement error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -7400,7 +7406,7 @@ def get_opening_balances(entity_type='', token_or_email=None):
         return {'success': True, 'data': result, 'count': len(result)}
     except Exception as e:
         logger.exception("get_opening_balances error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -7461,7 +7467,7 @@ def set_opening_balance(name, entity_type, amount, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("set_opening_balance error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -7490,7 +7496,7 @@ def delete_opening_balance(name, entity_type, token_or_email=None):
         return {'success': True}
     except Exception as e:
         logger.exception("delete_opening_balance error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ─────────────────────────────────────────────────────────────────────

@@ -122,7 +122,7 @@ def set_followup(quotation_number, follow_up_date, token_or_email=None):
 
     except Exception as e:
         logger.exception("set_followup error: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -169,7 +169,7 @@ def snooze_followup(quotation_number, snooze_days, token_or_email=None):
 
     except Exception as e:
         logger.exception("snooze_followup error: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -205,7 +205,7 @@ def complete_followup(quotation_number, token_or_email=None):
 
     except Exception as e:
         logger.exception("complete_followup error: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -385,7 +385,7 @@ def check_overdue_followups(token_or_email=None):
 
     except Exception as e:
         logger.exception("check_overdue_followups error: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable

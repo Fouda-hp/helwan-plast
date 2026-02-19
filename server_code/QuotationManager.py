@@ -135,7 +135,9 @@ def safe_strip(v):
 
 
 def safe_int(v):
-    """تحويل آمن لـ int"""
+    """تحويل آمن لـ int — يرجع None عند الفشل (للتمييز عن 0).
+    Note: shared_utils.safe_int returns 0 on failure. This one returns None
+    because callers check `if val is None` to detect missing data."""
     try:
         return int(v)
     except (ValueError, TypeError):
@@ -143,7 +145,9 @@ def safe_int(v):
 
 
 def safe_float(v):
-    """تحويل آمن لـ float"""
+    """تحويل آمن لـ float — يرجع None عند الفشل (للتمييز عن 0.0).
+    Note: shared_utils.safe_float returns 0.0 on failure. This one returns None
+    because callers check `if val is None` to detect missing data."""
     try:
         return float(v)
     except (ValueError, TypeError):
@@ -1790,7 +1794,7 @@ def get_quotation_pdf_data(quotation_number, user_email, auth_token=None):
 
     except Exception as e:
         logger.error(f"Error getting quotation PDF data: {e}")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -1805,7 +1809,7 @@ def get_all_template_settings(token_or_email=None):
             settings[row['setting_key']] = row['setting_value']
         return {'success': True, 'settings': settings}
     except Exception as e:
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -1830,7 +1834,7 @@ def save_machine_specs(specs_data, token_or_email=None):
         return {'success': True, 'message': 'Machine specs saved'}
     except Exception as e:
         logger.exception("save_machine_specs error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -1845,7 +1849,7 @@ def get_all_machine_specs(token_or_email=None):
             specs.append(dict(row))
         return {'success': True, 'specs': specs}
     except Exception as e:
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -2080,7 +2084,7 @@ def export_quotation_excel(quotation_number, token_or_email=None):
         logger.error(f"Error exporting Excel: {e}")
         import traceback
         logger.error(traceback.format_exc())
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def _quotation_list_matches_search(r, search_lower):
@@ -2545,7 +2549,7 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
     
     except Exception as e:
         logger.error(f"Error saving contract: {e}")
-        return {'success': False, 'message': f'المشكلة: حدث خطأ أثناء الحفظ. التفاصيل: {str(e)}'}
+        return {'success': False, 'message': 'حدث خطأ أثناء الحفظ. يرجى المحاولة مرة أخرى.'}
 
 
 @anvil.server.callable
@@ -2623,7 +2627,7 @@ def update_contract(contract_data, user_email='system', token_or_email=None):
         return {'success': True, 'message': 'Contract updated', 'contract_number': contract_number}
     except Exception as e:
         logger.error(f"Error updating contract: {e}")
-        return {'success': False, 'message': f'المشكلة: حدث خطأ أثناء التحديث. التفاصيل: {str(e)}'}
+        return {'success': False, 'message': 'حدث خطأ أثناء التحديث. يرجى المحاولة مرة أخرى.'}
 
 
 @anvil.server.callable
@@ -2668,7 +2672,7 @@ def get_contract(quotation_number, token_or_email=None):
     
     except Exception as e:
         logger.error(f"Error getting contract: {e}")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def _get_next_contract_serial_from_table():
@@ -2757,7 +2761,7 @@ def delete_contract(quotation_number, token_or_email=None):
         return {'success': True, 'message': msg_ar, 'message_en': msg_en}
     except Exception as e:
         logger.error(f"Error deleting contract: {e}")
-        return {'success': False, 'message': f'فشل الحذف: {str(e)}', 'message_en': f'Delete failed: {str(e)}'}
+        return {'success': False, 'message': 'فشل الحذف. يرجى المحاولة مرة أخرى.', 'message_en': 'Delete failed. Please try again.'}
 
 
 @anvil.server.callable
@@ -3119,7 +3123,7 @@ def get_payment_dashboard_data(token_or_email=None):
         return result
     except Exception as e:
         logger.error(f"Error in get_payment_dashboard_data: {e}")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3192,7 +3196,7 @@ def update_payment_status(quotation_number, payment_index, new_status, paid_date
         return {'success': True, 'message': 'Payment status updated', 'payments': payments}
     except Exception as e:
         logger.error(f"Error updating payment status: {e}")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3246,7 +3250,7 @@ def export_payment_schedule_excel(token_or_email=None):
         return {'success': True, 'file': media}
     except Exception as e:
         logger.error(f"Error exporting payment schedule: {e}")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # =========================================================
@@ -3354,7 +3358,7 @@ def get_scheduled_backup_file(token_or_email, filename, created_at_iso):
         return {'success': False, 'message': 'Backup not found'}
     except Exception as e:
         logger.exception("get_scheduled_backup_file: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
     
 
 @anvil.server.callable
@@ -3410,7 +3414,7 @@ def create_backup(token_or_email):
         return {'success': True, 'file': media, 'filename': filename, 'drive_uploaded': drive_ok, 'drive_message': drive_msg}
     except Exception as e:
         logger.exception("create_backup error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3442,7 +3446,7 @@ def diagnose_backup_drive(token_or_email):
             result['error'] = 'No backup folder found in app_files'
         return {'success': True, **result}
     except Exception as e:
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3465,7 +3469,7 @@ def restore_backup(token_or_email, backup_media):
         data = json.loads(raw.decode('utf-8'))
     except Exception as e:
         logger.exception("restore_backup parse: %s", e)
-        return {'success': False, 'message': f'ملف غير صالح: {e}'}
+        return {'success': False, 'message': 'ملف غير صالح. يرجى التحقق من صيغة الملف.'}
     if data.get('app') != 'Helwan_Plast' or data.get('version') != 1:
         return {'success': False, 'message': 'ملف نسخة احتياطية غير متوافق (يجب أن يكون من Helwan_Plast)'}
     ip_address = get_client_ip()
@@ -3658,7 +3662,7 @@ def restore_backup(token_or_email, backup_media):
         return {'success': True, 'message': 'تمت الاستعادة بنجاح', 'stats': stats}
     except Exception as e:
         logger.exception("restore_backup: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -3708,7 +3712,7 @@ def restore_backup_from_drive(token_or_email, filename):
         return restore_backup(token_or_email, media)
     except Exception as e:
         logger.exception("restore_backup_from_drive: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # ===========================================================================
@@ -3779,7 +3783,7 @@ def update_contract_status(quotation_number, new_status, notes='', token_or_emai
                 'new_status': new_status}
     except Exception as e:
         logger.exception("update_contract_status error")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable

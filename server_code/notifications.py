@@ -24,11 +24,13 @@ import anvil.server
 
 logger = logging.getLogger(__name__)
 
-# استيراد AuthManager متوافق مع Anvil (نسبي أو مطلق)
+# استيراد الدوال المطلوبة مباشرة بدون الاعتماد على AuthManager (لتجنب circular imports)
 try:
-    from . import AuthManager
+    from .auth_sessions import validate_session as _validate_session
+    from .auth_permissions import is_admin as _is_admin
 except ImportError:
-    import AuthManager
+    from auth_sessions import validate_session as _validate_session
+    from auth_permissions import is_admin as _is_admin
 
 try:
     from . import auth_email
@@ -218,9 +220,9 @@ def _user_email_from_token(token_or_email):
     if not token_or_email:
         return None
     # ⛔ لا يتم قبول البريد كتوكن - يجب التحقق من الجلسة دائماً
-    result = AuthManager.validate_token(token_or_email)
-    if result and result.get('valid') and result.get('user'):
-        return (result.get('user', {}).get('email') or '').strip().lower()
+    session = _validate_session(token_or_email)
+    if session and session.get('email'):
+        return session['email'].strip().lower()
     return None
 
 
@@ -295,14 +297,14 @@ def mark_notification_read(notification_id, token_or_email):
         row = app_tables.notifications.get(id=notification_id, user_email=user_email)
         if not row:
             # Admin can mark any notification as read
-            if AuthManager.is_admin(token_or_email):
+            if _is_admin(token_or_email):
                 row = app_tables.notifications.get(id=notification_id)
         if row:
             row.update(read_at=get_utc_now())
             return {'success': True}
         return {'success': False, 'message': 'Notification not found or access denied'}
     except Exception as e:
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -315,14 +317,14 @@ def mark_notification_unread(notification_id, token_or_email):
         row = app_tables.notifications.get(id=notification_id, user_email=user_email)
         if not row:
             # Admin can mark any notification as unread
-            if AuthManager.is_admin(token_or_email):
+            if _is_admin(token_or_email):
                 row = app_tables.notifications.get(id=notification_id)
         if row:
             row.update(read_at=None)
             return {'success': True}
         return {'success': False, 'message': 'Notification not found or access denied'}
     except Exception as e:
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -337,7 +339,7 @@ def clear_all_notifications(token_or_email):
             row.update(read_at=now)
         return {'success': True}
     except Exception as e:
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -365,7 +367,7 @@ def delete_all_notifications_admin(token_or_email):
     user_email = _user_email_from_token(token_or_email)
     if not user_email:
         return {'success': False, 'message': 'Authentication required', 'deleted_count': 0}
-    if not AuthManager.is_admin(token_or_email):
+    if not _is_admin(token_or_email):
         return {'success': False, 'message': 'Admin access required', 'deleted_count': 0}
     try:
         rows = list(app_tables.notifications.search())
@@ -391,14 +393,14 @@ def delete_notification(notification_id, token_or_email):
     try:
         nid = str(notification_id).strip()
         row = app_tables.notifications.get(id=nid, user_email=user_email)
-        if not row and AuthManager.is_admin(token_or_email):
+        if not row and _is_admin(token_or_email):
             row = app_tables.notifications.get(id=nid)
         if row:
             row.delete()
             return {'success': True}
         return {'success': False, 'message': 'Notification not found or access denied'}
     except Exception as e:
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -408,7 +410,7 @@ def get_all_notifications_admin(token_or_email, limit=50):
     if not user_email:
         return {'success': False, 'data': [], 'message': 'Authentication required'}
     # Verify admin
-    is_admin = AuthManager.is_admin(token_or_email)
+    is_admin = _is_admin(token_or_email)
     if not is_admin:
         return {'success': False, 'data': [], 'message': 'Admin access required'}
     try:

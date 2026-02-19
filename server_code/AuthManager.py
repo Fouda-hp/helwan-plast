@@ -523,7 +523,7 @@ def clear_rate_limits(token_or_email=None):
         return {'success': True, 'message': f'Cleared {count} records'}
     except Exception as e:
         logger.error(f"Error clearing rate limits: {e}")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -545,7 +545,7 @@ def clear_my_rate_limit(token_or_email=None):
         return {'success': True, 'message': f'Rate limit cleared'}
     except Exception as e:
         logger.error(f"Error clearing rate limit: {e}")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -563,7 +563,7 @@ def reset_user_login_attempts(email, token_or_email=None):
       return {'success': True, 'message': 'Login attempts reset'}
     return {'success': False, 'message': 'User not found'}
   except Exception as e:
-    return {'success': False, 'message': str(e)}
+    return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # =========================================================
@@ -1964,7 +1964,7 @@ def reset_admin_password_emergency(email, new_password, secret_key):
 
     except Exception as e:
         logger.error(f"Emergency password reset error: {e}")
-        return {'success': False, 'message': f'Error: {str(e)}'}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -2017,7 +2017,7 @@ def setup_initial_admin(email, password, full_name, phone=None):
 
     except Exception as e:
         logger.error(f"Admin setup error: {e}")
-        return {'success': False, 'message': f'Error: {str(e)}'}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def _initialize_default_settings():
@@ -2676,7 +2676,7 @@ def save_machine_prices(token_or_email, prices):
         return {'success': True, 'message': 'Machine prices saved successfully'}
     except Exception as e:
         logger.error(f"Error saving machine prices: {e}")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -2793,7 +2793,7 @@ def save_machine_config(token_or_email, config):
         return {'success': True, 'message': 'Machine configuration saved successfully'}
     except Exception as e:
         logger.error(f"Error saving machine config: {e}")
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # =========================================================
@@ -3025,7 +3025,7 @@ def delete_user_permanently(token_or_email, user_id):
 
     except Exception as e:
         logger.error(f"Error deleting user permanently: {e}")
-        return {'success': False, 'message': f'Error: {str(e)}'}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 # =========================================================
@@ -3065,7 +3065,7 @@ def cleanup_old_audit_logs(days=15, token_or_email=None):
 
     except Exception as e:
         logger.error(f"Error cleaning up audit logs: {e}")
-        return {'success': False, 'message': f'Error: {str(e)}'}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 def auto_cleanup_audit_logs():
@@ -3168,7 +3168,7 @@ def scheduled_session_cleanup():
         return {'success': True, 'cleaned': cleaned, 'purged': purged}
     except Exception as e:
         logger.error("Scheduled session cleanup error: %s", e)
-        return {'success': False, 'error': str(e)}
+        return {'success': False, 'error': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable

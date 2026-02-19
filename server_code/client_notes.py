@@ -121,7 +121,7 @@ def add_client_note(client_code, text, token_or_email=None):
 
     except Exception as e:
         logger.exception("add_client_note error: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -176,7 +176,7 @@ def delete_client_note(client_code, note_id, token_or_email=None):
 
     except Exception as e:
         logger.exception("delete_client_note error: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -248,7 +248,7 @@ def set_client_tags(client_code, tags, token_or_email=None):
 
     except Exception as e:
         logger.exception("set_client_tags error: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
 try:
@@ -324,4 +324,4 @@ def get_client_with_notes_and_tags(client_code, token_or_email=None):
 
     except Exception as e:
         logger.exception("get_client_with_notes_and_tags error: %s", e)
-        return {'success': False, 'message': str(e)}
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}

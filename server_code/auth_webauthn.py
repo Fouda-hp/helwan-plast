@@ -615,7 +615,7 @@ def webauthn_list_credentials(token):
             })
         return {'success': True, 'credentials': result}
     except Exception as e:
-        return {'success': False, 'error': str(e)}
+        return {'success': False, 'error': 'An error occurred. Please try again later.'}
 
 
 @anvil.server.callable
@@ -640,7 +640,7 @@ def webauthn_remove_credential(token, credential_id_prefix):
                 return {'success': True, 'message': 'Passkey removed.'}
         return {'success': False, 'error': 'Credential not found.'}
     except Exception as e:
-        return {'success': False, 'error': str(e)}
+        return {'success': False, 'error': 'An error occurred. Please try again later.'}
 
 
 # ── Admin Management (Admin-only) ───────────────────────────────
@@ -678,7 +678,7 @@ def webauthn_admin_list_credentials(token, user_email):
             })
         return {'success': True, 'credentials': result}
     except Exception as e:
-        return {'success': False, 'error': str(e), 'credentials': []}
+        return {'success': False, 'error': 'An error occurred. Please try again later.', 'credentials': []}
 
 
 @anvil.server.callable
@@ -703,4 +703,4 @@ def webauthn_admin_remove_credential(token, user_email, credential_id_prefix):
                 return {'success': True, 'message': 'Passkey removed.'}
         return {'success': False, 'error': 'Credential not found.'}
     except Exception as e:
-        return {'success': False, 'error': str(e)}
+        return {'success': False, 'error': 'An error occurred. Please try again later.'}

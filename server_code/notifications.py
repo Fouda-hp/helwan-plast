@@ -147,13 +147,19 @@ def _dedup_key(notif_type, payload_json):
 def _is_duplicate_notification(user_email, notif_type, payload_json, seconds=60):
     """تحقق من عدم وجود إشعار مشابه خلال آخر N ثانية (منع التكرار)."""
     try:
+        import anvil.tables.query as q
         new_key = _dedup_key(notif_type, payload_json)
         cutoff = get_utc_now() - timedelta(seconds=seconds)
-        for r in app_tables.notifications.search(user_email=user_email, type=notif_type):
-            if r.get('created_at') and r['created_at'] >= cutoff:
-                existing_key = _dedup_key(notif_type, r.get('payload'))
-                if existing_key == new_key:
-                    return True
+        # Filter by created_at in the DB query to reduce data transfer
+        recent = app_tables.notifications.search(
+            user_email=user_email,
+            type=notif_type,
+            created_at=q.greater_than_or_equal_to(cutoff)
+        )
+        for r in recent:
+            existing_key = _dedup_key(notif_type, r.get('payload'))
+            if existing_key == new_key:
+                return True
         return False
     except Exception:
         return False
@@ -225,11 +231,9 @@ def get_unread_notification_count(token_or_email):
     if not user_email:
         return {'success': False, 'count': 0}
     try:
-        count = 0
-        for r in app_tables.notifications.search(user_email=user_email, read_at=None):
-            count += 1
-            if count >= 999:
-                break
+        # Use len() on search result which is more efficient than iteration
+        results = app_tables.notifications.search(user_email=user_email, read_at=None)
+        count = min(len(results), 999)
         return {'success': True, 'count': count}
     except Exception as e:
         return {'success': False, 'count': 0, 'message': str(e)}

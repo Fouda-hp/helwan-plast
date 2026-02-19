@@ -37,9 +37,11 @@ try:
 except ImportError:
     from auth_permissions import require_permission_full as _require_permission
 
-# Simple server-side cache for dashboard data
-_dashboard_cache = {'data': None, 'timestamp': 0, 'filter': None, 'user': None}
-_DASHBOARD_CACHE_TTL_SECONDS = 180
+# Thread-safe cache for dashboard data (replaces ad-hoc global dict)
+try:
+    from .cache_manager import dashboard_cache as _dashboard_cache_mgr
+except ImportError:
+    from cache_manager import dashboard_cache as _dashboard_cache_mgr
 
 
 # Use shared helpers to avoid code duplication
@@ -57,10 +59,7 @@ except ImportError:
 # Follow-up CRUD
 # =========================================================
 def _invalidate_dashboard_cache():
-    _dashboard_cache['data'] = None
-    _dashboard_cache['timestamp'] = 0
-    _dashboard_cache['filter'] = None
-    _dashboard_cache['user'] = None
+    _dashboard_cache_mgr.invalidate()
 
 @anvil.server.callable
 def set_followup(quotation_number, follow_up_date, token_or_email=None):
@@ -216,14 +215,11 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
     if not is_valid:
         return error
 
-    # Check cache (60 second TTL)
-    import time as _time
-    now_ts = _time.time()
-    if (_dashboard_cache['data'] is not None
-        and _dashboard_cache['filter'] == filter_status
-        and _dashboard_cache.get('user') == user_email
-        and (now_ts - _dashboard_cache['timestamp']) < _DASHBOARD_CACHE_TTL_SECONDS):
-        return _dashboard_cache['data']
+    # Check thread-safe cache
+    cache_key = f"dashboard:{user_email}:{filter_status}"
+    cached = _dashboard_cache_mgr.get(cache_key)
+    if cached is not None:
+        return cached
 
     try:
         today = date.today()
@@ -324,11 +320,8 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
             'data': data[:200],
         }
 
-        # Update cache
-        _dashboard_cache['data'] = result
-        _dashboard_cache['filter'] = filter_status
-        _dashboard_cache['user'] = user_email
-        _dashboard_cache['timestamp'] = _time.time()
+        # Update thread-safe cache
+        _dashboard_cache_mgr.set(cache_key, result)
 
         return result
 

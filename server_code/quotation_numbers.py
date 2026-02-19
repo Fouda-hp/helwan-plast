@@ -58,35 +58,70 @@ def _get_max_from_table(counter_key, include_deleted=False):
     القيمة العظمى الفعلية في جدول العملاء أو العروض.
     تُستخدم للبذر الأولي ولإعادة المزامنة.
     include_deleted: إذا True نعدّ كل الصفوف؛ إذا False نستثني is_deleted=True حيث وُجد.
+
+    Performance: tries descending order first for O(1) best case,
+    falls back to full scan if ordering is not supported.
     """
     max_val = 0
     try:
         if counter_key == COUNTER_CLIENTS:
-            it = app_tables.clients.search()
-            for row in it:
-                if not include_deleted and row.get("is_deleted") is True:
-                    continue
-                v = row.get("Client Code")
-                if v is not None:
-                    try:
-                        n = int(v) if isinstance(v, str) else v
-                        if n > max_val:
-                            max_val = n
-                    except (ValueError, TypeError):
-                        pass
+            col_name = "Client Code"
+            search_kwargs = {} if include_deleted else {"is_deleted": False}
+            try:
+                # Try ordered search — O(1) if the column is sortable
+                from anvil.tables import order_by
+                results = app_tables.clients.search(
+                    order_by=[order_by(col_name, ascending=False)],
+                    **search_kwargs
+                )
+                for row in results:
+                    v = row.get(col_name)
+                    if v is not None:
+                        try:
+                            return int(v) if isinstance(v, str) else int(v)
+                        except (ValueError, TypeError):
+                            continue
+            except Exception:
+                # Fallback: full scan (original logic)
+                for row in app_tables.clients.search():
+                    if not include_deleted and row.get("is_deleted") is True:
+                        continue
+                    v = row.get(col_name)
+                    if v is not None:
+                        try:
+                            n = int(v) if isinstance(v, str) else v
+                            if n > max_val:
+                                max_val = n
+                        except (ValueError, TypeError):
+                            pass
         elif counter_key == COUNTER_QUOTATIONS:
-            it = app_tables.quotations.search()
-            for row in it:
-                if not include_deleted and row.get("is_deleted") is True:
-                    continue
-                v = row.get("Quotation#")
-                if v is not None:
-                    try:
-                        n = int(v) if isinstance(v, str) else v
-                        if n > max_val:
-                            max_val = n
-                    except (ValueError, TypeError):
-                        pass
+            col_name = "Quotation#"
+            search_kwargs = {} if include_deleted else {"is_deleted": False}
+            try:
+                from anvil.tables import order_by
+                results = app_tables.quotations.search(
+                    order_by=[order_by(col_name, ascending=False)],
+                    **search_kwargs
+                )
+                for row in results:
+                    v = row.get(col_name)
+                    if v is not None:
+                        try:
+                            return int(v) if isinstance(v, str) else int(v)
+                        except (ValueError, TypeError):
+                            continue
+            except Exception:
+                for row in app_tables.quotations.search():
+                    if not include_deleted and row.get("is_deleted") is True:
+                        continue
+                    v = row.get(col_name)
+                    if v is not None:
+                        try:
+                            n = int(v) if isinstance(v, str) else v
+                            if n > max_val:
+                                max_val = n
+                        except (ValueError, TypeError):
+                            pass
     except Exception as e:
         logger.warning("_get_max_from_table(%s): %s", counter_key, e)
     return max_val

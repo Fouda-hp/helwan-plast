@@ -126,12 +126,20 @@ def destroy_session(token):
 def cleanup_expired_sessions():
     """تنظيف الجلسات المنتهية - يمكن استدعاؤها يدوياً أو عبر Scheduler"""
     try:
+        import anvil.tables.query as q
         now = get_utc_now()
+        # Use DB-level filter to reduce data transfer
+        expired_sessions = list(app_tables.sessions.search(
+            is_active=True,
+            expires_at=q.less_than(now)
+        ))
         cleaned = 0
-        for s in app_tables.sessions.search(is_active=True):
-            if s.get('expires_at') and make_aware(s['expires_at']) < now:
+        for s in expired_sessions:
+            try:
                 s.update(is_active=False)
                 cleaned += 1
+            except Exception:
+                pass  # Skip individual failures
         if cleaned > 0:
             logger.info("Cleaned up %d expired sessions", cleaned)
         return cleaned

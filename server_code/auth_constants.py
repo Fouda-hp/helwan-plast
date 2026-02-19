@@ -23,7 +23,9 @@ OTP_EXPIRY_MINUTES = 10
 # ========== البريد والسري الطوارئ ==========
 try:
     import anvil.secrets
-    ADMIN_NOTIFICATION_EMAIL = anvil.secrets.get_secret('ADMIN_EMAIL') or "mohamedadelfouda@helwanplast.com"
+    ADMIN_NOTIFICATION_EMAIL = anvil.secrets.get_secret('ADMIN_EMAIL') or None
+    if not ADMIN_NOTIFICATION_EMAIL:
+        logger.critical("ADMIN_EMAIL not set in Anvil Secrets! Admin notifications DISABLED.")
     _emergency_key = anvil.secrets.get_secret('EMERGENCY_KEY')
     if not _emergency_key:
         logger.critical("EMERGENCY_KEY not set in Anvil Secrets! Emergency endpoints DISABLED.")
@@ -32,7 +34,7 @@ try:
         EMERGENCY_SECRET_KEY = _emergency_key
 except Exception as e:
     logger.critical("Failed to load secrets: %s - Emergency endpoints DISABLED.", e)
-    ADMIN_NOTIFICATION_EMAIL = "mohamedadelfouda@helwanplast.com"
+    ADMIN_NOTIFICATION_EMAIL = None
     EMERGENCY_SECRET_KEY = None
 
 # ========== صلاحيات الأدوار ==========

@@ -45,7 +45,11 @@ def check_permission(token, action):
 
 
 def is_admin_by_email(email):
-    """التحقق من أن المستخدم أدمن بالبريد الإلكتروني."""
+    """
+    التحقق من أن المستخدم أدمن بالبريد الإلكتروني.
+    تحذير أمني: هذه الدالة للاستخدام الداخلي فقط (server-side checks).
+    لا تستخدمها أبداً مع بيانات مرسلة من الكلاينت — استخدم is_admin(token) بدلاً منها.
+    """
     if not email:
         return False
     user = app_tables.users.get(email=email.lower())

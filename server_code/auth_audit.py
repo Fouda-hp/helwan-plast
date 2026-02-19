@@ -147,6 +147,6 @@ def log_audit(action, table_name, record_id, old_data, new_data,
                 'user_name': row_data.get('user_name', '—'),
             })
         except Exception as notif_e:
-            logger.debug("Notify admins after audit: %s", notif_e)
+            logger.warning("Failed to notify admins after audit event: %s", notif_e)
     except Exception as e:
         logger.error("Audit log error: %s", e)

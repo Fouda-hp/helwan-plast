@@ -87,8 +87,8 @@ def validate_session(token):
         try:
             new_expires = get_utc_now() + timedelta(minutes=SESSION_DURATION_MINUTES)
             session.update(expires_at=new_expires)
-        except Exception:
-            pass  # لا نفشل الجلسة بسبب خطأ في التمديد
+        except Exception as e:
+            logger.warning("Failed to extend session for %s: %s", session['user_email'], e)
         return {
             'email': session['user_email'],
             'role': user['role'],
@@ -111,12 +111,8 @@ def destroy_session(token):
         token_hash = _hash_token(token)
         session = app_tables.sessions.get(session_token=token_hash)
 
-        # Fallback: دعم التوكنات القديمة
-        if not session:
-            try:
-                session = app_tables.sessions.get(session_token=token)
-            except Exception as e:
-                logger.warning("Legacy token destroy lookup failed: %s", e)
+        # Legacy token fallback removed for security.
+        # All sessions must use hashed tokens.
 
         if session:
             session.update(is_active=False)

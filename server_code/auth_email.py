@@ -2,6 +2,7 @@
 auth_email.py - إرسال البريد (Gmail API، الموافقة/الرفض)
 """
 
+import html as _html
 import logging
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,9 @@ def send_approval_email(user_email, user_name, role, approved=True):
         logger.warning("Email service not available. Skipping email notification.")
         return False
     try:
+        # Escape user-supplied data to prevent HTML injection
+        safe_name = _html.escape(str(user_name or ''))
+        safe_role = _html.escape(str(role or '').capitalize())
         if approved:
             subject = "Account Approved - Helwan Plast System"
             html_body = f"""
@@ -46,10 +50,10 @@ def send_approval_email(user_email, user_name, role, approved=True):
                 </div>
                 <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
                     <h2 style="color: #2e7d32; margin-top: 0;">Account Approved!</h2>
-                    <p style="font-size: 16px; color: #333;">Dear <strong>{user_name}</strong>,</p>
+                    <p style="font-size: 16px; color: #333;">Dear <strong>{safe_name}</strong>,</p>
                     <p style="font-size: 16px; color: #333;">Your account has been approved! You can now log in to the Helwan Plast System.</p>
                     <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                        <p style="margin: 0; font-size: 14px; color: #2e7d32;"><strong>Your Role:</strong> {role.capitalize()}</p>
+                        <p style="margin: 0; font-size: 14px; color: #2e7d32;"><strong>Your Role:</strong> {safe_role}</p>
                     </div>
                     <p style="font-size: 12px; color: #999; text-align: center;">Best regards,<br><strong>Helwan Plast</strong></p>
                 </div>
@@ -64,7 +68,7 @@ def send_approval_email(user_email, user_name, role, approved=True):
                 </div>
                 <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
                     <h2 style="color: #c62828; margin-top: 0;">Account Registration Status</h2>
-                    <p style="font-size: 16px; color: #333;">Dear <strong>{user_name}</strong>,</p>
+                    <p style="font-size: 16px; color: #333;">Dear <strong>{safe_name}</strong>,</p>
                     <p style="font-size: 16px; color: #333;">We regret to inform you that your account registration request has been declined.</p>
                     <p style="font-size: 12px; color: #999; text-align: center;">Best regards,<br><strong>Helwan Plast</strong></p>
                 </div>

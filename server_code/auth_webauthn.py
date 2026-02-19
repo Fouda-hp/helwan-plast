@@ -69,10 +69,13 @@ def _get_rp_id():
         origin = anvil.server.get_app_origin()
         if origin:
             from urllib.parse import urlparse
-            return urlparse(origin).hostname
+            hostname = urlparse(origin).hostname
+            if hostname:
+                return hostname
     except Exception:
         pass
-    return "helwanplast.anvil.app"  # fallback
+    logger.error("Cannot determine RP ID: app origin unavailable. WebAuthn will fail.")
+    raise RuntimeError("WebAuthn RP ID could not be determined from app origin.")
 
 
 def _get_origin():
@@ -83,10 +86,12 @@ def _get_origin():
             from urllib.parse import urlparse
             parsed = urlparse(origin)
             # WebAuthn origin = scheme + hostname (no path, no trailing slash)
-            return f"{parsed.scheme}://{parsed.hostname}"
+            if parsed.scheme and parsed.hostname:
+                return f"{parsed.scheme}://{parsed.hostname}"
     except Exception:
         pass
-    return "https://o5xpeyexwjg4zlhg.anvil.app"
+    logger.error("Cannot determine origin: app origin unavailable. WebAuthn will fail.")
+    raise RuntimeError("WebAuthn origin could not be determined from app origin.")
 
 
 def _b64url_decode(s):

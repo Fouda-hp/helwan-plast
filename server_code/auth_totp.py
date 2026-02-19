@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 def _generate_backup_codes(count=8):
-    """Generate a set of single-use backup codes (8-char hex each)."""
-    return [secrets.token_hex(4) for _ in range(count)]
+    """Generate a set of single-use backup codes (24-char hex each, 96-bit entropy)."""
+    return [secrets.token_hex(12) for _ in range(count)]
 
 
 def _hash_backup_code(code):
@@ -60,9 +60,26 @@ def verify_backup_code_impl(user_email, code):
         return False
 
 
+_totp_attempt_tracker = {}  # {email: {'count': int, 'window_start': float}}
+_TOTP_MAX_ATTEMPTS = 5
+_TOTP_WINDOW_SECONDS = 60
+
 def verify_totp_for_user(user_email, token):
-    """التحقق من كود TOTP من تطبيق المصادقة، أو كود احتياطي."""
+    """التحقق من كود TOTP من تطبيق المصادقة، أو كود احتياطي. مع حماية من brute force."""
+    import time
     try:
+        # --- Rate limiting on TOTP attempts ---
+        now = time.time()
+        tracker = _totp_attempt_tracker.get(user_email)
+        if tracker:
+            if now - tracker['window_start'] < _TOTP_WINDOW_SECONDS:
+                if tracker['count'] >= _TOTP_MAX_ATTEMPTS:
+                    logger.warning("TOTP rate limit exceeded for %s", user_email)
+                    return False
+            else:
+                # Reset window
+                _totp_attempt_tracker[user_email] = {'count': 0, 'window_start': now}
+
         import pyotp
         user = app_tables.users.get(email=user_email)
         if not user:
@@ -74,10 +91,17 @@ def verify_totp_for_user(user_email, token):
         code = str(token).strip().replace(' ', '')
         # Try TOTP first
         if totp.verify(code, valid_window=1):
+            # Reset attempts on success
+            _totp_attempt_tracker.pop(user_email, None)
             return True
         # If TOTP fails, try as backup code
         if verify_backup_code_impl(user_email, code):
+            _totp_attempt_tracker.pop(user_email, None)
             return True
+        # Track failed attempt
+        if user_email not in _totp_attempt_tracker:
+            _totp_attempt_tracker[user_email] = {'count': 0, 'window_start': now}
+        _totp_attempt_tracker[user_email]['count'] += 1
         return False
     except Exception as e:
         logger.error("TOTP verify error: %s", e)

@@ -77,4 +77,5 @@ def check_password_history(user_email, new_password):
         return True, "Password is valid"
     except Exception as e:
         logger.error("Password history check error: %s", e)
-        return True, "Check passed"
+        # Fail-closed: block the operation when we cannot verify history
+        return False, "Unable to verify password history. Please try again later."

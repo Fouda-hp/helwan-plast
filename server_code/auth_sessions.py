@@ -146,3 +146,30 @@ def cleanup_expired_sessions():
     except Exception as e:
         logger.error("Cleanup sessions error: %s", e)
         return 0
+
+
+def purge_old_sessions(days=30):
+    """
+    حذف نهائي للسيشنز القديمة غير النشطة (is_active=False) التي مضى عليها أكثر من days يوم.
+    يُستدعى من scheduled_session_cleanup أو يدوياً لمنع تراكم السيشنز في قاعدة البيانات.
+    """
+    try:
+        import anvil.tables.query as q
+        cutoff = get_utc_now() - timedelta(days=days)
+        old_sessions = list(app_tables.sessions.search(
+            is_active=False,
+            expires_at=q.less_than(cutoff)
+        ))
+        purged = 0
+        for s in old_sessions:
+            try:
+                s.delete()
+                purged += 1
+            except Exception:
+                pass
+        if purged > 0:
+            logger.info("Purged %d old inactive sessions (older than %d days)", purged, days)
+        return purged
+    except Exception as e:
+        logger.error("Purge old sessions error: %s", e)
+        return 0

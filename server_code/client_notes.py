@@ -241,6 +241,9 @@ def set_client_tags(client_code, tags, token_or_email=None):
                     {'tags': old_tags}, {'tags': clean_tags},
                     user_email, _get_client_ip())
 
+        # Invalidate tags cache so get_all_tags picks up the change
+        _tags_cache_mgr.invalidate('all_tags')
+
         return {'success': True, 'tags': clean_tags}
 
     except Exception as e:
@@ -248,20 +251,21 @@ def set_client_tags(client_code, tags, token_or_email=None):
         return {'success': False, 'message': str(e)}
 
 
-import time as _time_mod
-_tags_cache = {'data': None, 'timestamp': 0}
-_TAGS_CACHE_TTL = 30  # seconds
+try:
+    from .cache_manager import tags_cache as _tags_cache_mgr
+except ImportError:
+    from cache_manager import tags_cache as _tags_cache_mgr
 
 @anvil.server.callable
 def get_all_tags(token_or_email=None):
-    """جلب كل الوسوم المستخدمة عبر كل العملاء (cached 30s)"""
+    """جلب كل الوسوم المستخدمة عبر كل العملاء (cached 30s via TTLCache)"""
     is_valid, user_email, error = _require_permission(token_or_email, 'view')
     if not is_valid:
         return error
 
-    now = _time_mod.time()
-    if _tags_cache['data'] is not None and (now - _tags_cache['timestamp']) < _TAGS_CACHE_TTL:
-        return _tags_cache['data']
+    cached = _tags_cache_mgr.get('all_tags')
+    if cached is not None:
+        return cached
 
     try:
         all_tags = set()
@@ -273,8 +277,7 @@ def get_all_tags(token_or_email=None):
                         all_tags.add(str(t).strip())
 
         result = {'success': True, 'tags': sorted(list(all_tags))}
-        _tags_cache['data'] = result
-        _tags_cache['timestamp'] = now
+        _tags_cache_mgr.set('all_tags', result)
         return result
 
     except Exception as e:

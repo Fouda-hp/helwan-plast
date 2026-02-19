@@ -60,25 +60,33 @@ def verify_backup_code_impl(user_email, code):
         return False
 
 
-_totp_attempt_tracker = {}  # {email: {'count': int, 'window_start': float}}
+_totp_attempt_tracker = {}  # {ip:email: {'count': int, 'window_start': float}}
 _TOTP_MAX_ATTEMPTS = 5
 _TOTP_WINDOW_SECONDS = 60
 
-def verify_totp_for_user(user_email, token):
-    """التحقق من كود TOTP من تطبيق المصادقة، أو كود احتياطي. مع حماية من brute force."""
+
+def _totp_rate_key(user_email, ip_address=None):
+    """Build composite rate-limit key from IP + email to defend against distributed attacks."""
+    ip = str(ip_address or 'unknown').strip()
+    return f"{ip}:{user_email}"
+
+
+def verify_totp_for_user(user_email, token, ip_address=None):
+    """التحقق من كود TOTP من تطبيق المصادقة، أو كود احتياطي. مع حماية من brute force (IP+user)."""
     import time
     try:
-        # --- Rate limiting on TOTP attempts ---
+        # --- Rate limiting on TOTP attempts (keyed by IP:email) ---
         now = time.time()
-        tracker = _totp_attempt_tracker.get(user_email)
+        rate_key = _totp_rate_key(user_email, ip_address)
+        tracker = _totp_attempt_tracker.get(rate_key)
         if tracker:
             if now - tracker['window_start'] < _TOTP_WINDOW_SECONDS:
                 if tracker['count'] >= _TOTP_MAX_ATTEMPTS:
-                    logger.warning("TOTP rate limit exceeded for %s", user_email)
+                    logger.warning("TOTP rate limit exceeded for %s (key=%s)", user_email, rate_key)
                     return False
             else:
                 # Reset window
-                _totp_attempt_tracker[user_email] = {'count': 0, 'window_start': now}
+                _totp_attempt_tracker[rate_key] = {'count': 0, 'window_start': now}
 
         import pyotp
         user = app_tables.users.get(email=user_email)
@@ -92,16 +100,16 @@ def verify_totp_for_user(user_email, token):
         # Try TOTP first
         if totp.verify(code, valid_window=1):
             # Reset attempts on success
-            _totp_attempt_tracker.pop(user_email, None)
+            _totp_attempt_tracker.pop(rate_key, None)
             return True
         # If TOTP fails, try as backup code
         if verify_backup_code_impl(user_email, code):
-            _totp_attempt_tracker.pop(user_email, None)
+            _totp_attempt_tracker.pop(rate_key, None)
             return True
         # Track failed attempt
-        if user_email not in _totp_attempt_tracker:
-            _totp_attempt_tracker[user_email] = {'count': 0, 'window_start': now}
-        _totp_attempt_tracker[user_email]['count'] += 1
+        if rate_key not in _totp_attempt_tracker:
+            _totp_attempt_tracker[rate_key] = {'count': 0, 'window_start': now}
+        _totp_attempt_tracker[rate_key]['count'] += 1
         return False
     except Exception as e:
         logger.error("TOTP verify error: %s", e)

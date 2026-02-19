@@ -39,7 +39,7 @@ from .auth_constants import (
 from .auth_utils import get_utc_now, make_aware, get_client_ip, validate_email
 from .auth_email import send_email_smtp, send_approval_email, EMAIL_SERVICE_AVAILABLE
 from .auth_password import hash_password, verify_password, upgrade_password_hash, add_to_password_history, check_password_history
-from .auth_sessions import generate_session_token, create_session, validate_session, destroy_session, cleanup_expired_sessions
+from .auth_sessions import generate_session_token, create_session, validate_session, destroy_session, cleanup_expired_sessions, purge_old_sessions
 from .auth_rate_limit import check_rate_limit
 # استيراد مطلق متوافق مع Anvil (الوحدة قد لا تُحمّل كـ Helwan_Plast.auth_permissions)
 try:
@@ -356,9 +356,9 @@ def _get_totp_secret_for_user(user):
     return None
 
 
-def verify_totp_for_user(user_email, token):
+def verify_totp_for_user(user_email, token, ip_address=None):
   """التحقق من كود TOTP (مُستدعى من AuthManager؛ التنفيذ في auth_totp)."""
-  return auth_totp.verify_totp_for_user(user_email, token)
+  return auth_totp.verify_totp_for_user(user_email, token, ip_address=ip_address)
 
 
 @anvil.server.callable
@@ -904,7 +904,7 @@ def verify_login_otp(email, otp):
 
     # إذا المستخدم مفعّل عنده تطبيق المصادقة (TOTP) نتحقق من الكود من التطبيق
     if user.get('totp_secret'):
-        if verify_totp_for_user(email, otp):
+        if verify_totp_for_user(email, otp, ip_address=ip_address):
             return complete_login(user, ip_address)
         # TOTP فشل - لا نسقط للإيميل لأن ذلك يبطل حماية TOTP
         return {
@@ -3147,24 +3147,29 @@ def get_session_info(token):
 @anvil.server.background_task
 def scheduled_session_cleanup():
     """
-    مهمة مجدولة لتنظيف الجلسات المنتهية.
+    مهمة مجدولة لتنظيف الجلسات المنتهية + حذف القديمة نهائياً.
     يجب إعدادها في Anvil Scheduler لتعمل كل ساعة.
     Anvil → Background Tasks → Add Task → scheduled_session_cleanup → Every hour
     """
     try:
         cleaned = cleanup_expired_sessions()
-        logger.info(f"Scheduled session cleanup completed: {cleaned} sessions cleaned")
-        return {'success': True, 'cleaned': cleaned}
+        purged = purge_old_sessions(days=30)
+        logger.info("Scheduled session cleanup: %d deactivated, %d purged", cleaned, purged)
+        return {'success': True, 'cleaned': cleaned, 'purged': purged}
     except Exception as e:
-        logger.error(f"Scheduled session cleanup error: {e}")
+        logger.error("Scheduled session cleanup error: %s", e)
         return {'success': False, 'error': str(e)}
 
 
 @anvil.server.callable
 def manual_session_cleanup(token_or_email):
-    """تنظيف يدوي للجلسات المنتهية (للأدمن فقط)"""
+    """تنظيف يدوي للجلسات المنتهية + حذف القديمة (للأدمن فقط)"""
     is_authorized, error = require_admin(token_or_email)
     if not is_authorized:
         return error if isinstance(error, dict) else {'success': False, 'message': 'Permission denied'}
     cleaned = cleanup_expired_sessions()
-    return {'success': True, 'message': f'تم تنظيف {cleaned} جلسة منتهية'}
+    purged = purge_old_sessions(days=30)
+    return {
+        'success': True,
+        'message': f'تم تنظيف {cleaned} جلسة منتهية وحذف {purged} جلسة قديمة نهائياً'
+    }

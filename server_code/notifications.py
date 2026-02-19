@@ -24,6 +24,9 @@ import anvil.server
 
 logger = logging.getLogger(__name__)
 
+# Safety caps — prevent unbounded iteration over large tables
+MAX_SEARCH = 5_000
+
 # استيراد الدوال المطلوبة مباشرة بدون الاعتماد على AuthManager (لتجنب circular imports)
 try:
     from .auth_sessions import validate_session as _validate_session
@@ -335,7 +338,10 @@ def clear_all_notifications(token_or_email):
         return {'success': False, 'message': 'Authentication required'}
     try:
         now = get_utc_now()
-        for row in app_tables.notifications.search(user_email=user_email, read_at=None):
+        for _i, row in enumerate(app_tables.notifications.search(user_email=user_email, read_at=None)):
+            if _i >= MAX_SEARCH:
+                logger.warning("Notification scan cap reached (%d) in clear_all_notifications", MAX_SEARCH)
+                break
             row.update(read_at=now)
         return {'success': True}
     except Exception as e:
@@ -351,7 +357,10 @@ def delete_all_my_notifications(token_or_email):
     try:
         rows = list(app_tables.notifications.search(user_email=user_email))
         count = 0
-        for row in rows:
+        for _i, row in enumerate(rows):
+            if _i >= MAX_SEARCH:
+                logger.warning("Notification scan cap reached (%d) in delete_all_my_notifications", MAX_SEARCH)
+                break
             row.delete()
             count += 1
         logger.info("Deleted %s notifications for user %s", count, user_email)

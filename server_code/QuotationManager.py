@@ -82,6 +82,8 @@ except ImportError:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Safety caps — prevent unbounded iteration over large tables
+MAX_SEARCH = 10_000
 
 # =========================================================
 # استخدام دالة log_audit من AuthManager (موحدة)
@@ -1047,7 +1049,10 @@ def export_clients_data(include_deleted=False, token_or_email=None):
         is_admin = _is_admin_export(token_or_email)
         search_kwargs = {} if include_deleted else {'is_deleted': False}
         data = []
-        for r in app_tables.clients.search(**search_kwargs):
+        for _i, r in enumerate(app_tables.clients.search(**search_kwargs)):
+            if _i >= MAX_SEARCH:
+                logger.warning("Client scan cap reached (%d) in export_clients_data", MAX_SEARCH)
+                break
             data.append({
                 "Client Code": r["Client Code"],
                 "Client Name": r["Client Name"],
@@ -1090,7 +1095,10 @@ def export_quotations_data(include_deleted=False, token_or_email=None):
             }
 
         data = []
-        for r in app_tables.quotations.search(**search_kwargs):
+        for _i, r in enumerate(app_tables.quotations.search(**search_kwargs)):
+            if _i >= MAX_SEARCH:
+                logger.warning("Quotation scan cap reached (%d) in export_quotations_data", MAX_SEARCH)
+                break
             client_code = str(r.get('Client Code', ''))
             client = clients_dict.get(client_code)
 
@@ -1165,7 +1173,10 @@ def get_dashboard_stats(token_or_email=None):
     this_month_q_count = 0
     this_month_value = 0
     try:
-        for q in app_tables.quotations.search(is_deleted=False):
+        for _i, q in enumerate(app_tables.quotations.search(is_deleted=False)):
+            if _i >= MAX_SEARCH:
+                logger.warning("Quotation scan cap reached (%d) in get_dashboard_stats", MAX_SEARCH)
+                break
             active_quotations_count += 1
             price = q['Agreed Price'] or 0
             total_agreed += price
@@ -2539,11 +2550,11 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
             return result
             
         except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Error creating contract: {error_msg}")
-            
+            err_type = type(e).__name__
+            logger.error("Error creating contract: %s", err_type)
+
             # Check if table/column doesn't exist
-            if 'contracts' in error_msg.lower() or 'table' in error_msg.lower() or 'column' in error_msg.lower():
+            if err_type in ('TableError', 'ColumnError', 'AttributeError'):
                 return {
                     'success': False,
                     'message': 'المشكلة: جدول العقود (contracts) غير موجود أو ناقص أعمدة. أنشئ الجدول في Anvil Data Tables وفق المخطط في anvil.yaml (يشمل أعمدة الدفعات payment_1_date حتى payment_12_value).'
@@ -3453,7 +3464,7 @@ def diagnose_backup_drive(token_or_email):
                     result['file_count'] = len(files)
                     result['file_names'] = [getattr(f, 'name', str(f))[:50] for f in files[:5]]
                 except Exception as e:
-                    result['list_files_error'] = str(e)
+                    result['list_files_error'] = type(e).__name__
                 break
         if 'found_name' not in result:
             result['error'] = 'No backup folder found in app_files'

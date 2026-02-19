@@ -465,6 +465,11 @@ class TestContractsGetActive(unittest.TestCase):
 
     def setUp(self):
         _tables['contracts'].clear()
+        # Ensure shared_utils uses our in-memory tables (fixes cross-test contamination)
+        import server_code.shared_utils as su
+        su.app_tables = _AppTablesProxy()
+        # Reset the column check cache so it re-checks with our InMemoryTable
+        su._contracts_has_is_deleted = None
 
     def test_get_active_returns_contract(self):
         """contracts_get_active returns a matching non-deleted contract."""

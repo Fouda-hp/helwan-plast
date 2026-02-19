@@ -60,6 +60,11 @@ try:
 except ImportError:
     from shared_utils import contracts_search_active as _contracts_search_active
 
+try:
+    from .shared_utils import bounded_search as _bounded_search
+except ImportError:
+    from shared_utils import bounded_search as _bounded_search
+
 # Structured logging — request timing decorator
 try:
     from .structured_logging import log_request_timing as _timed
@@ -93,6 +98,11 @@ def _set_report_cache(cache_key, data, user_email):
 def _invalidate_report_cache():
     """Clear all report caches (call after any ledger write)."""
     _report_cache_mgr.invalidate()
+
+# ---------------------------------------------------------------------------
+# Safety caps — prevent unbounded iteration over large tables
+# ---------------------------------------------------------------------------
+MAX_LEDGER_SCAN = 50_000
 
 # ---------------------------------------------------------------------------
 # Utility helpers
@@ -575,9 +585,12 @@ def post_year_end_closing(year, token_or_email=None):
 
     # Aggregate revenue and expense for the year
     acct_totals = {}
-    for entry in app_tables.ledger.search(
+    for _i, entry in enumerate(app_tables.ledger.search(
         date=q.all_of(q.greater_than_or_equal_to(year_start), q.less_than_or_equal_to(year_end))
-    ):
+    )):
+        if _i >= MAX_LEDGER_SCAN:
+            logger.warning("Ledger scan cap reached (%d) in close_year_end", MAX_LEDGER_SCAN)
+            break
         code = entry.get('account_code', '')
         atype = acct_meta.get(code, '')
         if atype not in ('revenue', 'expense'):
@@ -828,7 +841,11 @@ def get_ledger_entries(account_code=None, date_from=None, date_to=None, ref_type
                 search_kwargs['date'] = q.all_of(*date_constraints)
 
         results = []
-        for r in app_tables.ledger.search(**search_kwargs):
+        _MAX_LEDGER_ROWS = 10000  # Safety cap — bounded ledger scan
+        for i, r in enumerate(app_tables.ledger.search(**search_kwargs)):
+            if i >= _MAX_LEDGER_ROWS:
+                logger.warning("get_ledger_entries: ledger scan capped at %d rows", _MAX_LEDGER_ROWS)
+                break
             results.append(_row_to_dict(r, LEDGER_COLS))
 
         results.sort(key=lambda x: (x.get('date', ''), x.get('created_at', '')))
@@ -857,7 +874,11 @@ def get_account_balance(account_code, as_of_date=None, token_or_email=None):
         total_debit = 0.0
         total_credit = 0.0
 
-        for r in app_tables.ledger.search(account_code=account_code):
+        _MAX_ROWS = 50000  # Safety cap — bounded ledger scan per account
+        for i, r in enumerate(app_tables.ledger.search(account_code=account_code)):
+            if i >= _MAX_ROWS:
+                logger.warning("get_account_balance: ledger scan capped at %d rows for account %s", _MAX_ROWS, account_code)
+                break
             row_date = r.get('date')
             if isinstance(row_date, datetime):
                 row_date = row_date.date()
@@ -893,7 +914,11 @@ def _get_account_balance_internal(account_code, as_of_date=None):
     cutoff = _safe_date(as_of_date)
     total_debit = 0.0
     total_credit = 0.0
-    for r in app_tables.ledger.search(account_code=account_code):
+    _MAX_ROWS = 50000  # Safety cap — bounded ledger scan per account
+    for i, r in enumerate(app_tables.ledger.search(account_code=account_code)):
+        if i >= _MAX_ROWS:
+            logger.warning("_get_account_balance_internal: ledger scan capped at %d rows for account %s", _MAX_ROWS, account_code)
+            break
         row_date = r.get('date')
         if isinstance(row_date, datetime):
             row_date = row_date.date()
@@ -1260,10 +1285,10 @@ def _register_posted_purchase_invoice(invoice_id, user_email):
         tbl.add_row(invoice_id=invoice_id, posted_at=get_utc_now(), created_by=_safe_str(user_email))
         return True
     except Exception as e:
-        err = str(e).lower()
-        if 'unique' in err or 'duplicate' in err or 'constraint' in err:
+        err_type = type(e).__name__
+        if 'unique' in err_type.lower() or 'duplicate' in err_type.lower() or 'constraint' in err_type.lower():
             return False
-        logger.warning("posted_purchase_invoice_ids register (BLOCKED — fail-closed): %s", e)
+        logger.warning("posted_purchase_invoice_ids register (BLOCKED — fail-closed): %s", err_type)
         return False
 
 
@@ -2859,7 +2884,10 @@ def _get_vat_rate():
 def _vat_balance(account_code, as_of_date=None):
     """Sum (debit - credit) for account up to as_of_date (inclusive). Ledger only."""
     total = 0.0
-    for entry in app_tables.ledger.search(account_code=account_code):
+    for _i, entry in enumerate(app_tables.ledger.search(account_code=account_code)):
+        if _i >= MAX_LEDGER_SCAN:
+            logger.warning("Ledger scan cap reached (%d) in _vat_balance for account %s", MAX_LEDGER_SCAN, account_code)
+            break
         ed = entry.get('date')
         if as_of_date and ed and ed > as_of_date:
             continue
@@ -2892,7 +2920,10 @@ def get_vat_report(as_of_date=None, date_from=None, date_to=None, token_or_email
             d_from = _safe_date(date_from)
             d_to = _safe_date(date_to)
             for acc, label in [(VAT_INPUT_ACCOUNT, 'Input VAT (2110)'), (VAT_OUTPUT_ACCOUNT, 'Output VAT (2100)')]:
-                for entry in app_tables.ledger.search(account_code=acc):
+                for _i, entry in enumerate(app_tables.ledger.search(account_code=acc)):
+                    if _i >= MAX_LEDGER_SCAN:
+                        logger.warning("Ledger scan cap reached (%d) in get_vat_report for account %s", MAX_LEDGER_SCAN, acc)
+                        break
                     ed = entry.get('date')
                     if ed is None:
                         continue
@@ -3378,8 +3409,14 @@ def get_inventory(status=None, search='', token_or_email=None):
             search_kwargs['status'] = status
         rows = app_tables.inventory.search(**search_kwargs)
         results = []
+        _MAX_ROWS = 10000  # Safety cap — bounded inventory scan
         search_lower = _safe_str(search).lower()
+        _scan_count = 0
         for r in rows:
+            _scan_count += 1
+            if _scan_count > _MAX_ROWS:
+                logger.warning("get_inventory: inventory scan capped at %d rows", _MAX_ROWS)
+                break
             if search_lower:
                 searchable = ' '.join([
                     _safe_str(r.get('machine_code')),
@@ -3415,7 +3452,11 @@ def get_available_inventory_for_contract(token_or_email=None):
     try:
         rows = app_tables.inventory.search(status='in_stock')
         results = []
-        for r in rows:
+        _MAX_ROWS = 5000  # Safety cap — bounded inventory scan
+        for i, r in enumerate(rows):
+            if i >= _MAX_ROWS:
+                logger.warning("get_available_inventory_for_contract: scan capped at %d rows", _MAX_ROWS)
+                break
             results.append({
                 'id': r.get('id', ''),
                 'machine_code': _safe_str(r.get('machine_code')),
@@ -3753,7 +3794,10 @@ def _get_all_balances(as_of_date=None, date_from=None):
         elif start:
             search_kwargs['date'] = q.greater_than_or_equal_to(start)
 
-        for entry in app_tables.ledger.search(**search_kwargs):
+        for _i, entry in enumerate(app_tables.ledger.search(**search_kwargs)):
+            if _i >= MAX_LEDGER_SCAN:
+                logger.warning("Ledger scan cap reached (%d) in _get_all_balances", MAX_LEDGER_SCAN)
+                break
             code = entry.get('account_code')
             if code not in accounts:
                 continue
@@ -3882,7 +3926,10 @@ def get_income_statement(date_from, date_to, token_or_email=None):
             search_kwargs['date'] = q.greater_than_or_equal_to(d_from)
         elif d_to:
             search_kwargs['date'] = q.less_than_or_equal_to(d_to)
-        for entry in app_tables.ledger.search(**search_kwargs):
+        for _i, entry in enumerate(app_tables.ledger.search(**search_kwargs)):
+            if _i >= MAX_LEDGER_SCAN:
+                logger.warning("Ledger scan cap reached (%d) in get_income_statement", MAX_LEDGER_SCAN)
+                break
             code = entry.get('account_code', '')
             if code not in acct_totals:
                 acct_totals[code] = {'debit': 0.0, 'credit': 0.0}
@@ -3991,7 +4038,10 @@ def get_cash_flow_report(date_from, date_to, token_or_email=None):
             cf_search['date'] = q.greater_than_or_equal_to(d_from)
         elif d_to:
             cf_search['date'] = q.less_than_or_equal_to(d_to)
-        for entry in app_tables.ledger.search(**cf_search):
+        for _i, entry in enumerate(app_tables.ledger.search(**cf_search)):
+            if _i >= MAX_LEDGER_SCAN:
+                logger.warning("Ledger scan cap reached (%d) in get_cash_flow_report", MAX_LEDGER_SCAN)
+                break
             code = _safe_str(entry.get('account_code', ''))
             d = _round2(entry.get('debit', 0))
             c = _round2(entry.get('credit', 0))
@@ -4748,7 +4798,10 @@ def _ledger_1210_balance_for_invoice(invoice_id):
 def _ledger_1200_debits_by_invoice():
     """Sum of DR 1200 by invoice_id (reference_type purchase_invoice or import_cost, reference_id=invoice_id)."""
     by_inv = {}
-    for e in app_tables.ledger.search(account_code='1200'):
+    for _i, e in enumerate(app_tables.ledger.search(account_code='1200')):
+        if _i >= MAX_LEDGER_SCAN:
+            logger.warning("Ledger scan cap reached (%d) in _ledger_1200_debits_by_invoice", MAX_LEDGER_SCAN)
+            break
         rt = _safe_str(e.get('reference_type', ''))
         rid = _safe_str(e.get('reference_id', ''))
         if rt in ('purchase_invoice', 'import_cost') and rid:
@@ -4759,7 +4812,10 @@ def _ledger_1200_debits_by_invoice():
 def _ledger_1200_credits_by_item():
     """Sum of CR 1200 by item_id (reference_type sales_invoice, reference_id=item_id)."""
     by_item = {}
-    for e in app_tables.ledger.search(account_code='1200'):
+    for _i, e in enumerate(app_tables.ledger.search(account_code='1200')):
+        if _i >= MAX_LEDGER_SCAN:
+            logger.warning("Ledger scan cap reached (%d) in _ledger_1200_credits_by_item", MAX_LEDGER_SCAN)
+            break
         if _safe_str(e.get('reference_type', '')) != 'sales_invoice':
             continue
         rid = _safe_str(e.get('reference_id', ''))
@@ -4772,12 +4828,18 @@ def _ledger_1200_credits_by_item():
 def _invoice_ids_with_1210_or_1200():
     """Collect invoice_ids that have 1210 or 1200 ledger activity (for reporting)."""
     out = set()
-    for e in app_tables.ledger.search(account_code='1210'):
+    for _i, e in enumerate(app_tables.ledger.search(account_code='1210')):
+        if _i >= MAX_LEDGER_SCAN:
+            logger.warning("Ledger scan cap reached (%d) in _invoice_ids_with_1210_or_1200 (1210)", MAX_LEDGER_SCAN)
+            break
         rt = _safe_str(e.get('reference_type', ''))
         rid = _safe_str(e.get('reference_id', ''))
         if rt in ('purchase_invoice', 'import_cost') and rid:
             out.add(rid)
-    for e in app_tables.ledger.search(account_code='1210', reference_type='import_cost_payment'):
+    for _i, e in enumerate(app_tables.ledger.search(account_code='1210', reference_type='import_cost_payment')):
+        if _i >= MAX_LEDGER_SCAN:
+            logger.warning("Ledger scan cap reached (%d) in _invoice_ids_with_1210_or_1200 (1210 payment)", MAX_LEDGER_SCAN)
+            break
         cost_id = _safe_str(e.get('reference_id', ''))
         if not cost_id:
             continue
@@ -4789,7 +4851,10 @@ def _invoice_ids_with_1210_or_1200():
                     out.add(pi_id)
         except Exception:
             pass
-    for e in app_tables.ledger.search(account_code='1200'):
+    for _i, e in enumerate(app_tables.ledger.search(account_code='1200')):
+        if _i >= MAX_LEDGER_SCAN:
+            logger.warning("Ledger scan cap reached (%d) in _invoice_ids_with_1210_or_1200 (1200)", MAX_LEDGER_SCAN)
+            break
         rt = _safe_str(e.get('reference_type', ''))
         rid = _safe_str(e.get('reference_id', ''))
         if rt in ('purchase_invoice', 'import_cost') and rid:
@@ -4883,7 +4948,10 @@ def get_inventory_detailed(token_or_email=None):
 
         # Import cost total per invoice from ledger (1210 + 1200 where ref_type=import_cost or import_cost_payment)
         import_total_by_inv = {}
-        for e in app_tables.ledger.search(account_code='1210'):
+        for _i, e in enumerate(app_tables.ledger.search(account_code='1210')):
+            if _i >= MAX_LEDGER_SCAN:
+                logger.warning("Ledger scan cap reached (%d) in get_inventory_valuation (1210 import)", MAX_LEDGER_SCAN)
+                break
             rt, rid = _safe_str(e.get('reference_type', '')), _safe_str(e.get('reference_id', ''))
             amt = _round2(e.get('debit', 0)) - _round2(e.get('credit', 0))
             if rt == 'import_cost' and rid:
@@ -4895,7 +4963,10 @@ def get_inventory_detailed(token_or_email=None):
                         import_total_by_inv[ic.get('purchase_invoice_id')] = import_total_by_inv.get(ic.get('purchase_invoice_id'), 0) + amt
                 except Exception:
                     pass
-        for e in app_tables.ledger.search(account_code='1200'):
+        for _i, e in enumerate(app_tables.ledger.search(account_code='1200')):
+            if _i >= MAX_LEDGER_SCAN:
+                logger.warning("Ledger scan cap reached (%d) in get_inventory_valuation (1200 import)", MAX_LEDGER_SCAN)
+                break
             rt, rid = _safe_str(e.get('reference_type', '')), _safe_str(e.get('reference_id', ''))
             if rt != 'import_cost':
                 continue
@@ -4996,7 +5067,10 @@ def get_fx_report_per_invoice(token_or_email=None):
         return error
     try:
         paid_by_inv = {}
-        for e in app_tables.ledger.search(reference_type='payment'):
+        for _i, e in enumerate(app_tables.ledger.search(reference_type='payment')):
+            if _i >= MAX_LEDGER_SCAN:
+                logger.warning("Ledger scan cap reached (%d) in get_fx_report_per_invoice (payment)", MAX_LEDGER_SCAN)
+                break
             rid = _safe_str(e.get('reference_id', ''))
             if not rid:
                 continue
@@ -5005,12 +5079,18 @@ def get_fx_report_per_invoice(token_or_email=None):
                 paid_by_inv[rid] = paid_by_inv.get(rid, 0) + _round2(e.get('credit', 0)) - _round2(e.get('debit', 0))
 
         fx_gain_by_inv = {}
-        for e in app_tables.ledger.search(account_code='4110'):
+        for _i, e in enumerate(app_tables.ledger.search(account_code='4110')):
+            if _i >= MAX_LEDGER_SCAN:
+                logger.warning("Ledger scan cap reached (%d) in get_fx_report_per_invoice (4110)", MAX_LEDGER_SCAN)
+                break
             rid = _safe_str(e.get('reference_id', ''))
             if rid:
                 fx_gain_by_inv[rid] = fx_gain_by_inv.get(rid, 0) + _round2(e.get('credit', 0))
         fx_loss_by_inv = {}
-        for e in app_tables.ledger.search(account_code='6110'):
+        for _i, e in enumerate(app_tables.ledger.search(account_code='6110')):
+            if _i >= MAX_LEDGER_SCAN:
+                logger.warning("Ledger scan cap reached (%d) in get_fx_report_per_invoice (6110)", MAX_LEDGER_SCAN)
+                break
             rid = _safe_str(e.get('reference_id', ''))
             if rid:
                 fx_loss_by_inv[rid] = fx_loss_by_inv.get(rid, 0) + _round2(e.get('debit', 0))
@@ -5044,7 +5124,10 @@ def _ledger_2000_remaining_by_invoice():
     mixed into invoice-level reconciliation.
     """
     by_inv = {}
-    for e in app_tables.ledger.search(account_code='2000'):
+    for _i, e in enumerate(app_tables.ledger.search(account_code='2000')):
+        if _i >= MAX_LEDGER_SCAN:
+            logger.warning("Ledger scan cap reached (%d) in _ledger_2000_remaining_by_invoice", MAX_LEDGER_SCAN)
+            break
         rid = _safe_str(e.get('reference_id', ''))
         if not rid:
             continue
@@ -5275,7 +5358,10 @@ def get_transit_balance(token_or_email=None):
     try:
         debits = 0.0
         credits = 0.0
-        for entry in app_tables.ledger.search(account_code='1210'):
+        for _i, entry in enumerate(app_tables.ledger.search(account_code='1210')):
+            if _i >= MAX_LEDGER_SCAN:
+                logger.warning("Ledger scan cap reached (%d) in get_transit_balance", MAX_LEDGER_SCAN)
+                break
             debits += _round2(entry.get('debit', 0))
             credits += _round2(entry.get('credit', 0))
         balance = _round2(debits - credits)
@@ -5339,7 +5425,11 @@ def get_contracts_list_simple(token_or_email=None):
         return error
     try:
         contracts = []
-        for r in app_tables.quotations.search(is_deleted=False):
+        _MAX_ROWS = 10000  # Safety cap — bounded quotations scan
+        for i, r in enumerate(app_tables.quotations.search(is_deleted=False)):
+            if i >= _MAX_ROWS:
+                logger.warning("get_contracts_list_simple: quotations scan capped at %d rows", _MAX_ROWS)
+                break
             contract_num = r.get('Contract#') or r.get('contract_number')
             if not contract_num:
                 continue
@@ -5786,7 +5876,7 @@ def migrate_old_contracts(supplier_id, currency='USD', dry_run=False, token_or_e
                     'contract_number': cn,
                     'quotation_number': qn,
                     'status': 'error',
-                    'reason': str(e),
+                    'reason': type(e).__name__,
                 })
                 errors += 1
 
@@ -5932,10 +6022,14 @@ def get_accounting_dashboard_stats(token_or_email=None):
         now = date.today()
         year = now.year
 
+        # NOTE: Protected by _acct_dash_cache (60s TTL) — cold call scans multiple tables.
         # Inventory stats (capped at 50k rows as safety)
-        _MAX_ROWS = 50000
+        _MAX_SCAN = 50000
         inv_count = 0; inv_value = 0.0; inv_in_stock = 0; inv_in_transit = 0; inv_sold = 0
-        for item in app_tables.inventory.search():
+        for i, item in enumerate(app_tables.inventory.search()):
+            if i >= _MAX_SCAN:
+                logger.warning("dashboard: inventory scan capped at %d rows", _MAX_SCAN)
+                break
             inv_count += 1
             status = (item.get('status') or '').strip().lower()
             cost = _round2(item.get('total_cost', 0))
@@ -5949,7 +6043,10 @@ def get_accounting_dashboard_stats(token_or_email=None):
         # Purchase invoice stats + top suppliers in one pass
         pi_count = 0; pi_total_value = 0.0; pi_total_paid = 0.0; pi_draft = 0; pi_posted = 0
         supplier_totals = {}
-        for pi in app_tables.purchase_invoices.search():
+        for i, pi in enumerate(app_tables.purchase_invoices.search()):
+            if i >= _MAX_SCAN:
+                logger.warning("dashboard: purchase_invoices scan capped at %d rows", _MAX_SCAN)
+                break
             pi_count += 1
             total_pi = _round2(pi.get('total', 0))
             pi_total_value += total_pi
@@ -5960,10 +6057,12 @@ def get_accounting_dashboard_stats(token_or_email=None):
             sid = pi.get('supplier_id', '')
             supplier_totals[sid] = supplier_totals.get(sid, 0) + total_pi
         top_suppliers_raw = sorted(supplier_totals.items(), key=lambda x: x[1], reverse=True)[:5]
-        # Pre-fetch all suppliers once to avoid N+1 queries
+        # Pre-fetch all suppliers once to avoid N+1 queries (small table, safe)
         _suppliers_map = {}
         try:
-            for s in app_tables.suppliers.search():
+            for i, s in enumerate(app_tables.suppliers.search()):
+                if i >= 5000:
+                    break  # Safety cap for suppliers table
                 _suppliers_map[s.get('id', '')] = s.get('name', '')
         except Exception as _sup_err:
             logger.debug("Could not pre-fetch suppliers: %s", _sup_err)
@@ -5976,7 +6075,10 @@ def get_accounting_dashboard_stats(token_or_email=None):
         monthly_purchases = [0.0] * 12
         monthly_sales = [0.0] * 12
         total_cogs = 0.0; total_revenue = 0.0
-        for entry in app_tables.ledger.search():
+        for i, entry in enumerate(app_tables.ledger.search()):
+            if i >= _MAX_SCAN:
+                logger.warning("dashboard: ledger scan capped at %d rows", _MAX_SCAN)
+                break
             d = entry.get('date')
             if not d or not hasattr(d, 'year') or d.year != year:
                 continue
@@ -6319,8 +6421,19 @@ def get_pnl_report_pdf_data(date_from=None, date_to=None, token_or_email=None):
     if not is_valid:
         return {'success': False, 'message': error}
     try:
-        items = [dict(r) for r in app_tables.inventory.search()]
-        invoices = [dict(r) for r in app_tables.purchase_invoices.search()]
+        _MAX_ROWS = 20000  # Safety cap for P&L report scans
+        items = []
+        for i, r in enumerate(app_tables.inventory.search()):
+            if i >= _MAX_ROWS:
+                logger.warning("get_pnl_report_pdf_data: inventory scan capped at %d rows", _MAX_ROWS)
+                break
+            items.append(dict(r))
+        invoices = []
+        for i, r in enumerate(app_tables.purchase_invoices.search()):
+            if i >= _MAX_ROWS:
+                logger.warning("get_pnl_report_pdf_data: purchase_invoices scan capped at %d rows", _MAX_ROWS)
+                break
+            invoices.append(dict(r))
         data = pdf_reports.build_pnl_report_data(items, invoices, date_from, date_to)
         return {'success': True, 'data': data}
     except Exception as e:
@@ -6369,13 +6482,19 @@ def _get_customer_ar_balance(contract_number):
     # 2. Sum debits for account 1100 where ref_type='sales_invoice' and ref_id in item_ids
     total_sales = 0.0
     if item_ids:
-        for entry in app_tables.ledger.search(account_code='1100', reference_type='sales_invoice'):
+        for _i, entry in enumerate(app_tables.ledger.search(account_code='1100', reference_type='sales_invoice')):
+            if _i >= MAX_LEDGER_SCAN:
+                logger.warning("Ledger scan cap reached (%d) in get_contract_total (sales)", MAX_LEDGER_SCAN)
+                break
             if entry.get('reference_id') in item_ids:
                 total_sales += float(entry.get('debit', 0) or 0)
 
     # 3. Sum credits for account 1100 where ref_type='customer_collection' and ref_id=contract_number
     total_collections = 0.0
-    for entry in app_tables.ledger.search(account_code='1100', reference_type='customer_collection'):
+    for _i, entry in enumerate(app_tables.ledger.search(account_code='1100', reference_type='customer_collection')):
+        if _i >= MAX_LEDGER_SCAN:
+            logger.warning("Ledger scan cap reached (%d) in get_contract_total (collections)", MAX_LEDGER_SCAN)
+            break
         if entry.get('reference_id') == contract_number:
             total_collections += float(entry.get('credit', 0) or 0)
 
@@ -6596,8 +6715,12 @@ def get_customer_summary(token_or_email=None):
             client_contracts[cname].append(cnum)
 
         # 2. Build map: contract_number -> [inventory item_ids]
+        _MAX_ROWS = 10000  # Safety cap — bounded inventory scan
         contract_items = {}
-        for item in app_tables.inventory.search():
+        for i, item in enumerate(app_tables.inventory.search()):
+            if i >= _MAX_ROWS:
+                logger.warning("get_customer_summary: inventory scan capped at %d rows", _MAX_ROWS)
+                break
             cn = item.get('contract_number', '')
             if cn:
                 if cn not in contract_items:
@@ -6605,12 +6728,16 @@ def get_customer_summary(token_or_email=None):
                 contract_items[cn].append(item.get('id'))
 
         # 3. Load all AR ledger entries (account 1100) at once
+        _MAX_LEDGER = 50000  # Safety cap — bounded ledger scan
         ar_sales = {}
         ar_contract_receivable = {}
         ar_collections = {}
         opening_map = {}
 
-        for entry in app_tables.ledger.search(account_code='1100'):
+        for i, entry in enumerate(app_tables.ledger.search(account_code='1100')):
+            if i >= _MAX_LEDGER:
+                logger.warning("get_customer_summary: ledger(1100) scan capped at %d rows", _MAX_LEDGER)
+                break
             ref_type = entry.get('reference_type', '')
             ref_id = entry.get('reference_id', '')
             d = float(entry.get('debit', 0) or 0)
@@ -6691,15 +6818,21 @@ def get_supplier_summary(token_or_email=None):
     try:
         # 1. Build map: supplier_id -> supplier_name
         suppliers = {}
-        for s in app_tables.suppliers.search():
+        for i, s in enumerate(app_tables.suppliers.search()):
+            if i >= 5000:
+                break  # Safety cap for suppliers table
             sid = s.get('id', '')
             sname = s.get('name', '')
             if sid and sname:
                 suppliers[sid] = sname
 
         # 2. Build map: supplier_id -> [invoice_ids]
+        _MAX_ROWS = 20000  # Safety cap — bounded purchase_invoices scan
         supplier_invoices = {}
-        for inv in app_tables.purchase_invoices.search():
+        for i, inv in enumerate(app_tables.purchase_invoices.search()):
+            if i >= _MAX_ROWS:
+                logger.warning("get_supplier_summary: purchase_invoices scan capped at %d rows", _MAX_ROWS)
+                break
             sid = inv.get('supplier_id', '')
             iid = inv.get('id', '')
             if sid and iid:
@@ -6708,11 +6841,15 @@ def get_supplier_summary(token_or_email=None):
                 supplier_invoices[sid].append(iid)
 
         # 3. Load all AP ledger entries (account 2000) at once; opening from ledger (ref_type=opening_balance)
+        _MAX_LEDGER = 50000  # Safety cap — bounded ledger scan
         ap_purchases = {}
         ap_payments = {}
         opening_map = {}
 
-        for entry in app_tables.ledger.search(account_code='2000'):
+        for i, entry in enumerate(app_tables.ledger.search(account_code='2000')):
+            if i >= _MAX_LEDGER:
+                logger.warning("get_supplier_summary: ledger(2000) scan capped at %d rows", _MAX_LEDGER)
+                break
             ref_type = entry.get('reference_type', '')
             ref_id = entry.get('reference_id', '')
             d = float(entry.get('debit', 0) or 0)
@@ -6869,8 +7006,12 @@ def get_advanced_account_statement(
                     entity_name = eid
 
         # ---- Load all ledger rows for this account (we filter in Python for date/entity) ----
+        _MAX_ROWS = 50000  # Safety cap — bounded ledger scan
         all_entries = []
-        for entry in app_tables.ledger.search(account_code=account_code):
+        for i, entry in enumerate(app_tables.ledger.search(account_code=account_code)):
+            if i >= _MAX_ROWS:
+                logger.warning("get_advanced_account_statement: ledger scan capped at %d rows for account %s", _MAX_ROWS, account_code)
+                break
             ref_id = _safe_str(entry.get('reference_id', ''))
             ref_type = _safe_str(entry.get('reference_type', ''))
             if allowed_ref_ids is not None and ref_id not in allowed_ref_ids:
@@ -7116,11 +7257,15 @@ def get_treasury_summary(token_or_email=None):
                     'name_ar': acct.get('name_ar', ''),
                 }
 
+        _MAX_ROWS = 50000  # Safety cap per account — bounded ledger scan
         ledger_balances = {}
         for code in bank_codes:
             total_debit = 0.0
             total_credit = 0.0
-            for entry in app_tables.ledger.search(account_code=code):
+            for i, entry in enumerate(app_tables.ledger.search(account_code=code)):
+                if i >= _MAX_ROWS:
+                    logger.warning("get_treasury_summary: ledger scan capped at %d rows for account %s", _MAX_ROWS, code)
+                    break
                 total_debit += float(entry.get('debit', 0) or 0)
                 total_credit += float(entry.get('credit', 0) or 0)
             ledger_balances[code] = _round2(total_debit - total_credit)
@@ -7193,7 +7338,13 @@ def get_cash_bank_statement(account_code=None, date_from=None, date_to=None, tok
 
         rows = []
         pre_entries = {}
+        _MAX_SCAN = 50000  # Safety cap — bounded ledger scan
+        _scan_i = 0
         for r in app_tables.ledger.search():
+            _scan_i += 1
+            if _scan_i > _MAX_SCAN:
+                logger.warning("get_cash_bank_statement: ledger scan capped at %d rows", _MAX_SCAN)
+                break
             c = str(r.get('account_code', '')).strip()
             if c not in codes:
                 continue

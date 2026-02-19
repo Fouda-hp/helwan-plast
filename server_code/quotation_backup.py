@@ -142,7 +142,7 @@ def upload_backup_to_drive(json_bytes, filename):
         return True, f'تم الرفع إلى Google Drive{enc_msg}: {upload_filename}'
     except Exception as e:
         logger.exception("Upload backup to Drive: %s", e)
-        return False, str(e)
+        return False, 'فشل رفع النسخة الاحتياطية. يرجى المحاولة مرة أخرى.'
 
 
 def parse_backup_filename_date(filename):

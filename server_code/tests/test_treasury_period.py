@@ -30,6 +30,7 @@ def _mock_anvil():
         return lambda f: f   # @callable("name") def f
     m.server.callable = _callable
     m.tables = MagicMock()
+    m.tables.in_transaction = lambda f: f  # no-op decorator
     m.secrets = MagicMock()
     m.secrets.get_secret = MagicMock(return_value=None)
     m.users = MagicMock()
@@ -43,6 +44,7 @@ def _mock_anvil():
     sys.modules['anvil'] = m
     sys.modules['anvil.server'] = m.server
     sys.modules['anvil.tables'] = m.tables
+    sys.modules['anvil.tables.query'] = MagicMock()
     sys.modules['anvil.secrets'] = m.secrets
     sys.modules['anvil.users'] = m.users
     sys.modules['anvil.files'] = m.files
@@ -144,7 +146,8 @@ class TestPostJournalEntryPeriodLock(unittest.TestCase):
 
     def test_posting_rejected_when_period_locked(self):
         """When is_period_locked(entry_date) is True, post_journal_entry returns error."""
-        with patch.object(self.acct, 'is_period_locked', return_value=True):
+        with patch.object(self.acct, 'is_period_locked', return_value=True), \
+             patch.object(self.acct, '_validate_account_exists', return_value=True):
             res = self.acct.post_journal_entry(
                 date(2026, 1, 15),
                 [

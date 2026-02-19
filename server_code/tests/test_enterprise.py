@@ -27,7 +27,11 @@ def _mock_anvil():
         return
     m = MagicMock()
     m.server = MagicMock()
+    # callable decorator: no-op
+    m.server.callable = lambda *a, **kw: (a[0] if len(a) == 1 and callable(a[0]) else lambda f: f)
     m.tables = MagicMock()
+    # in_transaction decorator: no-op
+    m.tables.in_transaction = lambda f: f
     m.secrets = MagicMock()
     m.secrets.get_secret = MagicMock(return_value=None)
     sys.modules['anvil'] = m
@@ -92,7 +96,7 @@ class TestQuotationNumbers(unittest.TestCase):
         """عند وجود صف للعداد: تُرجع value+1 ويُحدّث الصف."""
         app_tables = MagicMock()
         row = MagicMock()
-        row.__getitem__ = lambda k: 100 if k == 'value' else None
+        row.__getitem__ = lambda self, k: 100 if k == 'value' else None
         row.__setitem__ = MagicMock()
         app_tables.counters = MagicMock()
         app_tables.counters.get.return_value = row
@@ -121,7 +125,10 @@ class TestDateFormatting(unittest.TestCase):
         self.assertEqual(result, "6 February")
 
     def test_empty_date(self):
-        self.assertEqual("", "" if None else "x")
+        """Empty/None date should return empty string."""
+        val = None
+        result = "" if val is None else "x"
+        self.assertEqual(result, "")
 
     def test_quotation_pdf_formatters(self):
         """اختبار دوال التنسيق الفعلية من quotation_pdf."""

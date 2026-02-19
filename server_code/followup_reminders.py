@@ -31,6 +31,9 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Safety caps — prevent unbounded iteration over large tables
+MAX_SEARCH = 5_000
+
 # Centralized permission helpers (من auth_permissions.py)
 try:
     from .auth_permissions import require_permission_full as _require_permission
@@ -235,7 +238,10 @@ def get_followup_dashboard(token_or_email=None, filter_status='all'):
         search_kwargs = {'is_deleted': False, 'follow_up_date': q.not_(None)}
         if filter_status == 'completed':
             search_kwargs['follow_up_status'] = 'completed'
-        for row in app_tables.quotations.search(**search_kwargs):
+        for _i, row in enumerate(app_tables.quotations.search(**search_kwargs)):
+            if _i >= MAX_SEARCH:
+                logger.warning("Quotation scan cap reached (%d) in get_followup_dashboard", MAX_SEARCH)
+                break
             fu_date_str = row.get('follow_up_date', '')
             if not fu_date_str or not str(fu_date_str).strip():
                 continue
@@ -343,7 +349,10 @@ def check_overdue_followups(token_or_email=None):
         today = date.today()
         notified = 0
 
-        for row in app_tables.quotations.search(is_deleted=False):
+        for _i, row in enumerate(app_tables.quotations.search(is_deleted=False)):
+            if _i >= MAX_SEARCH:
+                logger.warning("Quotation scan cap reached (%d) in check_overdue_followups", MAX_SEARCH)
+                break
             if notified >= _MAX_OVERDUE_NOTIFICATIONS:
                 break
 
@@ -399,7 +408,10 @@ def get_quotations_for_followup(token_or_email=None, search=''):
         search_lower = (search or '').strip().lower()
         results = []
 
-        for row in app_tables.quotations.search(is_deleted=False):
+        for _i, row in enumerate(app_tables.quotations.search(is_deleted=False)):
+            if _i >= MAX_SEARCH:
+                logger.warning("Quotation scan cap reached (%d) in get_quotations_for_followup", MAX_SEARCH)
+                break
             # Skip quotations that already have active follow-ups
             fu_status = (row.get('follow_up_status', '') or '').strip().lower()
             if fu_status in ('pending', 'snoozed'):

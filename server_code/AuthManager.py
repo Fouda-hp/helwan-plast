@@ -2611,7 +2611,7 @@ def diagnose_calculator_prices(token_or_email):
                 result['generated_options'] = options
             except json.JSONDecodeError as e:
                 result['parsed_ok'] = False
-                result['parse_error'] = str(e)
+                result['parse_error'] = type(e).__name__
         else:
             result['setting_exists'] = bool(setting)
             result['setting_value_empty'] = True

@@ -192,7 +192,8 @@ class TestPeriodLockBlocksPosting(unittest.TestCase):
 
     def test_period_locked_returns_correct_message(self):
         """post_journal_entry returns success=False and message 'Accounting period is locked.' when locked."""
-        with patch.object(self.acct, 'is_period_locked', return_value=True):
+        with patch.object(self.acct, 'is_period_locked', return_value=True), \
+             patch.object(self.acct, '_validate_account_exists', return_value=True):
             result = self.acct.post_journal_entry(
                 date(2026, 1, 15),
                 [

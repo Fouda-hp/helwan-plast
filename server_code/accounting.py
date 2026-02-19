@@ -7509,117 +7509,88 @@ def delete_opening_balance(name, entity_type, token_or_email=None):
 # MIGRATION: Fix old payment ledger descriptions
 # ─────────────────────────────────────────────────────────────────────
 
-@anvil.server.callable
-def migrate_fix_payment_descriptions(auth_token):
+def _migrate_fix_payment_descriptions():
     """
-    One-time migration: fix old payment ledger entries where ALL lines
+    Auto-run migration: fix old payment ledger entries where ALL lines
     had the same description (including bank fee / FX text on every line).
-
-    After this fix:
-    - Account 2000 (AP) lines: base description only (no bank fee / FX text)
-    - Bank account lines (main payment): base description only
-    - Account 6090 lines: "Bank fee for purchase invoice {num} — {amount} EGP"
-    - Bank account lines (fee debit): same as 6090
-    - Account 4110 lines: base + FX Gain label
-    - Account 6110 lines: base + FX Loss label
+    Idempotent — only touches records that still have the old format.
     """
-    if not AuthManager.is_admin(auth_token):
-        return {'success': False, 'message': 'Admin access required'}
+    import re
+    fixed_count = 0
+    skipped = 0
 
-    try:
-        import re
-        fixed_count = 0
-        skipped = 0
+    payment_entries = list(app_tables.ledger.search(reference_type='payment'))
+    txn_groups = {}
+    for entry in payment_entries:
+        txn_id = entry.get('transaction_id', '')
+        if txn_id:
+            txn_groups.setdefault(txn_id, []).append(entry)
 
-        # Find all payment journal entries (grouped by transaction_id)
-        payment_entries = list(app_tables.ledger.search(reference_type='payment'))
-        # Group by transaction_id
-        txn_groups = {}
-        for entry in payment_entries:
-            txn_id = entry.get('transaction_id', '')
-            if txn_id:
-                txn_groups.setdefault(txn_id, []).append(entry)
+    bank_fee_pattern = re.compile(r'(.*?)\s*[—\-]+\s*Bank fee[:\s]+[\d,]+\.?\d*\s*EGP', re.IGNORECASE)
 
-        for txn_id, entries in txn_groups.items():
-            # Check if this transaction has bank fee text in non-6090 lines
-            has_bank_fee_issue = False
-            bank_fee_pattern = re.compile(r'(.*?)\s*[—\-]+\s*Bank fee[:\s]+[\d,]+\.?\d*\s*EGP', re.IGNORECASE)
+    for txn_id, entries in txn_groups.items():
+        has_bank_fee_issue = False
+        for e in entries:
+            desc = _safe_str(e.get('description', ''))
+            acct = _safe_str(e.get('account_code', ''))
+            if acct not in ('6090',) and bank_fee_pattern.search(desc):
+                has_bank_fee_issue = True
+                break
 
-            for e in entries:
-                desc = _safe_str(e.get('description', ''))
-                acct = _safe_str(e.get('account_code', ''))
-                if acct not in ('6090',) and bank_fee_pattern.search(desc):
-                    has_bank_fee_issue = True
-                    break
+        if not has_bank_fee_issue:
+            skipped += 1
+            continue
 
-            if not has_bank_fee_issue:
-                skipped += 1
-                continue
+        sample_desc = _safe_str(entries[0].get('description', ''))
+        match = bank_fee_pattern.match(sample_desc)
+        if not match:
+            skipped += 1
+            continue
 
-            # Extract base description and bank fee amount from any line
-            sample_desc = _safe_str(entries[0].get('description', ''))
-            match = bank_fee_pattern.match(sample_desc)
-            if not match:
-                skipped += 1
-                continue
+        base_desc = match.group(1).strip()
+        fee_match = re.search(r'Bank fee[:\s]+([\d,]+\.?\d*)\s*EGP', sample_desc, re.IGNORECASE)
+        fee_amount_str = fee_match.group(1) if fee_match else '0'
 
-            base_desc = match.group(1).strip()
-            # Extract the bank fee amount
-            fee_match = re.search(r'Bank fee[:\s]+([\d,]+\.?\d*)\s*EGP', sample_desc, re.IGNORECASE)
-            fee_amount_str = fee_match.group(1) if fee_match else '0'
+        for e in entries:
+            acct = _safe_str(e.get('account_code', ''))
+            old_desc = _safe_str(e.get('description', ''))
 
-            # Fix each line in this transaction
-            for e in entries:
-                acct = _safe_str(e.get('account_code', ''))
-                old_desc = _safe_str(e.get('description', ''))
-
-                if acct == '6090':
-                    # Bank fee expense line — keep as dedicated fee description
+            if acct == '6090':
+                inv_match = re.search(r'(PI-\d{4}-\d{4})', old_desc)
+                inv_num = inv_match.group(1) if inv_match else ''
+                e.update(description=f"Bank fee for purchase invoice {inv_num} — {fee_amount_str} EGP")
+                fixed_count += 1
+            elif acct == '4110':
+                gain_amount = _round2(float(e.get('credit', 0) or 0))
+                e.update(description=base_desc + f" — أرباح فروق عملة (FX Gain): {gain_amount:,.2f} EGP")
+                fixed_count += 1
+            elif acct == '6110':
+                loss_amount = _round2(float(e.get('debit', 0) or 0))
+                e.update(description=base_desc + f" — خسائر فروق عملة (FX Loss): {loss_amount:,.2f} EGP")
+                fixed_count += 1
+            else:
+                credit = float(e.get('credit', 0) or 0)
+                try:
+                    fee_val = float(fee_amount_str.replace(',', ''))
+                except (ValueError, TypeError):
+                    fee_val = 0
+                if fee_val > 0 and acct != '2000' and abs(credit - fee_val) < 0.01:
                     inv_match = re.search(r'(PI-\d{4}-\d{4})', old_desc)
                     inv_num = inv_match.group(1) if inv_match else ''
-                    new_desc = f"Bank fee for purchase invoice {inv_num} — {fee_amount_str} EGP"
-                    e.update(description=new_desc)
+                    e.update(description=f"Bank fee for purchase invoice {inv_num} — {fee_amount_str} EGP")
                     fixed_count += 1
-                elif acct == '4110':
-                    # FX Gain line — add gain label
-                    gain_amount = _round2(float(e.get('credit', 0) or 0))
-                    new_desc = base_desc + f" — أرباح فروق عملة (FX Gain): {gain_amount:,.2f} EGP"
-                    e.update(description=new_desc)
+                elif bank_fee_pattern.search(old_desc):
+                    e.update(description=base_desc)
                     fixed_count += 1
-                elif acct == '6110':
-                    # FX Loss line — add loss label
-                    loss_amount = _round2(float(e.get('debit', 0) or 0))
-                    new_desc = base_desc + f" — خسائر فروق عملة (FX Loss): {loss_amount:,.2f} EGP"
-                    e.update(description=new_desc)
-                    fixed_count += 1
-                else:
-                    # AP (2000) or bank account lines — check if it's the fee bank line
-                    debit = float(e.get('debit', 0) or 0)
-                    credit = float(e.get('credit', 0) or 0)
-                    # A bank line that matches the fee amount exactly is a fee bank line
-                    try:
-                        fee_val = float(fee_amount_str.replace(',', ''))
-                    except (ValueError, TypeError):
-                        fee_val = 0
-                    if fee_val > 0 and acct != '2000' and abs(credit - fee_val) < 0.01:
-                        # This is the bank fee credit line
-                        inv_match = re.search(r'(PI-\d{4}-\d{4})', old_desc)
-                        inv_num = inv_match.group(1) if inv_match else ''
-                        new_desc = f"Bank fee for purchase invoice {inv_num} — {fee_amount_str} EGP"
-                        e.update(description=new_desc)
-                        fixed_count += 1
-                    elif bank_fee_pattern.search(old_desc):
-                        # Regular AP or main bank line — strip bank fee text
-                        e.update(description=base_desc)
-                        fixed_count += 1
 
-        logger.info("Migration complete: fixed %d ledger descriptions, skipped %d transactions", fixed_count, skipped)
-        return {
-            'success': True,
-            'message': f'Migration complete: {fixed_count} ledger entries updated, {skipped} transactions unchanged',
-            'fixed_count': fixed_count,
-            'skipped': skipped,
-        }
-    except Exception as e:
-        logger.exception("migrate_fix_payment_descriptions error")
-        return {'success': False, 'message': str(e)}
+    if fixed_count:
+        logger.info("Migration: fixed %d ledger descriptions, skipped %d transactions", fixed_count, skipped)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# AUTO-RUN: one-time migration on server module load
+# ─────────────────────────────────────────────────────────────────────
+try:
+    _migrate_fix_payment_descriptions()
+except Exception:
+    logger.exception("Auto-migration _migrate_fix_payment_descriptions failed (non-fatal)")

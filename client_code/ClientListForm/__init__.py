@@ -51,4 +51,5 @@ class ClientListForm(ClientListFormTemplate):
 
     def navigate_to_client(self, client_code):
         """Navigate to client detail page"""
-        anvil.js.window.location.hash = '#client-detail?code=' + str(client_code)
+        from anvil.js.window import encodeURIComponent
+        anvil.js.window.location.hash = '#client-detail?code=' + encodeURIComponent(str(client_code))

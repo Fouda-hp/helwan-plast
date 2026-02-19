@@ -2469,7 +2469,7 @@ def get_calculator_settings(token_or_email=None):
     except Exception as e:
         logger.error(f"get_calculator_settings error: {e}")
         result['success'] = False
-        result['message'] = str(e)
+        result['message'] = 'Failed to load calculator settings.'
         return result
 
 
@@ -2625,7 +2625,7 @@ def diagnose_calculator_prices(token_or_email):
         result['success'] = True
     except Exception as e:
         result['success'] = False
-        result['error'] = str(e)
+        result['error'] = 'Diagnosis failed. Check server logs.'
     return result
 
 

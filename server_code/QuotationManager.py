@@ -1426,7 +1426,7 @@ def import_clients_data(data_list, token_or_email):
             imported += 1
 
         except Exception as e:
-            errors.append(f"Row {i+1}: {str(e)}")
+            errors.append(f"Row {i+1}: Import failed")
 
     log_audit('IMPORT', 'clients', None, None,
               {'imported': imported, 'errors': len(errors)}, user_email, ip_address)
@@ -1637,7 +1637,7 @@ def import_quotations_data(data_list, token_or_email):
             imported += 1
 
         except Exception as e:
-            errors.append(f"Row {i+1}: {str(e)}")
+            errors.append(f"Row {i+1}: Import failed")
 
     log_audit('IMPORT', 'quotations', None, None,
               {'imported': imported, 'errors': len(errors)}, user_email, ip_address)
@@ -2545,7 +2545,7 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
                     'success': False,
                     'message': 'المشكلة: جدول العقود (contracts) غير موجود أو ناقص أعمدة. أنشئ الجدول في Anvil Data Tables وفق المخطط في anvil.yaml (يشمل أعمدة الدفعات payment_1_date حتى payment_12_value).'
                 }
-            return {'success': False, 'message': f'المشكلة في الحفظ: {error_msg}'}
+            return {'success': False, 'message': 'حدث خطأ أثناء حفظ العقد. يرجى المحاولة مرة أخرى.'}
     
     except Exception as e:
         logger.error(f"Error saving contract: {e}")

@@ -8,6 +8,7 @@ shared_utils.py - دوال مشتركة لتجنب تكرار الكود
 - to_datetime: تحويل أي قيمة تاريخ/وقت لـ datetime
 - parse_json_field: تحويل JSON string من قاعدة البيانات
 - contracts_search_active: البحث في العقود مع استبعاد المحذوفة
+- contracts_get_active: جلب عقد واحد مع استبعاد المحذوف
 """
 
 import json
@@ -111,8 +112,8 @@ def parse_json_field(row, field_name):
 _contracts_has_is_deleted = None
 
 
-def contracts_search_active(**kwargs):
-    """البحث في جدول العقود مع استبعاد is_deleted=True تلقائياً."""
+def _ensure_contracts_column_check():
+    """Check once whether contracts table has is_deleted column."""
     global _contracts_has_is_deleted
     if _contracts_has_is_deleted is None:
         try:
@@ -120,9 +121,22 @@ def contracts_search_active(**kwargs):
             _contracts_has_is_deleted = 'is_deleted' in cols
         except Exception:
             _contracts_has_is_deleted = False
+
+
+def contracts_search_active(**kwargs):
+    """البحث في جدول العقود مع استبعاد is_deleted=True تلقائياً."""
+    _ensure_contracts_column_check()
     if _contracts_has_is_deleted:
         kwargs['is_deleted'] = False
     return app_tables.contracts.search(**kwargs)
+
+
+def contracts_get_active(**kwargs):
+    """جلب عقد واحد مع استبعاد المحذوف — بديل آمن لـ app_tables.contracts.get()."""
+    _ensure_contracts_column_check()
+    if _contracts_has_is_deleted:
+        kwargs['is_deleted'] = False
+    return app_tables.contracts.get(**kwargs)
 
 
 # =========================================================

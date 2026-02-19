@@ -76,5 +76,14 @@ tags_cache = TTLCache(ttl_seconds=30, max_size=10, name='tags')
 # Report cache (financial reports, etc.)
 report_cache = TTLCache(ttl_seconds=300, max_size=20, name='reports')
 
+# Accounting dashboard cache (stats, 60s TTL)
+accounting_dashboard_cache = TTLCache(ttl_seconds=60, max_size=10, name='accounting_dashboard')
+
+# Payment dashboard cache (payment status, 180s TTL)
+payment_dashboard_cache = TTLCache(ttl_seconds=180, max_size=10, name='payment_dashboard')
+
+# General dashboard stats cache (quotation stats, 180s TTL)
+dashboard_stats_cache = TTLCache(ttl_seconds=180, max_size=10, name='dashboard_stats')
+
 # FX rate cache (exchange rates)
 fx_rate_cache = TTLCache(ttl_seconds=3600, max_size=10, name='fx_rates')

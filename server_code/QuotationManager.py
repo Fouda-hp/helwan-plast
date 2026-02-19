@@ -106,41 +106,14 @@ def check_delete_permission(token_or_email):
 
 
 # =========================================================
-# Helper: البحث في العقود مع استبعاد المحذوفة (soft delete)
+# Helper: البحث في العقود مع استبعاد المحذوفة — from shared_utils
 # =========================================================
-_contracts_has_is_deleted = None  # cached column check
-
-def _contracts_search_active(**kwargs):
-    """
-    البحث في جدول العقود مع استبعاد is_deleted=True تلقائياً.
-    يفحص وجود العمود مرة واحدة ويحفظ النتيجة (cache).
-    """
-    global _contracts_has_is_deleted
-    if _contracts_has_is_deleted is None:
-        try:
-            cols = [col['name'] for col in app_tables.contracts.list_columns()]
-            _contracts_has_is_deleted = 'is_deleted' in cols
-        except Exception:
-            _contracts_has_is_deleted = False
-    if _contracts_has_is_deleted:
-        kwargs['is_deleted'] = False
-    return app_tables.contracts.search(**kwargs)
-
-
-def _contracts_get_active(**kwargs):
-    """
-    جلب عقد واحد مع استبعاد المحذوف — بديل آمن لـ app_tables.contracts.get().
-    """
-    global _contracts_has_is_deleted
-    if _contracts_has_is_deleted is None:
-        try:
-            cols = [col['name'] for col in app_tables.contracts.list_columns()]
-            _contracts_has_is_deleted = 'is_deleted' in cols
-        except Exception:
-            _contracts_has_is_deleted = False
-    if _contracts_has_is_deleted:
-        kwargs['is_deleted'] = False
-    return app_tables.contracts.get(**kwargs)
+try:
+    from .shared_utils import contracts_search_active as _contracts_search_active
+    from .shared_utils import contracts_get_active as _contracts_get_active
+except ImportError:
+    from shared_utils import contracts_search_active as _contracts_search_active
+    from shared_utils import contracts_get_active as _contracts_get_active
 
 
 # دوال الترقيم: من quotation_numbers.get_next_number_atomic (ذرّي، بدون دوبليكيت)
@@ -754,14 +727,13 @@ DEFAULT_PAGE = 1
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGINATION_SCAN = 50000
 
-# Payment dashboard cache
-_payment_dashboard_cache = {'data': None, 'timestamp': 0, 'user': None}
-
-# Admin dashboard cache
-_dashboard_stats_cache = {'data': None, 'timestamp': 0, 'user': None}
-
-_DASHBOARD_CACHE_TTL_SECONDS = 180
-_PAYMENT_DASHBOARD_CACHE_TTL_SECONDS = 180
+# Dashboard caches — migrated to thread-safe TTLCache (cache_manager)
+try:
+    from .cache_manager import payment_dashboard_cache as _payment_dash_cache
+    from .cache_manager import dashboard_stats_cache as _dash_stats_cache
+except ImportError:
+    from cache_manager import payment_dashboard_cache as _payment_dash_cache
+    from cache_manager import dashboard_stats_cache as _dash_stats_cache
 
 def _quotation_matches_search(r, search_lower, get_client):
     if not search_lower:
@@ -1156,11 +1128,10 @@ def get_dashboard_stats(token_or_email=None):
         return {'success': False, 'message': 'Permission denied', 'data': empty, **empty}
 
     # Short cache to reduce repeated heavy recalculation when user switches panels quickly
-    now_ts = _time.time()
-    if (_dashboard_stats_cache['data'] is not None
-        and _dashboard_stats_cache.get('user') == user_email
-        and (now_ts - _dashboard_stats_cache['timestamp']) < _DASHBOARD_CACHE_TTL_SECONDS):
-        return _dashboard_stats_cache['data']
+    _dash_key = f"dash_stats:{user_email}"
+    cached = _dash_stats_cache.get(_dash_key)
+    if cached is not None:
+        return cached
 
     now = get_utc_now()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -1304,9 +1275,7 @@ def get_dashboard_stats(token_or_email=None):
     }
 
     wrapped = {'success': True, 'message': '', 'data': result, **result}
-    _dashboard_stats_cache['data'] = wrapped
-    _dashboard_stats_cache['timestamp'] = _time.time()
-    _dashboard_stats_cache['user'] = user_email
+    _dash_stats_cache.set(_dash_key, wrapped)
     return wrapped
 
 
@@ -2989,9 +2958,7 @@ def _parse_payment_amount(p):
 
 @anvil.server.callable
 def _invalidate_payment_cache():
-    _payment_dashboard_cache['data'] = None
-    _payment_dashboard_cache['timestamp'] = 0
-    _payment_dashboard_cache['user'] = None
+    _payment_dash_cache.invalidate()
 
 @anvil.server.callable
 def get_payment_dashboard_data(token_or_email=None):
@@ -3004,11 +2971,10 @@ def get_payment_dashboard_data(token_or_email=None):
         return {'success': False, 'message': 'Permission denied'}
 
     # Check cache with user validation
-    now_ts = _time.time()
-    if (_payment_dashboard_cache['data'] is not None
-        and _payment_dashboard_cache.get('user') == user_email
-        and (now_ts - _payment_dashboard_cache['timestamp']) < _PAYMENT_DASHBOARD_CACHE_TTL_SECONDS):
-        return _payment_dashboard_cache['data']
+    _pay_key = f"pay_dash:{user_email}"
+    cached = _payment_dash_cache.get(_pay_key)
+    if cached is not None:
+        return cached
 
     try:
         # Stream active contracts instead of loading all into memory
@@ -3137,9 +3103,7 @@ def get_payment_dashboard_data(token_or_email=None):
         }
 
         # Update cache
-        _payment_dashboard_cache['data'] = result
-        _payment_dashboard_cache['timestamp'] = _time.time()
-        _payment_dashboard_cache['user'] = user_email
+        _payment_dash_cache.set(_pay_key, result)
 
         return result
     except Exception as e:

@@ -53,52 +53,37 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Helper: البحث في العقود مع استبعاد المحذوفة (soft delete)
+# Helper: البحث في العقود مع استبعاد المحذوفة (soft delete) — from shared_utils
 # ---------------------------------------------------------------------------
-_contracts_has_is_deleted = None  # cached column check
-
-def _contracts_search_active(**kwargs):
-    """البحث في جدول العقود مع استبعاد is_deleted=True تلقائياً."""
-    global _contracts_has_is_deleted
-    if _contracts_has_is_deleted is None:
-        try:
-            cols = [col['name'] for col in app_tables.contracts.list_columns()]
-            _contracts_has_is_deleted = 'is_deleted' in cols
-        except Exception:
-            _contracts_has_is_deleted = False
-    if _contracts_has_is_deleted:
-        kwargs['is_deleted'] = False
-    return app_tables.contracts.search(**kwargs)
+try:
+    from .shared_utils import contracts_search_active as _contracts_search_active
+except ImportError:
+    from shared_utils import contracts_search_active as _contracts_search_active
 
 # ---------------------------------------------------------------------------
-# Financial report cache (keyed by report_name + date params + user)
+# Financial report cache — migrated to thread-safe TTLCache (cache_manager)
 # ---------------------------------------------------------------------------
-import time as _report_time
-_report_cache = {}
-_REPORT_CACHE_TTL_SECONDS = 120
+try:
+    from .cache_manager import report_cache as _report_cache_mgr
+    from .cache_manager import accounting_dashboard_cache as _acct_dash_cache
+except ImportError:
+    from cache_manager import report_cache as _report_cache_mgr
+    from cache_manager import accounting_dashboard_cache as _acct_dash_cache
+
 
 def _get_report_cache(cache_key, user_email):
-    """Return cached data if fresh, else None."""
-    entry = _report_cache.get(cache_key)
-    if entry is None:
-        return None
-    if entry.get('user') != user_email:
-        return None
-    if (_report_time.time() - entry.get('timestamp', 0)) >= _REPORT_CACHE_TTL_SECONDS:
-        return None
-    return entry['data']
+    """Return cached data if fresh, else None. Key includes user for isolation."""
+    return _report_cache_mgr.get(f"{cache_key}:{user_email}")
+
 
 def _set_report_cache(cache_key, data, user_email):
-    """Store result in cache."""
-    _report_cache[cache_key] = {
-        'data': data,
-        'user': user_email,
-        'timestamp': _report_time.time(),
-    }
+    """Store result in cache. Key includes user for isolation."""
+    _report_cache_mgr.set(f"{cache_key}:{user_email}", data)
+
 
 def _invalidate_report_cache():
     """Clear all report caches (call after any ledger write)."""
-    _report_cache.clear()
+    _report_cache_mgr.invalidate()
 
 # ---------------------------------------------------------------------------
 # Utility helpers
@@ -5915,9 +5900,6 @@ def get_user_permissions(token_or_email=None):
 # ---------------------------------------------------------------------------
 # Enhanced Dashboard Stats (Accounting module)
 # ---------------------------------------------------------------------------
-_accounting_dashboard_cache = {'data': None, 'timestamp': 0, 'user': None}
-_ACCOUNTING_DASHBOARD_CACHE_TTL_SECONDS = 60
-
 @anvil.server.callable
 def get_accounting_dashboard_stats(token_or_email=None):
     """Return inventory, purchase invoice, and P&L stats for the dashboard."""
@@ -5925,12 +5907,10 @@ def get_accounting_dashboard_stats(token_or_email=None):
     if not is_valid:
         return error
     try:
-        import time as _time
-        now_ts = _time.time()
-        if (_accounting_dashboard_cache.get('data') is not None
-            and _accounting_dashboard_cache.get('user') == user_email
-            and (now_ts - _accounting_dashboard_cache.get('timestamp', 0)) < _ACCOUNTING_DASHBOARD_CACHE_TTL_SECONDS):
-            return _accounting_dashboard_cache['data']
+        cache_key = f"acct_dash:{user_email}"
+        cached = _acct_dash_cache.get(cache_key)
+        if cached is not None:
+            return cached
 
         now = date.today()
         year = now.year
@@ -6016,9 +5996,7 @@ def get_accounting_dashboard_stats(token_or_email=None):
             'monthly_sales': monthly_sales,
         }
 
-        _accounting_dashboard_cache['data'] = result
-        _accounting_dashboard_cache['timestamp'] = now_ts
-        _accounting_dashboard_cache['user'] = user_email
+        _acct_dash_cache.set(cache_key, result)
         return result
     except Exception as e:
         logger.exception("get_accounting_dashboard_stats error")

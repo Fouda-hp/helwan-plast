@@ -92,6 +92,23 @@ def build_action_description(action, table_name, record_id, custom=None):
     return ' - '.join(parts) if parts else action or '—'
 
 
+_AUDIT_DATA_MAX_LEN = 10000
+
+
+def _truncate_audit_data(data, field_label, action):
+    """Serialize audit data to JSON, warn if truncated."""
+    if data is None:
+        return None
+    serialized = json.dumps(data, default=str, ensure_ascii=False)
+    if len(serialized) > _AUDIT_DATA_MAX_LEN:
+        logger.warning(
+            "Audit %s for action '%s' truncated from %d to %d chars",
+            field_label, action, len(serialized), _AUDIT_DATA_MAX_LEN
+        )
+        return serialized[:_AUDIT_DATA_MAX_LEN]
+    return serialized
+
+
 def log_audit(action, table_name, record_id, old_data, new_data,
               user_email=None, ip_address=None, user_name=None, action_description=None):
     """
@@ -118,8 +135,8 @@ def log_audit(action, table_name, record_id, old_data, new_data,
             'action': action or '',
             'table_name': table_name or '',
             'record_id': str(record_id)[:100] if record_id else None,
-            'old_data': json.dumps(old_data, default=str, ensure_ascii=False)[:10000] if old_data else None,
-            'new_data': json.dumps(new_data, default=str, ensure_ascii=False)[:10000] if new_data else None,
+            'old_data': _truncate_audit_data(old_data, 'old_data', action),
+            'new_data': _truncate_audit_data(new_data, 'new_data', action),
             'ip_address': (ip_address or 'unknown').strip()[:100],
         }
         try:

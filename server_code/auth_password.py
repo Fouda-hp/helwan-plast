@@ -31,25 +31,30 @@ def verify_password(password, stored_hash):
             return secrets.compare_digest(key.hex(), hash_value)
         old_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
         return secrets.compare_digest(old_hash, stored_hash)
+    except (ValueError, TypeError, UnicodeDecodeError) as e:
+        logger.error("Password verification error (data format): %s", e)
+        return False
     except Exception as e:
-        logger.error("Password verification error: %s", e)
+        logger.error("Password verification unexpected error: %s", e, exc_info=True)
         return False
 
 
 def upgrade_password_hash(user, password):
+    """Upgrade legacy SHA-256 hashes to PBKDF2 after successful login."""
     try:
         stored_hash = user.get('password_hash')
         if stored_hash and ':' not in stored_hash:
             new_hash = hash_password(password)
             user.update(password_hash=new_hash)
-            logger.info("Password hash upgraded for user: %s", user.get('email'))
+            logger.info("Password hash upgraded from SHA-256 to PBKDF2 for user: %s", user.get('email'))
             return True
     except Exception as e:
-        logger.error("Error upgrading password hash: %s", e)
+        logger.error("Error upgrading password hash for %s: %s", user.get('email', 'unknown'), e, exc_info=True)
     return False
 
 
 def add_to_password_history(user_email, password_hash):
+    """Add a password hash to history and prune old entries."""
     try:
         app_tables.password_history.add_row(
             history_id=str(uuid.uuid4()),
@@ -57,14 +62,18 @@ def add_to_password_history(user_email, password_hash):
             password_hash=password_hash,
             created_at=get_utc_now()
         )
+        # Prune old entries beyond the limit
         history = list(app_tables.password_history.search(user_email=user_email))
-        history.sort(key=lambda x: x['created_at'], reverse=True)
+        history.sort(key=lambda x: x['created_at'] or get_utc_now(), reverse=True)
         if len(history) > PASSWORD_HISTORY_COUNT:
             for old in history[PASSWORD_HISTORY_COUNT:]:
-                old.delete()
+                try:
+                    old.delete()
+                except Exception as del_err:
+                    logger.warning("Failed to prune old password history entry: %s", del_err)
         return True
     except Exception as e:
-        logger.error("Failed to add password to history: %s", e)
+        logger.error("Failed to add password to history for %s: %s", user_email, e)
         return False
 
 

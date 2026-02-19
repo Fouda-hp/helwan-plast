@@ -187,6 +187,46 @@ def safe_error(e, logger_ref=None, context='default', log_msg=None):
 
 
 # =========================================================
+# Bounded Table Search (防止 full table scans)
+# =========================================================
+
+# Default max rows to load from a single table scan
+MAX_TABLE_ROWS = 10000
+
+
+def bounded_search(table, max_rows=MAX_TABLE_ROWS, **filters):
+    """
+    Search a table with a safety limit to prevent unbounded full-table scans.
+    Returns a list (not a lazy iterator) capped at max_rows.
+    Usage: rows = bounded_search(app_tables.users, max_rows=500, is_active=True)
+    """
+    results = table.search(**filters)
+    rows = []
+    for i, row in enumerate(results):
+        if i >= max_rows:
+            logger.warning(
+                "bounded_search: hit %d row limit on table search (filters=%s)",
+                max_rows, list(filters.keys())
+            )
+            break
+        rows.append(row)
+    return rows
+
+
+def bounded_count(table, max_count=MAX_TABLE_ROWS, **filters):
+    """
+    Count rows in a table with a safety cap.
+    More efficient than len(table.search()) for large tables.
+    Returns min(actual_count, max_count).
+    """
+    try:
+        results = table.search(**filters)
+        return min(len(results), max_count)
+    except Exception:
+        return -1
+
+
+# =========================================================
 # Safe numeric conversion
 # =========================================================
 

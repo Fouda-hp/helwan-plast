@@ -1077,9 +1077,12 @@ def export_quotations_data(include_deleted=False, token_or_email=None):
         is_admin = _is_admin_export(token_or_email)
         search_kwargs = {} if include_deleted else {'is_deleted': False}
 
-        # Build clients lookup (iterate, don't hold full list)
+        # Build clients lookup (iterate with safety cap)
         clients_dict = {}
-        for c in app_tables.clients.search():
+        _MAX_CLIENTS = 50000
+        for _ci, c in enumerate(app_tables.clients.search()):
+            if _ci >= _MAX_CLIENTS:
+                break
             clients_dict[str(c['Client Code'])] = {
                 'Client Name': c.get('Client Name', ''),
                 'Company': c.get('Company', ''),
@@ -2902,7 +2905,12 @@ def export_contracts_data(token_or_email=None):
         return []
     try:
         is_admin = _is_admin_export(token_or_email)
-        all_rows = list(app_tables.contracts.search())
+        _MAX_EXPORT = 20000  # Safety cap
+        all_rows = []
+        for _i, _r in enumerate(app_tables.contracts.search()):
+            if _i >= _MAX_EXPORT:
+                break
+            all_rows.append(_r)
         all_rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
         data = []
         for r in all_rows:
@@ -3206,7 +3214,12 @@ def export_payment_schedule_excel(token_or_email=None):
     if not is_valid:
         return {'success': False, 'message': 'Export permission required'}
     try:
-        all_rows = list(app_tables.contracts.search())
+        _MAX_EXPORT = 20000  # Safety cap
+        all_rows = []
+        for _i, _r in enumerate(app_tables.contracts.search()):
+            if _i >= _MAX_EXPORT:
+                break
+            all_rows.append(_r)
         all_rows.sort(key=lambda x: x.get('created_at') or datetime.min, reverse=True)
 
         output = io.StringIO()

@@ -82,8 +82,11 @@ def _get_max_from_table(counter_key, include_deleted=False):
                         except (ValueError, TypeError):
                             continue
             except Exception:
-                # Fallback: full scan (original logic)
-                for row in app_tables.clients.search():
+                # Fallback: full scan with safety cap
+                _cap = 50000
+                for _idx, row in enumerate(app_tables.clients.search()):
+                    if _idx >= _cap:
+                        break
                     if not include_deleted and row.get("is_deleted") is True:
                         continue
                     v = row.get(col_name)
@@ -111,7 +114,10 @@ def _get_max_from_table(counter_key, include_deleted=False):
                         except (ValueError, TypeError):
                             continue
             except Exception:
-                for row in app_tables.quotations.search():
+                _cap = 50000
+                for _idx, row in enumerate(app_tables.quotations.search()):
+                    if _idx >= _cap:
+                        break
                     if not include_deleted and row.get("is_deleted") is True:
                         continue
                     v = row.get(col_name)

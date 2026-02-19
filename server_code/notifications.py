@@ -370,9 +370,11 @@ def delete_all_notifications_admin(token_or_email):
     if not _is_admin(token_or_email):
         return {'success': False, 'message': 'Admin access required', 'deleted_count': 0}
     try:
-        rows = list(app_tables.notifications.search())
+        _MAX_DELETE = 10000  # Safety cap per call
         count = 0
-        for row in rows:
+        for row in app_tables.notifications.search():
+            if count >= _MAX_DELETE:
+                break
             row.delete()
             count += 1
         logger.info("Admin %s deleted all notifications (%s rows)", user_email, count)

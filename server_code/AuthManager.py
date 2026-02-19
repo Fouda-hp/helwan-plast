@@ -1232,7 +1232,10 @@ def get_all_users(token_or_email):
         return error
 
     users = []
-    for user in app_tables.users.search():
+    _MAX_USERS = 1000  # Safety cap — most Anvil apps have < 100 users
+    for i, user in enumerate(app_tables.users.search()):
+        if i >= _MAX_USERS:
+            break
         users.append({
             'user_id': user['user_id'],
             'email': user['email'],
@@ -3046,10 +3049,20 @@ def cleanup_old_audit_logs(days=15, token_or_email=None):
         cutoff_date = get_utc_now() - timedelta(days=days)
         deleted_count = 0
 
-        for log in app_tables.audit_log.search():
+        import anvil.tables.query as q
+        # Use DB-level filter instead of loading ALL audit logs
+        try:
+            old_logs = app_tables.audit_log.search(timestamp=q.less_than(cutoff_date))
+        except Exception:
+            # Fallback: scan with safety cap if query fails
+            old_logs = app_tables.audit_log.search()
+        _MAX_DELETE = 10000  # Safety cap per cleanup run
+        for log in old_logs:
+            if deleted_count >= _MAX_DELETE:
+                logger.warning("Audit cleanup: hit %d delete cap, will continue next run", _MAX_DELETE)
+                break
             log_timestamp = log['timestamp']
             if log_timestamp:
-                # تحويل للمقارنة
                 if log_timestamp.tzinfo is None:
                     log_timestamp = log_timestamp.replace(tzinfo=timezone.utc)
                 if log_timestamp < cutoff_date:

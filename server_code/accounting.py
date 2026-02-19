@@ -1227,7 +1227,10 @@ def _generate_invoice_number():
     prefix = f"PI-{year}-"
     max_seq = 0
     try:
-        for r in app_tables.purchase_invoices.search():
+        # Stream results but only check invoice_number field — no need to load all columns
+        for i, r in enumerate(app_tables.purchase_invoices.search()):
+            if i >= 50000:
+                break  # Safety cap
             inv_num = _safe_str(r.get('invoice_number'))
             if inv_num.startswith(prefix):
                 try:
@@ -1312,7 +1315,10 @@ def get_purchase_invoices(status=None, search='', token_or_email=None):
         except Exception:
             pass
 
-        for r in rows:
+        _MAX_INVOICES = 10000  # Safety cap
+        for i, r in enumerate(rows):
+            if i >= _MAX_INVOICES:
+                break
             d = _row_to_dict(r, PURCHASE_INVOICE_COLS)
             # Parse items_json for convenience
             try:
@@ -5926,7 +5932,8 @@ def get_accounting_dashboard_stats(token_or_email=None):
         now = date.today()
         year = now.year
 
-        # Inventory stats
+        # Inventory stats (capped at 50k rows as safety)
+        _MAX_ROWS = 50000
         inv_count = 0; inv_value = 0.0; inv_in_stock = 0; inv_in_transit = 0; inv_sold = 0
         for item in app_tables.inventory.search():
             inv_count += 1
@@ -6027,7 +6034,10 @@ def export_inventory_data(token_or_email=None):
         return []
     try:
         data = []
-        for r in app_tables.inventory.search():
+        _MAX_EXPORT = 20000  # Safety cap for exports
+        for i, r in enumerate(app_tables.inventory.search()):
+            if i >= _MAX_EXPORT:
+                break
             data.append({
                 'Machine Code': r.get('machine_code', ''),
                 'Description': r.get('description', ''),
@@ -6062,7 +6072,10 @@ def export_purchase_invoices_data(token_or_email=None):
             pass
 
         data = []
-        for r in app_tables.purchase_invoices.search():
+        _MAX_EXPORT = 20000  # Safety cap for exports
+        for i, r in enumerate(app_tables.purchase_invoices.search()):
+            if i >= _MAX_EXPORT:
+                break
             supplier_name = _sup_map.get(r.get('supplier_id', ''), '')
             data.append({
                 'Invoice Number': r.get('invoice_number', ''),

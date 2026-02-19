@@ -42,31 +42,15 @@ _dashboard_cache = {'data': None, 'timestamp': 0, 'filter': None, 'user': None}
 _DASHBOARD_CACHE_TTL_SECONDS = 180
 
 
-def _get_client_ip():
-    try:
-        return AuthManager.get_client_ip()
-    except Exception:
-        return 'unknown'
-
-
-def _log_audit(action, table_name, record_id, old_data, new_data, user_email='system', ip_address=None):
-    try:
-        AuthManager.log_audit(action, table_name, record_id, old_data, new_data, user_email, ip_address)
-    except Exception as e:
-        logger.warning("Audit log error in followup_reminders: %s", e)
-
-
-def _parse_date(date_str):
-    """Parse ISO date string to date object."""
-    if not date_str or not str(date_str).strip():
-        return None
-    try:
-        parts = str(date_str).strip().split('T')[0].split('-')
-        if len(parts) >= 3:
-            return date(int(parts[0]), int(parts[1]), int(parts[2]))
-    except (ValueError, IndexError):
-        pass
-    return None
+# Use shared helpers to avoid code duplication
+try:
+    from .shared_utils import get_client_ip_safe as _get_client_ip
+    from .shared_utils import log_audit_safe as _log_audit
+    from .shared_utils import parse_date as _parse_date
+except ImportError:
+    from shared_utils import get_client_ip_safe as _get_client_ip
+    from shared_utils import log_audit_safe as _log_audit
+    from shared_utils import parse_date as _parse_date
 
 
 # =========================================================

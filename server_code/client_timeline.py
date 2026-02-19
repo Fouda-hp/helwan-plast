@@ -30,21 +30,13 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Helper: البحث في العقود مع استبعاد المحذوفة (soft delete)
-_contracts_has_is_deleted = None
-
-def _contracts_search_active(**kwargs):
-    """البحث في جدول العقود مع استبعاد is_deleted=True تلقائياً."""
-    global _contracts_has_is_deleted
-    if _contracts_has_is_deleted is None:
-        try:
-            cols = [col['name'] for col in app_tables.contracts.list_columns()]
-            _contracts_has_is_deleted = 'is_deleted' in cols
-        except Exception:
-            _contracts_has_is_deleted = False
-    if _contracts_has_is_deleted:
-        kwargs['is_deleted'] = False
-    return app_tables.contracts.search(**kwargs)
+# Use shared contract search helper to avoid code duplication
+try:
+    from .shared_utils import contracts_search_active as _contracts_search_active
+    from .shared_utils import to_datetime as _to_datetime_shared
+except ImportError:
+    from shared_utils import contracts_search_active as _contracts_search_active
+    from shared_utils import to_datetime as _to_datetime_shared
 
 
 def _safe_isoformat(val):
@@ -67,24 +59,8 @@ def _parse_json(val):
         return []
 
 
-def _to_datetime(val):
-    """Convert date/datetime to naive datetime for safe comparison.
-
-    Always strips timezone info so all values are offset-naive,
-    preventing 'can't compare offset-naive and offset-aware' errors.
-    """
-    if val is None:
-        return None
-    if isinstance(val, datetime):
-        return val.replace(tzinfo=None)
-    if isinstance(val, date):
-        return datetime(val.year, val.month, val.day)
-    # Try parsing string
-    try:
-        dt = datetime.fromisoformat(str(val).replace('Z', '+00:00'))
-        return dt.replace(tzinfo=None)
-    except Exception:
-        return None
+# _to_datetime delegated to shared_utils.to_datetime
+_to_datetime = _to_datetime_shared
 
 
 def _date_only(val):

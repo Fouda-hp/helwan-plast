@@ -40,18 +40,13 @@ except ImportError:
     from auth_permissions import require_permission_full as _require_permission
 
 
-def _get_client_ip():
-    try:
-        return AuthManager.get_client_ip()
-    except Exception:
-        return 'unknown'
-
-
-def _log_audit(action, table_name, record_id, old_data, new_data, user_email='system', ip_address=None):
-    try:
-        AuthManager.log_audit(action, table_name, record_id, old_data, new_data, user_email, ip_address)
-    except Exception as e:
-        logger.warning("Audit log error in client_notes: %s", e)
+# Use shared helpers to avoid code duplication
+try:
+    from .shared_utils import get_client_ip_safe as _get_client_ip
+    from .shared_utils import log_audit_safe as _log_audit
+except ImportError:
+    from shared_utils import get_client_ip_safe as _get_client_ip
+    from shared_utils import log_audit_safe as _log_audit
 
 
 def _get_user_name(user_email):

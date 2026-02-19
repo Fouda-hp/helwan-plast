@@ -589,8 +589,8 @@ def post_year_end_closing(year, token_or_email=None):
         date=q.all_of(q.greater_than_or_equal_to(year_start), q.less_than_or_equal_to(year_end))
     )):
         if _i >= MAX_LEDGER_SCAN:
-            logger.warning("Ledger scan cap reached (%d) in close_year_end", MAX_LEDGER_SCAN)
-            break
+            logger.error("close_year_end ABORTED: ledger scan cap reached (%d). Cannot safely close year with incomplete data.", MAX_LEDGER_SCAN)
+            return {'success': False, 'message': f'عدد القيود ({MAX_LEDGER_SCAN:,}+) أكبر من الحد المسموح. لا يمكن إقفال السنة بأرقام ناقصة.'}
         code = entry.get('account_code', '')
         atype = acct_meta.get(code, '')
         if atype not in ('revenue', 'expense'):
@@ -3794,9 +3794,11 @@ def _get_all_balances(as_of_date=None, date_from=None):
         elif start:
             search_kwargs['date'] = q.greater_than_or_equal_to(start)
 
+        _scan_truncated = False
         for _i, entry in enumerate(app_tables.ledger.search(**search_kwargs)):
             if _i >= MAX_LEDGER_SCAN:
                 logger.warning("Ledger scan cap reached (%d) in _get_all_balances", MAX_LEDGER_SCAN)
+                _scan_truncated = True
                 break
             code = entry.get('account_code')
             if code not in accounts:
@@ -3819,7 +3821,7 @@ def _get_all_balances(as_of_date=None, date_from=None):
         info['total_debit'] = _round2(d)
         info['total_credit'] = _round2(c)
 
-    return accounts
+    return accounts, _scan_truncated
 
 
 @anvil.server.callable
@@ -3838,7 +3840,7 @@ def get_trial_balance(date_from=None, date_to=None, token_or_email=None):
     if _cached is not None:
         return _cached
     try:
-        accounts = _get_all_balances(as_of_date=date_to, date_from=date_from)
+        accounts, _truncated = _get_all_balances(as_of_date=date_to, date_from=date_from)
         rows = []
         total_debit = 0.0
         total_credit = 0.0
@@ -3888,6 +3890,9 @@ def get_trial_balance(date_from=None, date_to=None, token_or_email=None):
             'date_from': date_from,
             'date_to': date_to,
         }
+        if _truncated:
+            result['truncated'] = True
+            result['warning'] = f'تحذير: تم الوصول للحد الأقصى ({MAX_LEDGER_SCAN:,} قيد). النتائج قد تكون غير مكتملة.'
         _set_report_cache(_cache_key, result, user_email)
         return result
     except Exception as e:
@@ -3926,9 +3931,11 @@ def get_income_statement(date_from, date_to, token_or_email=None):
             search_kwargs['date'] = q.greater_than_or_equal_to(d_from)
         elif d_to:
             search_kwargs['date'] = q.less_than_or_equal_to(d_to)
+        _is_truncated = False
         for _i, entry in enumerate(app_tables.ledger.search(**search_kwargs)):
             if _i >= MAX_LEDGER_SCAN:
                 logger.warning("Ledger scan cap reached (%d) in get_income_statement", MAX_LEDGER_SCAN)
+                _is_truncated = True
                 break
             code = entry.get('account_code', '')
             if code not in acct_totals:
@@ -4005,6 +4012,9 @@ def get_income_statement(date_from, date_to, token_or_email=None):
             'expenses': {'items': expense_items, 'total': _round2(total_expenses)},
             'net_profit': net_profit,
         }
+        if _is_truncated:
+            result['truncated'] = True
+            result['warning'] = f'تحذير: تم الوصول للحد الأقصى ({MAX_LEDGER_SCAN:,} قيد). النتائج قد تكون غير مكتملة.'
         _set_report_cache(_cache_key, result, user_email)
         return result
     except Exception as e:
@@ -4106,7 +4116,7 @@ def get_balance_sheet(as_of_date, token_or_email=None):
         return _cached
 
     try:
-        accounts = _get_all_balances(as_of_date)
+        accounts, _truncated = _get_all_balances(as_of_date)
         asset_items = []
         total_assets = 0.0
         liability_items = []
@@ -4194,6 +4204,9 @@ def get_balance_sheet(as_of_date, token_or_email=None):
             'total_liabilities_equity': total_liabilities_equity,
             'is_balanced': abs(total_assets - total_liabilities_equity) < 0.01,
         }
+        if _truncated:
+            result['truncated'] = True
+            result['warning'] = f'تحذير: تم الوصول للحد الأقصى ({MAX_LEDGER_SCAN:,} قيد). النتائج قد تكون غير مكتملة.'
         _set_report_cache(_cache_key, result, user_email)
         return result
     except Exception as e:

@@ -432,11 +432,14 @@ class TestFullScenario(unittest.TestCase):
             inventory_id, 'C - Q2026-001 / 1 - 2026', 90000.00, '2026-02-15', 'test@helwan.com')
         self.assertTrue(result['success'], f"sell_inventory failed: {result}")
         landed_cost = result['landed_cost']
-        self.assertGreater(landed_cost, 0)
+        # Landed cost = purchase 60,000 + import costs 8,000 = 68,000
+        self.assertEqual(landed_cost, 68000.00, f"Landed cost should be 68,000 (60k purchase + 8k imports), got {landed_cost}")
         # revenue returned is the total receivable (selling_price)
         self.assertEqual(result['revenue'], 90000.00)
-        # gross_profit = net_revenue - COGS (net_revenue excludes VAT if VAT-inclusive)
+        # gross_profit = net_revenue - COGS (net_revenue excludes VAT at 14%)
         net_revenue = result.get('net_revenue', result['revenue'])
+        self.assertAlmostEqual(net_revenue, 78947.37, places=2,
+                               msg=f"Net revenue (ex-VAT 14%) should be 78,947.37, got {net_revenue}")
         self.assertAlmostEqual(result['gross_profit'], net_revenue - landed_cost, places=2,
                                msg=f"gross_profit={result['gross_profit']} != net_revenue({net_revenue}) - COGS({landed_cost})")
         print(f"   COGS Journal: DR 5000 COGS {landed_cost:,.2f} / CR 1200 Inventory {landed_cost:,.2f}")
@@ -467,10 +470,11 @@ class TestFullScenario(unittest.TestCase):
         print(f"   {'TOTALS':<39} {tb['total_debit']:>12,.2f} {tb['total_credit']:>12,.2f}")
         print(f"   Balanced: {'YES' if tb['is_balanced'] else 'NO'}")
 
-        # TB assertions — key accounts must have entries
-        self.assertGreater(bal_map.get('1100', {}).get('debit', 0), 0, "AR should have debit")
-        self.assertGreater(bal_map.get('4000', {}).get('credit', 0), 0, "Revenue should have credit")
-        self.assertGreater(bal_map.get('5000', {}).get('debit', 0), 0, "COGS should have debit")
+        # TB assertions — exact balances for key accounts
+        self.assertEqual(bal_map.get('1100', {}).get('debit', 0), 90000.00, "AR = 90,000 (total receivable)")
+        self.assertAlmostEqual(bal_map.get('4000', {}).get('credit', 0), 78947.37, places=2, msg="Revenue = 78,947.37 (ex-VAT)")
+        self.assertEqual(bal_map.get('5000', {}).get('debit', 0), 68000.00, "COGS = 68,000 (landed cost)")
+        self.assertEqual(bal_map.get('1011', {}).get('credit', 0), 30000.00, "CIB = 30,000 (supplier payment)")
 
         # INCOME STATEMENT
         # API returns: revenue.total, cogs.total, gross_profit, expenses.total, net_profit
@@ -482,11 +486,11 @@ class TestFullScenario(unittest.TestCase):
         gross_profit = inc['gross_profit']
         opex_total = inc['expenses']['total']
         net_profit = inc['net_profit']
-        # Revenue in income statement is net (ex-VAT) — credit balance of 4000
-        self.assertGreater(rev_total, 0, "Revenue must be > 0")
-        self.assertGreater(cogs_total, 0, "COGS must be > 0")
+        # Revenue in income statement = net (ex-VAT 14%) credit balance of 4000
+        self.assertAlmostEqual(rev_total, 78947.37, places=2, msg=f"IS Revenue should be 78,947.37 (ex-VAT)")
+        self.assertEqual(cogs_total, 68000.00, f"IS COGS should be 68,000")
         self.assertAlmostEqual(gross_profit, rev_total - cogs_total, places=2)
-        self.assertGreaterEqual(opex_total, 0.00)
+        self.assertEqual(opex_total, 0.00, "No operating expenses in this scenario")
         self.assertAlmostEqual(net_profit, gross_profit - opex_total, places=2)
         print(f"   Revenue:")
         for r in inc['revenue']['items']:

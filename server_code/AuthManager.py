@@ -25,7 +25,15 @@ import uuid
 import re
 import logging
 
-logging.basicConfig(level=logging.INFO)
+# Initialize structured logging (JSON + correlation IDs) at app startup
+try:
+    from .structured_logging import setup_structured_logging, log_request_timing as _timed
+    setup_structured_logging(level=logging.INFO, json_output=True)
+except Exception:
+    # Fallback to basic logging if structured logging fails to load
+    logging.basicConfig(level=logging.INFO)
+    _timed = lambda f: f  # no-op fallback
+
 logger = logging.getLogger(__name__)
 
 # ========== استيراد من الوحدات المنظمة ==========
@@ -773,6 +781,7 @@ def resend_verification_otp(email):
 # تسجيل الدخول (مع Two-Factor Authentication)
 # =========================================================
 @anvil.server.callable
+@_timed
 def login_user(email, password):
     """
     تسجيل دخول المستخدم - الخطوة الأولى
@@ -1025,6 +1034,7 @@ def logout_user(token):
 # التحقق من الجلسة
 # =========================================================
 @anvil.server.callable
+@_timed
 def validate_token(token):
     """
     التحقق من صحة الجلسة وإرجاع معلومات المستخدم

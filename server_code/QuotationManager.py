@@ -57,6 +57,15 @@ try:
 except ImportError:
     from auth_rate_limit import check_rate_limit
 
+# Structured logging — request timing decorator
+try:
+    from .structured_logging import log_request_timing as _timed
+except ImportError:
+    try:
+        from structured_logging import log_request_timing as _timed
+    except ImportError:
+        _timed = lambda f: f  # no-op fallback
+
 # =========================================================
 # Centralized permission helpers (من auth_permissions.py)
 # =========================================================
@@ -1113,6 +1122,7 @@ def export_quotations_data(include_deleted=False, token_or_email=None):
 # إحصائيات لوحة التحكم
 # =========================================================
 @anvil.server.callable
+@_timed
 def get_dashboard_stats(token_or_email=None):
     """الحصول على إحصائيات لوحة التحكم - يتطلب صلاحية view"""
     is_valid, user_email, error = _require_permission(token_or_email, 'view')
@@ -2961,6 +2971,7 @@ def _invalidate_payment_cache():
     _payment_dash_cache.invalidate()
 
 @anvil.server.callable
+@_timed
 def get_payment_dashboard_data(token_or_email=None):
     """
     Aggregated payment tracking data for the dashboard.

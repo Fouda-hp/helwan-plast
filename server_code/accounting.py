@@ -60,6 +60,15 @@ try:
 except ImportError:
     from shared_utils import contracts_search_active as _contracts_search_active
 
+# Structured logging — request timing decorator
+try:
+    from .structured_logging import log_request_timing as _timed
+except ImportError:
+    try:
+        from structured_logging import log_request_timing as _timed
+    except ImportError:
+        _timed = lambda f: f  # no-op fallback
+
 # ---------------------------------------------------------------------------
 # Financial report cache — migrated to thread-safe TTLCache (cache_manager)
 # ---------------------------------------------------------------------------
@@ -5901,6 +5910,7 @@ def get_user_permissions(token_or_email=None):
 # Enhanced Dashboard Stats (Accounting module)
 # ---------------------------------------------------------------------------
 @anvil.server.callable
+@_timed
 def get_accounting_dashboard_stats(token_or_email=None):
     """Return inventory, purchase invoice, and P&L stats for the dashboard."""
     is_valid, user_email, error = _require_permission(token_or_email, 'read')

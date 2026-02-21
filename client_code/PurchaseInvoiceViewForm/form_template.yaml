@@ -156,6 +156,7 @@ container:
           .pi-config-section { display: none !important; }
           .pi-cyl-section { display: none !important; }
           .pi-egp-section { display: none !important; }
+          .pi-egp-only { display: none !important; }
           .pi-wrapper { padding: 0; max-width: 100%; }
           .pi-page { box-shadow: none; padding: 10mm; }
           .pi-proforma-watermark { display: none !important; }
@@ -290,6 +291,45 @@ container:
           var mat = mc.material || '';
           var wind = mc.winder || '';
 
+          // If no machine_type but model_code exists, parse from model code
+          // Format: SH4-1000M/D → S=New, H=Helwan, 4=colors, 1000=width*10, M=Metal, /D=Double+PE
+          if (!mType && mc.model_code) {
+            var code = mc.model_code;
+            // Parse anilox type from code
+            if (code.indexOf('CC') >= 0 || code.indexOf('cc') >= 0) mType = "Ceramic anilox Chamber Doctor Blade";
+            else if (code.indexOf('C') >= 0 && code.indexOf('CC') < 0) mType = "Ceramic anilox Single Doctor Blade";
+            else if (code.indexOf('M') >= 0) mType = "Metal anilox";
+
+            // Parse colors: digit after H (e.g., SH4 → 4)
+            var colMatch = code.match(/H(\d)/);
+            if (colMatch && !cols) cols = colMatch[1];
+
+            // Parse width: 3-4 digits before anilox letter (e.g., 1000M → 100cm)
+            var widMatch = code.match(/-(\d{3,4})/);
+            if (widMatch && !wid) {
+              var rawW = parseInt(widMatch[1]);
+              wid = String(rawW >= 100 ? Math.round(rawW / 10) : rawW);
+            }
+
+            // Parse material/winder from suffix after /
+            var suffix = code.split('/')[1] || '';
+            if (!wind) {
+              if (suffix === 'D' || suffix.indexOf('D') >= 0) wind = 'Double';
+              else if (suffix === 'S' || suffix.indexOf('S') >= 0) wind = 'Single';
+            }
+            if (!mat) {
+              if (suffix === 'PS' || suffix === 'PP' || suffix === 'HS' || suffix === 'SS') {
+                // PP/Nonwoven/Paper
+                if (suffix === 'PS') mat = 'PP';
+                else if (suffix === 'PP') mat = 'Paper to 100g';
+                else if (suffix === 'HS') mat = 'Paper to 200g';
+                else if (suffix === 'SS') mat = 'Paper to 300g';
+              } else {
+                mat = 'PE'; // Default
+              }
+            }
+          }
+
           var basePrice = 0;
           var byType = INV_MACHINE_PRICES[mType];
           if (byType && byType[cols] && byType[cols][wid] !== undefined) {
@@ -297,8 +337,17 @@ container:
           }
           var matAdj = INV_MATERIAL_ADJ[mat] || 0;
           var windAdj = INV_WINDER_ADJ[wind] || 0;
-          // No optionals from contract config (they aren't stored in quotation)
-          var stdFob = basePrice + matAdj + windAdj;
+
+          // Include optionals if available
+          var optAdj = 0;
+          if (mc.optionals && mc.optionals.length > 0) {
+            mc.optionals.forEach(function(o) {
+              if (o === "Slitter") return; // Slitter excluded from FOB
+              optAdj += (INV_OPTIONAL_ADJ[o] || 0);
+            });
+          }
+
+          var stdFob = basePrice + matAdj + windAdj + optAdj;
           return { standard: stdFob };
         }
 
@@ -1066,6 +1115,17 @@ container:
 
           var fobStd = d.fob_standard || 0;
           var fobCyl = d.fob_with_cylinders || 0;
+
+          // If FOB is 0 but machine config exists, calculate from config
+          if (fobStd === 0 && d.machine_config && (d.machine_config.machine_type || d.machine_config.model_code)) {
+            var calcResult = piCalcFobFromConfig(d.machine_config);
+            fobStd = calcResult.standard;
+            if (fobCyl === 0) fobCyl = fobStd; // at minimum, FOB with cyl = standard FOB
+            // Update invoiceData so save picks it up
+            d.fob_standard = fobStd;
+            d.fob_with_cylinders = fobCyl;
+          }
+
           var disc = d.discount || 0;
           var amtDue = fobCyl - disc;
           if (amtDue < 0) amtDue = 0;
@@ -1140,16 +1200,39 @@ container:
             html += '</div>';
 
             if (d.paid_amount > 0) {
+              // paid_amount is in EGP, convert to USD for display
+              var paidEgp = d.paid_amount || 0;
+              var exchRate = d.exchange_rate || 0;
+              var paidUsd = (exchRate > 0) ? (paidEgp / exchRate) : 0;
+              var totalUsd = d.amount_due || amtDue;
+              var remUsd = totalUsd - paidUsd;
+
+              // USD Paid (shown on both screen and PDF)
               html += '<div class="pi-pricing-row">';
-              html += '<span class="label">' + (isAr ? 'المدفوع' : 'Paid') + '</span>';
-              html += '<span class="value" style="color:#2e7d32;">' + fmtNum(d.paid_amount) + '</span>';
+              html += '<span class="label">' + (isAr ? 'المدفوع ($)' : 'Paid ($)') + '</span>';
+              html += '<span class="value" style="color:#2e7d32;">$' + fmtNum(paidUsd) + '</span>';
               html += '</div>';
 
-              var rem = (d.amount_due || amtDue) - (d.paid_amount || 0);
-              html += '<div class="pi-pricing-row">';
-              html += '<span class="label">' + (isAr ? 'الباقي' : 'Remaining') + '</span>';
-              html += '<span class="value" style="color:#c62828;">' + fmtNum(rem > 0 ? rem : 0) + '</span>';
+              // EGP Paid (screen only — hidden from print/PDF)
+              html += '<div class="pi-pricing-row pi-egp-only" style="font-size:12px;">';
+              html += '<span class="label" style="color:#999;">' + (isAr ? 'المدفوع (ج.م)' : 'Paid (EGP)') + '</span>';
+              html += '<span class="value" style="color:#666;font-size:13px;">' + fmtNum(paidEgp) + ' EGP</span>';
               html += '</div>';
+
+              // USD Remaining
+              html += '<div class="pi-pricing-row">';
+              html += '<span class="label">' + (isAr ? 'الباقي ($)' : 'Remaining ($)') + '</span>';
+              html += '<span class="value" style="color:#c62828;">$' + fmtNum(remUsd > 0 ? remUsd : 0) + '</span>';
+              html += '</div>';
+
+              // EGP Remaining (screen only)
+              if (exchRate > 0) {
+                var remEgp = remUsd > 0 ? remUsd * exchRate : 0;
+                html += '<div class="pi-pricing-row pi-egp-only" style="font-size:12px;">';
+                html += '<span class="label" style="color:#999;">' + (isAr ? 'الباقي (ج.م)' : 'Remaining (EGP)') + '</span>';
+                html += '<span class="value" style="color:#999;font-size:13px;">' + fmtNum(remEgp) + ' EGP</span>';
+                html += '</div>';
+              }
             }
           }
 
@@ -1369,10 +1452,12 @@ container:
           var configSection = document.getElementById('piConfigSection');
           var cylSection = document.getElementById('piCylSection');
           var egpSection = document.getElementById('piEgpSection');
+          var egpOnlyEls = document.querySelectorAll('.pi-egp-only');
           if (controls) controls.style.display = 'none';
           if (configSection) configSection.style.display = 'none';
           if (cylSection) cylSection.style.display = 'none';
           if (egpSection) egpSection.style.display = 'none';
+          egpOnlyEls.forEach(function(el) { el.style.display = 'none'; });
 
           try {
             if (!window.html2canvas) {
@@ -1431,6 +1516,7 @@ container:
             if (configSection) configSection.style.display = '';
             if (cylSection) cylSection.style.display = '';
             if (egpSection) egpSection.style.display = '';
+            egpOnlyEls.forEach(function(el) { el.style.display = ''; });
           }
         };
 

@@ -423,8 +423,14 @@ container:
             html += '<div class="im-summary-item"><div class="label">Remaining</div><div class="value remaining">' + fmtNum(summary.remaining) + '</div></div>';
             html += '</div>';
 
-            // Invoice button placeholder
-            html += '<button class="im-invoice-btn" onclick="alert(\'Sales Invoice — Coming Soon\')">Create Sales Invoice</button>';
+            // Invoice section: existing invoices + create button
+            html += '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px;">';
+            html += '<button class="im-invoice-btn" id="createInvBtn-' + qNum + '" onclick="createSalesInvoice(' + qNum + ')">Create Sales Invoice</button>';
+            html += '<span id="invList-' + qNum + '" style="font-size:13px;color:#666;"></span>';
+            html += '</div>';
+
+            // Load existing invoices for this contract
+            loadContractInvoices(qNum);
 
             panel.innerHTML = html;
 
@@ -497,6 +503,41 @@ container:
             alert('Error: ' + (e.message || e));
           }
         };
+
+        // ── Create sales invoice ──
+        window.createSalesInvoice = async function(qNum) {
+          var btn = document.getElementById('createInvBtn-' + qNum);
+          if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
+
+          try {
+            var result = await window.pyCreateSalesInvoice(qNum, '');
+            if (result && result.success) {
+              // Open invoice in new tab/page
+              location.hash = '#sales-invoice-' + encodeURIComponent(result.invoice_number);
+            } else {
+              alert(result.message || 'Failed to create invoice');
+              if (btn) { btn.disabled = false; btn.textContent = 'Create Sales Invoice'; }
+            }
+          } catch(e) {
+            alert('Error: ' + (e.message || e));
+            if (btn) { btn.disabled = false; btn.textContent = 'Create Sales Invoice'; }
+          }
+        };
+
+        // ── Load existing invoices for contract ──
+        async function loadContractInvoices(qNum) {
+          var span = document.getElementById('invList-' + qNum);
+          if (!span) return;
+          try {
+            var result = await window.pyGetContractInvoices(qNum);
+            if (result && result.success && result.data && result.data.length > 0) {
+              var links = result.data.map(function(inv) {
+                return '<a href="#sales-invoice-' + encodeURIComponent(inv.invoice_number) + '" style="color:#7b1fa2;font-weight:600;text-decoration:underline;margin:0 4px;">' + inv.invoice_number + '</a>';
+              });
+              span.innerHTML = 'Existing: ' + links.join(' | ');
+            }
+          } catch(e) { /* ignore */ }
+        }
 
         // ── Generic tab loading ──
         async function loadTabData() {

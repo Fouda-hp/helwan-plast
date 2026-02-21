@@ -34,9 +34,10 @@ ADMIN_ONLY = [
     '#inventory', '#purchase-invoices', '#suppliers', '#supplier-summary',
 ]
 
-# Prefix-based routes (e.g. #client-detail-123)
+# Prefix-based routes (e.g. #client-detail-123, #sales-invoice-INV-2026-001)
 PREFIX_ROUTES = {
     '#client-detail': 'ClientDetailForm',
+    '#sales-invoice': 'SalesInvoiceForm',
 }
 
 # Default form

@@ -1,0 +1,392 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #f0f2f5; }
+
+        .si-wrapper { max-width: 900px; margin: 0 auto; padding: 20px; font-family: 'Segoe UI', Arial, sans-serif; }
+
+        /* Controls bar */
+        .si-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: #fff; padding: 16px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .si-controls button { padding: 8px 20px; border-radius: 8px; border: none; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+        .si-back-btn { background: #546e7a; color: #fff; }
+        .si-back-btn:hover { background: #37474f; }
+        .si-lang-btn { background: #e3f2fd; color: #1565c0; border: 2px solid #90caf9 !important; }
+        .si-lang-btn:hover { background: #bbdefb; }
+        .si-lang-btn.active { background: #2196f3; color: #fff; }
+        .si-print-btn { background: #4caf50; color: #fff; }
+        .si-print-btn:hover { background: #388e3c; }
+        .si-pdf-btn { background: #c62828; color: #fff; }
+        .si-pdf-btn:hover { background: #b71c1c; }
+
+        /* Invoice page */
+        .si-page { background: #fff; padding: 40px; border-radius: 4px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+        .si-page.rtl { direction: rtl; text-align: right; }
+        .si-page.ltr { direction: ltr; text-align: left; }
+
+        /* Header */
+        .si-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 3px solid #1a1a2e; margin-bottom: 24px; }
+        .si-header-info { max-width: 55%; }
+        .si-header-brand { text-align: center; }
+        .si-page.rtl .si-header-brand { text-align: left; }
+        .si-page.ltr .si-header-brand { text-align: right; }
+        .si-logo { width: 120px; height: auto; margin-bottom: 6px; }
+        .si-company-name { font-size: 16px; font-weight: 800; color: #1a1a2e; }
+        .si-company-detail { font-size: 11px; color: #666; }
+        .si-header-info .si-addr { font-size: 12px; color: #555; margin-bottom: 4px; }
+
+        /* Invoice title */
+        .si-title-bar { text-align: center; padding: 12px; background: linear-gradient(135deg, #1a1a2e, #2d2d54); color: #fff; border-radius: 8px; margin-bottom: 24px; }
+        .si-title-bar h2 { font-size: 22px; font-weight: 800; letter-spacing: 2px; }
+        .si-title-bar .si-inv-num { font-size: 14px; margin-top: 4px; opacity: 0.9; }
+
+        /* Info grid */
+        .si-info-section { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .si-info-card { padding: 14px 18px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #2196f3; }
+        .si-page.rtl .si-info-card { border-left: none; border-right: 4px solid #2196f3; }
+        .si-info-card h4 { font-size: 13px; color: #888; margin-bottom: 8px; text-transform: uppercase; font-weight: 700; }
+        .si-info-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
+        .si-info-row .label { color: #666; }
+        .si-info-row .value { font-weight: 700; color: #1a1a2e; }
+
+        /* Tables */
+        .si-section-title { font-size: 15px; font-weight: 700; color: #1a1a2e; margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 2px solid #e8eaf6; }
+        .si-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
+        .si-table th { padding: 10px 14px; background: #1a1a2e; color: #fff; font-weight: 700; text-align: center; }
+        .si-table td { padding: 10px 14px; border-bottom: 1px solid #eee; text-align: center; }
+        .si-table tbody tr:nth-child(even) { background: #f8f9fa; }
+        .si-table .amount { font-weight: 700; }
+
+        /* Summary */
+        .si-summary-bar { display: flex; justify-content: space-around; padding: 18px; background: linear-gradient(135deg, #e8eaf6, #f3e5f5); border-radius: 10px; margin: 20px 0; }
+        .si-summary-item { text-align: center; }
+        .si-summary-item .label { font-size: 11px; color: #666; font-weight: 600; text-transform: uppercase; }
+        .si-summary-item .value { font-size: 22px; font-weight: 800; color: #1a1a2e; }
+        .si-summary-item .value.paid { color: #2e7d32; }
+        .si-summary-item .value.remaining { color: #c62828; }
+
+        /* Footer */
+        .si-footer { margin-top: 30px; padding-top: 16px; border-top: 2px solid #1a1a2e; display: flex; justify-content: space-between; font-size: 11px; color: #999; }
+
+        /* Status badge */
+        .si-badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-weight: 700; font-size: 12px; }
+        .si-badge.fully-paid { background: #e8f5e9; color: #2e7d32; }
+        .si-badge.partial { background: #fff3e0; color: #e65100; }
+        .si-badge.unpaid { background: #ffebee; color: #c62828; }
+
+        /* Loading */
+        .si-loading { text-align: center; padding: 60px; color: #888; font-size: 16px; }
+
+        /* Print */
+        @media print {
+          .si-controls { display: none !important; }
+          .si-wrapper { padding: 0; max-width: 100%; }
+          .si-page { box-shadow: none; padding: 10mm; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+      </style>
+
+      <div class="si-wrapper">
+        <!-- Controls -->
+        <div class="si-controls" id="siControls">
+          <button class="si-back-btn" onclick="window.pyGoBack()">Back</button>
+          <div style="flex:1;"></div>
+          <button class="si-lang-btn active" id="btnAr" onclick="switchLang('ar')">عربي</button>
+          <button class="si-lang-btn" id="btnEn" onclick="switchLang('en')">English</button>
+          <button class="si-print-btn" onclick="window.print()">Print</button>
+          <button class="si-pdf-btn" onclick="exportPDF()">Export PDF</button>
+        </div>
+
+        <!-- Invoice content -->
+        <div id="siContent">
+          <div class="si-loading" id="siLoading">Loading invoice...</div>
+        </div>
+      </div>
+
+      <script>
+      (function() {
+        var invoiceData = null;
+        var companyData = null;
+        var currentLang = 'ar';
+
+        function fmtNum(v) {
+          if (!v && v !== 0) return '0';
+          var n = parseFloat(v);
+          return isNaN(n) ? String(v) : n.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+        }
+
+        function getInvoiceNumberFromHash() {
+          var hash = location.hash || '';
+          var m = hash.match(/#sales-invoice-(.+)/);
+          return m ? decodeURIComponent(m[1]) : null;
+        }
+
+        window.switchLang = function(lang) {
+          currentLang = lang;
+          document.getElementById('btnAr').classList.toggle('active', lang === 'ar');
+          document.getElementById('btnEn').classList.toggle('active', lang === 'en');
+          if (invoiceData) renderInvoice();
+        };
+
+        async function loadInvoice() {
+          var invNum = getInvoiceNumberFromHash();
+          if (!invNum) {
+            document.getElementById('siContent').innerHTML = '<div class="si-loading" style="color:#c62828;">No invoice number specified</div>';
+            return;
+          }
+
+          try {
+            var result = await window.pyGetInvoicePdfData(invNum);
+            if (!result || !result.success) {
+              document.getElementById('siContent').innerHTML = '<div class="si-loading" style="color:#c62828;">' + (result && result.message ? result.message : 'Failed to load invoice') + '</div>';
+              return;
+            }
+            invoiceData = result.data;
+            companyData = result.company;
+            renderInvoice();
+          } catch(e) {
+            document.getElementById('siContent').innerHTML = '<div class="si-loading" style="color:#c62828;">Error: ' + (e.message || e) + '</div>';
+          }
+        }
+
+        function renderInvoice() {
+          var d = invoiceData;
+          var c = companyData || {};
+          var isAr = currentLang === 'ar';
+          var dir = isAr ? 'rtl' : 'ltr';
+          var cls = isAr ? 'rtl' : 'ltr';
+
+          var companyName = isAr ? (c.company_name_ar || '') : (c.company_name_en || '');
+          var companyAddr = isAr ? (c.company_address_ar || '') : (c.company_address_en || '');
+          var location_str = isAr ? (c.quotation_location_ar || '') : (c.quotation_location_en || '');
+
+          var totalPrice = d.total_price || 0;
+          var totalPaid = d.total_paid || 0;
+          var remaining = d.remaining || 0;
+
+          var statusCls = 'unpaid';
+          var statusTxt = isAr ? 'غير مدفوع' : 'Unpaid';
+          if (totalPaid >= totalPrice && totalPrice > 0) {
+            statusCls = 'fully-paid';
+            statusTxt = isAr ? 'مدفوع بالكامل' : 'Fully Paid';
+          } else if (totalPaid > 0) {
+            statusCls = 'partial';
+            statusTxt = isAr ? 'مدفوع جزئياً' : 'Partially Paid';
+          }
+
+          var invDate = d.created_at ? d.created_at.split('T')[0] : '';
+
+          var html = '<div class="si-page ' + cls + '" id="siPage">';
+
+          // Header
+          html += '<div class="si-header">';
+          if (isAr) {
+            html += '<div class="si-header-info">';
+            html += '<div class="si-addr">' + location_str + (invDate ? ' / ' + invDate : '') + '</div>';
+            html += '<div class="si-addr">' + companyAddr + '</div>';
+            html += '<div class="si-addr">' + (c.company_email || '') + '</div>';
+            html += '</div>';
+            html += '<div class="si-header-brand">';
+            html += '<img src="_/theme/helwan_logo.png" class="si-logo" onerror="this.style.display=\'none\'">';
+            html += '<div class="si-company-name">' + companyName + '</div>';
+            html += '<div class="si-company-detail">' + (c.company_website || '') + '</div>';
+            html += '</div>';
+          } else {
+            html += '<div class="si-header-brand">';
+            html += '<img src="_/theme/helwan_logo.png" class="si-logo" onerror="this.style.display=\'none\'">';
+            html += '<div class="si-company-name">' + companyName + '</div>';
+            html += '<div class="si-company-detail">' + (c.company_website || '') + '</div>';
+            html += '</div>';
+            html += '<div class="si-header-info" style="text-align:right;">';
+            html += '<div class="si-addr">' + location_str + (invDate ? ' / ' + invDate : '') + '</div>';
+            html += '<div class="si-addr">' + companyAddr + '</div>';
+            html += '<div class="si-addr">' + (c.company_email || '') + '</div>';
+            html += '</div>';
+          }
+          html += '</div>';
+
+          // Title
+          html += '<div class="si-title-bar">';
+          html += '<h2>' + (isAr ? 'فاتورة بيع' : 'SALES INVOICE') + '</h2>';
+          html += '<div class="si-inv-num">' + d.invoice_number + ' <span class="si-badge ' + statusCls + '">' + statusTxt + '</span></div>';
+          html += '</div>';
+
+          // Info cards
+          html += '<div class="si-info-section">';
+
+          // Contract info
+          html += '<div class="si-info-card">';
+          html += '<h4>' + (isAr ? 'بيانات العقد' : 'Contract Details') + '</h4>';
+          html += infoRow(isAr ? 'رقم العقد' : 'Contract #', d.contract_number);
+          html += infoRow(isAr ? 'رقم عرض السعر' : 'Quotation #', d.quotation_number);
+          html += infoRow(isAr ? 'الموديل' : 'Model', d.model);
+          html += infoRow(isAr ? 'التاريخ' : 'Date', invDate);
+          html += '</div>';
+
+          // Client info
+          html += '<div class="si-info-card">';
+          html += '<h4>' + (isAr ? 'بيانات العميل' : 'Client Details') + '</h4>';
+          html += infoRow(isAr ? 'الاسم' : 'Name', d.client_name);
+          html += infoRow(isAr ? 'الشركة' : 'Company', d.company);
+          html += infoRow(isAr ? 'الهاتف' : 'Phone', d.phone);
+          html += infoRow(isAr ? 'الدولة' : 'Country', d.country);
+          html += '</div>';
+
+          html += '</div>'; // end info-section
+
+          // Summary bar
+          html += '<div class="si-summary-bar">';
+          html += '<div class="si-summary-item"><div class="label">' + (isAr ? 'إجمالي السعر' : 'Total Price') + '</div><div class="value">' + fmtNum(totalPrice) + '</div></div>';
+          html += '<div class="si-summary-item"><div class="label">' + (isAr ? 'المدفوع' : 'Total Paid') + '</div><div class="value paid">' + fmtNum(totalPaid) + '</div></div>';
+          html += '<div class="si-summary-item"><div class="label">' + (isAr ? 'الباقي' : 'Remaining') + '</div><div class="value remaining">' + fmtNum(remaining) + '</div></div>';
+          html += '</div>';
+
+          // Planned installments
+          var installments = d.installments || [];
+          if (installments.length > 0) {
+            html += '<div class="si-section-title">' + (isAr ? 'جدول الأقساط المخططة' : 'Planned Installments') + '</div>';
+            html += '<table class="si-table"><thead><tr>';
+            html += '<th>#</th>';
+            html += '<th>' + (isAr ? 'الدفعة' : 'Installment') + '</th>';
+            html += '<th>' + (isAr ? 'المبلغ' : 'Amount') + '</th>';
+            html += '<th>' + (isAr ? 'التاريخ' : 'Date') + '</th>';
+            html += '</tr></thead><tbody>';
+            installments.forEach(function(inst, i) {
+              var amt = inst.amount || inst.value || 0;
+              html += '<tr>';
+              html += '<td>' + (i + 1) + '</td>';
+              html += '<td>' + (isAr ? (inst.label_ar || 'الدفعة ' + (i+1)) : (inst.label_en || 'Installment ' + (i+1))) + '</td>';
+              html += '<td class="amount">' + fmtNum(amt) + '</td>';
+              html += '<td>' + (inst.date || '') + '</td>';
+              html += '</tr>';
+            });
+            html += '</tbody></table>';
+          }
+
+          // Recorded payments
+          var payments = d.recorded_payments || [];
+          if (payments.length > 0) {
+            html += '<div class="si-section-title">' + (isAr ? 'الدفعات المسجلة' : 'Recorded Payments') + '</div>';
+            html += '<table class="si-table"><thead><tr>';
+            html += '<th>#</th>';
+            html += '<th>' + (isAr ? 'المبلغ' : 'Amount') + '</th>';
+            html += '<th>' + (isAr ? 'التاريخ' : 'Date') + '</th>';
+            html += '<th>' + (isAr ? 'الطريقة' : 'Method') + '</th>';
+            html += '<th>' + (isAr ? 'ملاحظات' : 'Notes') + '</th>';
+            html += '</tr></thead><tbody>';
+            var methodLabels = {
+              'cash': isAr ? 'نقدي' : 'Cash',
+              'bank_transfer': isAr ? 'تحويل بنكي' : 'Bank Transfer',
+              'check': isAr ? 'شيك' : 'Check'
+            };
+            payments.forEach(function(p, i) {
+              html += '<tr>';
+              html += '<td>' + (i + 1) + '</td>';
+              html += '<td class="amount">' + fmtNum(p.amount) + '</td>';
+              html += '<td>' + (p.payment_date || '') + '</td>';
+              html += '<td>' + (methodLabels[p.payment_method] || p.payment_method || '') + '</td>';
+              html += '<td>' + (p.notes || '') + '</td>';
+              html += '</tr>';
+            });
+            html += '</tbody></table>';
+          }
+
+          // Notes
+          if (d.notes) {
+            html += '<div class="si-section-title">' + (isAr ? 'ملاحظات' : 'Notes') + '</div>';
+            html += '<div style="padding:10px;font-size:13px;color:#555;">' + d.notes + '</div>';
+          }
+
+          // Footer
+          html += '<div class="si-footer">';
+          html += '<div>' + companyName + ' - ' + companyAddr + '</div>';
+          html += '<div>' + d.invoice_number + '</div>';
+          html += '</div>';
+
+          html += '</div>'; // end si-page
+
+          document.getElementById('siContent').innerHTML = html;
+        }
+
+        function infoRow(label, value) {
+          return '<div class="si-info-row"><span class="label">' + label + '</span><span class="value">' + (value || '—') + '</span></div>';
+        }
+
+        // PDF export
+        window.exportPDF = async function() {
+          var page = document.getElementById('siPage');
+          if (!page) return alert('No invoice to export');
+
+          // Hide controls
+          var controls = document.getElementById('siControls');
+          if (controls) controls.style.display = 'none';
+
+          try {
+            // Load html2canvas
+            if (!window.html2canvas) {
+              await new Promise(function(resolve, reject) {
+                var s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                s.onload = resolve;
+                s.onerror = reject;
+                document.head.appendChild(s);
+              });
+            }
+            // Load jsPDF
+            if (!window.jspdf) {
+              await new Promise(function(resolve, reject) {
+                var s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                s.onload = resolve;
+                s.onerror = reject;
+                document.head.appendChild(s);
+              });
+            }
+
+            var canvas = await html2canvas(page, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            var imgData = canvas.toDataURL('image/jpeg', 0.95);
+            var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+            var pdfW = 210;
+            var pdfH = (canvas.height * pdfW) / canvas.width;
+
+            if (pdfH > 297) {
+              // Multi page
+              var pageH = 297;
+              var srcY = 0;
+              var srcH = Math.floor(canvas.height * (pageH / pdfH) * (pdfW / canvas.width));
+              var pageNum = 0;
+              while (srcY < canvas.height) {
+                if (pageNum > 0) pdf.addPage();
+                var tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = Math.min(srcH, canvas.height - srcY);
+                var ctx = tempCanvas.getContext('2d');
+                ctx.drawImage(canvas, 0, srcY, canvas.width, tempCanvas.height, 0, 0, canvas.width, tempCanvas.height);
+                var pageImg = tempCanvas.toDataURL('image/jpeg', 0.95);
+                var h = (tempCanvas.height * pdfW) / tempCanvas.width;
+                pdf.addImage(pageImg, 'JPEG', 0, 0, pdfW, h);
+                srcY += srcH;
+                pageNum++;
+              }
+            } else {
+              pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
+            }
+
+            var filename = (invoiceData.invoice_number || 'invoice') + ' - ' + (invoiceData.client_name || '') + '.pdf';
+            pdf.save(filename.replace(/[\/\\:*?"<>|]/g, '_'));
+
+          } catch(e) {
+            alert('PDF export failed: ' + (e.message || e));
+          } finally {
+            if (controls) controls.style.display = '';
+          }
+        };
+
+        // Init
+        setTimeout(function() { loadInvoice(); }, 200);
+      })();
+      </script>
+    visible: true
+  type: HtmlTemplate

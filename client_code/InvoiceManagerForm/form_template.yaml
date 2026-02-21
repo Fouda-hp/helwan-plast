@@ -3,51 +3,254 @@ container:
   properties:
     html: |
       <style>
-        .invoice-placeholder {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%);
-        }
-        .invoice-placeholder .card {
-          background: #fff;
-          border-radius: 20px;
-          padding: 60px 80px;
-          box-shadow: 0 15px 40px rgba(0,0,0,0.1);
-          text-align: center;
-        }
-        .invoice-placeholder h1 {
-          font-size: 32px;
-          color: #009688;
-          margin-bottom: 12px;
-        }
-        .invoice-placeholder p {
-          font-size: 16px;
-          color: #666;
-          margin-bottom: 24px;
-        }
-        .invoice-placeholder .back-btn {
-          background: #009688;
-          color: #fff;
-          border: none;
-          padding: 12px 32px;
-          border-radius: 8px;
-          font-size: 15px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .invoice-placeholder .back-btn:hover {
-          background: #00796b;
+        * { box-sizing: border-box; font-family: 'Segoe UI', -apple-system, sans-serif; margin: 0; padding: 0; }
+        .im-page { min-height: 100vh; background: linear-gradient(180deg, #f5f6fa 0%, #eef1f7 100%); padding: 24px; }
+
+        /* Header */
+        .im-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+        .im-header h1 { font-size: 28px; font-weight: 800; color: #1a1a2e; }
+        .im-back-btn { background: #546e7a; color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .im-back-btn:hover { background: #37474f; transform: translateY(-1px); }
+
+        /* Tabs */
+        .im-tabs { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+        .im-tab { padding: 12px 28px; border-radius: 10px; border: 2px solid transparent; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8px; }
+        .im-tab:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .im-tab.active { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
+
+        .im-tab.clients { background: #e0f2f1; color: #00695c; border-color: #80cbc4; }
+        .im-tab.clients.active { background: #009688; color: #fff; border-color: #009688; }
+
+        .im-tab.suppliers { background: #fff3e0; color: #e65100; border-color: #ffcc80; }
+        .im-tab.suppliers.active { background: #ff9800; color: #fff; border-color: #ff9800; }
+
+        .im-tab.contracts { background: #e3f2fd; color: #1565c0; border-color: #90caf9; }
+        .im-tab.contracts.active { background: #2196f3; color: #fff; border-color: #2196f3; }
+
+        /* Search */
+        .im-search-bar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
+        .im-search-input { flex: 1; max-width: 400px; padding: 10px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
+        .im-search-input:focus { outline: none; border-color: #667eea; }
+        .im-count { font-size: 14px; color: #888; font-weight: 600; }
+
+        /* Table container */
+        .im-panel { background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+        .im-table-wrap { overflow-x: auto; }
+        .im-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .im-table thead { background: #f8f9fa; }
+        .im-table th { padding: 14px 16px; text-align: left; font-weight: 700; color: #333; border-bottom: 2px solid #dee2e6; white-space: nowrap; }
+        .im-table td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; }
+        .im-table tbody tr { transition: background 0.15s; }
+        .im-table tbody tr:hover { background: #f5f8ff; }
+
+        /* Pagination */
+        .im-pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; }
+        .im-page-btn { padding: 8px 18px; border: 1px solid #ddd; background: #fff; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; }
+        .im-page-btn:hover:not(:disabled) { background: #f0f0f0; }
+        .im-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .im-page-info { color: #666; font-size: 14px; }
+
+        /* Loading */
+        .im-loading { text-align: center; padding: 40px; color: #888; font-size: 15px; }
+        .im-empty { text-align: center; padding: 50px 20px; color: #999; }
+        .im-empty h4 { font-size: 18px; color: #666; margin-bottom: 8px; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+          .im-page { padding: 12px; }
+          .im-header h1 { font-size: 22px; }
+          .im-tabs { gap: 8px; }
+          .im-tab { padding: 10px 16px; font-size: 13px; }
+          .im-panel { padding: 12px; }
+          .im-table { font-size: 12px; }
+          .im-table th, .im-table td { padding: 8px 10px; }
         }
       </style>
-      <div class="invoice-placeholder">
-        <div class="card">
+
+      <div class="im-page">
+        <!-- Header -->
+        <div class="im-header">
           <h1>Invoice Manager</h1>
-          <p>This page is under construction.</p>
-          <button class="back-btn" onclick="location.hash='#launcher'">Back to Launcher</button>
+          <button class="im-back-btn" onclick="location.hash='#launcher'">Back</button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="im-tabs">
+          <button class="im-tab clients active" data-tab="clients" onclick="switchTab('clients')">
+            <span>Clients</span>
+          </button>
+          <button class="im-tab suppliers" data-tab="suppliers" onclick="switchTab('suppliers')">
+            <span>Suppliers</span>
+          </button>
+          <button class="im-tab contracts" data-tab="contracts" onclick="switchTab('contracts')">
+            <span>Contracts</span>
+          </button>
+        </div>
+
+        <!-- Content Panel -->
+        <div class="im-panel">
+          <div class="im-search-bar">
+            <input type="text" class="im-search-input" id="imSearchInput" placeholder="Search..." oninput="onSearch(this.value)">
+            <span class="im-count" id="imCount"></span>
+          </div>
+          <div class="im-table-wrap">
+            <table class="im-table">
+              <thead id="imThead"></thead>
+              <tbody id="imTbody">
+                <tr><td colspan="5" class="im-loading">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="im-pagination" id="imPagination"></div>
         </div>
       </div>
+
+      <script>
+      (function() {
+        var activeTab = 'clients';
+        var allData = [];
+        var filtered = [];
+        var page = 1;
+        var perPage = 10;
+        var searchQuery = '';
+
+        var tabConfig = {
+          clients: {
+            columns: ['Client Code', 'Client Name', 'Company', 'Phone', 'Country'],
+            keys: ['Client Code', 'Client Name', 'Company', 'Phone', 'Country'],
+            loader: 'pyGetClients'
+          },
+          suppliers: {
+            columns: ['ID', 'Name', 'Company', 'Phone', 'Email', 'Country'],
+            keys: ['id', 'name', 'company', 'phone', 'email', 'country'],
+            loader: 'pyGetSuppliers'
+          },
+          contracts: {
+            columns: ['Contract #', 'Client Name', 'Quotation #'],
+            keys: ['contract_number', 'client_name', 'quotation_number'],
+            loader: 'pyGetContracts'
+          }
+        };
+
+        window.switchTab = function(tab) {
+          activeTab = tab;
+          page = 1;
+          searchQuery = '';
+          var input = document.getElementById('imSearchInput');
+          if (input) input.value = '';
+
+          // Update tab buttons
+          document.querySelectorAll('.im-tab').forEach(function(el) {
+            el.classList.remove('active');
+            if (el.dataset.tab === tab) el.classList.add('active');
+          });
+
+          loadTabData();
+        };
+
+        window.onSearch = function(val) {
+          searchQuery = (val || '').toLowerCase();
+          page = 1;
+          applyFilter();
+          renderTable();
+        };
+
+        function applyFilter() {
+          if (!searchQuery) { filtered = allData.slice(); return; }
+          var cfg = tabConfig[activeTab];
+          filtered = allData.filter(function(row) {
+            for (var i = 0; i < cfg.keys.length; i++) {
+              var v = String(row[cfg.keys[i]] || '').toLowerCase();
+              if (v.indexOf(searchQuery) !== -1) return true;
+            }
+            return false;
+          });
+        }
+
+        function renderHead() {
+          var cfg = tabConfig[activeTab];
+          var html = '<tr>';
+          cfg.columns.forEach(function(col) { html += '<th>' + col + '</th>'; });
+          html += '</tr>';
+          document.getElementById('imThead').innerHTML = html;
+        }
+
+        function renderTable() {
+          var tbody = document.getElementById('imTbody');
+          var cfg = tabConfig[activeTab];
+          var totalPages = Math.ceil(filtered.length / perPage) || 1;
+          page = Math.min(page, totalPages);
+          var start = (page - 1) * perPage;
+          var pageData = filtered.slice(start, start + perPage);
+
+          document.getElementById('imCount').textContent = filtered.length + ' records';
+
+          if (pageData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="' + cfg.columns.length + '" class="im-empty"><h4>No data found</h4></td></tr>';
+            renderPagination(totalPages);
+            return;
+          }
+
+          var html = '';
+          pageData.forEach(function(row) {
+            html += '<tr>';
+            cfg.keys.forEach(function(key) {
+              html += '<td>' + (row[key] != null ? row[key] : '') + '</td>';
+            });
+            html += '</tr>';
+          });
+          tbody.innerHTML = html;
+          renderPagination(totalPages);
+        }
+
+        function renderPagination(totalPages) {
+          var el = document.getElementById('imPagination');
+          if (totalPages <= 1) { el.innerHTML = ''; return; }
+          var prevDis = page <= 1 ? ' disabled' : '';
+          var nextDis = page >= totalPages ? ' disabled' : '';
+          el.innerHTML =
+            '<button class="im-page-btn"' + prevDis + ' onclick="imPrevPage()">Prev</button>' +
+            '<span class="im-page-info">Page ' + page + ' of ' + totalPages + '</span>' +
+            '<button class="im-page-btn"' + nextDis + ' onclick="imNextPage()">Next</button>';
+        }
+
+        window.imPrevPage = function() { if (page > 1) { page--; renderTable(); } };
+        window.imNextPage = function() { page++; renderTable(); };
+
+        async function loadTabData() {
+          var cfg = tabConfig[activeTab];
+          renderHead();
+          var tbody = document.getElementById('imTbody');
+          tbody.innerHTML = '<tr><td colspan="' + cfg.columns.length + '" class="im-loading">Loading...</td></tr>';
+          document.getElementById('imCount').textContent = '';
+          document.getElementById('imPagination').innerHTML = '';
+
+          try {
+            var loaderFn = window[cfg.loader];
+            if (!loaderFn) {
+              tbody.innerHTML = '<tr><td colspan="' + cfg.columns.length + '" class="im-empty"><h4>Not available</h4></td></tr>';
+              return;
+            }
+            var result = await loaderFn();
+            if (result && result.success !== false) {
+              allData = result.data || result || [];
+            } else {
+              allData = [];
+              if (result && result.message) {
+                tbody.innerHTML = '<tr><td colspan="' + cfg.columns.length + '" class="im-empty"><h4>' + result.message + '</h4></td></tr>';
+                return;
+              }
+            }
+            applyFilter();
+            renderTable();
+          } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="' + cfg.columns.length + '" class="im-empty"><h4>Error loading data</h4></td></tr>';
+          }
+        }
+
+        // Init on load
+        setTimeout(function() { loadTabData(); }, 200);
+      })();
+      </script>
     visible: true
   type: HtmlTemplate

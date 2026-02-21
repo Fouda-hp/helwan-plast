@@ -535,3 +535,4 @@ container:
       </script>
     visible: true
   type: HtmlTemplate
+is_package: true

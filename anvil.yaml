@@ -152,6 +152,51 @@ db_schema:
       type: string
     server: full
     title: CLIENTS
+  contract_payments:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      client_hidden: false
+      name: id
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      client_hidden: false
+      name: contract_number
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      client_hidden: false
+      name: quotation_number
+      type: number
+    - admin_ui: {order: 3, width: 200}
+      client_hidden: false
+      name: amount
+      type: number
+    - admin_ui: {order: 4, width: 200}
+      client_hidden: false
+      name: payment_date
+      type: string
+    - admin_ui: {order: 5, width: 200}
+      client_hidden: false
+      name: payment_method
+      type: string
+    - admin_ui: {order: 6, width: 200}
+      client_hidden: false
+      name: installment_index
+      type: number
+    - admin_ui: {order: 7, width: 200}
+      client_hidden: false
+      name: notes
+      type: string
+    - admin_ui: {order: 8, width: 200}
+      client_hidden: false
+      name: created_by
+      type: string
+    - admin_ui: {order: 9, width: 200}
+      client_hidden: false
+      name: created_at
+      type: string
+    server: full
+    title: contract_payments
   contracts:
     client: full
     columns:

@@ -34,6 +34,7 @@ try:
     )
     from webauthn.helpers.structs import (
         AuthenticatorSelectionCriteria,
+        AuthenticatorAttachment,
         ResidentKeyRequirement,
         UserVerificationRequirement,
         PublicKeyCredentialDescriptor,
@@ -297,6 +298,7 @@ def webauthn_register_start(token):
             user_display_name=user.get('full_name') or user_email,
             exclude_credentials=exclude_creds,
             authenticator_selection=AuthenticatorSelectionCriteria(
+                authenticator_attachment=AuthenticatorAttachment.PLATFORM,
                 resident_key=ResidentKeyRequirement.PREFERRED,
                 user_verification=UserVerificationRequirement.REQUIRED,
             ),

@@ -78,6 +78,15 @@
       });
     }
 
+    // Force platform authenticator (Touch ID / Face ID / Windows Hello)
+    // This prevents the browser from showing QR code for phone-based auth
+    if (!options.authenticatorSelection) {
+      options.authenticatorSelection = {};
+    }
+    options.authenticatorSelection.authenticatorAttachment = 'platform';
+    options.authenticatorSelection.userVerification = 'required';
+    options.authenticatorSelection.residentKey = 'preferred';
+
     return navigator.credentials.create({ publicKey: options })
       .then(function (credential) {
         // Convert ArrayBuffer fields to base64url for JSON transmission
@@ -119,6 +128,20 @@
           id: base64urlToBuffer(cred.id),
           type: cred.type || 'public-key',
           transports: cred.transports || []
+        };
+      });
+    }
+
+    // Force platform authenticator (Touch ID / Face ID / Windows Hello)
+    options.userVerification = 'required';
+
+    // Filter allowCredentials to only platform transports (no hybrid/ble = no QR)
+    if (options.allowCredentials) {
+      options.allowCredentials = options.allowCredentials.map(function (cred) {
+        return {
+          id: cred.id,
+          type: cred.type || 'public-key',
+          transports: ['internal']
         };
       });
     }

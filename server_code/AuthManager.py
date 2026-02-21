@@ -787,6 +787,22 @@ def login_user(email, password):
     تسجيل دخول المستخدم - الخطوة الأولى
     يتحقق من البريد وكلمة المرور ثم يرسل OTP
     """
+    try:
+        return _login_user_impl(email, password)
+    except ValueError as ve:
+        import traceback
+        tb = traceback.format_exc()
+        logger.error("LOGIN ValueError: %s\nTraceback:\n%s", ve, tb)
+        return {'success': False, 'message': 'Login processing error. Please contact admin.'}
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        logger.error("LOGIN unexpected error: %s\nTraceback:\n%s", e, tb)
+        raise
+
+
+def _login_user_impl(email, password):
+    """Internal login implementation — separated for precise error tracking."""
     ip_address = get_client_ip()
 
     # التحقق من Rate Limit

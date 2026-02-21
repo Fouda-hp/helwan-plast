@@ -20,6 +20,7 @@ import logging
 import threading
 import uuid
 import time
+import functools
 
 # Thread-local storage for correlation ID (per-request tracing)
 _local = threading.local()
@@ -104,9 +105,12 @@ def log_request_timing(func):
     """
     Decorator that logs the execution time of a callable function.
     Adds duration_ms to the log entry.
+    Uses functools.wraps to preserve original function signature —
+    critical for Anvil's @anvil.server.callable argument matching.
     """
     logger = logging.getLogger(func.__module__)
 
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         cid = set_correlation_id()
         t0 = time.time()
@@ -130,8 +134,6 @@ def log_request_timing(func):
         finally:
             clear_correlation_id()
 
-    wrapper.__name__ = func.__name__
-    wrapper.__doc__ = func.__doc__
     return wrapper
 
 

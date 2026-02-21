@@ -6020,7 +6020,6 @@ def get_user_permissions(token_or_email=None):
 # Enhanced Dashboard Stats (Accounting module)
 # ---------------------------------------------------------------------------
 @anvil.server.callable
-@_timed
 def get_accounting_dashboard_stats(token_or_email=None):
     """Return inventory, purchase invoice, and P&L stats for the dashboard."""
     is_valid, user_email, error = _require_permission(token_or_email, 'read')

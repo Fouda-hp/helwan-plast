@@ -197,37 +197,34 @@ def _json_response(data, status=200):
     )
 
 
-@anvil.server.http_endpoint('/api/health', methods=['GET', 'OPTIONS'])
-def http_health_check(**params):
-    """
-    External health check endpoint.
-    Usage: GET /api/health?token=<session_token>
-    """
-    if anvil.server.request.method == 'OPTIONS':
-        return _json_response({})
+try:
+    @anvil.server.http_endpoint('/api/health', enable_cors=True)
+    def http_health_check(**params):
+        """
+        External health check endpoint.
+        Usage: GET /api/health?token=<session_token>
+        """
+        token = params.get('token', '')
+        if not token:
+            return _json_response({'success': False, 'message': 'Token required'}, 401)
 
-    token = params.get('token', '')
-    if not token:
-        return _json_response({'success': False, 'message': 'Token required'}, 401)
-
-    result = health_check(token)
-    status = 200 if result.get('success') else 503
-    return _json_response(result, status)
+        result = health_check(token)
+        status = 200 if result.get('success') else 503
+        return _json_response(result, status)
 
 
-@anvil.server.http_endpoint('/api/metrics', methods=['GET', 'OPTIONS'])
-def http_system_metrics(**params):
-    """
-    External system metrics endpoint (admin only).
-    Usage: GET /api/metrics?token=<admin_session_token>
-    """
-    if anvil.server.request.method == 'OPTIONS':
-        return _json_response({})
+    @anvil.server.http_endpoint('/api/metrics', enable_cors=True)
+    def http_system_metrics(**params):
+        """
+        External system metrics endpoint (admin only).
+        Usage: GET /api/metrics?token=<admin_session_token>
+        """
+        token = params.get('token', '')
+        if not token:
+            return _json_response({'success': False, 'message': 'Token required'}, 401)
 
-    token = params.get('token', '')
-    if not token:
-        return _json_response({'success': False, 'message': 'Token required'}, 401)
-
-    result = get_system_metrics(token)
-    status = 200 if result.get('success') else 403
-    return _json_response(result, status)
+        result = get_system_metrics(token)
+        status = 200 if result.get('success') else 403
+        return _json_response(result, status)
+except Exception as _http_err:
+    logger.warning("HTTP endpoints could not be registered: %s", _http_err)

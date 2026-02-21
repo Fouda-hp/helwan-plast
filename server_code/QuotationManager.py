@@ -1137,7 +1137,6 @@ def export_quotations_data(include_deleted=False, token_or_email=None):
 # إحصائيات لوحة التحكم
 # =========================================================
 @anvil.server.callable
-@_timed
 def get_dashboard_stats(token_or_email=None):
     """الحصول على إحصائيات لوحة التحكم - يتطلب صلاحية view"""
     is_valid, user_email, error = _require_permission(token_or_email, 'view')
@@ -2994,7 +2993,6 @@ def _invalidate_payment_cache():
     _payment_dash_cache.invalidate()
 
 @anvil.server.callable
-@_timed
 def get_payment_dashboard_data(token_or_email=None):
     """
     Aggregated payment tracking data for the dashboard.

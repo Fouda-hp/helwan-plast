@@ -304,7 +304,9 @@ container:
           if (document.getElementById("piOptSurfRewind") && document.getElementById("piOptSurfRewind").checked) optList.push("Surface Rewind");
           invoiceData.machine_config.optionals = optList;
 
-          // Calculate FOB
+          // Calculate FOB — same as Calculator:
+          // Slitter is NOT included in Standard FOB or FOB With Cylinders
+          // It only affects selling prices (overseas, local) which are not on this invoice
           var basePrice = 0;
           var byType = INV_MACHINE_PRICES[mType];
           if (byType && byType[cols] && byType[cols][wid] !== undefined) {
@@ -313,7 +315,10 @@ container:
           var matAdj = INV_MATERIAL_ADJ[mat] || 0;
           var windAdj = INV_WINDER_ADJ[wind] || 0;
           var optAdj = 0;
-          optList.forEach(function(o) { optAdj += (INV_OPTIONAL_ADJ[o] || 0); });
+          optList.forEach(function(o) {
+            if (o === "Slitter") return; // Slitter excluded from FOB (same as calculator)
+            optAdj += (INV_OPTIONAL_ADJ[o] || 0);
+          });
 
           var stdFob = basePrice + matAdj + windAdj + optAdj;
           var fobStdEl = document.getElementById("piFobStd");

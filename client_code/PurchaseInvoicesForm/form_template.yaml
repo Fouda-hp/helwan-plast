@@ -1637,7 +1637,7 @@ container:
             var optAdj = 0;
             if (document.getElementById("optVideo").checked) optAdj += (INV_OPTIONAL_ADJ["Video inspection"] || 0);
             if (document.getElementById("optPLC").checked) optAdj += (INV_OPTIONAL_ADJ["PLC"] || 0);
-            if (document.getElementById("optSlitter").checked) optAdj += (INV_OPTIONAL_ADJ["Slitter"] || 0);
+            // Slitter excluded from FOB (same as calculator — only affects selling prices)
             if (document.getElementById("optPneuUnwind").checked) optAdj += (INV_OPTIONAL_ADJ["Pneumatic Unwind"] || 0);
             if (document.getElementById("optHydUnwind").checked) optAdj += (INV_OPTIONAL_ADJ["Hydraulic Station Unwind"] || 0);
             if (document.getElementById("optPneuRewind").checked) optAdj += (INV_OPTIONAL_ADJ["Pneumatic Rewind"] || 0);

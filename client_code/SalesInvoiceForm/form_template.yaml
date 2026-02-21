@@ -2,11 +2,12 @@ components: []
 container:
   properties:
     html: |
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #f0f2f5; }
 
-        .si-wrapper { max-width: 900px; margin: 0 auto; padding: 20px; font-family: 'Segoe UI', Arial, sans-serif; }
+        .si-wrapper { max-width: 900px; margin: 0 auto; padding: 20px; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
 
         /* Controls bar */
         .si-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: #fff; padding: 16px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
@@ -38,9 +39,10 @@ container:
         .si-header-info .si-addr { font-size: 12px; color: #555; margin-bottom: 4px; }
 
         /* Invoice title */
-        .si-title-bar { text-align: center; padding: 12px; background: linear-gradient(135deg, #1a1a2e, #2d2d54); color: #fff; border-radius: 8px; margin-bottom: 24px; }
-        .si-title-bar h2 { font-size: 22px; font-weight: 800; letter-spacing: 2px; }
-        .si-title-bar .si-inv-num { font-size: 14px; margin-top: 4px; opacity: 0.9; }
+        .si-title-bar { text-align: center; padding: 16px; background: linear-gradient(135deg, #1a1a2e, #2d2d54); color: #fff; border-radius: 8px; margin-bottom: 24px; }
+        .si-title-bar h2 { font-size: 24px; font-weight: 800; }
+        .si-page.ltr .si-title-bar h2 { letter-spacing: 2px; }
+        .si-title-bar .si-inv-num { font-size: 14px; margin-top: 6px; opacity: 0.9; }
 
         /* Info grid */
         .si-info-section { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }

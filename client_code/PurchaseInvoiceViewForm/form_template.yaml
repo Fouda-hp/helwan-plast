@@ -280,6 +280,29 @@ container:
         }
 
         /* ============================================================
+           Calculate FOB from machine config (for contract-linked)
+           ============================================================ */
+        function piCalcFobFromConfig(mc) {
+          if (!mc) return { standard: 0 };
+          var mType = mc.machine_type || '';
+          var cols = String(mc.colors || '');
+          var wid = String(mc.machine_width || '');
+          var mat = mc.material || '';
+          var wind = mc.winder || '';
+
+          var basePrice = 0;
+          var byType = INV_MACHINE_PRICES[mType];
+          if (byType && byType[cols] && byType[cols][wid] !== undefined) {
+            basePrice = parseFloat(byType[cols][wid]);
+          }
+          var matAdj = INV_MATERIAL_ADJ[mat] || 0;
+          var windAdj = INV_WINDER_ADJ[wind] || 0;
+          // No optionals from contract config (they aren't stored in quotation)
+          var stdFob = basePrice + matAdj + windAdj;
+          return { standard: stdFob };
+        }
+
+        /* ============================================================
            Build machine code + calculate FOB from config
            ============================================================ */
         window.piBuildModelCode = function() {
@@ -585,10 +608,23 @@ container:
             try {
               var costs = await window.pyGetQuotationCosts(qNum);
               if (costs && costs.success) {
-                invoiceData.fob_standard = costs.fob_standard || 0;
-                invoiceData.fob_with_cylinders = costs.fob_with_cylinders || 0;
                 invoiceData.quotation_number = qNum;
                 invoiceData.machine_config = costs.machine_config || {};
+
+                // Use stored FOB if available, otherwise calculate from machine config
+                var storedFob = costs.fob_standard || 0;
+                var storedFobCyl = costs.fob_with_cylinders || 0;
+
+                if (storedFob > 0) {
+                  invoiceData.fob_standard = storedFob;
+                  invoiceData.fob_with_cylinders = storedFobCyl;
+                } else {
+                  // Calculate FOB from machine config using calculator pricing
+                  var mc = invoiceData.machine_config;
+                  var calcFob = piCalcFobFromConfig(mc);
+                  invoiceData.fob_standard = calcFob.standard;
+                  invoiceData.fob_with_cylinders = calcFob.standard; // no cylinders from contract
+                }
               }
             } catch(e) { /* ignore */ }
           }
@@ -876,7 +912,7 @@ container:
               }
               html += '<div class="mc-desc">' + descParts.join(' / ') + '</div>';
               html += '</div>';
-              html += '<div style="font-size:13px;color:#3949ab;font-weight:700;">' + (isAr ? 'بيانات الماكينة' : 'Machine Info') + '</div>';
+              html += '<div style="font-size:13px;color:#3949ab;font-weight:700;">' + (isAr ? 'بيانات الماكينة' : 'Machine Details') + '</div>';
               html += '</div>';
             }
           }
@@ -1017,7 +1053,7 @@ container:
               if (d.machine_config.optionals && d.machine_config.optionals.length > 0) descParts.push(d.machine_config.optionals.join(', '));
               html += '<div class="mc-desc">' + descParts.join(' / ') + '</div>';
               html += '</div>';
-              html += '<div style="font-size:13px;color:#3949ab;font-weight:700;">' + (isAr ? 'إعداد الماكينة' : 'Machine Config') + '</div>';
+              html += '<div style="font-size:13px;color:#3949ab;font-weight:700;">' + (isAr ? 'بيانات الماكينة' : 'Machine Details') + '</div>';
               html += '</div>';
             }
           }

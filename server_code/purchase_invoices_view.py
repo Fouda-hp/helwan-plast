@@ -73,6 +73,19 @@ def _safe_get(row, key, default=None):
         return default
 
 
+def _format_date(val):
+    """Convert date to string safely."""
+    if val is None or val == '':
+        return ''
+    if isinstance(val, str):
+        return val
+    if hasattr(val, 'isoformat'):
+        return val.isoformat()[:10]  # YYYY-MM-DD
+    if hasattr(val, 'strftime'):
+        return val.strftime('%Y-%m-%d')
+    return str(val)
+
+
 def _parse_cost(val):
     """Parse cost value to float."""
     if val is None or val == '':
@@ -459,7 +472,7 @@ def get_purchase_invoice_view_data(invoice_number, token_or_email=None):
                 'supplier_company': supplier_company,
                 'supplier_phone': supplier_phone,
                 'supplier_country': supplier_country,
-                'date': inv.get('date', ''),
+                'date': _format_date(inv.get('date', '')),
                 'fob_standard': fob_standard,
                 'fob_with_cylinders': fob_with_cylinders,
                 'cylinder_cost': cylinder_cost,
@@ -497,7 +510,7 @@ def get_supplier_purchase_invoices(supplier_id, token_or_email=None):
                 'invoice_number': row.get('invoice_number', ''),
                 'status': row.get('status', 'proforma'),
                 'total': row.get('total', 0),
-                'date': row.get('date', ''),
+                'date': _format_date(row.get('date', '')),
                 'acid_number': row.get('machine_code', ''),
             })
         data.sort(key=lambda x: x.get('invoice_number', ''), reverse=True)

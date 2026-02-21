@@ -16,6 +16,7 @@ ROUTES = {
     '#contract-new':      'ContractPrintForm',
     '#contract-edit':     'ContractEditForm',
     '#payment-dashboard': 'PaymentDashboardForm',
+    '#invoice-manager':   'InvoiceManagerForm',
     '#follow-ups':        'FollowUpDashboardForm',
     '#login':             'LoginForm',
     # Accounting sub-forms

@@ -1,0 +1,53 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        .invoice-placeholder {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%);
+        }
+        .invoice-placeholder .card {
+          background: #fff;
+          border-radius: 20px;
+          padding: 60px 80px;
+          box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+          text-align: center;
+        }
+        .invoice-placeholder h1 {
+          font-size: 32px;
+          color: #009688;
+          margin-bottom: 12px;
+        }
+        .invoice-placeholder p {
+          font-size: 16px;
+          color: #666;
+          margin-bottom: 24px;
+        }
+        .invoice-placeholder .back-btn {
+          background: #009688;
+          color: #fff;
+          border: none;
+          padding: 12px 32px;
+          border-radius: 8px;
+          font-size: 15px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .invoice-placeholder .back-btn:hover {
+          background: #00796b;
+        }
+      </style>
+      <div class="invoice-placeholder">
+        <div class="card">
+          <h1>Invoice Manager</h1>
+          <p>This page is under construction.</p>
+          <button class="back-btn" onclick="location.hash='#launcher'">Back to Launcher</button>
+        </div>
+      </div>
+    visible: true
+  type: HtmlTemplate

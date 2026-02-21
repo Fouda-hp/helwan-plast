@@ -38,6 +38,7 @@ ADMIN_ONLY = [
 PREFIX_ROUTES = {
     '#client-detail': 'ClientDetailForm',
     '#sales-invoice': 'SalesInvoiceForm',
+    '#purchase-invoice': 'PurchaseInvoiceViewForm',
 }
 
 # Default form

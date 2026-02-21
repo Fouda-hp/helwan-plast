@@ -1,0 +1,603 @@
+components: []
+container:
+  properties:
+    html: |
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #f0f2f5; }
+
+        .pi-wrapper { max-width: 900px; margin: 0 auto; padding: 20px; font-family: 'Cairo', 'Segoe UI', Arial, sans-serif; }
+
+        /* Controls bar */
+        .pi-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: #fff; padding: 16px 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .pi-controls button { padding: 8px 20px; border-radius: 8px; border: none; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+        .pi-back-btn { background: #546e7a; color: #fff; }
+        .pi-back-btn:hover { background: #37474f; }
+        .pi-lang-btn { background: #e3f2fd; color: #1565c0; border: 2px solid #90caf9 !important; }
+        .pi-lang-btn:hover { background: #bbdefb; }
+        .pi-lang-btn.active { background: #2196f3; color: #fff; }
+        .pi-print-btn { background: #4caf50; color: #fff; }
+        .pi-print-btn:hover { background: #388e3c; }
+        .pi-pdf-btn { background: #c62828; color: #fff; }
+        .pi-pdf-btn:hover { background: #b71c1c; }
+        .pi-save-btn { background: #ff6f00; color: #fff; font-size: 14px; padding: 10px 28px; }
+        .pi-save-btn:hover { background: #e65100; }
+        .pi-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Invoice page */
+        .pi-page { background: #fff; padding: 40px; border-radius: 4px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); position: relative; }
+        .pi-page.rtl { direction: rtl; text-align: right; }
+        .pi-page.ltr { direction: ltr; text-align: left; }
+
+        /* Proforma watermark */
+        .pi-proforma-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 80px; font-weight: 900; color: rgba(255, 111, 0, 0.08); pointer-events: none; z-index: 1; white-space: nowrap; letter-spacing: 10px; }
+
+        /* Header */
+        .pi-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 3px solid #1a1a2e; margin-bottom: 24px; }
+        .pi-header-info { max-width: 55%; }
+        .pi-header-brand { text-align: center; }
+        .pi-page.rtl .pi-header-brand { text-align: left; }
+        .pi-page.ltr .pi-header-brand { text-align: right; }
+        .pi-logo { width: 120px; height: auto; margin-bottom: 6px; }
+        .pi-company-name { font-size: 16px; font-weight: 800; color: #1a1a2e; }
+        .pi-company-detail { font-size: 11px; color: #666; }
+        .pi-header-info .pi-addr { font-size: 12px; color: #555; margin-bottom: 4px; }
+
+        /* Title */
+        .pi-title-bar { text-align: center; padding: 16px; background: linear-gradient(135deg, #1a1a2e, #2d2d54); color: #fff; border-radius: 8px; margin-bottom: 24px; }
+        .pi-title-bar h2 { font-size: 24px; font-weight: 800; }
+        .pi-page.ltr .pi-title-bar h2 { letter-spacing: 2px; }
+        .pi-title-bar .pi-inv-num { font-size: 14px; margin-top: 6px; opacity: 0.9; }
+
+        /* Badge */
+        .pi-badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-weight: 700; font-size: 12px; }
+        .pi-badge.proforma { background: #fff3e0; color: #ff6f00; border: 2px solid #ff6f00; font-size: 14px; padding: 4px 18px; }
+        .pi-badge.draft { background: #fff3e0; color: #ff6f00; }
+        .pi-badge.posted { background: #e3f2fd; color: #1565c0; }
+        .pi-badge.paid { background: #e8f5e9; color: #2e7d32; }
+        .pi-badge.partial { background: #fff3e0; color: #e65100; }
+
+        /* Info grid */
+        .pi-info-section { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .pi-info-card { padding: 14px 18px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #ff6f00; }
+        .pi-page.rtl .pi-info-card { border-left: none; border-right: 4px solid #ff6f00; }
+        .pi-info-card h4 { font-size: 13px; color: #888; margin-bottom: 8px; text-transform: uppercase; font-weight: 700; }
+        .pi-info-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
+        .pi-info-row .label { color: #666; }
+        .pi-info-row .value { font-weight: 700; color: #1a1a2e; }
+
+        /* Editable fields in proforma */
+        .pi-edit-input { padding: 6px 10px; border: 2px solid #ff6f00; border-radius: 6px; font-size: 13px; font-weight: 700; color: #1a1a2e; width: 100%; max-width: 200px; font-family: inherit; }
+        .pi-edit-input:focus { outline: none; border-color: #e65100; }
+        .pi-edit-select { padding: 6px 10px; border: 2px solid #ff6f00; border-radius: 6px; font-size: 13px; font-weight: 700; color: #1a1a2e; font-family: inherit; max-width: 250px; width: 100%; }
+
+        /* Pricing section */
+        .pi-pricing { padding: 20px; background: #fafafa; border-radius: 10px; border: 1px solid #e0e0e0; margin-bottom: 24px; }
+        .pi-pricing-title { font-size: 15px; font-weight: 700; color: #1a1a2e; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #e8eaf6; }
+        .pi-pricing-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px; }
+        .pi-pricing-row .label { color: #666; font-weight: 600; }
+        .pi-pricing-row .value { font-weight: 800; color: #1a1a2e; font-size: 16px; }
+        .pi-pricing-row.discount .value { color: #c62828; }
+        .pi-pricing-row.total { padding-top: 12px; margin-top: 8px; border-top: 2px solid #1a1a2e; }
+        .pi-pricing-row.total .label { font-size: 16px; font-weight: 800; color: #1a1a2e; }
+        .pi-pricing-row.total .value { font-size: 22px; color: #2e7d32; }
+
+        /* Footer */
+        .pi-footer { margin-top: 30px; padding-top: 16px; border-top: 2px solid #1a1a2e; display: flex; justify-content: space-between; font-size: 11px; color: #999; }
+
+        /* Loading */
+        .pi-loading { text-align: center; padding: 60px; color: #888; font-size: 16px; }
+
+        /* Print */
+        @media print {
+          .pi-controls { display: none !important; }
+          .pi-wrapper { padding: 0; max-width: 100%; }
+          .pi-page { box-shadow: none; padding: 10mm; }
+          .pi-proforma-watermark { display: none !important; }
+          .pi-edit-input, .pi-edit-select { border: none !important; background: transparent !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+      </style>
+
+      <div class="pi-wrapper">
+        <!-- Controls -->
+        <div class="pi-controls" id="piControls">
+          <button class="pi-back-btn" onclick="window.pyPurchaseGoBack()">Back</button>
+          <div style="flex:1;"></div>
+          <button class="pi-save-btn" id="piSaveBtn" style="display:none;" onclick="saveProforma()">Save Invoice</button>
+          <button class="pi-lang-btn active" id="piBtnAr" onclick="piSwitchLang('ar')">عربي</button>
+          <button class="pi-lang-btn" id="piBtnEn" onclick="piSwitchLang('en')">English</button>
+          <button class="pi-print-btn" onclick="window.print()">Print</button>
+          <button class="pi-pdf-btn" onclick="piExportPDF()">Export PDF</button>
+        </div>
+
+        <!-- Content -->
+        <div id="piContent">
+          <div class="pi-loading" id="piLoading">Loading...</div>
+        </div>
+      </div>
+
+      <script>
+      (function() {
+        var invoiceData = null;
+        var companyData = null;
+        var supplierData = null;
+        var contractsList = [];
+        var currentLang = 'ar';
+        var isProforma = false;
+        var supplierId = null;
+
+        function fmtNum(v) {
+          if (!v && v !== 0) return '0';
+          var n = parseFloat(v);
+          return isNaN(n) ? String(v) : n.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+        }
+
+        function todayStr() {
+          var d = new Date();
+          return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+
+        function parseHash() {
+          var hash = location.hash || '';
+          // New proforma: #purchase-invoice-new-{supplierId}
+          var nm = hash.match(/#purchase-invoice-new-(.+)/);
+          if (nm) return { mode: 'new', supplierId: decodeURIComponent(nm[1]) };
+          // Saved: #purchase-invoice-PI-2026-0001
+          var sm = hash.match(/#purchase-invoice-(.+)/);
+          if (sm) return { mode: 'saved', invoiceNumber: decodeURIComponent(sm[1]) };
+          return null;
+        }
+
+        window.piSwitchLang = function(lang) {
+          currentLang = lang;
+          document.getElementById('piBtnAr').classList.toggle('active', lang === 'ar');
+          document.getElementById('piBtnEn').classList.toggle('active', lang === 'en');
+          if (invoiceData || isProforma) renderInvoice();
+        };
+
+        // ── Load ──
+        async function loadInvoice() {
+          var parsed = parseHash();
+          if (!parsed) {
+            document.getElementById('piContent').innerHTML = '<div class="pi-loading" style="color:#c62828;">No invoice specified</div>';
+            return;
+          }
+
+          try {
+            if (parsed.mode === 'new') {
+              isProforma = true;
+              supplierId = parsed.supplierId;
+              document.getElementById('piSaveBtn').style.display = '';
+
+              var result = await window.pyGetNewPurchaseInvoiceData(supplierId);
+              if (!result || !result.success) {
+                document.getElementById('piContent').innerHTML = '<div class="pi-loading" style="color:#c62828;">' + (result && result.message ? result.message : 'Failed to load data') + '</div>';
+                return;
+              }
+              supplierData = result.supplier;
+              contractsList = result.contracts || [];
+              companyData = result.company;
+              invoiceData = {
+                acid_number: '',
+                contract_number: '',
+                date: todayStr(),
+                fob_standard: 0,
+                fob_with_cylinders: 0,
+                discount: 0,
+                amount_due: 0,
+                machine_config: {},
+                notes: '',
+              };
+              renderInvoice();
+
+            } else {
+              isProforma = false;
+              supplierId = null;
+              document.getElementById('piSaveBtn').style.display = 'none';
+
+              var result = await window.pyGetPurchaseInvoiceViewData(parsed.invoiceNumber);
+              if (!result || !result.success) {
+                document.getElementById('piContent').innerHTML = '<div class="pi-loading" style="color:#c62828;">' + (result && result.message ? result.message : 'Failed to load invoice') + '</div>';
+                return;
+              }
+              invoiceData = result.data;
+              companyData = result.company;
+              supplierData = {
+                name: invoiceData.supplier_name,
+                company: invoiceData.supplier_company,
+                phone: invoiceData.supplier_phone,
+                country: invoiceData.supplier_country,
+              };
+              renderInvoice();
+            }
+          } catch(e) {
+            document.getElementById('piContent').innerHTML = '<div class="pi-loading" style="color:#c62828;">Error: ' + (e.message || e) + '</div>';
+          }
+        }
+
+        // ── Contract selection → load FOB costs ──
+        window.piOnContractChange = async function(selectEl) {
+          var val = selectEl.value;
+          if (!val) {
+            // Free invoice — enable manual inputs
+            setFieldEditable('piFobStd', true, 0);
+            setFieldEditable('piFobCyl', true, 0);
+            invoiceData.contract_number = '';
+            invoiceData.fob_standard = 0;
+            invoiceData.fob_with_cylinders = 0;
+            recalcTotal();
+            return;
+          }
+          // Find quotation_number for selected contract
+          var qNum = null;
+          for (var i = 0; i < contractsList.length; i++) {
+            if (contractsList[i].contract_number === val) {
+              qNum = contractsList[i].quotation_number;
+              break;
+            }
+          }
+          invoiceData.contract_number = val;
+
+          if (qNum) {
+            try {
+              var costs = await window.pyGetQuotationCosts(qNum);
+              if (costs && costs.success) {
+                invoiceData.fob_standard = costs.fob_standard || 0;
+                invoiceData.fob_with_cylinders = costs.fob_with_cylinders || 0;
+                invoiceData.quotation_number = qNum;
+                setFieldEditable('piFobStd', false, invoiceData.fob_standard);
+                setFieldEditable('piFobCyl', false, invoiceData.fob_with_cylinders);
+                recalcTotal();
+              }
+            } catch(e) { /* ignore */ }
+          }
+        };
+
+        function setFieldEditable(id, editable, value) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.value = value || 0;
+          el.readOnly = !editable;
+          el.style.borderColor = editable ? '#ff6f00' : '#ccc';
+          el.style.background = editable ? '#fff' : '#f5f5f5';
+        }
+
+        window.piRecalcTotal = function() { recalcTotal(); };
+
+        function recalcTotal() {
+          var fob = parseFloat(document.getElementById('piFobStd') ? document.getElementById('piFobStd').value : 0) || 0;
+          var cyl = parseFloat(document.getElementById('piFobCyl') ? document.getElementById('piFobCyl').value : 0) || 0;
+          var disc = parseFloat(document.getElementById('piDiscount') ? document.getElementById('piDiscount').value : 0) || 0;
+          var total = fob + cyl - disc;
+          var el = document.getElementById('piAmountDue');
+          if (el) el.textContent = fmtNum(total > 0 ? total : 0);
+          invoiceData.fob_standard = fob;
+          invoiceData.fob_with_cylinders = cyl;
+          invoiceData.discount = disc;
+          invoiceData.amount_due = total > 0 ? total : 0;
+        }
+
+        // ── Save proforma ──
+        window.saveProforma = async function() {
+          if (!isProforma) return;
+
+          var acidEl = document.getElementById('piAcidNumber');
+          var acidNum = acidEl ? acidEl.value.trim() : '';
+          if (!acidNum) { alert('ACID Number is required'); return; }
+
+          var dateEl = document.getElementById('piDate');
+          recalcTotal();
+
+          var data = {
+            supplier_id: supplierId,
+            acid_number: acidNum,
+            contract_number: invoiceData.contract_number || '',
+            quotation_number: invoiceData.quotation_number || null,
+            fob_standard: invoiceData.fob_standard,
+            fob_with_cylinders: invoiceData.fob_with_cylinders,
+            discount: invoiceData.discount,
+            date: dateEl ? dateEl.value : todayStr(),
+            notes: '',
+            machine_config: invoiceData.machine_config || {},
+          };
+
+          var btn = document.getElementById('piSaveBtn');
+          if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+          try {
+            var result = await window.pySavePurchaseInvoiceProforma(data);
+            if (result && result.success) {
+              location.hash = '#purchase-invoice-' + encodeURIComponent(result.invoice_number);
+            } else {
+              alert(result.message || 'Failed to save');
+              if (btn) { btn.disabled = false; btn.textContent = 'Save Invoice'; }
+            }
+          } catch(e) {
+            alert('Error: ' + (e.message || e));
+            if (btn) { btn.disabled = false; btn.textContent = 'Save Invoice'; }
+          }
+        };
+
+        // ── Render ──
+        function renderInvoice() {
+          var d = invoiceData;
+          var c = companyData || {};
+          var s = supplierData || {};
+          var isAr = currentLang === 'ar';
+          var cls = isAr ? 'rtl' : 'ltr';
+
+          var companyName = isAr ? (c.company_name_ar || '') : (c.company_name_en || '');
+          var companyAddr = isAr ? (c.company_address_ar || '') : (c.company_address_en || '');
+          var location_str = isAr ? (c.quotation_location_ar || '') : (c.quotation_location_en || '');
+
+          var invDate = d.date || todayStr();
+          var invNumDisplay = d.invoice_number || '';
+          var statusCls, statusTxt;
+
+          if (isProforma) {
+            statusCls = 'proforma';
+            statusTxt = 'PROFORMA';
+            invNumDisplay = isAr ? 'بروفورما' : 'PROFORMA';
+          } else {
+            var st = (d.status || 'draft').toLowerCase();
+            statusCls = st;
+            if (st === 'paid') statusTxt = isAr ? 'مدفوعة' : 'Paid';
+            else if (st === 'partial') statusTxt = isAr ? 'مدفوعة جزئياً' : 'Partial';
+            else if (st === 'posted') statusTxt = isAr ? 'مسجلة' : 'Posted';
+            else statusTxt = isAr ? 'مسودة' : 'Draft';
+          }
+
+          var html = '<div class="pi-page ' + cls + '" id="piPage">';
+
+          // Proforma watermark
+          if (isProforma) {
+            html += '<div class="pi-proforma-watermark">PROFORMA</div>';
+          }
+
+          // Header
+          html += '<div class="pi-header">';
+          if (isAr) {
+            html += '<div class="pi-header-info">';
+            html += '<div class="pi-addr">' + location_str + (invDate ? ' / ' + invDate : '') + '</div>';
+            html += '<div class="pi-addr">' + companyAddr + '</div>';
+            html += '<div class="pi-addr">' + (c.company_email || '') + '</div>';
+            html += '</div>';
+            html += '<div class="pi-header-brand">';
+            html += '<img src="_/theme/helwan_logo.png" class="pi-logo" onerror="this.style.display=\'none\'">';
+            html += '<div class="pi-company-name">' + companyName + '</div>';
+            html += '<div class="pi-company-detail">' + (c.company_website || '') + '</div>';
+            html += '</div>';
+          } else {
+            html += '<div class="pi-header-brand">';
+            html += '<img src="_/theme/helwan_logo.png" class="pi-logo" onerror="this.style.display=\'none\'">';
+            html += '<div class="pi-company-name">' + companyName + '</div>';
+            html += '<div class="pi-company-detail">' + (c.company_website || '') + '</div>';
+            html += '</div>';
+            html += '<div class="pi-header-info" style="text-align:right;">';
+            html += '<div class="pi-addr">' + location_str + (invDate ? ' / ' + invDate : '') + '</div>';
+            html += '<div class="pi-addr">' + companyAddr + '</div>';
+            html += '<div class="pi-addr">' + (c.company_email || '') + '</div>';
+            html += '</div>';
+          }
+          html += '</div>';
+
+          // Title bar
+          html += '<div class="pi-title-bar">';
+          html += '<h2>' + (isAr ? 'فاتورة شراء' : 'PURCHASE INVOICE') + '</h2>';
+          html += '<div class="pi-inv-num">' + invNumDisplay + ' <span class="pi-badge ' + statusCls + '">' + statusTxt + '</span></div>';
+          html += '</div>';
+
+          // Info cards
+          html += '<div class="pi-info-section">';
+
+          // Supplier info
+          html += '<div class="pi-info-card">';
+          html += '<h4>' + (isAr ? 'بيانات المورد' : 'Supplier Details') + '</h4>';
+          html += piInfoRow(isAr ? 'الاسم' : 'Name', s.name);
+          html += piInfoRow(isAr ? 'الشركة' : 'Company', s.company);
+          html += piInfoRow(isAr ? 'الهاتف' : 'Phone', s.phone);
+          html += piInfoRow(isAr ? 'الدولة' : 'Country', s.country);
+          html += '</div>';
+
+          // Invoice details
+          html += '<div class="pi-info-card">';
+          html += '<h4>' + (isAr ? 'بيانات الفاتورة' : 'Invoice Details') + '</h4>';
+
+          if (isProforma) {
+            // Editable ACID Number
+            html += '<div class="pi-info-row"><span class="label">ACID Number</span>';
+            html += '<input type="text" class="pi-edit-input" id="piAcidNumber" value="' + (d.acid_number || '') + '" placeholder="Enter ACID #">';
+            html += '</div>';
+
+            // Contract dropdown
+            html += '<div class="pi-info-row"><span class="label">' + (isAr ? 'العقد' : 'Contract') + '</span>';
+            html += '<select class="pi-edit-select" id="piContract" onchange="piOnContractChange(this)">';
+            html += '<option value="">' + (isAr ? 'حر / مخزون' : 'Free / Inventory') + '</option>';
+            contractsList.forEach(function(ct) {
+              var sel = d.contract_number === ct.contract_number ? ' selected' : '';
+              html += '<option value="' + ct.contract_number + '"' + sel + '>' + ct.contract_number + ' - ' + (ct.client_name || '') + '</option>';
+            });
+            html += '</select></div>';
+
+            // Date
+            html += '<div class="pi-info-row"><span class="label">' + (isAr ? 'التاريخ' : 'Date') + '</span>';
+            html += '<input type="date" class="pi-edit-input" id="piDate" value="' + invDate + '">';
+            html += '</div>';
+          } else {
+            html += piInfoRow('ACID Number', d.acid_number);
+            html += piInfoRow(isAr ? 'العقد' : 'Contract', d.contract_number || (isAr ? 'حر / مخزون' : 'Free / Inventory'));
+            html += piInfoRow(isAr ? 'التاريخ' : 'Date', d.date);
+          }
+
+          html += '</div>';
+          html += '</div>'; // end info-section
+
+          // Pricing section
+          html += '<div class="pi-pricing">';
+          html += '<div class="pi-pricing-title">' + (isAr ? 'التسعير ($)' : 'Pricing ($)') + '</div>';
+
+          var fobStd = d.fob_standard || 0;
+          var fobCyl = d.fob_with_cylinders || 0;
+          var disc = d.discount || 0;
+          var amtDue = (fobStd + fobCyl) - disc;
+          if (amtDue < 0) amtDue = 0;
+
+          if (isProforma) {
+            // Editable pricing fields
+            var contractLinked = d.contract_number ? true : false;
+            var roStyle = contractLinked ? 'border-color:#ccc;background:#f5f5f5;' : '';
+            var roAttr = contractLinked ? ' readonly' : '';
+
+            html += '<div class="pi-pricing-row">';
+            html += '<span class="label">' + (isAr ? 'تكلفة الماكينة FOB' : 'Standard Machine FOB') + '</span>';
+            html += '<input type="number" class="pi-edit-input" id="piFobStd" value="' + fobStd + '" step="any" min="0" oninput="piRecalcTotal()" style="text-align:right;' + roStyle + '"' + roAttr + '>';
+            html += '</div>';
+
+            html += '<div class="pi-pricing-row">';
+            html += '<span class="label">' + (isAr ? 'FOB مع السلندرات' : 'FOB With Cylinders') + '</span>';
+            html += '<input type="number" class="pi-edit-input" id="piFobCyl" value="' + fobCyl + '" step="any" min="0" oninput="piRecalcTotal()" style="text-align:right;' + roStyle + '"' + roAttr + '>';
+            html += '</div>';
+
+            html += '<div class="pi-pricing-row discount">';
+            html += '<span class="label">' + (isAr ? 'خصم' : 'Discount') + '</span>';
+            html += '<input type="number" class="pi-edit-input" id="piDiscount" value="' + disc + '" step="any" min="0" oninput="piRecalcTotal()" style="text-align:right;border-color:#c62828;">';
+            html += '</div>';
+
+            html += '<div class="pi-pricing-row total">';
+            html += '<span class="label">' + (isAr ? 'المبلغ المستحق' : 'Amount Due') + '</span>';
+            html += '<span class="value" id="piAmountDue">' + fmtNum(amtDue) + '</span>';
+            html += '</div>';
+          } else {
+            // Readonly pricing
+            html += '<div class="pi-pricing-row">';
+            html += '<span class="label">' + (isAr ? 'تكلفة الماكينة FOB' : 'Standard Machine FOB') + '</span>';
+            html += '<span class="value">' + fmtNum(fobStd) + '</span>';
+            html += '</div>';
+
+            html += '<div class="pi-pricing-row">';
+            html += '<span class="label">' + (isAr ? 'FOB مع السلندرات' : 'FOB With Cylinders') + '</span>';
+            html += '<span class="value">' + fmtNum(fobCyl) + '</span>';
+            html += '</div>';
+
+            if (disc > 0) {
+              html += '<div class="pi-pricing-row discount">';
+              html += '<span class="label">' + (isAr ? 'خصم' : 'Discount') + '</span>';
+              html += '<span class="value">-' + fmtNum(disc) + '</span>';
+              html += '</div>';
+            }
+
+            html += '<div class="pi-pricing-row total">';
+            html += '<span class="label">' + (isAr ? 'المبلغ المستحق' : 'Amount Due') + '</span>';
+            html += '<span class="value">' + fmtNum(d.amount_due || amtDue) + '</span>';
+            html += '</div>';
+
+            if (d.paid_amount > 0) {
+              html += '<div class="pi-pricing-row">';
+              html += '<span class="label">' + (isAr ? 'المدفوع' : 'Paid') + '</span>';
+              html += '<span class="value" style="color:#2e7d32;">' + fmtNum(d.paid_amount) + '</span>';
+              html += '</div>';
+
+              var rem = (d.amount_due || amtDue) - (d.paid_amount || 0);
+              html += '<div class="pi-pricing-row">';
+              html += '<span class="label">' + (isAr ? 'الباقي' : 'Remaining') + '</span>';
+              html += '<span class="value" style="color:#c62828;">' + fmtNum(rem > 0 ? rem : 0) + '</span>';
+              html += '</div>';
+            }
+          }
+
+          html += '</div>'; // end pricing
+
+          // Notes
+          if (d.notes && !isProforma) {
+            html += '<div style="padding:10px;font-size:13px;color:#555;margin-bottom:20px;">' + d.notes + '</div>';
+          }
+
+          // Footer
+          html += '<div class="pi-footer">';
+          html += '<div>' + companyName + ' - ' + companyAddr + '</div>';
+          html += '<div>' + (isProforma ? (isAr ? 'بروفورما' : 'PROFORMA') : (d.invoice_number || '')) + '</div>';
+          html += '</div>';
+
+          html += '</div>'; // end pi-page
+
+          document.getElementById('piContent').innerHTML = html;
+        }
+
+        function piInfoRow(label, value) {
+          return '<div class="pi-info-row"><span class="label">' + label + '</span><span class="value">' + (value || '—') + '</span></div>';
+        }
+
+        // ── PDF export ──
+        window.piExportPDF = async function() {
+          var page = document.getElementById('piPage');
+          if (!page) return alert('No invoice to export');
+
+          var controls = document.getElementById('piControls');
+          if (controls) controls.style.display = 'none';
+
+          try {
+            if (!window.html2canvas) {
+              await new Promise(function(resolve, reject) {
+                var s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                s.onload = resolve; s.onerror = reject;
+                document.head.appendChild(s);
+              });
+            }
+            if (!window.jspdf) {
+              await new Promise(function(resolve, reject) {
+                var s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                s.onload = resolve; s.onerror = reject;
+                document.head.appendChild(s);
+              });
+            }
+
+            var canvas = await html2canvas(page, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            var imgData = canvas.toDataURL('image/jpeg', 0.95);
+            var pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+            var pdfW = 210;
+            var pdfH = (canvas.height * pdfW) / canvas.width;
+
+            if (pdfH > 297) {
+              var pageH = 297;
+              var srcY = 0;
+              var srcH = Math.floor(canvas.height * (pageH / pdfH) * (pdfW / canvas.width));
+              var pageNum = 0;
+              while (srcY < canvas.height) {
+                if (pageNum > 0) pdf.addPage();
+                var tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = Math.min(srcH, canvas.height - srcY);
+                var ctx = tempCanvas.getContext('2d');
+                ctx.drawImage(canvas, 0, srcY, canvas.width, tempCanvas.height, 0, 0, canvas.width, tempCanvas.height);
+                var pageImg = tempCanvas.toDataURL('image/jpeg', 0.95);
+                var h = (tempCanvas.height * pdfW) / tempCanvas.width;
+                pdf.addImage(pageImg, 'JPEG', 0, 0, pdfW, h);
+                srcY += srcH;
+                pageNum++;
+              }
+            } else {
+              pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
+            }
+
+            var sName = (supplierData && supplierData.name) ? supplierData.name : '';
+            var filename = (invoiceData.invoice_number || 'proforma') + ' - ' + sName + '.pdf';
+            pdf.save(filename.replace(/[\/\\:*?"<>|]/g, '_'));
+
+          } catch(e) {
+            alert('PDF export failed: ' + (e.message || e));
+          } finally {
+            if (controls) controls.style.display = '';
+          }
+        };
+
+        // Init
+        setTimeout(function() { loadInvoice(); }, 200);
+      })();
+      </script>
+    visible: true
+  type: HtmlTemplate
+is_package: true

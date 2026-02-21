@@ -179,8 +179,8 @@ container:
             loader: 'pyGetClients'
           },
           suppliers: {
-            columns: ['Name', 'Company', 'Phone', 'Email', 'Country'],
-            keys: ['name', 'company', 'phone', 'email', 'country'],
+            columns: ['Name', 'Company', 'Phone', 'Email', 'Country', ''],
+            keys: ['name', 'company', 'phone', 'email', 'country', '_supplier_action'],
             loader: 'pyGetSuppliers'
           },
           contracts: {
@@ -282,6 +282,9 @@ container:
               if (key === '_toggle') {
                 var isOpen = expandedRows[rowId];
                 html += '<td style="width:40px;text-align:center;"><button class="im-toggle-btn' + (isOpen ? ' open' : '') + '" onclick="toggleContract(' + rowId + ', ' + globalIdx + ')">+</button></td>';
+              } else if (key === '_supplier_action') {
+                var sid = row.id || '';
+                html += '<td style="text-align:center;"><button class="im-invoice-btn" style="margin:0;padding:6px 12px;font-size:12px;" onclick="newPurchaseInvoice(\'' + sid + '\')">+ New Invoice</button></td>';
               } else {
                 var val = row[key] != null ? row[key] : '';
                 if (formatters[key]) {
@@ -508,6 +511,12 @@ container:
         window.createSalesInvoice = function(qNum) {
           // Navigate to draft mode — invoice not saved until user clicks Save
           location.hash = '#sales-invoice-draft-' + qNum;
+        };
+
+        // ── New purchase invoice for supplier ──
+        window.newPurchaseInvoice = function(supplierId) {
+          if (!supplierId) { alert('Supplier ID missing'); return; }
+          location.hash = '#purchase-invoice-new-' + encodeURIComponent(supplierId);
         };
 
         // ── Load existing invoices for contract ──

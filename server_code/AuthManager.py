@@ -788,16 +788,11 @@ def login_user(email, password):
     """
     try:
         return _login_user_impl(email, password)
-    except ValueError as ve:
-        import traceback
-        tb = traceback.format_exc()
-        logger.error("LOGIN ValueError: %s\nTraceback:\n%s", ve, tb)
-        return {'success': False, 'message': 'Login processing error. Please contact admin.'}
     except Exception as e:
         import traceback
         tb = traceback.format_exc()
-        logger.error("LOGIN unexpected error: %s\nTraceback:\n%s", e, tb)
-        raise
+        logger.error("LOGIN error [%s]: %s\nTraceback:\n%s", type(e).__name__, e, tb)
+        return {'success': False, 'message': 'Login processing error. Please contact admin.'}
 
 
 def _login_user_impl(email, password):

@@ -171,16 +171,7 @@ class LoginForm(LoginFormTemplate):
         تسجيل دخول المستخدم
         """
         try:
-            # Diagnostic: test server connectivity first
-            try:
-                ping = anvil.server.call('server_ping')
-                logger.info("SERVER PING: %s", ping)
-            except Exception as pe:
-                logger.error("SERVER PING FAILED: %s: %s", type(pe).__name__, pe)
-
             result = anvil.server.call('login_user', email, password)
-
-            logger.info("LOGIN RESULT type=%s keys=%s", type(result).__name__, list(result.keys()) if isinstance(result, dict) else 'N/A')
 
             # حفظ معلومات المستخدم في localStorage للحفاظ على الجلسة (وكل النوافذ/الإطارات)
             if result.get('success') and result.get('user'):
@@ -195,9 +186,7 @@ class LoginForm(LoginFormTemplate):
 
             return result
         except Exception as e:
-            import traceback
-            tb = traceback.format_exc()
-            logger.error("login_user client error: %s: %s\nFull traceback:\n%s", type(e).__name__, e, tb)
+            logger.error("login_user client error: %s: %s", type(e).__name__, e)
             return {'success': False, 'message': 'Connection error. Please try again.'}
 
     def register_user(self, email, password, full_name, phone=None):

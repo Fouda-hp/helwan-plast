@@ -3,7 +3,8 @@ purchase_invoices_view.py - فواتير الشراء (بروفورما → فا
 ================================================================
 - get_new_purchase_invoice_data: بيانات إنشاء فاتورة شراء جديدة
 - get_quotation_costs: تكاليف FOB من عرض السعر (للربط بعقد)
-- save_purchase_invoice_proforma: حفظ البروفورما وتحويلها لفاتورة فعلية
+- save_purchase_invoice_proforma: حفظ البروفورما (بدون ACID Number)
+- convert_proforma_to_invoice: تحويل البروفورما لفاتورة فعلية (مع ACID Number)
 - get_purchase_invoice_view_data: عرض فاتورة محفوظة
 - get_supplier_purchase_invoices: فواتير مورد معين
 
@@ -61,6 +62,15 @@ def _get_company_settings():
         'quotation_location_ar': get_setting_value('quotation_location_ar', 'القاهرة'),
         'quotation_location_en': get_setting_value('quotation_location_en', 'Cairo'),
     }
+
+
+def _safe_get(row, key, default=None):
+    """Safely get a column value, handling missing columns."""
+    try:
+        val = row.get(key)
+        return val if val is not None else default
+    except Exception:
+        return default
 
 
 def _parse_cost(val):
@@ -167,9 +177,10 @@ def get_quotation_costs(quotation_number, token_or_email=None):
 
         # Get machine config fields
         machine_config = {
-            'model': q_row.get('Model', ''),
-            'colors': q_row.get('Colors', ''),
-            'width': q_row.get('Machine Width', ''),
+            'model_code': q_row.get('Model', ''),
+            'machine_type': q_row.get('Machine type', ''),
+            'colors': str(q_row.get('Number of colors', '') or q_row.get('Colors', '') or ''),
+            'machine_width': str(q_row.get('Machine width', '') or q_row.get('Machine Width', '') or ''),
             'material': q_row.get('Material', ''),
             'winder': q_row.get('Winder', ''),
         }
@@ -202,12 +213,10 @@ def save_purchase_invoice_proforma(data, token_or_email=None):
         return error or {'success': False, 'message': 'Permission denied'}
 
     supplier_id = data.get('supplier_id')
-    acid_number = (data.get('acid_number') or '').strip()
+    acid_number = (data.get('acid_number') or '').strip()  # Optional for proforma
 
     if not supplier_id:
         return {'success': False, 'message': 'Supplier is required'}
-    if not acid_number:
-        return {'success': False, 'message': 'ACID Number is required'}
 
     fob_standard = _parse_cost(data.get('fob_standard', 0))
     fob_with_cylinders = _parse_cost(data.get('fob_with_cylinders', 0))
@@ -253,7 +262,7 @@ def save_purchase_invoice_proforma(data, token_or_email=None):
             total=amount_due,
             total_egp=amount_due,
             paid_amount=0,
-            status='draft',
+            status='proforma',
             currency_code='USD',
             notes=notes,
             created_by=user_email,
@@ -270,6 +279,109 @@ def save_purchase_invoice_proforma(data, token_or_email=None):
     except Exception as e:
         logger.error("save_purchase_invoice_proforma error: %s", e)
         return {'success': False, 'message': f'Failed to save invoice: {e}'}
+
+
+@anvil.server.callable
+def convert_proforma_to_invoice(invoice_number, acid_number, exchange_rate=None, token_or_email=None):
+    """Convert a proforma to a real purchase invoice by adding ACID Number.
+    Also optionally stores exchange rate for internal EGP conversion.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error or {'success': False, 'message': 'Permission denied'}
+
+    acid_number = (acid_number or '').strip()
+    if not acid_number:
+        return {'success': False, 'message': 'ACID Number is required'}
+
+    try:
+        inv = app_tables.purchase_invoices.get(invoice_number=str(invoice_number))
+        if not inv:
+            return {'success': False, 'message': 'Invoice not found'}
+
+        if inv.get('status') != 'proforma':
+            return {'success': False, 'message': 'Invoice is not a proforma'}
+
+        now = get_utc_now()
+        update_data = {
+            'machine_code': acid_number,
+            'status': 'draft',
+            'updated_at': now,
+        }
+
+        # Store exchange rate for internal EGP conversion
+        if exchange_rate is not None:
+            rate = _parse_cost(exchange_rate)
+            if rate > 0:
+                total_usd = inv.get('total', 0) or 0
+                update_data['exchange_rate'] = rate
+                update_data['total_egp'] = round(total_usd * rate, 2)
+
+        try:
+            inv.update(**update_data)
+        except Exception as col_err:
+            # If exchange_rate column doesn't exist, retry without it
+            if 'exchange_rate' in update_data:
+                del update_data['exchange_rate']
+                if 'total_egp' in update_data:
+                    del update_data['total_egp']
+                inv.update(**update_data)
+                logger.warning("exchange_rate column not found: %s", col_err)
+
+        return {
+            'success': True,
+            'message': f'Invoice {invoice_number} converted successfully',
+            'invoice_number': invoice_number,
+        }
+
+    except Exception as e:
+        logger.error("convert_proforma_to_invoice error: %s", e)
+        return {'success': False, 'message': f'Failed to convert: {e}'}
+
+
+@anvil.server.callable
+def update_invoice_exchange_rate(invoice_number, exchange_rate, token_or_email=None):
+    """Update exchange rate for internal EGP conversion (system use only)."""
+    is_valid, _, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error or {'success': False, 'message': 'Permission denied'}
+
+    try:
+        inv = app_tables.purchase_invoices.get(invoice_number=str(invoice_number))
+        if not inv:
+            return {'success': False, 'message': 'Invoice not found'}
+
+        rate = _parse_cost(exchange_rate)
+        if rate <= 0:
+            return {'success': False, 'message': 'Invalid exchange rate'}
+
+        total_usd = inv.get('total', 0) or 0
+        total_egp = round(total_usd * rate, 2)
+        try:
+            inv.update(
+                exchange_rate=rate,
+                total_egp=total_egp,
+                updated_at=get_utc_now(),
+            )
+        except Exception as col_err:
+            # If exchange_rate column doesn't exist, just update total_egp
+            logger.warning("exchange_rate column issue: %s", col_err)
+            try:
+                inv.update(
+                    total_egp=total_egp,
+                    updated_at=get_utc_now(),
+                )
+            except Exception:
+                pass
+
+        return {
+            'success': True,
+            'total_egp': total_egp,
+        }
+
+    except Exception as e:
+        logger.error("update_invoice_exchange_rate error: %s", e)
+        return {'success': False, 'message': f'Failed to update: {e}'}
 
 
 @anvil.server.callable
@@ -360,6 +472,8 @@ def get_purchase_invoice_view_data(invoice_number, token_or_email=None):
                 'notes': inv.get('notes', ''),
                 'created_at': created_at,
                 'created_by': inv.get('created_by', ''),
+                'exchange_rate': _safe_get(inv, 'exchange_rate', 0),
+                'total_egp': _safe_get(inv, 'total_egp', 0),
             },
             'company': _get_company_settings(),
         }
@@ -381,9 +495,10 @@ def get_supplier_purchase_invoices(supplier_id, token_or_email=None):
         for row in app_tables.purchase_invoices.search(supplier_id=str(supplier_id)):
             data.append({
                 'invoice_number': row.get('invoice_number', ''),
-                'status': row.get('status', 'draft'),
+                'status': row.get('status', 'proforma'),
                 'total': row.get('total', 0),
                 'date': row.get('date', ''),
+                'acid_number': row.get('machine_code', ''),
             })
         data.sort(key=lambda x: x.get('invoice_number', ''), reverse=True)
         return {'success': True, 'data': data}

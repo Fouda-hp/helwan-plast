@@ -25,6 +25,9 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
         anvil.js.window.pyCreateSalesInvoice = self.create_sales_invoice
         anvil.js.window.pyGetContractInvoices = self.get_contract_invoices
 
+        # JS bridges — purchase invoices (supplier history)
+        anvil.js.window.pyGetSupplierPurchaseInvoices = self.get_supplier_purchase_invoices
+
     def _auth(self):
         return get_auth_token()
 
@@ -96,3 +99,11 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
         if not auth:
             return {'success': False, 'message': 'Not authenticated'}
         return anvil.server.call('get_contract_invoices', quotation_number, auth)
+
+    # ── Purchase invoices (supplier history) ──
+
+    def get_supplier_purchase_invoices(self, supplier_id):
+        auth = self._auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated'}
+        return anvil.server.call('get_supplier_purchase_invoices', supplier_id, auth)

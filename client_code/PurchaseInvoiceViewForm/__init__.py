@@ -12,6 +12,8 @@ class PurchaseInvoiceViewForm(PurchaseInvoiceViewFormTemplate):
         anvil.js.window.pyGetNewPurchaseInvoiceData = self.get_new_purchase_invoice_data
         anvil.js.window.pyGetQuotationCosts = self.get_quotation_costs
         anvil.js.window.pySavePurchaseInvoiceProforma = self.save_purchase_invoice_proforma
+        anvil.js.window.pyConvertProformaToInvoice = self.convert_proforma_to_invoice
+        anvil.js.window.pyUpdateInvoiceExchangeRate = self.update_invoice_exchange_rate
         anvil.js.window.pyGetPurchaseInvoiceViewData = self.get_purchase_invoice_view_data
         anvil.js.window.pyGetCalculatorSettings = self.get_calculator_settings
         anvil.js.window.pyPurchaseGoBack = self.go_back
@@ -39,6 +41,20 @@ class PurchaseInvoiceViewForm(PurchaseInvoiceViewFormTemplate):
         if not auth:
             return {'success': False, 'message': 'Not authenticated'}
         return anvil.server.call('save_purchase_invoice_proforma', data, auth)
+
+    def convert_proforma_to_invoice(self, invoice_number, acid_number, exchange_rate=None):
+        """Convert proforma to purchase invoice with ACID Number."""
+        auth = self._auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated'}
+        return anvil.server.call('convert_proforma_to_invoice', invoice_number, acid_number, exchange_rate, auth)
+
+    def update_invoice_exchange_rate(self, invoice_number, exchange_rate):
+        """Update exchange rate for internal EGP conversion."""
+        auth = self._auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated'}
+        return anvil.server.call('update_invoice_exchange_rate', invoice_number, exchange_rate, auth)
 
     def get_purchase_invoice_view_data(self, invoice_number):
         """Load saved invoice for view/print/PDF."""

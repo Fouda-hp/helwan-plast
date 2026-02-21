@@ -24,6 +24,9 @@ container:
         .pi-save-btn { background: #ff6f00; color: #fff; font-size: 14px; padding: 10px 28px; }
         .pi-save-btn:hover { background: #e65100; }
         .pi-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pi-convert-btn { background: #1565c0; color: #fff; font-size: 14px; padding: 10px 28px; }
+        .pi-convert-btn:hover { background: #0d47a1; }
+        .pi-convert-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* Invoice page */
         .pi-page { background: #fff; padding: 40px; border-radius: 4px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); position: relative; }
@@ -121,6 +124,29 @@ container:
         /* Footer */
         .pi-footer { margin-top: 30px; padding-top: 16px; border-top: 2px solid #1a1a2e; display: flex; justify-content: space-between; font-size: 11px; color: #999; }
 
+        /* Internal EGP section — hidden from print/PDF */
+        .pi-egp-section { background: #fff8e1; border: 1px solid #ffd54f; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px; }
+        .pi-egp-section h4 { font-size: 13px; color: #f57f17; margin-bottom: 10px; font-weight: 700; }
+        .pi-egp-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; }
+        .pi-egp-row .label { color: #666; font-weight: 600; }
+        .pi-egp-row .value { font-weight: 800; color: #1a1a2e; font-size: 15px; }
+        .pi-egp-input { padding: 6px 10px; border: 2px solid #ffd54f; border-radius: 6px; font-size: 13px; font-weight: 700; width: 120px; text-align: center; font-family: inherit; }
+
+        /* Convert modal */
+        .pi-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .pi-modal { background: #fff; border-radius: 16px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+        .pi-modal h3 { font-size: 18px; font-weight: 800; color: #1a1a2e; margin-bottom: 20px; text-align: center; }
+        .pi-modal-field { margin-bottom: 16px; }
+        .pi-modal-field label { display: block; font-weight: 600; color: #333; margin-bottom: 6px; font-size: 13px; }
+        .pi-modal-field input { width: 100%; padding: 10px 14px; border: 2px solid #ddd; border-radius: 8px; font-size: 15px; font-weight: 700; font-family: inherit; }
+        .pi-modal-field input:focus { outline: none; border-color: #1565c0; }
+        .pi-modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .pi-modal-actions button { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; }
+        .pi-modal-confirm { background: #1565c0; color: #fff; }
+        .pi-modal-confirm:hover { background: #0d47a1; }
+        .pi-modal-cancel { background: #e0e0e0; color: #333; }
+        .pi-modal-cancel:hover { background: #bdbdbd; }
+
         /* Loading */
         .pi-loading { text-align: center; padding: 60px; color: #888; font-size: 16px; }
 
@@ -129,6 +155,7 @@ container:
           .pi-controls { display: none !important; }
           .pi-config-section { display: none !important; }
           .pi-cyl-section { display: none !important; }
+          .pi-egp-section { display: none !important; }
           .pi-wrapper { padding: 0; max-width: 100%; }
           .pi-page { box-shadow: none; padding: 10mm; }
           .pi-proforma-watermark { display: none !important; }
@@ -151,7 +178,8 @@ container:
         <div class="pi-controls" id="piControls">
           <button class="pi-back-btn" onclick="window.pyPurchaseGoBack()">Back</button>
           <div style="flex:1;"></div>
-          <button class="pi-save-btn" id="piSaveBtn" style="display:none;" onclick="saveProforma()">Save Invoice</button>
+          <button class="pi-save-btn" id="piSaveBtn" style="display:none;" onclick="saveProforma()">Save Proforma</button>
+          <button class="pi-convert-btn" id="piConvertBtn" style="display:none;" onclick="showConvertModal()">Convert to Invoice</button>
           <button class="pi-lang-btn active" id="piBtnAr" onclick="piSwitchLang('ar')">عربي</button>
           <button class="pi-lang-btn" id="piBtnEn" onclick="piSwitchLang('en')">English</button>
           <button class="pi-print-btn" onclick="window.print()">Print</button>
@@ -511,6 +539,14 @@ container:
                 phone: invoiceData.supplier_phone,
                 country: invoiceData.supplier_country,
               };
+
+              // Show Convert button if this is a proforma (not yet converted)
+              if (invoiceData.status === 'proforma') {
+                document.getElementById('piConvertBtn').style.display = '';
+              } else {
+                document.getElementById('piConvertBtn').style.display = 'none';
+              }
+
               renderInvoice();
             }
           } catch(e) {
@@ -588,10 +624,6 @@ container:
         window.saveProforma = async function() {
           if (!isProforma) return;
 
-          var acidEl = document.getElementById('piAcidNumber');
-          var acidNum = acidEl ? acidEl.value.trim() : '';
-          if (!acidNum) { alert('ACID Number is required'); return; }
-
           var dateEl = document.getElementById('piDate');
           recalcTotal();
 
@@ -634,7 +666,7 @@ container:
 
           var data = {
             supplier_id: supplierId,
-            acid_number: acidNum,
+            acid_number: '',
             contract_number: invoiceData.contract_number || '',
             quotation_number: invoiceData.quotation_number || null,
             fob_standard: invoiceData.fob_standard,
@@ -714,12 +746,13 @@ container:
             statusTxt = 'PROFORMA';
             invNumDisplay = isAr ? 'بروفورما' : 'PROFORMA';
           } else {
-            var st = (d.status || 'draft').toLowerCase();
+            var st = (d.status || 'proforma').toLowerCase();
             statusCls = st;
-            if (st === 'paid') statusTxt = isAr ? 'مدفوعة' : 'Paid';
+            if (st === 'proforma') { statusTxt = isAr ? 'بروفورما' : 'Proforma'; statusCls = 'proforma'; }
+            else if (st === 'paid') statusTxt = isAr ? 'مدفوعة' : 'Paid';
             else if (st === 'partial') statusTxt = isAr ? 'مدفوعة جزئياً' : 'Partial';
             else if (st === 'posted') statusTxt = isAr ? 'مسجلة' : 'Posted';
-            else statusTxt = isAr ? 'مسودة' : 'Draft';
+            else statusTxt = isAr ? 'فاتورة شراء' : 'Purchase Invoice';
           }
 
           var html = '<div class="pi-page ' + cls + '" id="piPage">';
@@ -756,9 +789,14 @@ container:
           }
           html += '</div>';
 
-          // Title bar
+          // Title bar — different title for proforma vs real invoice
+          var isRealInvoice = !isProforma && d.status && d.status !== 'proforma';
           html += '<div class="pi-title-bar">';
-          html += '<h2>' + (isAr ? 'فاتورة مبدئية' : 'PROFORMA INVOICE') + '</h2>';
+          if (isProforma || (!isProforma && d.status === 'proforma')) {
+            html += '<h2>' + (isAr ? 'فاتورة مبدئية' : 'PROFORMA INVOICE') + '</h2>';
+          } else {
+            html += '<h2>' + (isAr ? 'فاتورة شراء' : 'PURCHASE INVOICE') + '</h2>';
+          }
           if (!isProforma && d.invoice_number) {
             html += '<div class="pi-inv-num">' + d.invoice_number + ' <span class="pi-badge ' + statusCls + '">' + statusTxt + '</span></div>';
           }
@@ -781,11 +819,6 @@ container:
           html += '<h4>' + (isAr ? 'بيانات الفاتورة' : 'Invoice Details') + '</h4>';
 
           if (isProforma) {
-            // Editable ACID Number
-            html += '<div class="pi-info-row"><span class="label">ACID Number</span>';
-            html += '<input type="text" class="pi-edit-input" id="piAcidNumber" value="' + (d.acid_number || '') + '" placeholder="Enter ACID #">';
-            html += '</div>';
-
             // Contract dropdown
             html += '<div class="pi-info-row"><span class="label">' + (isAr ? 'العقد' : 'Contract') + '</span>';
             html += '<select class="pi-edit-select" id="piContract" onchange="piOnContractChange(this)">';
@@ -801,13 +834,52 @@ container:
             html += '<input type="date" class="pi-edit-input" id="piDate" value="' + invDate + '">';
             html += '</div>';
           } else {
-            html += piInfoRow('ACID Number', d.acid_number);
+            if (d.acid_number) {
+              html += piInfoRow('ACID Number', d.acid_number);
+            }
             html += piInfoRow(isAr ? 'العقد' : 'Contract', d.contract_number || (isAr ? 'حر / مخزون' : 'Free / Inventory'));
             html += piInfoRow(isAr ? 'التاريخ' : 'Date', d.date);
           }
 
           html += '</div>';
           html += '</div>'; // end info-section
+
+          /* ============================================================
+             Machine Summary (contract-linked proforma or saved view)
+             Shows model code and specs in one line
+             ============================================================ */
+          var showMachineSummary = false;
+          var mcForSummary = null;
+          if (isProforma && contractLinked && d.machine_config && (d.machine_config.model_code || d.machine_config.machine_type)) {
+            showMachineSummary = true;
+            mcForSummary = d.machine_config;
+          }
+          if (showMachineSummary && mcForSummary) {
+            var descParts = [];
+            if (mcForSummary.model_code) descParts.push(mcForSummary.model_code);
+            if (mcForSummary.machine_type) {
+              var mt = mcForSummary.machine_type;
+              if (mt === "Metal anilox") descParts.push("Metal");
+              else if (mt === "Ceramic anilox Single Doctor Blade") descParts.push("Ceramic Single");
+              else if (mt === "Ceramic anilox Chamber Doctor Blade") descParts.push("Ceramic Chamber");
+              else if (mt.length > 0) descParts.push(mt);
+            }
+            if (mcForSummary.colors) descParts.push(mcForSummary.colors + (isAr ? ' لون' : ' Colors'));
+            if (mcForSummary.machine_width) descParts.push(mcForSummary.machine_width + 'cm');
+            if (mcForSummary.material) descParts.push(mcForSummary.material);
+            if (mcForSummary.winder) descParts.push(mcForSummary.winder);
+            if (descParts.length > 0) {
+              html += '<div class="pi-machine-summary">';
+              html += '<div>';
+              if (mcForSummary.model_code) {
+                html += '<div class="mc-code">' + mcForSummary.model_code + '</div>';
+              }
+              html += '<div class="mc-desc">' + descParts.join(' / ') + '</div>';
+              html += '</div>';
+              html += '<div style="font-size:13px;color:#3949ab;font-weight:700;">' + (isAr ? 'بيانات الماكينة' : 'Machine Info') + '</div>';
+              html += '</div>';
+            }
+          }
 
           /* ============================================================
              Machine Configuration Form (proforma + free mode ONLY)
@@ -1047,6 +1119,36 @@ container:
 
           html += '</div>'; // end pricing
 
+          /* ============================================================
+             Internal EGP Section — System only, hidden from print/PDF
+             ============================================================ */
+          if (!isProforma) {
+            var exchRate = d.exchange_rate || 0;
+            var totalEgp = d.total_egp || 0;
+            var totalUsd = d.amount_due || amtDue;
+
+            html += '<div class="pi-egp-section" id="piEgpSection">';
+            html += '<h4>' + (isAr ? '💱 تحويل العملة (داخلي فقط)' : '💱 Currency Conversion (Internal Only)') + '</h4>';
+
+            html += '<div class="pi-egp-row">';
+            html += '<span class="label">' + (isAr ? 'سعر الصرف (USD → EGP)' : 'Exchange Rate (USD → EGP)') + '</span>';
+            html += '<input type="number" class="pi-egp-input" id="piExchangeRate" value="' + (exchRate || '') + '" step="any" min="0" placeholder="0.00" oninput="piCalcEgp()">';
+            html += '</div>';
+
+            html += '<div class="pi-egp-row">';
+            html += '<span class="label">' + (isAr ? 'المبلغ بالدولار' : 'Total USD') + '</span>';
+            html += '<span class="value">$' + fmtNum(totalUsd) + '</span>';
+            html += '</div>';
+
+            html += '<div class="pi-egp-row">';
+            html += '<span class="label">' + (isAr ? 'المبلغ بالجنيه المصري' : 'Total EGP') + '</span>';
+            html += '<span class="value" id="piTotalEgp" style="color:#1565c0;">' + (totalEgp > 0 ? fmtNum(totalEgp) + ' EGP' : '—') + '</span>';
+            html += '</div>';
+
+            html += '<button style="margin-top:8px;padding:6px 16px;background:#ffd54f;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;" onclick="piSaveExchangeRate()">' + (isAr ? 'حفظ سعر الصرف' : 'Save Rate') + '</button>';
+            html += '</div>'; // end pi-egp-section
+          }
+
           // Notes
           if (d.notes && !isProforma) {
             html += '<div style="padding:10px;font-size:13px;color:#555;margin-bottom:20px;">' + d.notes + '</div>';
@@ -1111,6 +1213,116 @@ container:
         };
 
         /* ============================================================
+           EGP Conversion (internal only)
+           ============================================================ */
+        window.piCalcEgp = function() {
+          var rateEl = document.getElementById('piExchangeRate');
+          var egpEl = document.getElementById('piTotalEgp');
+          if (!rateEl || !egpEl) return;
+          var rate = parseFloat(rateEl.value) || 0;
+          var totalUsd = invoiceData.amount_due || 0;
+          if (rate > 0 && totalUsd > 0) {
+            egpEl.textContent = fmtNum(totalUsd * rate) + ' EGP';
+          } else {
+            egpEl.textContent = '—';
+          }
+        };
+
+        window.piSaveExchangeRate = async function() {
+          var rateEl = document.getElementById('piExchangeRate');
+          if (!rateEl) return;
+          var rate = parseFloat(rateEl.value) || 0;
+          if (rate <= 0) { alert('Please enter a valid exchange rate'); return; }
+          if (!invoiceData || !invoiceData.invoice_number) return;
+
+          try {
+            var res = await window.pyUpdateInvoiceExchangeRate(invoiceData.invoice_number, rate);
+            if (res && res.success) {
+              invoiceData.exchange_rate = rate;
+              invoiceData.total_egp = res.total_egp;
+              var egpEl = document.getElementById('piTotalEgp');
+              if (egpEl) egpEl.textContent = fmtNum(res.total_egp) + ' EGP';
+              alert('Exchange rate saved');
+            } else {
+              alert(res.message || 'Failed to save');
+            }
+          } catch(e) { alert('Error: ' + (e.message || e)); }
+        };
+
+        /* ============================================================
+           Convert Proforma → Purchase Invoice
+           ============================================================ */
+        window.showConvertModal = function() {
+          var overlay = document.createElement('div');
+          overlay.className = 'pi-modal-overlay';
+          overlay.id = 'piConvertOverlay';
+
+          var isAr = currentLang === 'ar';
+          var html = '<div class="pi-modal">';
+          html += '<h3>' + (isAr ? 'تحويل إلى فاتورة شراء' : 'Convert to Purchase Invoice') + '</h3>';
+
+          html += '<div class="pi-modal-field">';
+          html += '<label>ACID Number</label>';
+          html += '<input type="text" id="piConvertAcid" placeholder="Enter ACID Number" autofocus>';
+          html += '</div>';
+
+          html += '<div class="pi-modal-field">';
+          html += '<label>' + (isAr ? 'سعر الصرف (اختياري)' : 'Exchange Rate (optional)') + '</label>';
+          html += '<input type="number" id="piConvertRate" placeholder="USD → EGP" step="any" min="0" value="' + (invoiceData.exchange_rate || '') + '">';
+          html += '</div>';
+
+          html += '<div class="pi-modal-actions">';
+          html += '<button class="pi-modal-confirm" onclick="doConvert()">' + (isAr ? 'تحويل' : 'Convert') + '</button>';
+          html += '<button class="pi-modal-cancel" onclick="closeConvertModal()">' + (isAr ? 'إلغاء' : 'Cancel') + '</button>';
+          html += '</div>';
+          html += '</div>';
+
+          overlay.innerHTML = html;
+          document.body.appendChild(overlay);
+          setTimeout(function() { var el = document.getElementById('piConvertAcid'); if (el) el.focus(); }, 100);
+        };
+
+        window.closeConvertModal = function() {
+          var overlay = document.getElementById('piConvertOverlay');
+          if (overlay) overlay.remove();
+        };
+
+        window.doConvert = async function() {
+          var acidEl = document.getElementById('piConvertAcid');
+          var rateEl = document.getElementById('piConvertRate');
+          var acid = acidEl ? acidEl.value.trim() : '';
+          var rate = rateEl ? (parseFloat(rateEl.value) || null) : null;
+
+          if (!acid) { alert('ACID Number is required'); return; }
+          if (!invoiceData || !invoiceData.invoice_number) return;
+
+          try {
+            var res = await window.pyConvertProformaToInvoice(invoiceData.invoice_number, acid, rate);
+            if (res && res.success) {
+              closeConvertModal();
+              // Reload the invoice to show updated data
+              // Force re-render by temporarily changing hash then back
+              var target = '#purchase-invoice-' + encodeURIComponent(res.invoice_number);
+              if (location.hash === target) {
+                // Same hash — reload manually
+                isProforma = false;
+                var viewResult = await window.pyGetPurchaseInvoiceViewData(res.invoice_number);
+                if (viewResult && viewResult.success) {
+                  invoiceData = viewResult.data;
+                  companyData = viewResult.company;
+                  document.getElementById('piConvertBtn').style.display = 'none';
+                  renderInvoice();
+                }
+              } else {
+                location.hash = target;
+              }
+            } else {
+              alert(res.message || 'Failed to convert');
+            }
+          } catch(e) { alert('Error: ' + (e.message || e)); }
+        };
+
+        /* ============================================================
            PDF export
            ============================================================ */
         window.piExportPDF = async function() {
@@ -1120,9 +1332,11 @@ container:
           var controls = document.getElementById('piControls');
           var configSection = document.getElementById('piConfigSection');
           var cylSection = document.getElementById('piCylSection');
+          var egpSection = document.getElementById('piEgpSection');
           if (controls) controls.style.display = 'none';
           if (configSection) configSection.style.display = 'none';
           if (cylSection) cylSection.style.display = 'none';
+          if (egpSection) egpSection.style.display = 'none';
 
           try {
             if (!window.html2canvas) {
@@ -1180,6 +1394,7 @@ container:
             if (controls) controls.style.display = '';
             if (configSection) configSection.style.display = '';
             if (cylSection) cylSection.style.display = '';
+            if (egpSection) egpSection.style.display = '';
           }
         };
 

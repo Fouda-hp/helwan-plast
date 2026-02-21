@@ -1106,6 +1106,71 @@ db_schema:
       type: datetime
     server: full
     title: RATE_LIMITS
+  sales_invoices:
+    client: none
+    columns:
+    - admin_ui: {order: 0, width: 200}
+      client_hidden: false
+      name: id
+      type: string
+    - admin_ui: {order: 1, width: 200}
+      client_hidden: false
+      name: invoice_number
+      type: string
+    - admin_ui: {order: 2, width: 200}
+      client_hidden: false
+      name: contract_number
+      type: string
+    - admin_ui: {order: 3, width: 200}
+      client_hidden: false
+      name: quotation_number
+      type: number
+    - admin_ui: {order: 4, width: 200}
+      client_hidden: false
+      name: client_name
+      type: string
+    - admin_ui: {order: 5, width: 200}
+      client_hidden: false
+      name: company
+      type: string
+    - admin_ui: {order: 6, width: 200}
+      client_hidden: false
+      name: phone
+      type: string
+    - admin_ui: {order: 7, width: 200}
+      client_hidden: false
+      name: country
+      type: string
+    - admin_ui: {order: 8, width: 200}
+      client_hidden: false
+      name: address
+      type: string
+    - admin_ui: {order: 9, width: 200}
+      client_hidden: false
+      name: model
+      type: string
+    - admin_ui: {order: 10, width: 200}
+      client_hidden: false
+      name: total_price
+      type: number
+    - admin_ui: {order: 11, width: 200}
+      client_hidden: false
+      name: currency
+      type: string
+    - admin_ui: {order: 12, width: 200}
+      client_hidden: false
+      name: created_by
+      type: string
+    - admin_ui: {order: 13, width: 200}
+      client_hidden: false
+      name: created_at
+      type: string
+    - admin_ui: {order: 14, width: 200}
+      client_hidden: false
+      name: notes
+      type: string
+    server: full
+    title: sales_invoices
   scheduled_backups:
     client: none
     columns:

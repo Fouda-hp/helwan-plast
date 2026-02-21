@@ -17,7 +17,11 @@ QuotationManager.py - إدارة العملاء والعروض السعرية
 
 import anvil.server
 from anvil.tables import app_tables
-from anvil.tables import order_by as anvil_order_by
+try:
+    from anvil.tables import order_by as anvil_order_by
+except ImportError:
+    def anvil_order_by(col, ascending=True):
+        return None
 from datetime import datetime, date, timedelta
 import json
 import time as _time
@@ -28,7 +32,10 @@ import io
 import re
 
 # استيراد الدوال المشتركة من AuthManager ونظام الإشعارات ووحدات الترقيم والنسخ الاحتياطي
-from . import AuthManager
+try:
+    from . import AuthManager
+except ImportError:
+    import AuthManager
 # استيراد الوحدات متوافق مع Anvil (نسبي أو مطلق)
 try:
     from . import notifications as notifications_module

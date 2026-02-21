@@ -19,7 +19,12 @@ try:
     from .auth_utils import get_utc_now
 except ImportError:
     from auth_utils import get_utc_now
-from anvil.tables import order_by as anvil_order_by
+try:
+    from anvil.tables import order_by as anvil_order_by
+except ImportError:
+    # Fallback: simple wrapper that Anvil search() ignores
+    def anvil_order_by(col, ascending=True):
+        return None
 import anvil.server
 
 logger = logging.getLogger(__name__)

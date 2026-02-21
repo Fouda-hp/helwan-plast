@@ -9,8 +9,14 @@ import logging
 from datetime import datetime
 from anvil.tables import app_tables
 
-from .auth_constants import PBKDF2_ITERATIONS, PASSWORD_HISTORY_COUNT
-from .auth_utils import get_utc_now
+try:
+    from .auth_constants import PBKDF2_ITERATIONS, PASSWORD_HISTORY_COUNT
+except ImportError:
+    from auth_constants import PBKDF2_ITERATIONS, PASSWORD_HISTORY_COUNT
+try:
+    from .auth_utils import get_utc_now
+except ImportError:
+    from auth_utils import get_utc_now
 
 logger = logging.getLogger(__name__)
 

@@ -7,13 +7,24 @@ import logging
 from datetime import datetime, timedelta
 from anvil.tables import app_tables
 
-from .auth_constants import (
-    RATE_LIMIT_WINDOW_MINUTES,
-    RATE_LIMIT_MAX_REQUESTS,
-    RATE_LIMIT_MAX_REQUESTS_AUTH,
-    AUTH_RATE_LIMIT_ENDPOINTS,
-)
-from .auth_utils import get_utc_now, make_aware
+try:
+    from .auth_constants import (
+        RATE_LIMIT_WINDOW_MINUTES,
+        RATE_LIMIT_MAX_REQUESTS,
+        RATE_LIMIT_MAX_REQUESTS_AUTH,
+        AUTH_RATE_LIMIT_ENDPOINTS,
+    )
+except ImportError:
+    from auth_constants import (
+        RATE_LIMIT_WINDOW_MINUTES,
+        RATE_LIMIT_MAX_REQUESTS,
+        RATE_LIMIT_MAX_REQUESTS_AUTH,
+        AUTH_RATE_LIMIT_ENDPOINTS,
+    )
+try:
+    from .auth_utils import get_utc_now, make_aware
+except ImportError:
+    from auth_utils import get_utc_now, make_aware
 
 logger = logging.getLogger(__name__)
 

@@ -45,9 +45,18 @@ except ImportError:
     WEBAUTHN_AVAILABLE = False
 
 # --- Local imports ---
-from .auth_sessions import create_session, validate_session
-from .auth_utils import get_utc_now
-from .auth_audit import log_audit
+try:
+    from .auth_sessions import create_session, validate_session
+except ImportError:
+    from auth_sessions import create_session, validate_session
+try:
+    from .auth_utils import get_utc_now
+except ImportError:
+    from auth_utils import get_utc_now
+try:
+    from .auth_audit import log_audit
+except ImportError:
+    from auth_audit import log_audit
 
 logger = logging.getLogger(__name__)
 

@@ -11,9 +11,11 @@ from anvil.tables import app_tables
 # استيراد يعمل داخل الحزمة (.) أو كوحدة مستقلة في Anvil
 try:
     from .auth_constants import ROLES
-    from .auth_sessions import validate_session
 except ImportError:
     from auth_constants import ROLES
+try:
+    from .auth_sessions import validate_session
+except ImportError:
     from auth_sessions import validate_session
 
 logger = logging.getLogger(__name__)

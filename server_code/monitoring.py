@@ -39,11 +39,21 @@ try:
         payment_dashboard_cache, dashboard_stats_cache,
     )
 except ImportError:
-    from cache_manager import (
-        dashboard_cache, tags_cache, report_cache,
-        fx_rate_cache, accounting_dashboard_cache,
-        payment_dashboard_cache, dashboard_stats_cache,
-    )
+    try:
+        from cache_manager import (
+            dashboard_cache, tags_cache, report_cache,
+            fx_rate_cache, accounting_dashboard_cache,
+            payment_dashboard_cache, dashboard_stats_cache,
+        )
+    except Exception:
+        # Fallback: dummy caches if cache_manager unavailable
+        class _DummyCache:
+            def get(self, k): return None
+            def set(self, k, v): pass
+            def invalidate(self): pass
+        dashboard_cache = tags_cache = report_cache = _DummyCache()
+        fx_rate_cache = accounting_dashboard_cache = _DummyCache()
+        payment_dashboard_cache = dashboard_stats_cache = _DummyCache()
 
 logger = logging.getLogger(__name__)
 

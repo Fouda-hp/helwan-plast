@@ -37,18 +37,44 @@ except Exception:
 logger = logging.getLogger(__name__)
 
 # ========== استيراد من الوحدات المنظمة ==========
-from . import auth_constants
-from .auth_constants import (
-    MAX_LOGIN_ATTEMPTS, LOCKOUT_DURATION_MINUTES, SESSION_DURATION_MINUTES,
-    MAX_SESSIONS_PER_USER, RATE_LIMIT_WINDOW_MINUTES, RATE_LIMIT_MAX_REQUESTS,
-    PBKDF2_ITERATIONS, PASSWORD_HISTORY_COUNT, OTP_EXPIRY_MINUTES,
-    ADMIN_NOTIFICATION_EMAIL, EMERGENCY_SECRET_KEY, ROLES, AVAILABLE_PERMISSIONS
-)
-from .auth_utils import get_utc_now, make_aware, get_client_ip, validate_email
-from .auth_email import send_email_smtp, send_approval_email, EMAIL_SERVICE_AVAILABLE
-from .auth_password import hash_password, verify_password, upgrade_password_hash, add_to_password_history, check_password_history
-from .auth_sessions import generate_session_token, create_session, validate_session, destroy_session, cleanup_expired_sessions, purge_old_sessions
-from .auth_rate_limit import check_rate_limit
+try:
+    from . import auth_constants
+except ImportError:
+    import auth_constants
+try:
+    from .auth_constants import (
+        MAX_LOGIN_ATTEMPTS, LOCKOUT_DURATION_MINUTES, SESSION_DURATION_MINUTES,
+        MAX_SESSIONS_PER_USER, RATE_LIMIT_WINDOW_MINUTES, RATE_LIMIT_MAX_REQUESTS,
+        PBKDF2_ITERATIONS, PASSWORD_HISTORY_COUNT, OTP_EXPIRY_MINUTES,
+        ADMIN_NOTIFICATION_EMAIL, EMERGENCY_SECRET_KEY, ROLES, AVAILABLE_PERMISSIONS
+    )
+except ImportError:
+    from auth_constants import (
+        MAX_LOGIN_ATTEMPTS, LOCKOUT_DURATION_MINUTES, SESSION_DURATION_MINUTES,
+        MAX_SESSIONS_PER_USER, RATE_LIMIT_WINDOW_MINUTES, RATE_LIMIT_MAX_REQUESTS,
+        PBKDF2_ITERATIONS, PASSWORD_HISTORY_COUNT, OTP_EXPIRY_MINUTES,
+        ADMIN_NOTIFICATION_EMAIL, EMERGENCY_SECRET_KEY, ROLES, AVAILABLE_PERMISSIONS
+    )
+try:
+    from .auth_utils import get_utc_now, make_aware, get_client_ip, validate_email
+except ImportError:
+    from auth_utils import get_utc_now, make_aware, get_client_ip, validate_email
+try:
+    from .auth_email import send_email_smtp, send_approval_email, EMAIL_SERVICE_AVAILABLE
+except ImportError:
+    from auth_email import send_email_smtp, send_approval_email, EMAIL_SERVICE_AVAILABLE
+try:
+    from .auth_password import hash_password, verify_password, upgrade_password_hash, add_to_password_history, check_password_history
+except ImportError:
+    from auth_password import hash_password, verify_password, upgrade_password_hash, add_to_password_history, check_password_history
+try:
+    from .auth_sessions import generate_session_token, create_session, validate_session, destroy_session, cleanup_expired_sessions, purge_old_sessions
+except ImportError:
+    from auth_sessions import generate_session_token, create_session, validate_session, destroy_session, cleanup_expired_sessions, purge_old_sessions
+try:
+    from .auth_rate_limit import check_rate_limit
+except ImportError:
+    from auth_rate_limit import check_rate_limit
 # استيراد مطلق متوافق مع Anvil (الوحدة قد لا تُحمّل كـ Helwan_Plast.auth_permissions)
 try:
     from .auth_permissions import check_permission, is_admin, is_admin_by_email, require_admin, require_permission, require_authenticated, require_permission_full

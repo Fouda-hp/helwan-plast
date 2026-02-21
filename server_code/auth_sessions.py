@@ -12,8 +12,14 @@ import logging
 from datetime import datetime, timedelta
 from anvil.tables import app_tables
 
-from .auth_constants import SESSION_DURATION_MINUTES, MAX_SESSIONS_PER_USER
-from .auth_utils import get_utc_now, make_aware
+try:
+    from .auth_constants import SESSION_DURATION_MINUTES, MAX_SESSIONS_PER_USER
+except ImportError:
+    from auth_constants import SESSION_DURATION_MINUTES, MAX_SESSIONS_PER_USER
+try:
+    from .auth_utils import get_utc_now, make_aware
+except ImportError:
+    from auth_utils import get_utc_now, make_aware
 
 logger = logging.getLogger(__name__)
 

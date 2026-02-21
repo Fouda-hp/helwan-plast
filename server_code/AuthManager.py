@@ -807,6 +807,12 @@ def resend_verification_otp(email):
 # تسجيل الدخول (مع Two-Factor Authentication)
 # =========================================================
 @anvil.server.callable
+def server_ping():
+    """Diagnostic: minimal callable to test server connectivity."""
+    return {'success': True, 'message': 'pong'}
+
+
+@anvil.server.callable
 def login_user(email, password):
     """
     تسجيل دخول المستخدم - الخطوة الأولى
@@ -814,11 +820,11 @@ def login_user(email, password):
     """
     try:
         return _login_user_impl(email, password)
-    except Exception as e:
+    except BaseException as e:
         import traceback
         tb = traceback.format_exc()
         logger.error("LOGIN error [%s]: %s\nTraceback:\n%s", type(e).__name__, e, tb)
-        return {'success': False, 'message': 'Login processing error. Please contact admin.'}
+        return {'success': False, 'message': 'Login processing error. Please contact admin.', 'error_type': type(e).__name__}
 
 
 def _login_user_impl(email, password):

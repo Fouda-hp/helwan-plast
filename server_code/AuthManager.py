@@ -781,7 +781,6 @@ def resend_verification_otp(email):
 # تسجيل الدخول (مع Two-Factor Authentication)
 # =========================================================
 @anvil.server.callable
-@_timed
 def login_user(email, password):
     """
     تسجيل دخول المستخدم - الخطوة الأولى
@@ -1050,7 +1049,6 @@ def logout_user(token):
 # التحقق من الجلسة
 # =========================================================
 @anvil.server.callable
-@_timed
 def validate_token(token):
     """
     التحقق من صحة الجلسة وإرجاع معلومات المستخدم

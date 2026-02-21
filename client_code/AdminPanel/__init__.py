@@ -286,6 +286,8 @@ class AdminPanel(AdminPanelTemplate):
         anvil.js.window.getMachineConfig = self.get_machine_config
         anvil.js.window.saveMachineConfig = self.save_machine_config
         anvil.js.window.repairCylinderPrices = self.repair_cylinder_prices
+        anvil.js.window.generateMonitoringKey = self.generate_monitoring_key
+        anvil.js.window.revokeMonitoringKey = self.revoke_monitoring_key
 
         # Navigation
         anvil.js.window.openDataImport = self.open_data_import
@@ -2845,6 +2847,20 @@ class AdminPanel(AdminPanelTemplate):
         if not auth:
             return {'success': False, 'message': 'Not authenticated'}
         return anvil.server.call('repair_cylinder_prices', auth)
+
+    def generate_monitoring_key(self):
+        """توليد مفتاح API للمونيتورينج الخارجي"""
+        auth = self.get_auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated'}
+        return anvil.server.call('generate_monitoring_api_key', auth)
+
+    def revoke_monitoring_key(self):
+        """إلغاء مفتاح API للمونيتورينج"""
+        auth = self.get_auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated'}
+        return anvil.server.call('revoke_monitoring_api_key', auth)
 
     def get_machine_prices(self):
         """الحصول على أسعار المكن"""

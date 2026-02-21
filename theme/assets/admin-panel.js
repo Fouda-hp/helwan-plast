@@ -1815,3 +1815,38 @@ window.autoFetchRates = async function() {
   } catch(e) { alert('Error: ' + e); }
 };
 
+// ============ Monitoring API Key ============
+window.generateMonitoringApiKey = async function() {
+  if (!window.generateMonitoringKey) { alert('Not available'); return; }
+  try {
+    var r = await window.generateMonitoringKey();
+    if (r && r.success && r.api_key) {
+      var el = document.getElementById('monitoringKeyResult');
+      if (el) {
+        el.innerHTML = '<div style="margin-top:10px;padding:12px;background:#e8f5e9;border-radius:8px;word-break:break-all;">' +
+          '<strong>API Key:</strong><br><code style="font-size:14px;user-select:all;">' + r.api_key + '</code>' +
+          '<br><br><small style="color:#666;">Use: <code>GET /api/health?token=' + r.api_key.substring(0,8) + '...</code></small>' +
+          '</div>';
+      } else {
+        prompt('Copy your Monitoring API Key:', r.api_key);
+      }
+    } else {
+      alert(r && r.message ? r.message : 'Failed to generate key');
+    }
+  } catch(e) { alert('Error: ' + e); }
+};
+window.revokeMonitoringApiKey = async function() {
+  if (!confirm('Revoke the monitoring API key?')) return;
+  if (!window.revokeMonitoringKey) { alert('Not available'); return; }
+  try {
+    var r = await window.revokeMonitoringKey();
+    if (r && r.success) {
+      alert(r.message || 'Key revoked');
+      var el = document.getElementById('monitoringKeyResult');
+      if (el) el.innerHTML = '';
+    } else {
+      alert(r && r.message ? r.message : 'Failed to revoke key');
+    }
+  } catch(e) { alert('Error: ' + e); }
+};
+

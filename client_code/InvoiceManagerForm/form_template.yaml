@@ -139,9 +139,9 @@ container:
         </div>
 
         <div class="im-tabs">
-          <button class="im-tab clients active" data-tab="clients" onclick="switchTab('clients')"><span>Clients</span></button>
+          <button class="im-tab contracts active" data-tab="contracts" onclick="switchTab('contracts')"><span>Contracts</span></button>
           <button class="im-tab suppliers" data-tab="suppliers" onclick="switchTab('suppliers')"><span>Suppliers</span></button>
-          <button class="im-tab contracts" data-tab="contracts" onclick="switchTab('contracts')"><span>Contracts</span></button>
+          <button class="im-tab clients" data-tab="clients" onclick="switchTab('clients')"><span>Clients</span></button>
           <button class="im-tab quotations" data-tab="quotations" onclick="switchTab('quotations')"><span>Quotations</span></button>
         </div>
 
@@ -164,7 +164,7 @@ container:
 
       <script>
       (function() {
-        var activeTab = 'clients';
+        var activeTab = 'contracts';
         var allData = [];
         var filtered = [];
         var page = 1;

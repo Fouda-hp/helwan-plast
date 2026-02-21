@@ -186,7 +186,8 @@ class LoginForm(LoginFormTemplate):
 
             return result
         except Exception as e:
-            return {'success': False, 'message': 'Error: ' + str(e)}
+            logger.error("login_user client error: %s: %s", type(e).__name__, e)
+            return {'success': False, 'message': 'Connection error. Please try again.'}
 
     def register_user(self, email, password, full_name, phone=None):
         """
@@ -200,7 +201,7 @@ class LoginForm(LoginFormTemplate):
             return result
         except Exception as e:
             logger.debug("register_user error: %s", e)
-            return {'success': False, 'message': 'Error: ' + str(e)}
+            return {'success': False, 'message': 'Connection error. Please try again.'}
 
     def setup_admin(self, email, password, full_name, phone=None):
         """
@@ -211,7 +212,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('setup_initial_admin', email, password, full_name, phone)
             return result
         except Exception as e:
-            return {'success': False, 'message': 'Error: ' + str(e)}
+            return {'success': False, 'message': 'Connection error. Please try again.'}
 
     def check_admin_exists(self):
         """
@@ -233,7 +234,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('reset_admin_password_emergency', email, new_password, secret_key)
             return result
         except Exception as e:
-            return {'success': False, 'message': 'Error: ' + str(e)}
+            return {'success': False, 'message': 'Connection error. Please try again.'}
 
     # =========================================
     # OTP Verification functions
@@ -259,7 +260,7 @@ class LoginForm(LoginFormTemplate):
 
             return result
         except Exception as e:
-            return {'success': False, 'message': 'Error: ' + str(e)}
+            return {'success': False, 'message': 'Connection error. Please try again.'}
 
     def _save_auth_everywhere(self, user_email='', user_name='', user_role='', auth_token=''):
         """حفظ التوكن في sessionStorage فقط + بيانات المستخدم (بدون auth_token في localStorage)."""
@@ -302,7 +303,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('resend_login_otp', email)
             return result
         except Exception as e:
-            return {'success': False, 'message': 'Error: ' + str(e)}
+            return {'success': False, 'message': 'Connection error. Please try again.'}
 
     def verify_registration_otp(self, email, otp):
         """
@@ -313,7 +314,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('verify_registration_otp', email, otp)
             return result
         except Exception as e:
-            return {'success': False, 'message': 'Error: ' + str(e)}
+            return {'success': False, 'message': 'Connection error. Please try again.'}
 
     def resend_verification_otp(self, email):
         """
@@ -324,7 +325,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('resend_verification_otp', email)
             return result
         except Exception as e:
-            return {'success': False, 'message': 'Error: ' + str(e)}
+            return {'success': False, 'message': 'Connection error. Please try again.'}
 
     # =========================================
     # Forgot Password functions
@@ -338,7 +339,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('request_password_reset', email)
             return result
         except Exception as e:
-            return {'success': False, 'message': 'Error: ' + str(e)}
+            return {'success': False, 'message': 'Connection error. Please try again.'}
 
     def verify_password_reset_otp(self, email, otp):
         """
@@ -349,7 +350,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('verify_password_reset_otp', email, otp)
             return result
         except Exception as e:
-            return {'success': False, 'message': 'Error: ' + str(e)}
+            return {'success': False, 'message': 'Connection error. Please try again.'}
 
     def complete_password_reset(self, email, new_password):
         """
@@ -360,7 +361,7 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('complete_password_reset', email, new_password)
             return result
         except Exception as e:
-            return {'success': False, 'message': 'Error: ' + str(e)}
+            return {'success': False, 'message': 'Connection error. Please try again.'}
 
     # =========================================
     # WebAuthn / Passkey (Biometric) functions
@@ -431,7 +432,7 @@ class LoginForm(LoginFormTemplate):
             if 'NotAllowedError' in error_str or 'cancelled' in error_str.lower():
                 return {'success': False, 'message': 'Authentication was cancelled'}
             logger.debug("Passkey auth error: %s", e)
-            return {'success': False, 'message': 'Passkey authentication failed: ' + error_str}
+            return {'success': False, 'message': 'Passkey authentication failed. Please try again.'}
 
     def clear_rate_limit(self):
         """
@@ -441,4 +442,4 @@ class LoginForm(LoginFormTemplate):
             result = anvil.server.call('clear_my_rate_limit')
             return result
         except Exception as e:
-            return {'success': False, 'message': 'Error: ' + str(e)}
+            return {'success': False, 'message': 'Connection error. Please try again.'}

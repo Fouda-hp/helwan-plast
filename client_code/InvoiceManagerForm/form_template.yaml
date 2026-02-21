@@ -20,13 +20,10 @@ container:
 
         .im-tab.clients { background: #e0f2f1; color: #00695c; border-color: #80cbc4; }
         .im-tab.clients.active { background: #009688; color: #fff; border-color: #009688; }
-
         .im-tab.suppliers { background: #fff3e0; color: #e65100; border-color: #ffcc80; }
         .im-tab.suppliers.active { background: #ff9800; color: #fff; border-color: #ff9800; }
-
         .im-tab.contracts { background: #e3f2fd; color: #1565c0; border-color: #90caf9; }
         .im-tab.contracts.active { background: #2196f3; color: #fff; border-color: #2196f3; }
-
         .im-tab.quotations { background: #f3e5f5; color: #7b1fa2; border-color: #ce93d8; }
         .im-tab.quotations.active { background: #9c27b0; color: #fff; border-color: #9c27b0; }
 
@@ -36,7 +33,7 @@ container:
         .im-search-input:focus { outline: none; border-color: #667eea; }
         .im-count { font-size: 14px; color: #888; font-weight: 600; }
 
-        /* Table container */
+        /* Table */
         .im-panel { background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
         .im-table-wrap { overflow-x: auto; }
         .im-table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -45,6 +42,7 @@ container:
         .im-table td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; }
         .im-table tbody tr { transition: background 0.15s; }
         .im-table tbody tr:hover { background: #f5f8ff; }
+        .im-table tbody tr.im-detail-row:hover { background: #fff; }
 
         /* Pagination */
         .im-pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; }
@@ -53,7 +51,7 @@ container:
         .im-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .im-page-info { color: #666; font-size: 14px; }
 
-        /* Loading */
+        /* Loading / Empty */
         .im-loading { text-align: center; padding: 40px; color: #888; font-size: 15px; }
         .im-empty { text-align: center; padding: 50px 20px; color: #999; }
         .im-empty h4 { font-size: 18px; color: #666; margin-bottom: 8px; }
@@ -65,6 +63,60 @@ container:
         .im-status.completed { background: #e3f2fd; color: #1565c0; }
         .im-status.cancelled { background: #ffebee; color: #c62828; }
 
+        /* Toggle button */
+        .im-toggle-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #2196f3; background: #fff; color: #2196f3; font-size: 18px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; line-height: 1; }
+        .im-toggle-btn:hover { background: #2196f3; color: #fff; }
+        .im-toggle-btn.open { background: #2196f3; color: #fff; transform: rotate(45deg); }
+
+        /* Detail panel */
+        .im-detail-row td { padding: 0 !important; border-bottom: 2px solid #2196f3 !important; }
+        .im-detail-panel { background: #f8f9fe; padding: 20px; animation: imSlideDown 0.3s ease; }
+        @keyframes imSlideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 2000px; } }
+
+        /* Contract info grid */
+        .im-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; padding: 16px; background: #fff; border-radius: 10px; border: 1px solid #e8eaf6; }
+        .im-info-item label { display: block; font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; margin-bottom: 2px; }
+        .im-info-item span { font-size: 14px; color: #333; font-weight: 600; }
+
+        /* Installments table */
+        .im-section-title { font-size: 15px; font-weight: 700; color: #1a1a2e; margin: 16px 0 10px; display: flex; align-items: center; gap: 8px; }
+        .im-inst-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; }
+        .im-inst-table th { padding: 10px 12px; background: #e8eaf6; font-weight: 700; color: #333; text-align: left; font-size: 12px; }
+        .im-inst-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+        .im-inst-status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .im-inst-status.due { background: #fff3e0; color: #e65100; }
+        .im-inst-status.overdue { background: #ffebee; color: #c62828; }
+        .im-inst-status.paid { background: #e8f5e9; color: #2e7d32; }
+
+        /* Recorded payments table */
+        .im-pay-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; }
+        .im-pay-table th { padding: 10px 12px; background: #e3f2fd; font-weight: 700; color: #333; text-align: left; font-size: 12px; }
+        .im-pay-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+        .im-pay-del { background: none; border: none; color: #c62828; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
+        .im-pay-del:hover { background: #ffebee; }
+
+        /* Payment form */
+        .im-pay-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; padding: 16px; background: #fff; border-radius: 10px; border: 2px dashed #90caf9; margin-top: 12px; }
+        .im-pay-form .im-field { display: flex; flex-direction: column; gap: 4px; }
+        .im-pay-form .im-field label { font-size: 11px; color: #666; font-weight: 600; }
+        .im-pay-form .im-field input, .im-pay-form .im-field select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+        .im-pay-form .im-field input:focus, .im-pay-form .im-field select:focus { outline: none; border-color: #2196f3; }
+        .im-record-btn { padding: 8px 20px; background: #4caf50; color: #fff; border: none; border-radius: 6px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; align-self: flex-end; }
+        .im-record-btn:hover { background: #388e3c; }
+        .im-record-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Summary bar */
+        .im-summary { display: flex; gap: 24px; padding: 14px 20px; background: linear-gradient(135deg, #e3f2fd, #f3e5f5); border-radius: 10px; margin-top: 16px; }
+        .im-summary-item { text-align: center; }
+        .im-summary-item .label { font-size: 11px; color: #666; font-weight: 600; text-transform: uppercase; }
+        .im-summary-item .value { font-size: 20px; font-weight: 800; color: #1a1a2e; }
+        .im-summary-item .value.paid { color: #2e7d32; }
+        .im-summary-item .value.remaining { color: #c62828; }
+
+        /* Invoice button */
+        .im-invoice-btn { padding: 8px 16px; background: #7b1fa2; color: #fff; border: none; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; margin-top: 12px; }
+        .im-invoice-btn:hover { background: #6a1b9a; }
+
         /* Responsive */
         @media (max-width: 768px) {
           .im-page { padding: 12px; }
@@ -74,33 +126,25 @@ container:
           .im-panel { padding: 12px; }
           .im-table { font-size: 12px; }
           .im-table th, .im-table td { padding: 8px 10px; }
+          .im-info-grid { grid-template-columns: 1fr 1fr; }
+          .im-pay-form { flex-direction: column; }
+          .im-summary { flex-direction: column; gap: 10px; }
         }
       </style>
 
       <div class="im-page">
-        <!-- Header -->
         <div class="im-header">
           <h1>Invoice Manager</h1>
           <button class="im-back-btn" onclick="location.hash='#launcher'">Back</button>
         </div>
 
-        <!-- Tabs -->
         <div class="im-tabs">
-          <button class="im-tab clients active" data-tab="clients" onclick="switchTab('clients')">
-            <span>Clients</span>
-          </button>
-          <button class="im-tab suppliers" data-tab="suppliers" onclick="switchTab('suppliers')">
-            <span>Suppliers</span>
-          </button>
-          <button class="im-tab contracts" data-tab="contracts" onclick="switchTab('contracts')">
-            <span>Contracts</span>
-          </button>
-          <button class="im-tab quotations" data-tab="quotations" onclick="switchTab('quotations')">
-            <span>Quotations</span>
-          </button>
+          <button class="im-tab clients active" data-tab="clients" onclick="switchTab('clients')"><span>Clients</span></button>
+          <button class="im-tab suppliers" data-tab="suppliers" onclick="switchTab('suppliers')"><span>Suppliers</span></button>
+          <button class="im-tab contracts" data-tab="contracts" onclick="switchTab('contracts')"><span>Contracts</span></button>
+          <button class="im-tab quotations" data-tab="quotations" onclick="switchTab('quotations')"><span>Quotations</span></button>
         </div>
 
-        <!-- Content Panel -->
         <div class="im-panel">
           <div class="im-search-bar">
             <input type="text" class="im-search-input" id="imSearchInput" placeholder="Search..." oninput="onSearch(this.value)">
@@ -110,7 +154,7 @@ container:
             <table class="im-table">
               <thead id="imThead"></thead>
               <tbody id="imTbody">
-                <tr><td colspan="6" class="im-loading">Loading...</td></tr>
+                <tr><td colspan="7" class="im-loading">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -126,6 +170,7 @@ container:
         var page = 1;
         var perPage = 10;
         var searchQuery = '';
+        var expandedRows = {};
 
         var tabConfig = {
           clients: {
@@ -139,9 +184,10 @@ container:
             loader: 'pyGetSuppliers'
           },
           contracts: {
-            columns: ['Contract #', 'Client Name', 'Total Price', 'Payments', 'Delivery Date', 'Status'],
-            keys: ['contract_number', 'client_name', 'total_price', 'num_payments', 'delivery_date', 'lifecycle_status'],
+            columns: ['', 'Contract #', 'Client Name', 'Total Price', 'Payments', 'Delivery Date', 'Status'],
+            keys: ['_toggle', 'contract_number', 'client_name', 'total_price', 'num_payments', 'delivery_date', 'lifecycle_status'],
             loader: 'pyGetContracts',
+            expandable: true,
             formatters: {
               'lifecycle_status': function(v) {
                 var cls = (v || 'draft').toLowerCase();
@@ -161,25 +207,30 @@ container:
           }
         };
 
+        function fmtNum(v) {
+          if (!v && v !== 0) return '0';
+          var n = parseFloat(v);
+          return isNaN(n) ? v : n.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+        }
+
         window.switchTab = function(tab) {
           activeTab = tab;
           page = 1;
           searchQuery = '';
+          expandedRows = {};
           var input = document.getElementById('imSearchInput');
           if (input) input.value = '';
-
-          // Update tab buttons
           document.querySelectorAll('.im-tab').forEach(function(el) {
             el.classList.remove('active');
             if (el.dataset.tab === tab) el.classList.add('active');
           });
-
           loadTabData();
         };
 
         window.onSearch = function(val) {
           searchQuery = (val || '').toLowerCase();
           page = 1;
+          expandedRows = {};
           applyFilter();
           renderTable();
         };
@@ -189,6 +240,7 @@ container:
           var cfg = tabConfig[activeTab];
           filtered = allData.filter(function(row) {
             for (var i = 0; i < cfg.keys.length; i++) {
+              if (cfg.keys[i] === '_toggle') continue;
               var v = String(row[cfg.keys[i]] || '').toLowerCase();
               if (v.indexOf(searchQuery) !== -1) return true;
             }
@@ -222,20 +274,35 @@ container:
 
           var formatters = cfg.formatters || {};
           var html = '';
-          pageData.forEach(function(row) {
+          pageData.forEach(function(row, idx) {
+            var globalIdx = start + idx;
+            var rowId = row.quotation_number || globalIdx;
             html += '<tr>';
             cfg.keys.forEach(function(key) {
-              var val = row[key] != null ? row[key] : '';
-              if (formatters[key]) {
-                html += '<td>' + formatters[key](val) + '</td>';
+              if (key === '_toggle') {
+                var isOpen = expandedRows[rowId];
+                html += '<td style="width:40px;text-align:center;"><button class="im-toggle-btn' + (isOpen ? ' open' : '') + '" onclick="toggleContract(' + rowId + ', ' + globalIdx + ')">+</button></td>';
               } else {
-                html += '<td>' + val + '</td>';
+                var val = row[key] != null ? row[key] : '';
+                if (formatters[key]) {
+                  html += '<td>' + formatters[key](val) + '</td>';
+                } else {
+                  html += '<td>' + val + '</td>';
+                }
               }
             });
             html += '</tr>';
+            if (expandedRows[rowId]) {
+              html += '<tr class="im-detail-row"><td colspan="' + cfg.columns.length + '"><div class="im-detail-panel" id="detail-' + rowId + '"><div style="text-align:center;padding:20px;color:#888;">Loading details...</div></div></td></tr>';
+            }
           });
           tbody.innerHTML = html;
           renderPagination(totalPages);
+
+          // Load expanded details
+          Object.keys(expandedRows).forEach(function(rid) {
+            if (expandedRows[rid]) loadContractDetail(parseInt(rid));
+          });
         }
 
         function renderPagination(totalPages) {
@@ -249,9 +316,189 @@ container:
             '<button class="im-page-btn"' + nextDis + ' onclick="imNextPage()">Next</button>';
         }
 
-        window.imPrevPage = function() { if (page > 1) { page--; renderTable(); } };
-        window.imNextPage = function() { page++; renderTable(); };
+        window.imPrevPage = function() { if (page > 1) { page--; expandedRows = {}; renderTable(); } };
+        window.imNextPage = function() { page++; expandedRows = {}; renderTable(); };
 
+        // ── Contract expand/collapse ──
+        window.toggleContract = function(qNum, idx) {
+          if (expandedRows[qNum]) {
+            delete expandedRows[qNum];
+          } else {
+            expandedRows[qNum] = true;
+          }
+          renderTable();
+        };
+
+        async function loadContractDetail(qNum) {
+          var panel = document.getElementById('detail-' + qNum);
+          if (!panel) return;
+
+          try {
+            var detailResult = await window.pyGetContractDetail(qNum);
+            var paymentsResult = await window.pyGetContractPayments(qNum);
+
+            if (!detailResult || !detailResult.success) {
+              panel.innerHTML = '<div style="color:#c62828;padding:16px;">Failed to load contract details</div>';
+              return;
+            }
+
+            var d = detailResult.data;
+            var payments = (paymentsResult && paymentsResult.success) ? paymentsResult.payments : [];
+            var summary = (paymentsResult && paymentsResult.success) ? paymentsResult.summary : { total_price: 0, total_paid: 0, remaining: 0 };
+            var installments = d.payments || [];
+
+            var html = '';
+
+            // Section A: Contract info
+            html += '<div class="im-info-grid">';
+            html += infoItem('Contract #', d.contract_number);
+            html += infoItem('Client', d.client_name);
+            html += infoItem('Company', d.company);
+            html += infoItem('Model', d.model);
+            html += infoItem('Total Price', fmtNum(d.total_price));
+            html += infoItem('Delivery Date', d.delivery_date);
+            html += infoItem('Phone', d.phone);
+            html += infoItem('Country', d.country);
+            html += '</div>';
+
+            // Section B: Planned installments
+            if (installments.length > 0) {
+              html += '<div class="im-section-title">Planned Installments</div>';
+              html += '<table class="im-inst-table"><thead><tr>';
+              html += '<th>#</th><th>Installment</th><th>Amount</th><th>Date</th><th>Status</th>';
+              html += '</tr></thead><tbody>';
+              installments.forEach(function(inst, i) {
+                var st = (inst.status || 'due').toLowerCase();
+                html += '<tr>';
+                html += '<td>' + (i + 1) + '</td>';
+                html += '<td>' + (inst.label_en || inst.label_ar || 'Installment ' + (i + 1)) + '</td>';
+                html += '<td>' + fmtNum(inst.amount || inst.value) + '</td>';
+                html += '<td>' + (inst.date || '') + '</td>';
+                html += '<td><span class="im-inst-status ' + st + '">' + st + '</span></td>';
+                html += '</tr>';
+              });
+              html += '</tbody></table>';
+            }
+
+            // Section C: Recorded payments
+            html += '<div class="im-section-title">Recorded Payments</div>';
+            if (payments.length > 0) {
+              html += '<table class="im-pay-table"><thead><tr>';
+              html += '<th>#</th><th>Amount</th><th>Date</th><th>Method</th><th>Notes</th><th></th>';
+              html += '</tr></thead><tbody>';
+              payments.forEach(function(p, i) {
+                var methodLabel = {'cash': 'Cash', 'bank_transfer': 'Bank Transfer', 'check': 'Check'};
+                html += '<tr>';
+                html += '<td>' + (i + 1) + '</td>';
+                html += '<td style="font-weight:700;">' + fmtNum(p.amount) + '</td>';
+                html += '<td>' + (p.payment_date || '') + '</td>';
+                html += '<td>' + (methodLabel[p.payment_method] || p.payment_method || '') + '</td>';
+                html += '<td>' + (p.notes || '') + '</td>';
+                html += '<td><button class="im-pay-del" onclick="deletePayment(\'' + p.id + '\',' + qNum + ')" title="Delete">&#10005;</button></td>';
+                html += '</tr>';
+              });
+              html += '</tbody></table>';
+            } else {
+              html += '<div style="padding:12px;color:#999;font-size:13px;">No payments recorded yet</div>';
+            }
+
+            // Section D: Record payment form
+            html += '<div class="im-pay-form" id="payForm-' + qNum + '">';
+            html += '<div class="im-field"><label>Amount</label><input type="number" id="payAmt-' + qNum + '" placeholder="0" step="any" min="0"></div>';
+            html += '<div class="im-field"><label>Date</label><input type="date" id="payDate-' + qNum + '" value="' + todayStr() + '"></div>';
+            html += '<div class="im-field"><label>Method</label><select id="payMethod-' + qNum + '"><option value="cash">Cash</option><option value="bank_transfer">Bank Transfer</option><option value="check">Check</option></select></div>';
+            html += '<div class="im-field"><label>Linked to</label><select id="payInst-' + qNum + '"><option value="-1">Free Payment</option>';
+            installments.forEach(function(inst, i) {
+              html += '<option value="' + i + '">' + (inst.label_en || 'Installment ' + (i + 1)) + '</option>';
+            });
+            html += '</select></div>';
+            html += '<div class="im-field"><label>Notes</label><input type="text" id="payNotes-' + qNum + '" placeholder="Optional"></div>';
+            html += '<button class="im-record-btn" id="payBtn-' + qNum + '" onclick="recordPayment(' + qNum + ')">Record Payment</button>';
+            html += '</div>';
+
+            // Section E: Summary
+            html += '<div class="im-summary">';
+            html += '<div class="im-summary-item"><div class="label">Total Price</div><div class="value">' + fmtNum(summary.total_price) + '</div></div>';
+            html += '<div class="im-summary-item"><div class="label">Total Paid</div><div class="value paid">' + fmtNum(summary.total_paid) + '</div></div>';
+            html += '<div class="im-summary-item"><div class="label">Remaining</div><div class="value remaining">' + fmtNum(summary.remaining) + '</div></div>';
+            html += '</div>';
+
+            // Invoice button placeholder
+            html += '<button class="im-invoice-btn" onclick="alert(\'Sales Invoice — Coming Soon\')">Create Sales Invoice</button>';
+
+            panel.innerHTML = html;
+
+          } catch(e) {
+            panel.innerHTML = '<div style="color:#c62828;padding:16px;">Error: ' + (e.message || e) + '</div>';
+          }
+        }
+
+        function infoItem(label, value) {
+          return '<div class="im-info-item"><label>' + label + '</label><span>' + (value || '—') + '</span></div>';
+        }
+
+        function todayStr() {
+          var d = new Date();
+          return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+
+        // ── Record payment ──
+        window.recordPayment = async function(qNum) {
+          var amt = document.getElementById('payAmt-' + qNum);
+          var dt = document.getElementById('payDate-' + qNum);
+          var method = document.getElementById('payMethod-' + qNum);
+          var inst = document.getElementById('payInst-' + qNum);
+          var notes = document.getElementById('payNotes-' + qNum);
+          var btn = document.getElementById('payBtn-' + qNum);
+
+          if (!amt || !amt.value || parseFloat(amt.value) <= 0) {
+            alert('Please enter a valid amount');
+            return;
+          }
+
+          btn.disabled = true;
+          btn.textContent = 'Saving...';
+
+          try {
+            var result = await window.pyRecordPayment(
+              qNum,
+              parseFloat(amt.value),
+              dt.value,
+              method.value,
+              parseInt(inst.value),
+              notes.value || ''
+            );
+
+            if (result && result.success) {
+              loadContractDetail(qNum);
+            } else {
+              alert(result.message || 'Failed to record payment');
+              btn.disabled = false;
+              btn.textContent = 'Record Payment';
+            }
+          } catch(e) {
+            alert('Error: ' + (e.message || e));
+            btn.disabled = false;
+            btn.textContent = 'Record Payment';
+          }
+        };
+
+        // ── Delete payment ──
+        window.deletePayment = async function(paymentId, qNum) {
+          if (!confirm('Delete this payment?')) return;
+          try {
+            var result = await window.pyDeletePayment(paymentId);
+            if (result && result.success) {
+              loadContractDetail(qNum);
+            } else {
+              alert(result.message || 'Failed to delete');
+            }
+          } catch(e) {
+            alert('Error: ' + (e.message || e));
+          }
+        };
+
+        // ── Generic tab loading ──
         async function loadTabData() {
           var cfg = tabConfig[activeTab];
           renderHead();
@@ -283,7 +530,6 @@ container:
           }
         }
 
-        // Init on load
         setTimeout(function() { loadTabData(); }, 200);
       })();
       </script>

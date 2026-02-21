@@ -16,6 +16,7 @@ from anvil.tables import app_tables
 import json
 import uuid
 import logging
+from datetime import date as _date, datetime as _datetime
 
 try:
     from .auth_utils import get_utc_now
@@ -84,6 +85,29 @@ def _format_date(val):
     if hasattr(val, 'strftime'):
         return val.strftime('%Y-%m-%d')
     return str(val)
+
+
+def _parse_date(val):
+    """Convert date string/value to Python date object for Anvil Data Tables."""
+    if val is None or val == '':
+        return _date.today()
+    if isinstance(val, _date):
+        return val
+    if isinstance(val, _datetime):
+        return val.date()
+    if isinstance(val, str):
+        val = val.strip()
+        for fmt in ('%Y-%m-%d', '%d-%m-%Y', '%d/%m/%Y', '%Y/%m/%d'):
+            try:
+                return _datetime.strptime(val, fmt).date()
+            except ValueError:
+                continue
+        # Try ISO format with time
+        try:
+            return _datetime.fromisoformat(val.replace('Z', '+00:00')).date()
+        except Exception:
+            pass
+    return _date.today()
 
 
 def _parse_cost(val):
@@ -245,7 +269,7 @@ def save_purchase_invoice_proforma(data, token_or_email=None):
         except (TypeError, ValueError):
             quotation_number = None
 
-    inv_date = data.get('date') or ''
+    inv_date = _parse_date(data.get('date'))
     notes = data.get('notes', '') or ''
     machine_config = data.get('machine_config') or {}
 

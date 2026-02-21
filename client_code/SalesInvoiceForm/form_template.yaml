@@ -21,11 +21,17 @@ container:
         .si-print-btn:hover { background: #388e3c; }
         .si-pdf-btn { background: #c62828; color: #fff; }
         .si-pdf-btn:hover { background: #b71c1c; }
+        .si-save-btn { background: #ff6f00; color: #fff; font-size: 14px; padding: 10px 28px; }
+        .si-save-btn:hover { background: #e65100; }
+        .si-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* Invoice page */
-        .si-page { background: #fff; padding: 40px; border-radius: 4px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+        .si-page { background: #fff; padding: 40px; border-radius: 4px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); position: relative; }
         .si-page.rtl { direction: rtl; text-align: right; }
         .si-page.ltr { direction: ltr; text-align: left; }
+
+        /* Draft watermark */
+        .si-draft-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 100px; font-weight: 900; color: rgba(255, 111, 0, 0.08); pointer-events: none; z-index: 1; white-space: nowrap; letter-spacing: 10px; }
 
         /* Header */
         .si-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 3px solid #1a1a2e; margin-bottom: 24px; }
@@ -77,6 +83,7 @@ container:
         .si-badge.fully-paid { background: #e8f5e9; color: #2e7d32; }
         .si-badge.partial { background: #fff3e0; color: #e65100; }
         .si-badge.unpaid { background: #ffebee; color: #c62828; }
+        .si-badge.draft { background: #fff3e0; color: #ff6f00; border: 2px solid #ff6f00; font-size: 14px; padding: 4px 18px; }
 
         /* Loading */
         .si-loading { text-align: center; padding: 60px; color: #888; font-size: 16px; }
@@ -86,6 +93,7 @@ container:
           .si-controls { display: none !important; }
           .si-wrapper { padding: 0; max-width: 100%; }
           .si-page { box-shadow: none; padding: 10mm; }
+          .si-draft-watermark { display: none !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       </style>
@@ -95,6 +103,8 @@ container:
         <div class="si-controls" id="siControls">
           <button class="si-back-btn" onclick="window.pyGoBack()">Back</button>
           <div style="flex:1;"></div>
+          <!-- Save button — only visible in draft mode -->
+          <button class="si-save-btn" id="siSaveBtn" style="display:none;" onclick="saveInvoice()">Save Invoice</button>
           <button class="si-lang-btn active" id="btnAr" onclick="switchLang('ar')">عربي</button>
           <button class="si-lang-btn" id="btnEn" onclick="switchLang('en')">English</button>
           <button class="si-print-btn" onclick="window.print()">Print</button>
@@ -112,6 +122,8 @@ container:
         var invoiceData = null;
         var companyData = null;
         var currentLang = 'ar';
+        var isDraft = false;
+        var draftQNum = null;
 
         function fmtNum(v) {
           if (!v && v !== 0) return '0';
@@ -119,10 +131,19 @@ container:
           return isNaN(n) ? String(v) : n.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2});
         }
 
-        function getInvoiceNumberFromHash() {
+        function parseHash() {
           var hash = location.hash || '';
-          var m = hash.match(/#sales-invoice-(.+)/);
-          return m ? decodeURIComponent(m[1]) : null;
+          // Draft mode: #sales-invoice-draft-123
+          var dm = hash.match(/#sales-invoice-draft-(\d+)/);
+          if (dm) {
+            return { mode: 'draft', quotationNumber: parseInt(dm[1]) };
+          }
+          // Saved mode: #sales-invoice-INV-2026-001
+          var sm = hash.match(/#sales-invoice-(.+)/);
+          if (sm) {
+            return { mode: 'saved', invoiceNumber: decodeURIComponent(sm[1]) };
+          }
+          return null;
         }
 
         window.switchLang = function(lang) {
@@ -132,15 +153,50 @@ container:
           if (invoiceData) renderInvoice();
         };
 
+        // ── Save invoice (draft → saved) ──
+        window.saveInvoice = async function() {
+          if (!isDraft || !draftQNum) return;
+          var btn = document.getElementById('siSaveBtn');
+          if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+          try {
+            var result = await window.pySaveSalesInvoice(draftQNum, '');
+            if (result && result.success) {
+              // Saved! Navigate to the actual saved invoice
+              location.hash = '#sales-invoice-' + encodeURIComponent(result.invoice_number);
+            } else {
+              alert(result.message || 'Failed to save invoice');
+              if (btn) { btn.disabled = false; btn.textContent = 'Save Invoice'; }
+            }
+          } catch(e) {
+            alert('Error: ' + (e.message || e));
+            if (btn) { btn.disabled = false; btn.textContent = 'Save Invoice'; }
+          }
+        };
+
         async function loadInvoice() {
-          var invNum = getInvoiceNumberFromHash();
-          if (!invNum) {
-            document.getElementById('siContent').innerHTML = '<div class="si-loading" style="color:#c62828;">No invoice number specified</div>';
+          var parsed = parseHash();
+          if (!parsed) {
+            document.getElementById('siContent').innerHTML = '<div class="si-loading" style="color:#c62828;">No invoice specified</div>';
             return;
           }
 
           try {
-            var result = await window.pyGetInvoicePdfData(invNum);
+            var result;
+            if (parsed.mode === 'draft') {
+              isDraft = true;
+              draftQNum = parsed.quotationNumber;
+              // Show save button
+              document.getElementById('siSaveBtn').style.display = '';
+              result = await window.pyGetDraftInvoiceData(parsed.quotationNumber);
+            } else {
+              isDraft = false;
+              draftQNum = null;
+              // Hide save button for saved invoices
+              document.getElementById('siSaveBtn').style.display = 'none';
+              result = await window.pyGetInvoicePdfData(parsed.invoiceNumber);
+            }
+
             if (!result || !result.success) {
               document.getElementById('siContent').innerHTML = '<div class="si-loading" style="color:#c62828;">' + (result && result.message ? result.message : 'Failed to load invoice') + '</div>';
               return;
@@ -168,19 +224,34 @@ container:
           var totalPaid = d.total_paid || 0;
           var remaining = d.remaining || 0;
 
-          var statusCls = 'unpaid';
-          var statusTxt = isAr ? 'غير مدفوع' : 'Unpaid';
-          if (totalPaid >= totalPrice && totalPrice > 0) {
+          // Invoice number display
+          var invNumDisplay = d.invoice_number || '';
+
+          // Status logic
+          var statusCls, statusTxt;
+          if (isDraft) {
+            statusCls = 'draft';
+            statusTxt = 'DRAFT';
+            invNumDisplay = isAr ? 'مسودة' : 'DRAFT';
+          } else if (totalPaid >= totalPrice && totalPrice > 0) {
             statusCls = 'fully-paid';
             statusTxt = isAr ? 'مدفوع بالكامل' : 'Fully Paid';
           } else if (totalPaid > 0) {
             statusCls = 'partial';
             statusTxt = isAr ? 'مدفوع جزئياً' : 'Partially Paid';
+          } else {
+            statusCls = 'unpaid';
+            statusTxt = isAr ? 'غير مدفوع' : 'Unpaid';
           }
 
-          var invDate = d.created_at ? d.created_at.split('T')[0] : '';
+          var invDate = d.created_at ? d.created_at.split('T')[0] : todayStr();
 
           var html = '<div class="si-page ' + cls + '" id="siPage">';
+
+          // Draft watermark
+          if (isDraft) {
+            html += '<div class="si-draft-watermark">DRAFT</div>';
+          }
 
           // Header
           html += '<div class="si-header">';
@@ -212,7 +283,7 @@ container:
           // Title
           html += '<div class="si-title-bar">';
           html += '<h2>' + (isAr ? 'فاتورة بيع' : 'SALES INVOICE') + '</h2>';
-          html += '<div class="si-inv-num">' + d.invoice_number + ' <span class="si-badge ' + statusCls + '">' + statusTxt + '</span></div>';
+          html += '<div class="si-inv-num">' + invNumDisplay + ' <span class="si-badge ' + statusCls + '">' + statusTxt + '</span></div>';
           html += '</div>';
 
           // Info cards
@@ -304,7 +375,7 @@ container:
           // Footer
           html += '<div class="si-footer">';
           html += '<div>' + companyName + ' - ' + companyAddr + '</div>';
-          html += '<div>' + d.invoice_number + '</div>';
+          html += '<div>' + (isDraft ? (isAr ? 'مسودة' : 'DRAFT') : (d.invoice_number || '')) + '</div>';
           html += '</div>';
 
           html += '</div>'; // end si-page
@@ -314,6 +385,11 @@ container:
 
         function infoRow(label, value) {
           return '<div class="si-info-row"><span class="label">' + label + '</span><span class="value">' + (value || '—') + '</span></div>';
+        }
+
+        function todayStr() {
+          var d = new Date();
+          return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         }
 
         // PDF export
@@ -376,7 +452,7 @@ container:
               pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
             }
 
-            var filename = (invoiceData.invoice_number || 'invoice') + ' - ' + (invoiceData.client_name || '') + '.pdf';
+            var filename = (invoiceData.invoice_number || 'draft-invoice') + ' - ' + (invoiceData.client_name || '') + '.pdf';
             pdf.save(filename.replace(/[\/\\:*?"<>|]/g, '_'));
 
           } catch(e) {

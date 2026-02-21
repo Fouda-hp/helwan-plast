@@ -1,10 +1,11 @@
 """
 sales_invoices.py - إنشاء وعرض فواتير البيع
 =============================================
-- create_sales_invoice: ينشئ فاتورة بيع من عقد
-- get_sales_invoice: يجلب فاتورة بيع للعرض/الطباعة
-- get_sales_invoices_list: قائمة كل الفواتير
+- create_sales_invoice: ينشئ فاتورة بيع من عقد (فاتورة واحدة فقط لكل عقد)
+- get_draft_invoice_data: بيانات مسودة الفاتورة للعرض قبل الحفظ
 - get_sales_invoice_pdf_data: بيانات الفاتورة كاملة مع بيانات الشركة
+- get_sales_invoices_list: قائمة كل الفواتير
+- get_contract_invoices: فواتير عقد معين
 
 الجدول المطلوب: sales_invoices
 الأعمدة:
@@ -122,9 +123,93 @@ def _get_contract_payments_summary(quotation_number):
     return payments, total_paid
 
 
+def _contract_has_invoice(quotation_number):
+    """Check if a contract already has a sales invoice."""
+    if not _has_sales_invoices_table():
+        return False
+    try:
+        q_num = int(quotation_number)
+        for row in app_tables.sales_invoices.search(quotation_number=q_num):
+            return True  # Found at least one
+    except Exception:
+        pass
+    return False
+
+
+@anvil.server.callable
+def get_draft_invoice_data(quotation_number, token_or_email=None):
+    """Get contract data for draft invoice preview (not saved yet).
+    Returns the same structure as get_sales_invoice_pdf_data but from contract data directly."""
+    is_valid, _, error = _require_permission(token_or_email, 'view')
+    if not is_valid:
+        return error or {'success': False, 'message': 'Permission denied'}
+
+    try:
+        q_num = int(quotation_number)
+    except (TypeError, ValueError):
+        return {'success': False, 'message': 'Invalid quotation number'}
+
+    # Check if invoice already exists for this contract
+    if _contract_has_invoice(q_num):
+        return {'success': False, 'message': 'An invoice already exists for this contract. Only one invoice per contract is allowed.'}
+
+    contract = _contracts_get_active(quotation_number=q_num)
+    if not contract:
+        return {'success': False, 'message': 'Contract not found'}
+
+    try:
+        # Parse total price
+        tp = contract.get('total_price')
+        try:
+            total_price = float(str(tp).replace(',', '').replace('،', '').strip()) if tp else 0
+        except (TypeError, ValueError):
+            total_price = 0
+
+        # Planned installments
+        installments = []
+        try:
+            installments = json.loads(contract.get('payments_json') or '[]')
+        except Exception:
+            pass
+
+        # Actual payments
+        recorded_payments, total_paid = _get_contract_payments_summary(q_num)
+        remaining = total_price - total_paid
+
+        return {
+            'success': True,
+            'data': {
+                'invoice_number': None,  # Draft — no number yet
+                'contract_number': contract.get('contract_number', ''),
+                'quotation_number': q_num,
+                'client_name': contract.get('client_name', ''),
+                'company': contract.get('company', ''),
+                'phone': contract.get('phone', ''),
+                'country': contract.get('country', ''),
+                'address': contract.get('address', ''),
+                'model': contract.get('model', ''),
+                'total_price': total_price,
+                'currency': contract.get('currency', 'EGP'),
+                'created_at': None,  # Draft — no date yet
+                'created_by': None,
+                'notes': '',
+                'installments': installments,
+                'recorded_payments': recorded_payments,
+                'total_paid': total_paid,
+                'remaining': remaining,
+            },
+            'company': _get_company_settings(),
+        }
+
+    except Exception as e:
+        logger.error("get_draft_invoice_data error: %s", e)
+        return {'success': False, 'message': 'Failed to load draft invoice data'}
+
+
 @anvil.server.callable
 def create_sales_invoice(quotation_number, notes='', token_or_email=None):
-    """Create a sales invoice from a contract."""
+    """Create a sales invoice from a contract.
+    Only ONE invoice per contract is allowed."""
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
         return error or {'success': False, 'message': 'Permission denied'}
@@ -133,6 +218,10 @@ def create_sales_invoice(quotation_number, notes='', token_or_email=None):
         q_num = int(quotation_number)
     except (TypeError, ValueError):
         return {'success': False, 'message': 'Invalid quotation number'}
+
+    # ── Duplicate check: one invoice per contract ──
+    if _contract_has_invoice(q_num):
+        return {'success': False, 'message': 'An invoice already exists for this contract. Only one invoice per contract is allowed.'}
 
     contract = _contracts_get_active(quotation_number=q_num)
     if not contract:

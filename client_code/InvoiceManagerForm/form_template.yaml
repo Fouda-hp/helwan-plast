@@ -504,24 +504,10 @@ container:
           }
         };
 
-        // ── Create sales invoice ──
-        window.createSalesInvoice = async function(qNum) {
-          var btn = document.getElementById('createInvBtn-' + qNum);
-          if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
-
-          try {
-            var result = await window.pyCreateSalesInvoice(qNum, '');
-            if (result && result.success) {
-              // Open invoice in new tab/page
-              location.hash = '#sales-invoice-' + encodeURIComponent(result.invoice_number);
-            } else {
-              alert(result.message || 'Failed to create invoice');
-              if (btn) { btn.disabled = false; btn.textContent = 'Create Sales Invoice'; }
-            }
-          } catch(e) {
-            alert('Error: ' + (e.message || e));
-            if (btn) { btn.disabled = false; btn.textContent = 'Create Sales Invoice'; }
-          }
+        // ── Create sales invoice (opens draft preview — no DB save yet) ──
+        window.createSalesInvoice = function(qNum) {
+          // Navigate to draft mode — invoice not saved until user clicks Save
+          location.hash = '#sales-invoice-draft-' + qNum;
         };
 
         // ── Load existing invoices for contract ──
@@ -535,6 +521,9 @@ container:
                 return '<a href="#sales-invoice-' + encodeURIComponent(inv.invoice_number) + '" style="color:#7b1fa2;font-weight:600;text-decoration:underline;margin:0 4px;">' + inv.invoice_number + '</a>';
               });
               span.innerHTML = 'Existing: ' + links.join(' | ');
+              // Disable create button — only one invoice per contract
+              var btn = document.getElementById('createInvBtn-' + qNum);
+              if (btn) { btn.disabled = true; btn.textContent = 'Invoice Exists'; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; }
             }
           } catch(e) { /* ignore */ }
         }

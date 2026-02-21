@@ -212,7 +212,8 @@ def save_purchase_invoice_proforma(data, token_or_email=None):
     fob_standard = _parse_cost(data.get('fob_standard', 0))
     fob_with_cylinders = _parse_cost(data.get('fob_with_cylinders', 0))
     discount = _parse_cost(data.get('discount', 0))
-    amount_due = (fob_standard + fob_with_cylinders) - discount
+    # fob_with_cylinders already includes fob_standard + cylinder cost
+    amount_due = fob_with_cylinders - discount
 
     contract_number = data.get('contract_number', '') or ''
     quotation_number = data.get('quotation_number')
@@ -247,7 +248,7 @@ def save_purchase_invoice_proforma(data, token_or_email=None):
             machine_code=acid_number,
             items_json=json.dumps(items, ensure_ascii=False),
             machine_config_json=json.dumps(machine_config, ensure_ascii=False),
-            subtotal=fob_standard + (fob_with_cylinders - fob_standard if fob_with_cylinders > fob_standard else 0),
+            subtotal=fob_with_cylinders,
             tax_amount=0,
             total=amount_due,
             total_egp=amount_due,

@@ -72,6 +72,35 @@ container:
         .pi-edit-input:focus { outline: none; border-color: #e65100; }
         .pi-edit-select { padding: 6px 10px; border: 2px solid #ff6f00; border-radius: 6px; font-size: 13px; font-weight: 700; color: #1a1a2e; font-family: inherit; max-width: 250px; width: 100%; }
 
+        /* Machine config form */
+        .pi-config-section { background: #f0f4ff; border: 1px solid #c5cae9; border-radius: 10px; padding: 16px; margin-bottom: 24px; }
+        .pi-config-section h4 { margin: 0 0 12px; color: #3949ab; font-size: 15px; font-weight: 700; }
+        .pi-config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .pi-config-grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .pi-cfg-group label { display: block; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 12px; }
+        .pi-cfg-group select, .pi-cfg-group input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; font-family: inherit; }
+        .pi-cfg-group select:focus, .pi-cfg-group input:focus { outline: none; border-color: #3949ab; }
+        .pi-cfg-optionals { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+        .pi-cfg-optionals label { font-size: 13px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+        .pi-cfg-fob-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+        .pi-cfg-fob-group label { display: block; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 12px; }
+        .pi-cfg-fob-group input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 15px; font-weight: 700; }
+        .pi-cfg-fob-group input.fob-std { background: #e8f5e9; color: #2e7d32; }
+        .pi-cfg-fob-group input.fob-cyl { background: #e3f2fd; color: #1565c0; }
+
+        /* Cylinders section */
+        .pi-cyl-section { background: #fff8e1; border: 1px solid #ffd54f; border-radius: 10px; padding: 16px; margin-bottom: 24px; }
+        .pi-cyl-section h4 { margin: 0 0 10px; color: #f57f17; font-size: 15px; font-weight: 700; }
+        .pi-cyl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .pi-cyl-table th { background: #f5f5f5; padding: 6px 8px; text-align: center; border: 1px solid #ddd; color: #333; font-weight: 600; }
+        .pi-cyl-table td { padding: 4px; border: 1px solid #ddd; text-align: center; }
+        .pi-cyl-table input { width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; text-align: center; }
+        .pi-cyl-table input.cyl-cost { background: #f9f9f9; }
+        .pi-cyl-total-row { font-weight: 700; background: #f0f4ff; }
+
+        /* Machine code display */
+        .pi-machine-code { background: #e8eaf6; padding: 8px 14px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 16px; font-weight: 800; color: #1a1a2e; text-align: center; margin-top: 10px; letter-spacing: 1px; }
+
         /* Pricing section */
         .pi-pricing { padding: 20px; background: #fafafa; border-radius: 10px; border: 1px solid #e0e0e0; margin-bottom: 24px; }
         .pi-pricing-title { font-size: 15px; font-weight: 700; color: #1a1a2e; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #e8eaf6; }
@@ -83,6 +112,12 @@ container:
         .pi-pricing-row.total .label { font-size: 16px; font-weight: 800; color: #1a1a2e; }
         .pi-pricing-row.total .value { font-size: 22px; color: #2e7d32; }
 
+        /* Machine summary (saved view) */
+        .pi-machine-summary { background: #f0f4ff; padding: 12px 18px; border-radius: 8px; border-left: 4px solid #3949ab; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+        .pi-page.rtl .pi-machine-summary { border-left: none; border-right: 4px solid #3949ab; }
+        .pi-machine-summary .mc-code { font-family: 'Courier New', monospace; font-size: 18px; font-weight: 800; color: #1a1a2e; }
+        .pi-machine-summary .mc-desc { font-size: 12px; color: #666; margin-top: 2px; }
+
         /* Footer */
         .pi-footer { margin-top: 30px; padding-top: 16px; border-top: 2px solid #1a1a2e; display: flex; justify-content: space-between; font-size: 11px; color: #999; }
 
@@ -92,11 +127,22 @@ container:
         /* Print */
         @media print {
           .pi-controls { display: none !important; }
+          .pi-config-section { display: none !important; }
+          .pi-cyl-section { display: none !important; }
           .pi-wrapper { padding: 0; max-width: 100%; }
           .pi-page { box-shadow: none; padding: 10mm; }
           .pi-proforma-watermark { display: none !important; }
           .pi-edit-input, .pi-edit-select { border: none !important; background: transparent !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+
+        @media (max-width: 768px) {
+          .pi-wrapper { padding: 10px; }
+          .pi-page { padding: 20px; }
+          .pi-info-section { grid-template-columns: 1fr; }
+          .pi-config-grid, .pi-cfg-fob-grid { grid-template-columns: 1fr; }
+          .pi-config-grid4 { grid-template-columns: 1fr 1fr; }
+          .pi-machine-summary { flex-direction: column; gap: 8px; }
         }
       </style>
 
@@ -127,6 +173,22 @@ container:
         var currentLang = 'ar';
         var isProforma = false;
         var supplierId = null;
+        var contractLinked = false;
+
+        /* ============================================================
+           Calculator Pricing Data — same as PurchaseInvoicesForm
+           ============================================================ */
+        var INV_MACHINE_PRICES = {
+          "Metal anilox": {"4":{"80":15000,"100":16000,"120":17500},"6":{"80":25000,"100":26000,"120":29000},"8":{"80":29000,"100":32000,"120":33000}},
+          "Ceramic anilox Single Doctor Blade": {"4":{"80":18000,"100":19000,"120":20500},"6":{"80":28000,"100":29000,"120":32000},"8":{"80":32000,"100":35000,"120":36000}},
+          "Ceramic anilox Chamber Doctor Blade": {"4":{"80":21168,"100":22960,"120":25252},"6":{"80":32752,"100":34940,"120":39128},"8":{"80":38336,"100":42920,"120":45504}}
+        };
+        var INV_MATERIAL_ADJ = {"PP":9000,"Nonwoven":4000,"Paper to 100g":1500,"Paper to 200g":4750,"Paper to 300g":11050};
+        var INV_WINDER_ADJ = {"Single":-4000};
+        var INV_OPTIONAL_ADJ = {"Video inspection":4000,"PLC":1800,"Slitter":800,"Pneumatic Unwind":750,"Hydraulic Station Unwind":1500,"Pneumatic Rewind":750,"Surface Rewind":3250};
+        var INV_CYL_PRICES = {80:3.49, 100:3.59, 120:4.05, 130:4.50, 140:5.026, 160:5.40};
+        var INV_DEFAULT_CYL_SIZES = [25,30,35,40,45,50,60];
+        var PI_CYL_ROWS = 12;
 
         function fmtNum(v) {
           if (!v && v !== 0) return '0';
@@ -141,10 +203,8 @@ container:
 
         function parseHash() {
           var hash = location.hash || '';
-          // New proforma: #purchase-invoice-new-{supplierId}
           var nm = hash.match(/#purchase-invoice-new-(.+)/);
           if (nm) return { mode: 'new', supplierId: decodeURIComponent(nm[1]) };
-          // Saved: #purchase-invoice-PI-2026-0001
           var sm = hash.match(/#purchase-invoice-(.+)/);
           if (sm) return { mode: 'saved', invoiceNumber: decodeURIComponent(sm[1]) };
           return null;
@@ -157,7 +217,241 @@ container:
           if (invoiceData || isProforma) renderInvoice();
         };
 
-        // ── Load ──
+        /* ============================================================
+           Model Code Builders (same as calculator)
+           ============================================================ */
+        function invGetAniloxCode(type) {
+          if (type === "Metal anilox") return "M";
+          if (type === "Ceramic anilox Single Doctor Blade") return "C";
+          if (type === "Ceramic anilox Chamber Doctor Blade") return "CC";
+          return "";
+        }
+
+        function invGetMaterialWinderCode(mat, wind) {
+          if (mat === "PE" && wind === "Single") return "S";
+          if (mat === "PE" && wind === "Double") return "D";
+          if (mat === "PP" && wind === "Single") return "PS";
+          if (mat === "Nonwoven" && wind === "Single") return "PS";
+          if (mat === "Paper to 100g") return "PP";
+          if (mat === "Paper to 200g") return "HS";
+          if (mat === "Paper to 300g") return "SS";
+          return "";
+        }
+
+        function invGetUnwindRewindCode() {
+          var u = "", r = "";
+          var pu = document.getElementById("piOptPneuUnwind");
+          var hu = document.getElementById("piOptHydUnwind");
+          var pr = document.getElementById("piOptPneuRewind");
+          var sr = document.getElementById("piOptSurfRewind");
+          if (pu && pu.checked) u = "P";
+          if (hu && hu.checked) u = "H";
+          if (pr && pr.checked) r = "P";
+          if (sr && sr.checked) r = "S";
+          return u + r;
+        }
+
+        /* ============================================================
+           Build machine code + calculate FOB from config
+           ============================================================ */
+        window.piBuildModelCode = function() {
+          if (!isProforma || contractLinked) return;
+
+          var condition = document.getElementById("piCondition").value;
+          var mType = document.getElementById("piMachineType").value;
+          var cols = document.getElementById("piColors").value;
+          var wid = document.getElementById("piWidth").value;
+          var mat = document.getElementById("piMaterial").value;
+          var wind = document.getElementById("piWinder").value;
+
+          var codeEl = document.getElementById("piMachineCodeDisplay");
+
+          if (!condition || !mType || !cols || !wid || !mat || !wind) {
+            if (codeEl) codeEl.textContent = '—';
+            var fobStdEl = document.getElementById("piFobStd");
+            if (fobStdEl) fobStdEl.value = 0;
+            piCalcCylindersProforma();
+            return;
+          }
+
+          // Build code
+          var prefix = condition === "used" ? "U" : "S";
+          var an = invGetAniloxCode(mType);
+          var mw = invGetMaterialWinderCode(mat, wind);
+          var ex = invGetUnwindRewindCode();
+          var suffix = ex.length === 2 ? ex : mw + ex;
+          var machineCode = prefix + "H" + cols + "-" + (parseInt(wid) * 10) + an + "/" + suffix;
+          if (codeEl) codeEl.textContent = machineCode;
+
+          // Store in invoiceData
+          invoiceData.machine_config = invoiceData.machine_config || {};
+          invoiceData.machine_config.model_code = machineCode;
+          invoiceData.machine_config.condition = condition;
+          invoiceData.machine_config.machine_type = mType;
+          invoiceData.machine_config.colors = cols;
+          invoiceData.machine_config.machine_width = wid;
+          invoiceData.machine_config.material = mat;
+          invoiceData.machine_config.winder = wind;
+
+          // Collect optionals
+          var optList = [];
+          if (document.getElementById("piOptVideo") && document.getElementById("piOptVideo").checked) optList.push("Video inspection");
+          if (document.getElementById("piOptPLC") && document.getElementById("piOptPLC").checked) optList.push("PLC");
+          if (document.getElementById("piOptSlitter") && document.getElementById("piOptSlitter").checked) optList.push("Slitter");
+          if (document.getElementById("piOptPneuUnwind") && document.getElementById("piOptPneuUnwind").checked) optList.push("Pneumatic Unwind");
+          if (document.getElementById("piOptHydUnwind") && document.getElementById("piOptHydUnwind").checked) optList.push("Hydraulic Station Unwind");
+          if (document.getElementById("piOptPneuRewind") && document.getElementById("piOptPneuRewind").checked) optList.push("Pneumatic Rewind");
+          if (document.getElementById("piOptSurfRewind") && document.getElementById("piOptSurfRewind").checked) optList.push("Surface Rewind");
+          invoiceData.machine_config.optionals = optList;
+
+          // Calculate FOB
+          var basePrice = 0;
+          var byType = INV_MACHINE_PRICES[mType];
+          if (byType && byType[cols] && byType[cols][wid] !== undefined) {
+            basePrice = parseFloat(byType[cols][wid]);
+          }
+          var matAdj = INV_MATERIAL_ADJ[mat] || 0;
+          var windAdj = INV_WINDER_ADJ[wind] || 0;
+          var optAdj = 0;
+          optList.forEach(function(o) { optAdj += (INV_OPTIONAL_ADJ[o] || 0); });
+
+          var stdFob = basePrice + matAdj + windAdj + optAdj;
+          var fobStdEl = document.getElementById("piFobStd");
+          if (fobStdEl) fobStdEl.value = stdFob;
+
+          // Init cylinder table with defaults
+          piInitCylTable(cols);
+          piCalcCylindersProforma();
+        };
+
+        /* ============================================================
+           Cylinder table init & calc
+           ============================================================ */
+        function piInitCylTable(colorsVal) {
+          var tbody = document.getElementById("piCylBody");
+          if (!tbody) return;
+          var defaultSizes = INV_DEFAULT_CYL_SIZES;
+          var html = "";
+          for (var i = 1; i <= PI_CYL_ROWS; i++) {
+            var defSize = (i <= defaultSizes.length) ? defaultSizes[i-1] : "";
+            var defCount = (i <= defaultSizes.length && colorsVal) ? colorsVal : "";
+            html += '<tr><td>' + i + '</td>';
+            html += '<td><input type="number" id="piCylSize' + i + '" value="' + defSize + '" oninput="piCalcCylindersProforma()"></td>';
+            html += '<td><input type="number" id="piCylCount' + i + '" value="' + defCount + '" oninput="piCalcCylindersProforma()"></td>';
+            html += '<td><input type="text" id="piCylCost' + i + '" class="cyl-cost" readonly></td></tr>';
+          }
+          tbody.innerHTML = html;
+        }
+
+        window.piCalcCylindersProforma = function() {
+          var widthEl = document.getElementById("piWidth");
+          var colorsEl = document.getElementById("piColors");
+          if (!widthEl || !colorsEl) { recalcTotal(); return; }
+
+          var widthVal = parseInt(widthEl.value) || 0;
+          var colorsVal = parseInt(colorsEl.value) || 0;
+          var pricePerCM = INV_CYL_PRICES[widthVal] || 0;
+          var totalCost = 0, totalCount = 0;
+
+          for (var i = 1; i <= PI_CYL_ROWS; i++) {
+            var sizeEl = document.getElementById("piCylSize" + i);
+            var countEl = document.getElementById("piCylCount" + i);
+            var costEl = document.getElementById("piCylCost" + i);
+            if (!sizeEl || !countEl || !costEl) continue;
+            var size = parseFloat(sizeEl.value) || 0;
+            var count = parseInt(countEl.value) || 0;
+            if (!size || !count) { costEl.value = ""; continue; }
+            totalCount += count;
+            if (size === 40 && count <= colorsVal) {
+              costEl.value = "FREE";
+              costEl.style.color = "#2e7d32"; costEl.style.fontWeight = "600";
+            } else if (size === 40 && count > colorsVal) {
+              var excess = count - colorsVal;
+              var c40 = Math.round(size * excess * pricePerCM);
+              costEl.value = c40.toFixed(2);
+              costEl.style.color = ""; costEl.style.fontWeight = "";
+              totalCost += c40;
+            } else {
+              var rc = Math.round(size * count * pricePerCM);
+              costEl.value = rc.toFixed(2);
+              costEl.style.color = ""; costEl.style.fontWeight = "";
+              totalCost += rc;
+            }
+          }
+
+          var totalCountEl = document.getElementById("piCylTotalCount");
+          var totalCostEl = document.getElementById("piCylTotalCost");
+          if (totalCountEl) totalCountEl.textContent = totalCount || "0";
+          if (totalCostEl) totalCostEl.textContent = "$" + totalCost.toLocaleString("en-US");
+
+          // Collect cylinder data into machine_config
+          var cyls = [];
+          for (var j = 1; j <= PI_CYL_ROWS; j++) {
+            var cs = document.getElementById("piCylSize" + j);
+            var cc = document.getElementById("piCylCount" + j);
+            var co = document.getElementById("piCylCost" + j);
+            if (cs && cc && cs.value && cc.value) {
+              cyls.push({ size: parseFloat(cs.value), count: parseInt(cc.value), cost: co ? co.value : '' });
+            }
+          }
+          if (invoiceData && invoiceData.machine_config) {
+            invoiceData.machine_config.cylinders = cyls;
+          }
+
+          // Update FOB With Cylinders = Standard FOB + cylinder cost
+          var stdFob = parseFloat(document.getElementById("piFobStd") ? document.getElementById("piFobStd").value : 0) || 0;
+          var fobCylEl = document.getElementById("piFobCyl");
+          if (fobCylEl) fobCylEl.value = stdFob + totalCost;
+
+          recalcTotal();
+        };
+
+        /* ============================================================
+           Load dynamic calculator settings
+           ============================================================ */
+        async function loadCalcSettings() {
+          try {
+            if (!window.pyGetCalculatorSettings) return;
+            var res = await window.pyGetCalculatorSettings();
+            if (res && res.success && res.data) {
+              var d = res.data;
+              if (d.machinePrices && typeof d.machinePrices === 'object') INV_MACHINE_PRICES = d.machinePrices;
+              if (d.materialAdjustments && typeof d.materialAdjustments === 'object') INV_MATERIAL_ADJ = d.materialAdjustments;
+              if (d.winderAdjustment && typeof d.winderAdjustment === 'object') INV_WINDER_ADJ = d.winderAdjustment;
+              if (d.optionalAdjustments && typeof d.optionalAdjustments === 'object') INV_OPTIONAL_ADJ = d.optionalAdjustments;
+              if (d.cylinderPrices && typeof d.cylinderPrices === 'object') {
+                Object.keys(d.cylinderPrices).forEach(function(k) {
+                  var num = parseInt(k, 10);
+                  if (!isNaN(num) && d.cylinderPrices[k] != null) {
+                    INV_CYL_PRICES[num] = parseFloat(d.cylinderPrices[k]);
+                  }
+                });
+              }
+              // Update machine type dropdown if dynamic options exist
+              if (d.priceOptions && d.priceOptions.types && d.priceOptions.types.length) {
+                var typeSelect = document.getElementById("piMachineType");
+                if (typeSelect) {
+                  var current = typeSelect.value;
+                  typeSelect.innerHTML = '<option value="">-- Select --</option>';
+                  d.priceOptions.types.forEach(function(tp) {
+                    var opt = document.createElement("option");
+                    opt.value = tp;
+                    if (tp === "Metal anilox") opt.textContent = "Metal anilox";
+                    else if (tp === "Ceramic anilox Single Doctor Blade") opt.textContent = "Ceramic Single";
+                    else if (tp === "Ceramic anilox Chamber Doctor Blade") opt.textContent = "Ceramic Chamber";
+                    else opt.textContent = tp;
+                    typeSelect.appendChild(opt);
+                  });
+                  if (current) typeSelect.value = current;
+                }
+              }
+            }
+          } catch (err) { /* use defaults */ }
+        }
+
+        /* ============================================================
+           Load Invoice
+           ============================================================ */
         async function loadInvoice() {
           var parsed = parseHash();
           if (!parsed) {
@@ -190,7 +484,9 @@ container:
                 machine_config: {},
                 notes: '',
               };
+              contractLinked = false;
               renderInvoice();
+              await loadCalcSettings();
 
             } else {
               isProforma = false;
@@ -217,17 +513,20 @@ container:
           }
         }
 
-        // ── Contract selection → load FOB costs ──
+        /* ============================================================
+           Contract selection → load FOB costs or switch to free mode
+           ============================================================ */
         window.piOnContractChange = async function(selectEl) {
           var val = selectEl.value;
           if (!val) {
-            // Free invoice — enable manual inputs
-            setFieldEditable('piFobStd', true, 0);
-            setFieldEditable('piFobCyl', true, 0);
+            // Free invoice — show machine config
+            contractLinked = false;
             invoiceData.contract_number = '';
             invoiceData.fob_standard = 0;
             invoiceData.fob_with_cylinders = 0;
-            recalcTotal();
+            invoiceData.quotation_number = null;
+            renderInvoice();
+            await loadCalcSettings();
             return;
           }
           // Find quotation_number for selected contract
@@ -239,6 +538,7 @@ container:
             }
           }
           invoiceData.contract_number = val;
+          contractLinked = true;
 
           if (qNum) {
             try {
@@ -247,39 +547,39 @@ container:
                 invoiceData.fob_standard = costs.fob_standard || 0;
                 invoiceData.fob_with_cylinders = costs.fob_with_cylinders || 0;
                 invoiceData.quotation_number = qNum;
-                setFieldEditable('piFobStd', false, invoiceData.fob_standard);
-                setFieldEditable('piFobCyl', false, invoiceData.fob_with_cylinders);
-                recalcTotal();
+                invoiceData.machine_config = costs.machine_config || {};
               }
             } catch(e) { /* ignore */ }
           }
+          renderInvoice();
         };
-
-        function setFieldEditable(id, editable, value) {
-          var el = document.getElementById(id);
-          if (!el) return;
-          el.value = value || 0;
-          el.readOnly = !editable;
-          el.style.borderColor = editable ? '#ff6f00' : '#ccc';
-          el.style.background = editable ? '#fff' : '#f5f5f5';
-        }
 
         window.piRecalcTotal = function() { recalcTotal(); };
 
         function recalcTotal() {
-          var fob = parseFloat(document.getElementById('piFobStd') ? document.getElementById('piFobStd').value : 0) || 0;
-          var cyl = parseFloat(document.getElementById('piFobCyl') ? document.getElementById('piFobCyl').value : 0) || 0;
-          var disc = parseFloat(document.getElementById('piDiscount') ? document.getElementById('piDiscount').value : 0) || 0;
-          var total = fob + cyl - disc;
+          var fobEl = document.getElementById('piFobStd');
+          var cylEl = document.getElementById('piFobCyl');
+          var discEl = document.getElementById('piDiscount');
+
+          var fob = parseFloat(fobEl ? fobEl.value : 0) || 0;
+          var cyl = parseFloat(cylEl ? cylEl.value : 0) || 0;
+          var disc = parseFloat(discEl ? discEl.value : 0) || 0;
+
+          // Amount Due = FOB With Cylinders - Discount (NOT fob+cyl)
+          // fob_with_cylinders already includes fob_standard + cylinder_cost
+          var total = cyl - disc;
           var el = document.getElementById('piAmountDue');
           if (el) el.textContent = fmtNum(total > 0 ? total : 0);
+
           invoiceData.fob_standard = fob;
           invoiceData.fob_with_cylinders = cyl;
           invoiceData.discount = disc;
           invoiceData.amount_due = total > 0 ? total : 0;
         }
 
-        // ── Save proforma ──
+        /* ============================================================
+           Save proforma
+           ============================================================ */
         window.saveProforma = async function() {
           if (!isProforma) return;
 
@@ -289,6 +589,43 @@ container:
 
           var dateEl = document.getElementById('piDate');
           recalcTotal();
+
+          // Collect machine config for free invoices
+          var mc = invoiceData.machine_config || {};
+          if (!contractLinked) {
+            // Gather optionals from checkboxes
+            var optList = [];
+            var optIds = ["piOptVideo","piOptPLC","piOptSlitter","piOptPneuUnwind","piOptHydUnwind","piOptPneuRewind","piOptSurfRewind"];
+            var optNames = ["Video inspection","PLC","Slitter","Pneumatic Unwind","Hydraulic Station Unwind","Pneumatic Rewind","Surface Rewind"];
+            optIds.forEach(function(id, idx) {
+              var el = document.getElementById(id);
+              if (el && el.checked) optList.push(optNames[idx]);
+            });
+
+            mc.condition = (document.getElementById("piCondition") || {}).value || '';
+            mc.machine_type = (document.getElementById("piMachineType") || {}).value || '';
+            mc.colors = (document.getElementById("piColors") || {}).value || '';
+            mc.machine_width = (document.getElementById("piWidth") || {}).value || '';
+            mc.material = (document.getElementById("piMaterial") || {}).value || '';
+            mc.winder = (document.getElementById("piWinder") || {}).value || '';
+            mc.optionals = optList;
+
+            // Collect cylinders
+            var cyls = [];
+            for (var ci = 1; ci <= PI_CYL_ROWS; ci++) {
+              var cs = document.getElementById("piCylSize" + ci);
+              var cc = document.getElementById("piCylCount" + ci);
+              var co = document.getElementById("piCylCost" + ci);
+              if (cs && cc && cs.value && cc.value) {
+                cyls.push({ size: parseFloat(cs.value), count: parseInt(cc.value), cost: co ? co.value : '' });
+              }
+            }
+            mc.cylinders = cyls;
+
+            // Model code
+            var codeEl = document.getElementById("piMachineCodeDisplay");
+            mc.model_code = codeEl ? codeEl.textContent : '';
+          }
 
           var data = {
             supplier_id: supplierId,
@@ -300,7 +637,7 @@ container:
             discount: invoiceData.discount,
             date: dateEl ? dateEl.value : todayStr(),
             notes: '',
-            machine_config: invoiceData.machine_config || {},
+            machine_config: mc,
           };
 
           var btn = document.getElementById('piSaveBtn');
@@ -320,7 +657,38 @@ container:
           }
         };
 
-        // ── Render ──
+        /* ============================================================
+           Build machine summary line for saved view
+           ============================================================ */
+        function buildMachineSummaryLine(mc) {
+          if (!mc) return '';
+          var parts = [];
+          if (mc.model_code) parts.push(mc.model_code);
+          else {
+            // Build from components
+            var desc = [];
+            if (mc.condition) desc.push(mc.condition === 'used' ? 'Used' : 'New');
+            if (mc.machine_type) {
+              if (mc.machine_type === "Metal anilox") desc.push("Metal");
+              else if (mc.machine_type === "Ceramic anilox Single Doctor Blade") desc.push("Ceramic Single");
+              else if (mc.machine_type === "Ceramic anilox Chamber Doctor Blade") desc.push("Ceramic Chamber");
+              else desc.push(mc.machine_type);
+            }
+            if (mc.colors) desc.push(mc.colors + ' Colors');
+            if (mc.machine_width) desc.push(mc.machine_width + 'cm');
+            if (mc.material) desc.push(mc.material);
+            if (mc.winder) desc.push(mc.winder + ' Winder');
+            if (desc.length > 0) parts.push(desc.join(' / '));
+          }
+          if (mc.optionals && mc.optionals.length > 0) {
+            parts.push(mc.optionals.join(', '));
+          }
+          return parts.join(' — ');
+        }
+
+        /* ============================================================
+           Render Invoice
+           ============================================================ */
         function renderInvoice() {
           var d = invoiceData;
           var c = companyData || {};
@@ -385,8 +753,10 @@ container:
 
           // Title bar
           html += '<div class="pi-title-bar">';
-          html += '<h2>' + (isAr ? 'فاتورة شراء' : 'PURCHASE INVOICE') + '</h2>';
-          html += '<div class="pi-inv-num">' + invNumDisplay + ' <span class="pi-badge ' + statusCls + '">' + statusTxt + '</span></div>';
+          html += '<h2>' + (isAr ? 'فاتورة مبدئية' : 'PROFORMA INVOICE') + '</h2>';
+          if (!isProforma && d.invoice_number) {
+            html += '<div class="pi-inv-num">' + d.invoice_number + ' <span class="pi-badge ' + statusCls + '">' + statusTxt + '</span></div>';
+          }
           html += '</div>';
 
           // Info cards
@@ -434,30 +804,169 @@ container:
           html += '</div>';
           html += '</div>'; // end info-section
 
-          // Pricing section
+          /* ============================================================
+             Machine Configuration Form (proforma + free mode ONLY)
+             ============================================================ */
+          if (isProforma && !contractLinked) {
+            html += '<div class="pi-config-section" id="piConfigSection">';
+            html += '<h4>' + (isAr ? '⚙ إعداد الماكينة' : '⚙ Machine Configuration') + '</h4>';
+
+            // Row 1: Condition + Machine Type
+            html += '<div class="pi-config-grid">';
+            html += '<div class="pi-cfg-group"><label>' + (isAr ? 'الحالة' : 'Condition') + '</label>';
+            html += '<select id="piCondition" onchange="piBuildModelCode()">';
+            html += '<option value="">-- Select --</option>';
+            html += '<option value="new"' + ((d.machine_config && d.machine_config.condition === 'new') ? ' selected' : '') + '>New (S)</option>';
+            html += '<option value="used"' + ((d.machine_config && d.machine_config.condition === 'used') ? ' selected' : '') + '>Used (U)</option>';
+            html += '</select></div>';
+
+            html += '<div class="pi-cfg-group"><label>' + (isAr ? 'نوع الماكينة' : 'Machine Type') + '</label>';
+            html += '<select id="piMachineType" onchange="piBuildModelCode()">';
+            html += '<option value="">-- Select --</option>';
+            html += '<option value="Metal anilox"' + ((d.machine_config && d.machine_config.machine_type === 'Metal anilox') ? ' selected' : '') + '>Metal anilox</option>';
+            html += '<option value="Ceramic anilox Single Doctor Blade"' + ((d.machine_config && d.machine_config.machine_type === 'Ceramic anilox Single Doctor Blade') ? ' selected' : '') + '>Ceramic Single</option>';
+            html += '<option value="Ceramic anilox Chamber Doctor Blade"' + ((d.machine_config && d.machine_config.machine_type === 'Ceramic anilox Chamber Doctor Blade') ? ' selected' : '') + '>Ceramic Chamber</option>';
+            html += '</select></div>';
+            html += '</div>';
+
+            // Row 2: Colors, Width, Material, Winder
+            html += '<div class="pi-config-grid4">';
+
+            html += '<div class="pi-cfg-group"><label>' + (isAr ? 'الألوان' : 'Colors') + '</label>';
+            html += '<select id="piColors" onchange="piBuildModelCode()">';
+            html += '<option value="">--</option>';
+            html += '<option value="4"' + ((d.machine_config && d.machine_config.colors === '4') ? ' selected' : '') + '>4</option>';
+            html += '<option value="6"' + ((d.machine_config && d.machine_config.colors === '6') ? ' selected' : '') + '>6</option>';
+            html += '<option value="8"' + ((d.machine_config && d.machine_config.colors === '8') ? ' selected' : '') + '>8</option>';
+            html += '</select></div>';
+
+            html += '<div class="pi-cfg-group"><label>' + (isAr ? 'العرض (سم)' : 'Width (cm)') + '</label>';
+            html += '<select id="piWidth" onchange="piBuildModelCode()">';
+            html += '<option value="">--</option>';
+            html += '<option value="80"' + ((d.machine_config && d.machine_config.machine_width === '80') ? ' selected' : '') + '>80</option>';
+            html += '<option value="100"' + ((d.machine_config && d.machine_config.machine_width === '100') ? ' selected' : '') + '>100</option>';
+            html += '<option value="120"' + ((d.machine_config && d.machine_config.machine_width === '120') ? ' selected' : '') + '>120</option>';
+            html += '</select></div>';
+
+            html += '<div class="pi-cfg-group"><label>' + (isAr ? 'الخامة' : 'Material') + '</label>';
+            html += '<select id="piMaterial" onchange="piBuildModelCode()">';
+            html += '<option value="">--</option>';
+            html += '<option value="PE"' + ((d.machine_config && d.machine_config.material === 'PE') ? ' selected' : '') + '>PE</option>';
+            html += '<option value="PP"' + ((d.machine_config && d.machine_config.material === 'PP') ? ' selected' : '') + '>PP</option>';
+            html += '<option value="Nonwoven"' + ((d.machine_config && d.machine_config.material === 'Nonwoven') ? ' selected' : '') + '>Nonwoven</option>';
+            html += '<option value="Paper to 100g"' + ((d.machine_config && d.machine_config.material === 'Paper to 100g') ? ' selected' : '') + '>Paper 100g</option>';
+            html += '<option value="Paper to 200g"' + ((d.machine_config && d.machine_config.material === 'Paper to 200g') ? ' selected' : '') + '>Paper 200g</option>';
+            html += '<option value="Paper to 300g"' + ((d.machine_config && d.machine_config.material === 'Paper to 300g') ? ' selected' : '') + '>Paper 300g</option>';
+            html += '</select></div>';
+
+            html += '<div class="pi-cfg-group"><label>' + (isAr ? 'اللفاف' : 'Winder') + '</label>';
+            html += '<select id="piWinder" onchange="piBuildModelCode()">';
+            html += '<option value="">--</option>';
+            html += '<option value="Single"' + ((d.machine_config && d.machine_config.winder === 'Single') ? ' selected' : '') + '>Single</option>';
+            html += '<option value="Double"' + ((d.machine_config && d.machine_config.winder === 'Double') ? ' selected' : '') + '>Double</option>';
+            html += '</select></div>';
+
+            html += '</div>';
+
+            // Optionals
+            var mcOpts = (d.machine_config && d.machine_config.optionals) || [];
+            html += '<div style="margin:8px 0;"><label style="font-weight:600;color:#333;font-size:12px;display:block;margin-bottom:6px;">' + (isAr ? 'اضافات اختيارية' : 'Optional Features') + '</label>';
+            html += '<div class="pi-cfg-optionals">';
+            html += '<label><input type="checkbox" id="piOptVideo" onchange="piBuildModelCode()"' + (mcOpts.indexOf("Video inspection") >= 0 ? ' checked' : '') + '> Video inspection</label>';
+            html += '<label><input type="checkbox" id="piOptPLC" onchange="piBuildModelCode()"' + (mcOpts.indexOf("PLC") >= 0 ? ' checked' : '') + '> PLC</label>';
+            html += '<label><input type="checkbox" id="piOptSlitter" onchange="piBuildModelCode()"' + (mcOpts.indexOf("Slitter") >= 0 ? ' checked' : '') + '> Slitter</label>';
+            html += '<label><input type="checkbox" id="piOptPneuUnwind" onchange="piBuildModelCode()"' + (mcOpts.indexOf("Pneumatic Unwind") >= 0 ? ' checked' : '') + '> Pneumatic Unwind</label>';
+            html += '<label><input type="checkbox" id="piOptHydUnwind" onchange="piBuildModelCode()"' + (mcOpts.indexOf("Hydraulic Station Unwind") >= 0 ? ' checked' : '') + '> Hydraulic Station Unwind</label>';
+            html += '<label><input type="checkbox" id="piOptPneuRewind" onchange="piBuildModelCode()"' + (mcOpts.indexOf("Pneumatic Rewind") >= 0 ? ' checked' : '') + '> Pneumatic Rewind</label>';
+            html += '<label><input type="checkbox" id="piOptSurfRewind" onchange="piBuildModelCode()"' + (mcOpts.indexOf("Surface Rewind") >= 0 ? ' checked' : '') + '> Surface Rewind</label>';
+            html += '</div></div>';
+
+            // FOB fields (readonly, auto-calculated)
+            html += '<div class="pi-cfg-fob-grid">';
+            html += '<div class="pi-cfg-fob-group"><label>' + (isAr ? 'سعر FOB القياسي ($)' : 'Standard Machine FOB ($)') + '</label>';
+            html += '<input type="number" id="piFobStd" class="fob-std" value="' + (d.fob_standard || 0) + '" step="any" readonly style="cursor:not-allowed;"></div>';
+            html += '<div class="pi-cfg-fob-group"><label>' + (isAr ? 'FOB مع السلندرات ($)' : 'FOB With Cylinders ($)') + '</label>';
+            html += '<input type="number" id="piFobCyl" class="fob-cyl" value="' + (d.fob_with_cylinders || 0) + '" step="any" readonly style="cursor:not-allowed;"></div>';
+            html += '</div>';
+
+            // Machine code display
+            html += '<div class="pi-machine-code" id="piMachineCodeDisplay">' + ((d.machine_config && d.machine_config.model_code) || '—') + '</div>';
+
+            html += '</div>'; // end pi-config-section
+
+            // Cylinders table
+            html += '<div class="pi-cyl-section" id="piCylSection">';
+            html += '<h4>' + (isAr ? '🔧 السلندرات' : '🔧 Cylinders') + '</h4>';
+            html += '<table class="pi-cyl-table">';
+            html += '<thead><tr>';
+            html += '<th style="width:10%;">#</th>';
+            html += '<th style="width:30%;">' + (isAr ? 'المقاس (سم)' : 'Size (CM)') + '</th>';
+            html += '<th style="width:25%;">' + (isAr ? 'العدد' : 'Count') + '</th>';
+            html += '<th style="width:35%;">' + (isAr ? 'التكلفة ($)' : 'Cost ($)') + '</th>';
+            html += '</tr></thead>';
+            html += '<tbody id="piCylBody"></tbody>';
+            html += '<tfoot><tr class="pi-cyl-total-row">';
+            html += '<td></td>';
+            html += '<td>' + (isAr ? 'الاجمالي' : 'Total') + '</td>';
+            html += '<td id="piCylTotalCount">0</td>';
+            html += '<td id="piCylTotalCost">$0</td>';
+            html += '</tr></tfoot>';
+            html += '</table>';
+            html += '</div>'; // end pi-cyl-section
+          }
+
+          /* ============================================================
+             Machine Summary (saved view — one line)
+             ============================================================ */
+          if (!isProforma && d.machine_config && (d.machine_config.model_code || d.machine_config.machine_type)) {
+            var summaryLine = buildMachineSummaryLine(d.machine_config);
+            if (summaryLine) {
+              html += '<div class="pi-machine-summary">';
+              html += '<div>';
+              html += '<div class="mc-code">' + (d.machine_config.model_code || '') + '</div>';
+              var descParts = [];
+              if (d.machine_config.condition) descParts.push(d.machine_config.condition === 'used' ? (isAr ? 'مستعملة' : 'Used') : (isAr ? 'جديدة' : 'New'));
+              if (d.machine_config.machine_type) {
+                var mt = d.machine_config.machine_type;
+                if (mt === "Metal anilox") descParts.push("Metal");
+                else if (mt === "Ceramic anilox Single Doctor Blade") descParts.push("Ceramic Single");
+                else if (mt === "Ceramic anilox Chamber Doctor Blade") descParts.push("Ceramic Chamber");
+                else descParts.push(mt);
+              }
+              if (d.machine_config.colors) descParts.push(d.machine_config.colors + (isAr ? ' لون' : ' Colors'));
+              if (d.machine_config.machine_width) descParts.push(d.machine_config.machine_width + 'cm');
+              if (d.machine_config.material) descParts.push(d.machine_config.material);
+              if (d.machine_config.winder) descParts.push(d.machine_config.winder);
+              if (d.machine_config.optionals && d.machine_config.optionals.length > 0) descParts.push(d.machine_config.optionals.join(', '));
+              html += '<div class="mc-desc">' + descParts.join(' / ') + '</div>';
+              html += '</div>';
+              html += '<div style="font-size:13px;color:#3949ab;font-weight:700;">' + (isAr ? 'إعداد الماكينة' : 'Machine Config') + '</div>';
+              html += '</div>';
+            }
+          }
+
+          /* ============================================================
+             Pricing section
+             ============================================================ */
           html += '<div class="pi-pricing">';
           html += '<div class="pi-pricing-title">' + (isAr ? 'التسعير ($)' : 'Pricing ($)') + '</div>';
 
           var fobStd = d.fob_standard || 0;
           var fobCyl = d.fob_with_cylinders || 0;
           var disc = d.discount || 0;
-          var amtDue = (fobStd + fobCyl) - disc;
+          var amtDue = fobCyl - disc;
           if (amtDue < 0) amtDue = 0;
 
-          if (isProforma) {
-            // Editable pricing fields
-            var contractLinked = d.contract_number ? true : false;
-            var roStyle = contractLinked ? 'border-color:#ccc;background:#f5f5f5;' : '';
-            var roAttr = contractLinked ? ' readonly' : '';
-
+          if (isProforma && contractLinked) {
+            // Contract-linked: readonly pricing
             html += '<div class="pi-pricing-row">';
             html += '<span class="label">' + (isAr ? 'تكلفة الماكينة FOB' : 'Standard Machine FOB') + '</span>';
-            html += '<input type="number" class="pi-edit-input" id="piFobStd" value="' + fobStd + '" step="any" min="0" oninput="piRecalcTotal()" style="text-align:right;' + roStyle + '"' + roAttr + '>';
+            html += '<input type="number" class="pi-edit-input" id="piFobStd" value="' + fobStd + '" readonly style="text-align:right;border-color:#ccc;background:#f5f5f5;">';
             html += '</div>';
 
             html += '<div class="pi-pricing-row">';
             html += '<span class="label">' + (isAr ? 'FOB مع السلندرات' : 'FOB With Cylinders') + '</span>';
-            html += '<input type="number" class="pi-edit-input" id="piFobCyl" value="' + fobCyl + '" step="any" min="0" oninput="piRecalcTotal()" style="text-align:right;' + roStyle + '"' + roAttr + '>';
+            html += '<input type="number" class="pi-edit-input" id="piFobCyl" value="' + fobCyl + '" readonly style="text-align:right;border-color:#ccc;background:#f5f5f5;">';
             html += '</div>';
 
             html += '<div class="pi-pricing-row discount">';
@@ -469,8 +978,32 @@ container:
             html += '<span class="label">' + (isAr ? 'المبلغ المستحق' : 'Amount Due') + '</span>';
             html += '<span class="value" id="piAmountDue">' + fmtNum(amtDue) + '</span>';
             html += '</div>';
+
+          } else if (isProforma && !contractLinked) {
+            // Free mode: FOB is auto-calculated from config, shown here as readonly summary
+            // (actual FOB inputs are in the config section above)
+            html += '<div class="pi-pricing-row">';
+            html += '<span class="label">' + (isAr ? 'تكلفة الماكينة FOB' : 'Standard Machine FOB') + '</span>';
+            html += '<span class="value" id="piPriceFobStd">' + fmtNum(fobStd) + '</span>';
+            html += '</div>';
+
+            html += '<div class="pi-pricing-row">';
+            html += '<span class="label">' + (isAr ? 'FOB مع السلندرات' : 'FOB With Cylinders') + '</span>';
+            html += '<span class="value" id="piPriceFobCyl">' + fmtNum(fobCyl) + '</span>';
+            html += '</div>';
+
+            html += '<div class="pi-pricing-row discount">';
+            html += '<span class="label">' + (isAr ? 'خصم' : 'Discount') + '</span>';
+            html += '<input type="number" class="pi-edit-input" id="piDiscount" value="' + disc + '" step="any" min="0" oninput="piRecalcTotal()" style="text-align:right;border-color:#c62828;">';
+            html += '</div>';
+
+            html += '<div class="pi-pricing-row total">';
+            html += '<span class="label">' + (isAr ? 'المبلغ المستحق' : 'Amount Due') + '</span>';
+            html += '<span class="value" id="piAmountDue">' + fmtNum(amtDue) + '</span>';
+            html += '</div>';
+
           } else {
-            // Readonly pricing
+            // Saved readonly pricing
             html += '<div class="pi-pricing-row">';
             html += '<span class="label">' + (isAr ? 'تكلفة الماكينة FOB' : 'Standard Machine FOB') + '</span>';
             html += '<span class="value">' + fmtNum(fobStd) + '</span>';
@@ -523,19 +1056,68 @@ container:
           html += '</div>'; // end pi-page
 
           document.getElementById('piContent').innerHTML = html;
+
+          // After rendering, init cylinders if in free proforma mode
+          if (isProforma && !contractLinked) {
+            var colorsVal = (d.machine_config && d.machine_config.colors) || '';
+            var savedCyls = (d.machine_config && d.machine_config.cylinders) || [];
+            piInitCylTable(colorsVal);
+            if (savedCyls.length > 0) {
+              for (var ci = 0; ci < savedCyls.length && ci < PI_CYL_ROWS; ci++) {
+                var sEl = document.getElementById('piCylSize' + (ci + 1));
+                var cEl = document.getElementById('piCylCount' + (ci + 1));
+                if (sEl) sEl.value = savedCyls[ci].size || '';
+                if (cEl) cEl.value = savedCyls[ci].count || '';
+              }
+            }
+            piCalcCylindersProforma();
+          }
         }
 
         function piInfoRow(label, value) {
           return '<div class="pi-info-row"><span class="label">' + label + '</span><span class="value">' + (value || '—') + '</span></div>';
         }
 
-        // ── PDF export ──
+        // Override recalcTotal to also update the pricing display in free mode
+        var _origRecalcTotal = recalcTotal;
+        recalcTotal = function() {
+          var fobEl = document.getElementById('piFobStd');
+          var cylEl = document.getElementById('piFobCyl');
+          var discEl = document.getElementById('piDiscount');
+
+          var fob = parseFloat(fobEl ? fobEl.value : 0) || 0;
+          var cyl = parseFloat(cylEl ? cylEl.value : 0) || 0;
+          var disc = parseFloat(discEl ? discEl.value : 0) || 0;
+
+          var total = cyl - disc;
+          var el = document.getElementById('piAmountDue');
+          if (el) el.textContent = fmtNum(total > 0 ? total : 0);
+
+          // Update pricing display spans (free mode)
+          var psFob = document.getElementById('piPriceFobStd');
+          var psCyl = document.getElementById('piPriceFobCyl');
+          if (psFob) psFob.textContent = fmtNum(fob);
+          if (psCyl) psCyl.textContent = fmtNum(cyl);
+
+          invoiceData.fob_standard = fob;
+          invoiceData.fob_with_cylinders = cyl;
+          invoiceData.discount = disc;
+          invoiceData.amount_due = total > 0 ? total : 0;
+        };
+
+        /* ============================================================
+           PDF export
+           ============================================================ */
         window.piExportPDF = async function() {
           var page = document.getElementById('piPage');
           if (!page) return alert('No invoice to export');
 
           var controls = document.getElementById('piControls');
+          var configSection = document.getElementById('piConfigSection');
+          var cylSection = document.getElementById('piCylSection');
           if (controls) controls.style.display = 'none';
+          if (configSection) configSection.style.display = 'none';
+          if (cylSection) cylSection.style.display = 'none';
 
           try {
             if (!window.html2canvas) {
@@ -563,8 +1145,8 @@ container:
 
             if (pdfH > 297) {
               var pageH = 297;
-              var srcY = 0;
               var srcH = Math.floor(canvas.height * (pageH / pdfH) * (pdfW / canvas.width));
+              var srcY = 0;
               var pageNum = 0;
               while (srcY < canvas.height) {
                 if (pageNum > 0) pdf.addPage();
@@ -591,6 +1173,8 @@ container:
             alert('PDF export failed: ' + (e.message || e));
           } finally {
             if (controls) controls.style.display = '';
+            if (configSection) configSection.style.display = '';
+            if (cylSection) cylSection.style.display = '';
           }
         };
 

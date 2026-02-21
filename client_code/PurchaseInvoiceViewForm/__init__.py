@@ -13,6 +13,7 @@ class PurchaseInvoiceViewForm(PurchaseInvoiceViewFormTemplate):
         anvil.js.window.pyGetQuotationCosts = self.get_quotation_costs
         anvil.js.window.pySavePurchaseInvoiceProforma = self.save_purchase_invoice_proforma
         anvil.js.window.pyGetPurchaseInvoiceViewData = self.get_purchase_invoice_view_data
+        anvil.js.window.pyGetCalculatorSettings = self.get_calculator_settings
         anvil.js.window.pyPurchaseGoBack = self.go_back
 
     def _auth(self):
@@ -45,6 +46,13 @@ class PurchaseInvoiceViewForm(PurchaseInvoiceViewFormTemplate):
         if not auth:
             return {'success': False, 'message': 'Not authenticated'}
         return anvil.server.call('get_purchase_invoice_view_data', invoice_number, auth)
+
+    def get_calculator_settings(self):
+        """Load dynamic calculator pricing settings."""
+        auth = self._auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated'}
+        return anvil.server.call('get_calculator_settings', auth)
 
     def go_back(self):
         from anvil.js.window import location

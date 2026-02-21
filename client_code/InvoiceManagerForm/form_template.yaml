@@ -27,6 +27,9 @@ container:
         .im-tab.contracts { background: #e3f2fd; color: #1565c0; border-color: #90caf9; }
         .im-tab.contracts.active { background: #2196f3; color: #fff; border-color: #2196f3; }
 
+        .im-tab.quotations { background: #f3e5f5; color: #7b1fa2; border-color: #ce93d8; }
+        .im-tab.quotations.active { background: #9c27b0; color: #fff; border-color: #9c27b0; }
+
         /* Search */
         .im-search-bar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
         .im-search-input { flex: 1; max-width: 400px; padding: 10px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
@@ -54,6 +57,13 @@ container:
         .im-loading { text-align: center; padding: 40px; color: #888; font-size: 15px; }
         .im-empty { text-align: center; padding: 50px 20px; color: #999; }
         .im-empty h4 { font-size: 18px; color: #666; margin-bottom: 8px; }
+
+        /* Status badge */
+        .im-status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .im-status.draft { background: #fff3e0; color: #e65100; }
+        .im-status.active { background: #e8f5e9; color: #2e7d32; }
+        .im-status.completed { background: #e3f2fd; color: #1565c0; }
+        .im-status.cancelled { background: #ffebee; color: #c62828; }
 
         /* Responsive */
         @media (max-width: 768px) {
@@ -85,6 +95,9 @@ container:
           <button class="im-tab contracts" data-tab="contracts" onclick="switchTab('contracts')">
             <span>Contracts</span>
           </button>
+          <button class="im-tab quotations" data-tab="quotations" onclick="switchTab('quotations')">
+            <span>Quotations</span>
+          </button>
         </div>
 
         <!-- Content Panel -->
@@ -97,7 +110,7 @@ container:
             <table class="im-table">
               <thead id="imThead"></thead>
               <tbody id="imTbody">
-                <tr><td colspan="5" class="im-loading">Loading...</td></tr>
+                <tr><td colspan="6" class="im-loading">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -121,14 +134,30 @@ container:
             loader: 'pyGetClients'
           },
           suppliers: {
-            columns: ['ID', 'Name', 'Company', 'Phone', 'Email', 'Country'],
-            keys: ['id', 'name', 'company', 'phone', 'email', 'country'],
+            columns: ['Name', 'Company', 'Phone', 'Email', 'Country'],
+            keys: ['name', 'company', 'phone', 'email', 'country'],
             loader: 'pyGetSuppliers'
           },
           contracts: {
-            columns: ['Contract #', 'Client Name', 'Quotation #'],
-            keys: ['contract_number', 'client_name', 'quotation_number'],
-            loader: 'pyGetContracts'
+            columns: ['Contract #', 'Client Name', 'Total Price', 'Payments', 'Delivery Date', 'Status'],
+            keys: ['contract_number', 'client_name', 'total_price', 'num_payments', 'delivery_date', 'lifecycle_status'],
+            loader: 'pyGetContracts',
+            formatters: {
+              'lifecycle_status': function(v) {
+                var cls = (v || 'draft').toLowerCase();
+                return '<span class="im-status ' + cls + '">' + (v || 'draft') + '</span>';
+              },
+              'total_price': function(v) {
+                if (!v && v !== 0) return '';
+                var n = parseFloat(v);
+                return isNaN(n) ? v : n.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+              }
+            }
+          },
+          quotations: {
+            columns: ['Quotation #', 'Client Name', 'Company', 'Model', 'Date', 'Country'],
+            keys: ['Quotation#', 'Client Name', 'Company', 'Model', 'Date', 'Country'],
+            loader: 'pyGetQuotations'
           }
         };
 
@@ -191,11 +220,17 @@ container:
             return;
           }
 
+          var formatters = cfg.formatters || {};
           var html = '';
           pageData.forEach(function(row) {
             html += '<tr>';
             cfg.keys.forEach(function(key) {
-              html += '<td>' + (row[key] != null ? row[key] : '') + '</td>';
+              var val = row[key] != null ? row[key] : '';
+              if (formatters[key]) {
+                html += '<td>' + formatters[key](val) + '</td>';
+              } else {
+                html += '<td>' + val + '</td>';
+              }
             });
             html += '</tr>';
           });

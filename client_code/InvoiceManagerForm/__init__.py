@@ -13,6 +13,7 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
         anvil.js.window.pyGetClients = self.get_clients
         anvil.js.window.pyGetSuppliers = self.get_suppliers
         anvil.js.window.pyGetContracts = self.get_contracts
+        anvil.js.window.pyGetQuotations = self.get_quotations
 
     def _auth(self):
         return get_auth_token()
@@ -29,8 +30,14 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
             return {'success': False, 'message': 'Not authenticated'}
         return anvil.server.call('get_suppliers', search, auth)
 
-    def get_contracts(self):
+    def get_contracts(self, search=''):
         auth = self._auth()
         if not auth:
             return {'success': False, 'message': 'Not authenticated'}
-        return anvil.server.call('get_contracts_list_simple', auth)
+        return anvil.server.call('get_contracts_list', search, auth)
+
+    def get_quotations(self, search=''):
+        auth = self._auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated'}
+        return anvil.server.call('get_all_quotations', 1, 500, search, False, auth)

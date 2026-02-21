@@ -32,10 +32,13 @@ try:
         EMERGENCY_SECRET_KEY = None
     else:
         EMERGENCY_SECRET_KEY = _emergency_key
+    # مفتاح API ثابت للمونيتورينج الخارجي (اختياري)
+    MONITORING_API_KEY = anvil.secrets.get_secret('MONITORING_API_KEY') or None
 except Exception as e:
     logger.critical("Failed to load secrets: %s - Emergency endpoints DISABLED.", e)
     ADMIN_NOTIFICATION_EMAIL = None
     EMERGENCY_SECRET_KEY = None
+    MONITORING_API_KEY = None
 
 # ========== صلاحيات الأدوار ==========
 ROLES = {

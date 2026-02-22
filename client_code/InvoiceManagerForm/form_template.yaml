@@ -152,6 +152,7 @@ container:
           <div class="im-search-bar">
             <input type="text" class="im-search-input" id="imSearchInput" placeholder="Search..." oninput="onSearch(this.value)">
             <span class="im-count" id="imCount"></span>
+            <button class="im-invoice-btn" id="imAddSvcSupBtn" style="display:none;margin:0;padding:8px 18px;font-size:13px;background:#43a047;" onclick="openAddSvcSupplierModal()">+ Add Service Supplier</button>
           </div>
           <div class="im-table-wrap">
             <table class="im-table">
@@ -162,6 +163,26 @@ container:
             </table>
           </div>
           <div class="im-pagination" id="imPagination"></div>
+        </div>
+      </div>
+
+      <!-- Add Service Supplier Modal -->
+      <div class="hp-modal-overlay" id="addSvcSupModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center;">
+        <div style="background:#fff;border-radius:12px;padding:24px;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);margin:auto;">
+          <h2 style="font-size:20px;color:#1a1a2e;margin-bottom:20px;" id="addSvcSupTitle">Add Service Supplier</h2>
+          <div style="margin-bottom:12px;"><label style="display:block;font-weight:600;color:#333;margin-bottom:4px;font-size:13px;">Name *</label><input type="text" id="svcSupName" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div style="margin-bottom:12px;"><label style="display:block;font-weight:600;color:#333;margin-bottom:4px;font-size:13px;">Company</label><input type="text" id="svcSupCompany" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div style="margin-bottom:12px;"><label style="display:block;font-weight:600;color:#333;margin-bottom:4px;font-size:13px;">Service Type *</label><select id="svcSupType" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;"><option value="shipping">Shipping</option><option value="transport">Transport</option><option value="customs_clearance">Customs Clearance</option><option value="insurance">Insurance</option><option value="other">Other</option></select></div>
+          <div style="margin-bottom:12px;"><label style="display:block;font-weight:600;color:#333;margin-bottom:4px;font-size:13px;">Phone</label><input type="text" id="svcSupPhone" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div style="margin-bottom:12px;"><label style="display:block;font-weight:600;color:#333;margin-bottom:4px;font-size:13px;">Email</label><input type="email" id="svcSupEmail" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div style="margin-bottom:12px;"><label style="display:block;font-weight:600;color:#333;margin-bottom:4px;font-size:13px;">Country</label><input type="text" id="svcSupCountry" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div style="margin-bottom:12px;"><label style="display:block;font-weight:600;color:#333;margin-bottom:4px;font-size:13px;">Address</label><input type="text" id="svcSupAddress" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div style="margin-bottom:12px;"><label style="display:block;font-weight:600;color:#333;margin-bottom:4px;font-size:13px;">Tax ID</label><input type="text" id="svcSupTaxId" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></div>
+          <div style="margin-bottom:12px;"><label style="display:block;font-weight:600;color:#333;margin-bottom:4px;font-size:13px;">Notes</label><textarea id="svcSupNotes" rows="2" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;"></textarea></div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+            <button style="padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:#9e9e9e;color:#fff;" onclick="closeAddSvcSupModal()">Cancel</button>
+            <button style="padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:#43a047;color:#fff;" id="btnSaveSvcSup" onclick="withButtonLock(this, function(){ return saveSvcSupplier(); })" data-loading-text="...">Save</button>
+          </div>
         </div>
       </div>
 
@@ -189,8 +210,8 @@ container:
             loader: 'pyGetSuppliers'
           },
           service_suppliers: {
-            columns: ['', 'Name', 'Company', 'Service Type', 'Phone', 'Country', ''],
-            keys: ['_svc_supplier_toggle', 'name', 'company', '_svc_type_badge', 'phone', 'country', '_svc_supplier_action'],
+            columns: ['', 'Name', 'Company', 'Service Type', 'Phone', 'Country'],
+            keys: ['_svc_supplier_toggle', 'name', 'company', '_svc_type_badge', 'phone', 'country'],
             loader: 'pyGetServiceSuppliers'
           },
           contracts: {
@@ -236,6 +257,9 @@ container:
             el.classList.remove('active');
             if (el.dataset.tab === tab) el.classList.add('active');
           });
+          // Show/hide add button based on tab
+          var addBtn = document.getElementById('imAddSvcSupBtn');
+          if (addBtn) addBtn.style.display = (tab === 'service_suppliers') ? 'inline-flex' : 'none';
           loadTabData();
         };
 
@@ -312,9 +336,6 @@ container:
                 var badgeColors = { shipping: '#1e88e5', transport: '#8e24aa', customs_clearance: '#f4511e', insurance: '#00897b', other: '#757575' };
                 var bgc = badgeColors[st] || '#757575';
                 html += '<td><span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;color:#fff;background:' + bgc + ';">' + (st || '') + '</span></td>';
-              } else if (key === '_svc_supplier_action') {
-                var ssid = row.id || '';
-                html += '<td style="text-align:center;"><button class="im-invoice-btn" style="margin:0;padding:6px 12px;font-size:12px;background:#43a047;" onclick="openSvcSupplierPage()">+ Add Service Supplier</button></td>';
               } else {
                 var val = row[key] != null ? row[key] : '';
                 if (formatters[key]) {
@@ -756,6 +777,53 @@ container:
             tbody.innerHTML = '<tr><td colspan="' + cfg.columns.length + '" class="im-empty"><h4>Error loading data</h4></td></tr>';
           }
         }
+
+        // ── Add Service Supplier Modal ──
+        window.openAddSvcSupplierModal = function() {
+          document.getElementById('svcSupName').value = '';
+          document.getElementById('svcSupCompany').value = '';
+          document.getElementById('svcSupType').value = 'shipping';
+          document.getElementById('svcSupPhone').value = '';
+          document.getElementById('svcSupEmail').value = '';
+          document.getElementById('svcSupCountry').value = '';
+          document.getElementById('svcSupAddress').value = '';
+          document.getElementById('svcSupTaxId').value = '';
+          document.getElementById('svcSupNotes').value = '';
+          var modal = document.getElementById('addSvcSupModal');
+          modal.style.display = 'flex';
+        };
+
+        window.closeAddSvcSupModal = function() {
+          document.getElementById('addSvcSupModal').style.display = 'none';
+        };
+
+        window.saveSvcSupplier = async function() {
+          var name = document.getElementById('svcSupName').value.trim();
+          if (!name) { alert('Name is required'); return; }
+          var data = {
+            name: name,
+            company: document.getElementById('svcSupCompany').value.trim(),
+            service_type: document.getElementById('svcSupType').value,
+            phone: document.getElementById('svcSupPhone').value.trim(),
+            email: document.getElementById('svcSupEmail').value.trim(),
+            country: document.getElementById('svcSupCountry').value.trim(),
+            address: document.getElementById('svcSupAddress').value.trim(),
+            tax_id: document.getElementById('svcSupTaxId').value.trim(),
+            notes: document.getElementById('svcSupNotes').value.trim()
+          };
+          try {
+            var res = await window.pyAddServiceSupplier(data);
+            if (res && res.success) {
+              closeAddSvcSupModal();
+              loadTabData();
+              if (window.showNotification) window.showNotification('success', '', 'Service supplier added');
+            } else {
+              alert(res ? res.message : 'Error');
+            }
+          } catch(e) {
+            alert('Error: ' + (e.message || e));
+          }
+        };
 
         setTimeout(function() { loadTabData(); }, 200);
       })();

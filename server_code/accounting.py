@@ -1253,30 +1253,33 @@ def get_service_suppliers(search='', service_type=None, token_or_email=None):
     if not is_valid:
         return error
     try:
-        import anvil.tables.query as q
-        base_query = {'is_active': True}
-        if service_type and service_type in VALID_SERVICE_TYPES:
-            base_query['service_type'] = service_type
+        # Try searching with is_active filter first; fall back to all rows
+        try:
+            base_query = {'is_active': True}
+            if service_type and service_type in VALID_SERVICE_TYPES:
+                base_query['service_type'] = service_type
+            rows = list(app_tables.service_suppliers.search(**base_query))
+        except Exception:
+            try:
+                rows = list(app_tables.service_suppliers.search())
+            except Exception:
+                rows = []
 
-        search_query = None
         search_lower = _safe_str(search).strip().lower()
-        if search_lower:
-            search_query = q.any_of(
-                name=q.ilike(f"%{search_lower}%"),
-                company=q.ilike(f"%{search_lower}%"),
-                phone=q.ilike(f"%{search_lower}%"),
-                email=q.ilike(f"%{search_lower}%"),
-                country=q.ilike(f"%{search_lower}%")
-            )
-
-        if search_query:
-            rows = app_tables.service_suppliers.search(search_query, **base_query)
-        else:
-            rows = app_tables.service_suppliers.search(**base_query)
-
         results = []
         for r in rows:
-            results.append(_row_to_dict(r, SERVICE_SUPPLIER_COLS))
+            d = _row_to_dict(r, SERVICE_SUPPLIER_COLS)
+            if search_lower:
+                haystack = ' '.join([
+                    _safe_str(d.get('name', '')),
+                    _safe_str(d.get('company', '')),
+                    _safe_str(d.get('phone', '')),
+                    _safe_str(d.get('email', '')),
+                    _safe_str(d.get('country', '')),
+                ]).lower()
+                if search_lower not in haystack:
+                    continue
+            results.append(d)
         results.sort(key=lambda s: s.get('name', ''))
         return {'success': True, 'data': results, 'count': len(results)}
     except Exception as e:

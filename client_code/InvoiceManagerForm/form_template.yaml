@@ -24,6 +24,8 @@ container:
         .im-tab.suppliers.active { background: #ff9800; color: #fff; border-color: #ff9800; }
         .im-tab.contracts { background: #e3f2fd; color: #1565c0; border-color: #90caf9; }
         .im-tab.contracts.active { background: #2196f3; color: #fff; border-color: #2196f3; }
+        .im-tab.service_suppliers { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+        .im-tab.service_suppliers.active { background: #43a047; color: #fff; border-color: #43a047; }
         .im-tab.quotations { background: #f3e5f5; color: #7b1fa2; border-color: #ce93d8; }
         .im-tab.quotations.active { background: #9c27b0; color: #fff; border-color: #9c27b0; }
 
@@ -141,6 +143,7 @@ container:
         <div class="im-tabs">
           <button class="im-tab contracts active" data-tab="contracts" onclick="switchTab('contracts')"><span>Contracts</span></button>
           <button class="im-tab suppliers" data-tab="suppliers" onclick="switchTab('suppliers')"><span>Suppliers</span></button>
+          <button class="im-tab service_suppliers" data-tab="service_suppliers" onclick="switchTab('service_suppliers')"><span>Service Suppliers</span></button>
           <button class="im-tab clients" data-tab="clients" onclick="switchTab('clients')"><span>Clients</span></button>
           <button class="im-tab quotations" data-tab="quotations" onclick="switchTab('quotations')"><span>Quotations</span></button>
         </div>
@@ -172,6 +175,7 @@ container:
         var searchQuery = '';
         var expandedRows = {};
         var expandedSuppliers = {};
+        var expandedSvcSuppliers = {};
 
         var tabConfig = {
           clients: {
@@ -183,6 +187,11 @@ container:
             columns: ['', 'Name', 'Company', 'Phone', 'Country', ''],
             keys: ['_supplier_toggle', 'name', 'company', 'phone', 'country', '_supplier_action'],
             loader: 'pyGetSuppliers'
+          },
+          service_suppliers: {
+            columns: ['', 'Name', 'Company', 'Service Type', 'Phone', 'Country', ''],
+            keys: ['_svc_supplier_toggle', 'name', 'company', '_svc_type_badge', 'phone', 'country', '_svc_supplier_action'],
+            loader: 'pyGetServiceSuppliers'
           },
           contracts: {
             columns: ['', 'Contract #', 'Client Name', 'Total Price', 'Payments', 'Delivery Date', 'Status'],
@@ -220,6 +229,7 @@ container:
           searchQuery = '';
           expandedRows = {};
           expandedSuppliers = {};
+          expandedSvcSuppliers = {};
           var input = document.getElementById('imSearchInput');
           if (input) input.value = '';
           document.querySelectorAll('.im-tab').forEach(function(el) {
@@ -234,6 +244,7 @@ container:
           page = 1;
           expandedRows = {};
           expandedSuppliers = {};
+          expandedSvcSuppliers = {};
           applyFilter();
           renderTable();
         };
@@ -243,7 +254,7 @@ container:
           var cfg = tabConfig[activeTab];
           filtered = allData.filter(function(row) {
             for (var i = 0; i < cfg.keys.length; i++) {
-              if (cfg.keys[i] === '_toggle') continue;
+              if (cfg.keys[i].charAt(0) === '_') continue;
               var v = String(row[cfg.keys[i]] || '').toLowerCase();
               if (v.indexOf(searchQuery) !== -1) return true;
             }
@@ -292,6 +303,18 @@ container:
               } else if (key === '_supplier_action') {
                 var sid = row.id || '';
                 html += '<td style="text-align:center;"><button class="im-invoice-btn" style="margin:0;padding:6px 12px;font-size:12px;" onclick="newPurchaseInvoice(\'' + sid + '\')">+ New Invoice</button></td>';
+              } else if (key === '_svc_supplier_toggle') {
+                var ssid = row.id || '';
+                var isSvcExp = expandedSvcSuppliers[ssid];
+                html += '<td style="width:40px;text-align:center;"><button class="im-toggle-btn' + (isSvcExp ? ' open' : '') + '" onclick="toggleSvcSupplier(\'' + ssid + '\')">+</button></td>';
+              } else if (key === '_svc_type_badge') {
+                var st = (row.service_type || 'other').toLowerCase();
+                var badgeColors = { shipping: '#1e88e5', transport: '#8e24aa', customs_clearance: '#f4511e', insurance: '#00897b', other: '#757575' };
+                var bgc = badgeColors[st] || '#757575';
+                html += '<td><span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;color:#fff;background:' + bgc + ';">' + (st || '') + '</span></td>';
+              } else if (key === '_svc_supplier_action') {
+                var ssid = row.id || '';
+                html += '<td style="text-align:center;"><button class="im-invoice-btn" style="margin:0;padding:6px 12px;font-size:12px;background:#43a047;" onclick="openSvcSupplierPage()">+ Add Service Supplier</button></td>';
               } else {
                 var val = row[key] != null ? row[key] : '';
                 if (formatters[key]) {
@@ -310,6 +333,11 @@ container:
             if (expandedSuppliers[sid]) {
               html += '<tr class="im-detail-row"><td colspan="' + cfg.columns.length + '"><div class="im-detail-panel" id="supplier-detail-' + sid + '"><div style="text-align:center;padding:20px;color:#888;">Loading invoices...</div></div></td></tr>';
             }
+            // Service supplier expanded import costs
+            var ssid = row.id || '';
+            if (expandedSvcSuppliers[ssid]) {
+              html += '<tr class="im-detail-row"><td colspan="' + cfg.columns.length + '"><div class="im-detail-panel" id="svc-supplier-detail-' + ssid + '"><div style="text-align:center;padding:20px;color:#888;">Loading import costs...</div></div></td></tr>';
+            }
           });
           tbody.innerHTML = html;
           renderPagination(totalPages);
@@ -317,6 +345,10 @@ container:
           // Load expanded supplier invoices
           Object.keys(expandedSuppliers).forEach(function(sid) {
             if (expandedSuppliers[sid]) loadSupplierInvoices(sid);
+          });
+          // Load expanded service supplier import costs
+          Object.keys(expandedSvcSuppliers).forEach(function(ssid) {
+            if (expandedSvcSuppliers[ssid]) loadSvcSupplierCosts(ssid);
           });
 
           // Load expanded details
@@ -336,8 +368,8 @@ container:
             '<button class="im-page-btn"' + nextDis + ' onclick="imNextPage()">Next</button>';
         }
 
-        window.imPrevPage = function() { if (page > 1) { page--; expandedRows = {}; expandedSuppliers = {}; renderTable(); } };
-        window.imNextPage = function() { page++; expandedRows = {}; expandedSuppliers = {}; renderTable(); };
+        window.imPrevPage = function() { if (page > 1) { page--; expandedRows = {}; expandedSuppliers = {}; expandedSvcSuppliers = {}; renderTable(); } };
+        window.imNextPage = function() { page++; expandedRows = {}; expandedSuppliers = {}; expandedSvcSuppliers = {}; renderTable(); };
 
         // ── Contract expand/collapse ──
         window.toggleContract = function(qNum, idx) {
@@ -603,6 +635,75 @@ container:
 
           } catch(e) {
             panel.innerHTML = '<div style="padding:16px;color:#c62828;">Error loading invoices</div>';
+          }
+        }
+
+        // ── Service supplier expand/collapse (import costs) ──
+        window.toggleSvcSupplier = function(ssid) {
+          if (expandedSvcSuppliers[ssid]) {
+            delete expandedSvcSuppliers[ssid];
+          } else {
+            expandedSvcSuppliers[ssid] = true;
+          }
+          renderTable();
+        };
+
+        window.openSvcSupplierPage = function() {
+          location.hash = '#service-suppliers';
+        };
+
+        async function loadSvcSupplierCosts(ssid) {
+          var panel = document.getElementById('svc-supplier-detail-' + ssid);
+          if (!panel) return;
+          try {
+            var result = await window.pyGetServiceSupplierImportCosts(ssid);
+            if (!result || !result.success || !result.data || result.data.length === 0) {
+              panel.innerHTML = '<div style="padding:16px;color:#888;text-align:center;">No import costs found for this service supplier</div>';
+              return;
+            }
+            var html = '<div style="padding:16px;">';
+            html += '<h4 style="margin:0 0 12px;font-size:14px;color:#1a1a2e;font-weight:700;">Import Costs</h4>';
+            html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+            html += '<thead><tr style="background:#e8f5e9;">';
+            html += '<th style="padding:8px;border:1px solid #ddd;text-align:left;">Type</th>';
+            html += '<th style="padding:8px;border:1px solid #ddd;text-align:left;">Description</th>';
+            html += '<th style="padding:8px;border:1px solid #ddd;text-align:left;">Invoice #</th>';
+            html += '<th style="padding:8px;border:1px solid #ddd;text-align:right;">Amount (EGP)</th>';
+            html += '<th style="padding:8px;border:1px solid #ddd;text-align:right;">Paid</th>';
+            html += '<th style="padding:8px;border:1px solid #ddd;text-align:right;">Remaining</th>';
+            html += '<th style="padding:8px;border:1px solid #ddd;text-align:center;">Date</th>';
+            html += '</tr></thead><tbody>';
+
+            var totalAmt = 0, totalPaid = 0;
+            result.data.forEach(function(c) {
+              var rem = parseFloat(c.remaining_egp) || 0;
+              var amt = parseFloat(c.amount_egp) || 0;
+              var paid = parseFloat(c.paid_amount) || 0;
+              totalAmt += amt;
+              totalPaid += paid;
+              var remColor = rem > 0 ? '#c62828' : '#2e7d32';
+              html += '<tr>';
+              html += '<td style="padding:8px;border:1px solid #ddd;">' + (c.cost_type || '') + '</td>';
+              html += '<td style="padding:8px;border:1px solid #ddd;">' + (c.description || '—') + '</td>';
+              html += '<td style="padding:8px;border:1px solid #ddd;font-weight:600;">' + (c.invoice_number || '—') + '</td>';
+              html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmtNum(amt) + '</td>';
+              html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;color:#2e7d32;">' + fmtNum(paid) + '</td>';
+              html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;font-weight:700;color:' + remColor + ';">' + fmtNum(rem) + '</td>';
+              html += '<td style="padding:8px;border:1px solid #ddd;text-align:center;">' + (c.date || '—') + '</td>';
+              html += '</tr>';
+            });
+            html += '</tbody></table>';
+
+            // Summary
+            var totalRem = totalAmt - totalPaid;
+            html += '<div style="display:flex;gap:24px;padding:12px 0;margin-top:8px;border-top:2px solid #43a047;font-size:13px;">';
+            html += '<div><strong>Total:</strong> ' + fmtNum(totalAmt) + ' EGP</div>';
+            html += '<div><strong style="color:#2e7d32;">Paid:</strong> ' + fmtNum(totalPaid) + ' EGP</div>';
+            html += '<div><strong style="color:#c62828;">Remaining:</strong> ' + fmtNum(totalRem) + ' EGP</div>';
+            html += '</div></div>';
+            panel.innerHTML = html;
+          } catch(e) {
+            panel.innerHTML = '<div style="padding:16px;color:#c62828;">Error loading import costs</div>';
           }
         }
 

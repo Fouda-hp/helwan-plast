@@ -7149,6 +7149,47 @@ def get_supplier_summary(token_or_email=None):
 
 
 @anvil.server.callable
+def get_service_supplier_import_costs(service_supplier_id, token_or_email=None):
+    """Return import costs linked to a specific service supplier."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    if not service_supplier_id:
+        return {'success': False, 'message': 'service_supplier_id is required'}
+    try:
+        rows = list(app_tables.import_costs.search(service_supplier_id=service_supplier_id))
+        costs = []
+        for r in rows:
+            amt_egp = _round2(r.get('amount_egp') or r.get('amount', 0))
+            paid = _round2(r.get('paid_amount') or 0)
+            remaining = _round2(amt_egp - paid)
+            # Get invoice number
+            pi_id = r.get('purchase_invoice_id')
+            inv_num = ''
+            if pi_id:
+                try:
+                    pi = app_tables.purchase_invoices.get(id=pi_id)
+                    if pi:
+                        inv_num = pi.get('invoice_number', '')
+                except Exception:
+                    pass
+            costs.append({
+                'id': r.get('id'),
+                'cost_type': r.get('cost_type', ''),
+                'description': _safe_str(r.get('description', '')),
+                'amount_egp': amt_egp,
+                'paid_amount': paid,
+                'remaining_egp': remaining,
+                'invoice_number': inv_num,
+                'date': str(r.get('date') or ''),
+            })
+        return {'success': True, 'data': costs}
+    except Exception as e:
+        logger.exception("get_service_supplier_import_costs error")
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
+
+
+@anvil.server.callable
 def get_service_supplier_summary(token_or_email=None):
     """
     Get AP summary for all service suppliers.

@@ -27,6 +27,7 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
 
         # JS bridges — purchase invoices (supplier history)
         anvil.js.window.pyGetSupplierPurchaseInvoices = self.get_supplier_purchase_invoices
+        anvil.js.window.pyAddSupplier = self.add_supplier
 
         # JS bridges — service suppliers
         anvil.js.window.pyGetServiceSuppliers = self.get_service_suppliers
@@ -112,6 +113,12 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
         if not auth:
             return {'success': False, 'message': 'Not authenticated'}
         return anvil.server.call('get_supplier_purchase_invoices', supplier_id, auth)
+
+    def add_supplier(self, data):
+        auth = self._auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated'}
+        return anvil.server.call('add_supplier', data, auth)
 
     # ── Service suppliers ──
 

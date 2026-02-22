@@ -1,0 +1,439 @@
+components: []
+container:
+  properties:
+    html: |
+      <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+        body { background: #f0f2f5; }
+        .svc-wrapper { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .svc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .svc-header h1 { font-size: 24px; color: #1a1a2e; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+        .btn-back { background: #f0f2f5; color: #333; border: 1px solid #ddd; }
+        .btn-edit { background: #2196f3; color: #fff; padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+        .btn-delete { background: #f44336; color: #fff; padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+        .btn-save { background: #4caf50; color: #fff; }
+        .btn-cancel { background: #9e9e9e; color: #fff; }
+        .btn-summary { background: linear-gradient(135deg, #43a047, #66bb6a); color: #fff; }
+        .search-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .search-row input, .search-row select { flex: 1; min-width: 150px; padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .search-row input:focus, .search-row select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.15); }
+        .table-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 12px 10px; text-align: left; position: sticky; top: 0; z-index: 2; white-space: nowrap; }
+        tbody td { padding: 10px; border-bottom: 1px solid #f0f0f0; }
+        tbody tr:hover { background: #f8f9ff; }
+        .empty-msg { text-align: center; padding: 40px; color: #999; }
+        .hp-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; }
+        .hp-modal-overlay.show { display: flex !important; justify-content: center !important; align-items: center !important; }
+        .hp-modal { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); margin: auto; }
+        .hp-modal h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 20px; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 13px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #667eea; }
+        .hp-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .loading-row td { text-align: center; padding: 20px; color: #999; }
+        .svc-type-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: #fff; }
+        .svc-type-shipping { background: #1e88e5; }
+        .svc-type-transport { background: #8e24aa; }
+        .svc-type-customs_clearance { background: #f4511e; }
+        .svc-type-insurance { background: #00897b; }
+        .svc-type-other { background: #757575; }
+        .summary-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 16px; margin-bottom: 20px; }
+        .summary-card h3 { margin: 0 0 12px; color: #1a1a2e; font-size: 16px; }
+        .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+        .summary-row:last-child { border-bottom: none; font-weight: 600; }
+        .summary-totals { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 2px solid #667eea; }
+        .summary-totals .stat { text-align: center; flex: 1; min-width: 120px; }
+        .summary-totals .stat-val { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+        .summary-totals .stat-lbl { font-size: 11px; color: #666; }
+        @media (max-width: 768px) {
+          .svc-wrapper { padding: 12px 8px; }
+          .svc-header { flex-direction: column; align-items: flex-start; }
+          .svc-header h1 { font-size: 20px; }
+          .search-row { flex-direction: column; }
+          .search-row input, .search-row select, .search-row button, .btn { width: 100%; }
+          .table-wrap { overflow-x: auto; }
+          table { min-width: 700px; }
+        }
+      </style>
+
+      <div class="svc-wrapper">
+        <div class="svc-header">
+          <h1 id="pageTitle">Service Suppliers</h1>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-summary" onclick="toggleSummary()" id="btnSummary">AP Summary</button>
+            <button class="btn btn-primary" onclick="window.openAddModal()" id="btnAdd">+ Add Service Supplier</button>
+            <button class="btn btn-back" onclick="goBack()" id="btnBack">Back</button>
+          </div>
+        </div>
+
+        <div id="summarySection" style="display:none;"></div>
+
+        <div class="search-row">
+          <input type="text" id="searchInput" placeholder="Search service suppliers..." oninput="debounceSearch()">
+          <select id="filterType" onchange="loadServiceSuppliers()" style="max-width:200px;">
+            <option value="">All Types</option>
+            <option value="shipping">Shipping</option>
+            <option value="transport">Transport</option>
+            <option value="customs_clearance">Customs Clearance</option>
+            <option value="insurance">Insurance</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div class="table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th id="thName">Name</th>
+                  <th id="thCompany">Company</th>
+                  <th id="thServiceType">Service Type</th>
+                  <th id="thPhone">Phone</th>
+                  <th id="thEmail">Email</th>
+                  <th id="thCountry">Country</th>
+                  <th id="thActions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="suppliersBody">
+                <tr><td colspan="7" class="empty-msg" id="loadingMsg">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="hp-modal-overlay" id="supplierModal">
+        <div class="hp-modal">
+          <h2 id="modalTitle">Add Service Supplier</h2>
+          <input type="hidden" id="editId" value="">
+          <div class="form-group">
+            <label id="lblName">Name *</label>
+            <input type="text" id="fName" required>
+          </div>
+          <div class="form-group">
+            <label id="lblCompany">Company</label>
+            <input type="text" id="fCompany">
+          </div>
+          <div class="form-group">
+            <label id="lblServiceType">Service Type *</label>
+            <select id="fServiceType">
+              <option value="shipping">Shipping</option>
+              <option value="transport">Transport</option>
+              <option value="customs_clearance">Customs Clearance</option>
+              <option value="insurance">Insurance</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label id="lblPhone">Phone</label>
+            <input type="text" id="fPhone">
+          </div>
+          <div class="form-group">
+            <label id="lblEmail">Email</label>
+            <input type="email" id="fEmail">
+          </div>
+          <div class="form-group">
+            <label id="lblCountry">Country</label>
+            <input type="text" id="fCountry">
+          </div>
+          <div class="form-group">
+            <label id="lblAddress">Address</label>
+            <input type="text" id="fAddress">
+          </div>
+          <div class="form-group">
+            <label id="lblTaxId">Tax ID</label>
+            <input type="text" id="fTaxId">
+          </div>
+          <div class="form-group">
+            <label id="lblNotes">Notes</label>
+            <textarea id="fNotes" rows="3"></textarea>
+          </div>
+          <div class="hp-modal-actions">
+            <button class="btn btn-cancel" onclick="closeModal()" id="btnCancel">Cancel</button>
+            <button class="btn btn-save" onclick="withButtonLock(this, function(){ return saveSupplier(); })" id="btnSave" data-loading-text="...">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <script src="_/theme/i18n.js"></script>
+      <script>
+        (function() {
+          if (!window.withButtonLock) { window.withButtonLock = function(btn, fn) { if (!btn || btn.disabled) return Promise.resolve(); var o = btn.textContent || btn.value || ''; var loading = (btn.getAttribute && btn.getAttribute('data-loading-text')) || '...'; btn.disabled = true; if (btn.textContent !== undefined) btn.textContent = loading; else if (btn.value !== undefined) btn.value = loading; var p = Promise.resolve(typeof fn === 'function' ? fn() : fn); return p.finally(function() { btn.disabled = false; if (btn.textContent !== undefined) btn.textContent = o; else if (btn.value !== undefined) btn.value = o; }); }; }
+          var lang = localStorage.getItem('hp_language') || 'en';
+          var isAr = lang === 'ar';
+          var searchTimer = null;
+          var allSuppliers = [];
+          var summaryVisible = false;
+
+          function t(en, ar) { return isAr ? ar : en; }
+          function fmt(n) { return (n || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+
+          var SERVICE_TYPE_LABELS = {
+            shipping: { en: 'Shipping', ar: 'شحن' },
+            transport: { en: 'Transport', ar: 'نقل' },
+            customs_clearance: { en: 'Customs Clearance', ar: 'تخليص جمركي' },
+            insurance: { en: 'Insurance', ar: 'تأمين' },
+            other: { en: 'Other', ar: 'أخرى' }
+          };
+          function svcLabel(type) {
+            var l = SERVICE_TYPE_LABELS[type];
+            return l ? (isAr ? l.ar : l.en) : (type || '');
+          }
+
+          function applyI18n() {
+            document.getElementById('pageTitle').textContent = t('Service Suppliers', 'موردين الخدمات');
+            document.getElementById('btnAdd').textContent = t('+ Add Service Supplier', '+ اضافة مورد خدمة');
+            document.getElementById('btnBack').textContent = t('Back', 'رجوع');
+            document.getElementById('btnSummary').textContent = t('AP Summary', 'ملخص الذمم');
+            document.getElementById('searchInput').placeholder = t('Search service suppliers...', 'بحث عن مورد خدمة...');
+            document.getElementById('thName').textContent = t('Name', 'الاسم');
+            document.getElementById('thCompany').textContent = t('Company', 'الشركة');
+            document.getElementById('thServiceType').textContent = t('Service Type', 'نوع الخدمة');
+            document.getElementById('thPhone').textContent = t('Phone', 'الهاتف');
+            document.getElementById('thEmail').textContent = t('Email', 'البريد');
+            document.getElementById('thCountry').textContent = t('Country', 'الدولة');
+            document.getElementById('thActions').textContent = t('Actions', 'اجراءات');
+            document.getElementById('lblName').textContent = t('Name *', '* الاسم');
+            document.getElementById('lblCompany').textContent = t('Company', 'الشركة');
+            document.getElementById('lblServiceType').textContent = t('Service Type *', '* نوع الخدمة');
+            document.getElementById('lblPhone').textContent = t('Phone', 'الهاتف');
+            document.getElementById('lblEmail').textContent = t('Email', 'البريد');
+            document.getElementById('lblCountry').textContent = t('Country', 'الدولة');
+            document.getElementById('lblAddress').textContent = t('Address', 'العنوان');
+            document.getElementById('lblTaxId').textContent = t('Tax ID', 'الرقم الضريبي');
+            document.getElementById('lblNotes').textContent = t('Notes', 'ملاحظات');
+            document.getElementById('btnCancel').textContent = t('Cancel', 'الغاء');
+            document.getElementById('btnSave').textContent = t('Save', 'حفظ');
+            // Filter type dropdown i18n
+            var filterSel = document.getElementById('filterType');
+            if (filterSel) {
+              filterSel.options[0].textContent = t('All Types', 'كل الأنواع');
+              filterSel.options[1].textContent = t('Shipping', 'شحن');
+              filterSel.options[2].textContent = t('Transport', 'نقل');
+              filterSel.options[3].textContent = t('Customs Clearance', 'تخليص جمركي');
+              filterSel.options[4].textContent = t('Insurance', 'تأمين');
+              filterSel.options[5].textContent = t('Other', 'أخرى');
+            }
+            // Modal service type dropdown i18n
+            var fst = document.getElementById('fServiceType');
+            if (fst) {
+              fst.options[0].textContent = t('Shipping', 'شحن');
+              fst.options[1].textContent = t('Transport', 'نقل');
+              fst.options[2].textContent = t('Customs Clearance', 'تخليص جمركي');
+              fst.options[3].textContent = t('Insurance', 'تأمين');
+              fst.options[4].textContent = t('Other', 'أخرى');
+            }
+            if (isAr) document.querySelector('.svc-wrapper').style.direction = 'rtl';
+          }
+
+          window.debounceSearch = function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function() { loadServiceSuppliers(); }, 300);
+          };
+
+          async function loadServiceSuppliers() {
+            var search = document.getElementById('searchInput').value.trim();
+            var serviceType = document.getElementById('filterType').value || null;
+            var tbody = document.getElementById('suppliersBody');
+            tbody.innerHTML = '<tr><td colspan="7" class="loading-row">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            try {
+              var res = await window.pyGetServiceSuppliers(search, serviceType);
+              if (res && res.success) {
+                allSuppliers = res.data || [];
+                renderTable(allSuppliers);
+              } else {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + (res ? res.message : t('Error loading', 'خطأ في التحميل')) + '</td></tr>';
+              }
+            } catch (err) {
+              tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + t('Error: ', 'خطأ: ') + err + '</td></tr>';
+            }
+          }
+          window.loadServiceSuppliers = loadServiceSuppliers;
+
+          function renderTable(data) {
+            var tbody = document.getElementById('suppliersBody');
+            if (!data || data.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">' + t('No service suppliers found', 'لا يوجد موردين خدمات') + '</td></tr>';
+              return;
+            }
+            var html = '';
+            data.forEach(function(s) {
+              var typeCls = 'svc-type-' + (s.service_type || 'other');
+              html += '<tr>';
+              html += '<td><strong>' + (s.name || '') + '</strong></td>';
+              html += '<td>' + (s.company || '') + '</td>';
+              html += '<td><span class="svc-type-badge ' + typeCls + '">' + svcLabel(s.service_type) + '</span></td>';
+              html += '<td>' + (s.phone || '') + '</td>';
+              html += '<td>' + (s.email || '') + '</td>';
+              html += '<td>' + (s.country || '') + '</td>';
+              html += '<td style="white-space:nowrap;">';
+              html += '<button class="btn btn-edit" onclick="withButtonLock(this, function(){ return editSupplier(\'' + s.id + '\'); })" data-loading-text="...">' + t('Edit', 'تعديل') + '</button> ';
+              html += '<button class="btn btn-delete" onclick="withButtonLock(this, function(){ return deleteSupplier(\'' + s.id + '\'); })" data-loading-text="...">' + t('Delete', 'حذف') + '</button>';
+              html += '</td></tr>';
+            });
+            tbody.innerHTML = html;
+          }
+
+          window.openAddModal = function() {
+            document.getElementById('modalTitle').textContent = t('Add Service Supplier', 'اضافة مورد خدمة');
+            document.getElementById('editId').value = '';
+            document.getElementById('fName').value = '';
+            document.getElementById('fCompany').value = '';
+            document.getElementById('fServiceType').value = 'shipping';
+            document.getElementById('fPhone').value = '';
+            document.getElementById('fEmail').value = '';
+            document.getElementById('fCountry').value = '';
+            document.getElementById('fAddress').value = '';
+            document.getElementById('fTaxId').value = '';
+            document.getElementById('fNotes').value = '';
+            document.getElementById('supplierModal').classList.add('show');
+          };
+
+          window.editSupplier = function(id) {
+            var s = allSuppliers.find(function(x) { return String(x.id) === String(id); });
+            if (!s) return;
+            document.getElementById('modalTitle').textContent = t('Edit Service Supplier', 'تعديل مورد خدمة');
+            document.getElementById('editId').value = s.id;
+            document.getElementById('fName').value = s.name || '';
+            document.getElementById('fCompany').value = s.company || '';
+            document.getElementById('fServiceType').value = s.service_type || 'shipping';
+            document.getElementById('fPhone').value = s.phone || '';
+            document.getElementById('fEmail').value = s.email || '';
+            document.getElementById('fCountry').value = s.country || '';
+            document.getElementById('fAddress').value = s.address || '';
+            document.getElementById('fTaxId').value = s.tax_id || '';
+            document.getElementById('fNotes').value = s.notes || '';
+            document.getElementById('supplierModal').classList.add('show');
+          };
+
+          window.closeModal = function() {
+            document.getElementById('supplierModal').classList.remove('show');
+          };
+
+          window.saveSupplier = async function() {
+            var name = document.getElementById('fName').value.trim();
+            if (!name) {
+              if (window.showNotification) window.showNotification('error', '', t('Name is required', 'الاسم مطلوب'));
+              return;
+            }
+            var data = {
+              name: name,
+              company: document.getElementById('fCompany').value.trim(),
+              service_type: document.getElementById('fServiceType').value,
+              phone: document.getElementById('fPhone').value.trim(),
+              email: document.getElementById('fEmail').value.trim(),
+              country: document.getElementById('fCountry').value.trim(),
+              address: document.getElementById('fAddress').value.trim(),
+              tax_id: document.getElementById('fTaxId').value.trim(),
+              notes: document.getElementById('fNotes').value.trim()
+            };
+            var editId = document.getElementById('editId').value;
+            try {
+              var res;
+              if (editId) {
+                res = await window.pyUpdateServiceSupplier(editId, data);
+              } else {
+                res = await window.pyAddServiceSupplier(data);
+              }
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Service supplier saved', 'تم حفظ مورد الخدمة'));
+                closeModal();
+                loadServiceSuppliers();
+                if (summaryVisible) loadSummary();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : t('Save failed', 'فشل الحفظ'));
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.deleteSupplier = async function(id) {
+            var ok = await (window.showConfirm || function(m) { return Promise.resolve(confirm(m)); })(t('Delete this service supplier?', 'حذف مورد الخدمة هذا؟'));
+            if (!ok) return;
+            try {
+              var res = await window.pyDeleteServiceSupplier(id);
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', t('Service supplier deleted', 'تم حذف مورد الخدمة'));
+                loadServiceSuppliers();
+                if (summaryVisible) loadSummary();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : t('Delete failed', 'فشل الحذف'));
+              }
+            } catch (err) {
+              if (window.showNotification) window.showNotification('error', '', String(err));
+            }
+          };
+
+          window.toggleSummary = function() {
+            summaryVisible = !summaryVisible;
+            var sec = document.getElementById('summarySection');
+            if (summaryVisible) {
+              sec.style.display = 'block';
+              loadSummary();
+            } else {
+              sec.style.display = 'none';
+            }
+          };
+
+          async function loadSummary() {
+            var sec = document.getElementById('summarySection');
+            sec.innerHTML = '<div class="summary-card"><p style="color:#666;">' + t('Loading summary...', 'جاري تحميل الملخص...') + '</p></div>';
+            try {
+              var res = await window.pyGetServiceSupplierSummary();
+              if (!res || !res.success) {
+                sec.innerHTML = '<div class="summary-card"><p style="color:#c62828;">' + (res ? res.message : 'Error') + '</p></div>';
+                return;
+              }
+              var suppliers = res.suppliers || [];
+              var totals = res.totals || {};
+              var egp = isAr ? ' ج.م' : ' EGP';
+              var html = '<div class="summary-card">';
+              html += '<h3>' + t('Accounts Payable - Service Suppliers', 'ذمم دائنة - موردين الخدمات') + '</h3>';
+              if (suppliers.length === 0) {
+                html += '<p style="color:#999;">' + t('No data yet', 'لا توجد بيانات بعد') + '</p>';
+              } else {
+                suppliers.forEach(function(s) {
+                  var bal = parseFloat(s.current_balance) || 0;
+                  var balColor = bal > 0 ? '#c62828' : '#2e7d32';
+                  html += '<div class="summary-row">';
+                  html += '<span><strong>' + (s.name || '') + '</strong> <span class="svc-type-badge svc-type-' + (s.service_type || 'other') + '" style="font-size:10px;">' + svcLabel(s.service_type) + '</span></span>';
+                  html += '<span style="color:' + balColor + ';font-weight:600;">' + fmt(bal) + egp + '</span>';
+                  html += '</div>';
+                });
+              }
+              html += '<div class="summary-totals">';
+              html += '<div class="stat"><div class="stat-val">' + fmt(totals.total_costs) + egp + '</div><div class="stat-lbl">' + t('Total Costs', 'اجمالي التكاليف') + '</div></div>';
+              html += '<div class="stat"><div class="stat-val" style="color:#2e7d32;">' + fmt(totals.total_payments) + egp + '</div><div class="stat-lbl">' + t('Total Payments', 'اجمالي المدفوعات') + '</div></div>';
+              html += '<div class="stat"><div class="stat-val" style="color:#c62828;">' + fmt(totals.total_balance) + egp + '</div><div class="stat-lbl">' + t('Outstanding Balance', 'الرصيد المستحق') + '</div></div>';
+              html += '</div></div>';
+              sec.innerHTML = html;
+            } catch (err) {
+              sec.innerHTML = '<div class="summary-card"><p style="color:#c62828;">' + String(err) + '</p></div>';
+            }
+          }
+
+          window.goBack = function() {
+            if (window.pyGoBack) window.pyGoBack();
+            else window.location.hash = '#accountant';
+          };
+
+          function waitForBridge() {
+            if (window.pyGetServiceSuppliers) {
+              applyI18n();
+              loadServiceSuppliers();
+            } else {
+              setTimeout(waitForBridge, 200);
+            }
+          }
+          setTimeout(waitForBridge, 300);
+        })();
+      </script>
+  type: HtmlTemplate
+is_package: true

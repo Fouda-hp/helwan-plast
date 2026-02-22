@@ -25,13 +25,14 @@ ROUTES = {
     '#inventory':         'InventoryForm',
     '#purchase-invoices': 'PurchaseInvoicesForm',
     '#suppliers':         'SuppliersForm',
+    '#service-suppliers': 'ServiceSuppliersForm',
     '#supplier-summary':  'SupplierSummaryForm',
 }
 
 # Admin-only routes (list instead of set for Skulpt compatibility)
 ADMIN_ONLY = [
     '#admin', '#accountant', '#customer-summary',
-    '#inventory', '#purchase-invoices', '#suppliers', '#supplier-summary',
+    '#inventory', '#purchase-invoices', '#suppliers', '#service-suppliers', '#supplier-summary',
 ]
 
 # Prefix-based routes (e.g. #client-detail-123, #sales-invoice-INV-2026-001)

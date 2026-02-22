@@ -305,6 +305,9 @@ container:
                     <option value="EGP">EGP</option>
                   </select>
                 </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <select class="ic-service-supplier" style="padding:8px;min-width:120px;"></select>
+                </div>
                 <div style="display:flex;align-items:center;">
                   <button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button>
                 </div>
@@ -418,6 +421,7 @@ container:
             <thead>
               <tr style="background:#f5f5f5;">
                 <th style="padding:8px;border:1px solid #ddd;text-align:left;" id="icThType">Type</th>
+                <th style="padding:8px;border:1px solid #ddd;text-align:left;" id="icThSvcSup">Supplier</th>
                 <th style="padding:8px;border:1px solid #ddd;text-align:left;" id="icThDesc">Description</th>
                 <th style="padding:8px;border:1px solid #ddd;text-align:right;" id="icThAmount">Amount (EGP)</th>
                 <th style="padding:8px;border:1px solid #ddd;text-align:right;" id="icThPaid">Paid</th>
@@ -432,6 +436,7 @@ container:
             <p style="margin:0 0 10px;font-size:12px;color:#555;" id="addIcUseTopHint">Date and payment account above apply when adding a cost.</p>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-items:end;margin-bottom:10px;">
               <div><label style="font-size:12px;color:#555;" id="lblAddIcType">Type</label><select id="fAddIcType" style="width:100%;padding:6px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="vat">VAT</option><option value="other">Other</option></select></div>
+              <div><label style="font-size:12px;color:#555;" id="lblAddIcServiceSupplier">Service Supplier</label><select id="fAddIcServiceSupplier" style="width:100%;padding:6px;"></select></div>
               <div style="grid-column:1/-1;"><label style="font-size:12px;color:#555;" id="lblAddIcDescription">Description</label><input type="text" id="fAddIcDescription" placeholder="" style="width:100%;padding:6px;" maxlength="500"></div>
               <div><label style="font-size:12px;color:#555;" id="lblAddIcAmount">Amount (EGP)</label><input type="number" id="fAddIcAmount" step="0.01" min="0" value="0" style="width:100%;padding:6px;"><span id="addIcPreviewEgp" style="font-size:11px;color:#666;display:block;margin-top:2px;"></span></div>
               <div><label style="font-size:12px;color:#555;" id="lblAddIcCurrency">Currency</label><select id="fAddIcCurrency" style="width:100%;padding:6px;"><option value="EGP">EGP</option><option value="USD">USD</option></select></div>
@@ -550,6 +555,7 @@ container:
             setText('lblImportPayMethod', t('Payment from (Cash / Bank)', 'الدفع من (كاش / بنك)'));
             setText('lblImportPayDate', t('Date', 'التاريخ'));
             setText('icThType', t('Type', 'النوع'));
+            setText('icThSvcSup', t('Supplier', 'المورد'));
             setText('icThDesc', t('Description', 'الوصف'));
             setText('icThAmount', t('Amount (EGP)', 'المبلغ (ج.م)'));
             setText('icThPaid', t('Paid', 'المدفوع'));
@@ -557,6 +563,7 @@ container:
             setText('icThPay', t('Pay (EGP)', 'دفع (ج.م)'));
             setText('lblAddImportCost', t('Add Import Cost', 'إضافة تكلفة استيراد'));
             setText('lblAddIcType', t('Type', 'النوع'));
+            setText('lblAddIcServiceSupplier', t('Service Supplier', 'مورد الخدمة'));
             setText('lblAddIcDescription', t('Description', 'الوصف'));
             setText('lblAddIcAmount', t('Amount', 'المبلغ'));
             setText('lblAddIcCurrency', t('Currency', 'العملة'));
@@ -784,9 +791,39 @@ container:
             var div = document.createElement('div');
             div.className = 'form-row import-cost-row';
             div.style.marginBottom = '8px';
-            div.innerHTML = '<div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">' + t('Shipping', 'شحن') + '</option><option value="customs">' + t('Customs', 'جمارك') + '</option><option value="insurance">' + t('Insurance', 'تامين') + '</option><option value="clearance">' + t('Clearance', 'تخليص') + '</option><option value="vat">' + t('VAT', 'ضريبة القيمة المضافة') + '</option><option value="other">' + t('Other', 'اخرى') + '</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div><div class="form-group" style="margin-bottom:0;"><select class="ic-currency" style="padding:8px;" onchange="calcInvoiceTotals()"><option value="USD">USD</option><option value="EGP">EGP</option></select></div><div style="display:flex;align-items:center;"><button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button></div>';
+            div.innerHTML = '<div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">' + t('Shipping', 'شحن') + '</option><option value="customs">' + t('Customs', 'جمارك') + '</option><option value="insurance">' + t('Insurance', 'تامين') + '</option><option value="clearance">' + t('Clearance', 'تخليص') + '</option><option value="vat">' + t('VAT', 'ضريبة القيمة المضافة') + '</option><option value="other">' + t('Other', 'اخرى') + '</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div><div class="form-group" style="margin-bottom:0;"><select class="ic-currency" style="padding:8px;" onchange="calcInvoiceTotals()"><option value="USD">USD</option><option value="EGP">EGP</option></select></div><div class="form-group" style="margin-bottom:0;"><select class="ic-service-supplier" style="padding:8px;min-width:120px;">' + _buildSvcSupplierOpts('') + '</select></div><div style="display:flex;align-items:center;"><button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button></div>';
             container.appendChild(div);
           };
+
+          var _serviceSuppliersList = [];
+          function _buildSvcSupplierOpts(selectedId) {
+            var html = '<option value="">' + t('-- None --', '-- بدون --') + '</option>';
+            _serviceSuppliersList.forEach(function(s) {
+              var sel = (selectedId && String(s.id) === String(selectedId)) ? ' selected' : '';
+              var typeLabel = s.service_type ? ' (' + s.service_type + ')' : '';
+              html += '<option value="' + s.id + '"' + sel + '>' + (s.name || '') + typeLabel + '</option>';
+            });
+            return html;
+          }
+          function _populateAllSvcSupplierDropdowns() {
+            var opts = _buildSvcSupplierOpts('');
+            document.querySelectorAll('.ic-service-supplier').forEach(function(sel) {
+              var cur = sel.value;
+              sel.innerHTML = _buildSvcSupplierOpts(cur);
+            });
+            var modalSel = document.getElementById('fAddIcServiceSupplier');
+            if (modalSel) modalSel.innerHTML = opts;
+          }
+          async function loadServiceSuppliers() {
+            try {
+              if (!window.pyGetServiceSuppliersList) return;
+              var res = await window.pyGetServiceSuppliersList();
+              if (res && res.success) {
+                _serviceSuppliersList = res.data || [];
+                _populateAllSvcSupplierDropdowns();
+              }
+            } catch (err) { /* ignore */ }
+          }
 
           async function loadSuppliers() {
             try {
@@ -830,10 +867,11 @@ container:
             piInitCylTable('');
             // Reset line items
             document.getElementById('lineItemsBody').innerHTML = '<tr class="line-row"><td><input type="text" class="li-desc"></td><td><input type="number" class="li-qty" value="1" min="1" oninput="calcInvoiceTotals()"></td><td><input type="number" class="li-price" value="0" step="0.01" oninput="calcInvoiceTotals()"></td><td class="li-total" style="text-align:right;font-weight:600;">0.00</td><td><button class="btn-remove-row" onclick="removeLineRow(this)">X</button></td></tr>';
-            document.getElementById('importCostRows').innerHTML = '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="vat">VAT</option><option value="other">Other</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div><div class="form-group" style="margin-bottom:0;"><select class="ic-currency" style="padding:8px;"><option value="USD">USD</option><option value="EGP">EGP</option></select></div><div style="display:flex;align-items:center;"><button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button></div></div>';
+            document.getElementById('importCostRows').innerHTML = '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="vat">VAT</option><option value="other">Other</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div><div class="form-group" style="margin-bottom:0;"><select class="ic-currency" style="padding:8px;"><option value="USD">USD</option><option value="EGP">EGP</option></select></div><div class="form-group" style="margin-bottom:0;"><select class="ic-service-supplier" style="padding:8px;min-width:120px;">' + _buildSvcSupplierOpts('') + '</select></div><div style="display:flex;align-items:center;"><button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button></div></div>';
             var rateEl = document.getElementById('fInvExchangeRate');
             if (rateEl) rateEl.value = usdRateToEgp || '';
             loadSuppliers();
+            loadServiceSuppliers();
             loadCalcSettings();
             calcInvoiceTotals();
             document.getElementById('invoiceModal').classList.add('show');
@@ -853,6 +891,7 @@ container:
               document.getElementById('invoiceModalTitle').textContent = t('Edit Purchase Invoice', 'تعديل فاتورة شراء');
               document.getElementById('editInvoiceId').value = inv.id;
               await loadSuppliers();
+              await loadServiceSuppliers();
               await loadCalcSettings();
               document.getElementById('fSupplier').value = inv.supplier_id || '';
               document.getElementById('fDate').value = (inv.date || '').substring(0, 10);
@@ -910,11 +949,12 @@ container:
                 var icHtml = '';
                 icosts.forEach(function(ic) {
                   var icCur = (ic.currency || 'USD').toUpperCase();
-                  icHtml += '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping"' + (ic.cost_type === 'shipping' ? ' selected' : '') + '>' + t('Shipping', 'شحن') + '</option><option value="customs"' + (ic.cost_type === 'customs' ? ' selected' : '') + '>' + t('Customs', 'جمارك') + '</option><option value="insurance"' + (ic.cost_type === 'insurance' ? ' selected' : '') + '>' + t('Insurance', 'تامين') + '</option><option value="clearance"' + (ic.cost_type === 'clearance' ? ' selected' : '') + '>' + t('Clearance', 'تخليص') + '</option><option value="vat"' + (ic.cost_type === 'vat' ? ' selected' : '') + '>' + t('VAT', 'ضريبة القيمة المضافة') + '</option><option value="other"' + (ic.cost_type === 'other' ? ' selected' : '') + '>' + t('Other', 'اخرى') + '</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="' + (ic.amount || 0) + '" oninput="calcInvoiceTotals()"></div><div class="form-group" style="margin-bottom:0;"><select class="ic-currency" style="padding:8px;" onchange="calcInvoiceTotals()"><option value="USD"' + (icCur === 'USD' ? ' selected' : '') + '>USD</option><option value="EGP"' + (icCur === 'EGP' ? ' selected' : '') + '>EGP</option></select></div><div style="display:flex;align-items:center;"><button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button></div></div>';
+                  var icSvcSid = ic.service_supplier_id || '';
+                  icHtml += '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping"' + (ic.cost_type === 'shipping' ? ' selected' : '') + '>' + t('Shipping', 'شحن') + '</option><option value="customs"' + (ic.cost_type === 'customs' ? ' selected' : '') + '>' + t('Customs', 'جمارك') + '</option><option value="insurance"' + (ic.cost_type === 'insurance' ? ' selected' : '') + '>' + t('Insurance', 'تامين') + '</option><option value="clearance"' + (ic.cost_type === 'clearance' ? ' selected' : '') + '>' + t('Clearance', 'تخليص') + '</option><option value="vat"' + (ic.cost_type === 'vat' ? ' selected' : '') + '>' + t('VAT', 'ضريبة القيمة المضافة') + '</option><option value="other"' + (ic.cost_type === 'other' ? ' selected' : '') + '>' + t('Other', 'اخرى') + '</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="' + (ic.amount || 0) + '" oninput="calcInvoiceTotals()"></div><div class="form-group" style="margin-bottom:0;"><select class="ic-currency" style="padding:8px;" onchange="calcInvoiceTotals()"><option value="USD"' + (icCur === 'USD' ? ' selected' : '') + '>USD</option><option value="EGP"' + (icCur === 'EGP' ? ' selected' : '') + '>EGP</option></select></div><div class="form-group" style="margin-bottom:0;"><select class="ic-service-supplier" style="padding:8px;min-width:120px;" data-init-val="' + icSvcSid + '">' + _buildSvcSupplierOpts(icSvcSid) + '</select></div><div style="display:flex;align-items:center;"><button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button></div></div>';
                 });
                 icContainer.innerHTML = icHtml;
               } else {
-                icContainer.innerHTML = '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="vat">VAT</option><option value="other">Other</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div><div class="form-group" style="margin-bottom:0;"><select class="ic-currency" style="padding:8px;"><option value="USD">USD</option><option value="EGP">EGP</option></select></div><div style="display:flex;align-items:center;"><button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button></div></div>';
+                icContainer.innerHTML = '<div class="form-row import-cost-row" style="margin-bottom:8px;"><div class="form-group" style="margin-bottom:0;"><select class="ic-type" style="padding:8px;"><option value="shipping">Shipping</option><option value="customs">Customs</option><option value="insurance">Insurance</option><option value="clearance">Clearance</option><option value="vat">VAT</option><option value="other">Other</option></select></div><div class="form-group" style="margin-bottom:0;"><input type="number" class="ic-amount" placeholder="Amount" step="0.01" value="0" oninput="calcInvoiceTotals()"></div><div class="form-group" style="margin-bottom:0;"><select class="ic-currency" style="padding:8px;"><option value="USD">USD</option><option value="EGP">EGP</option></select></div><div class="form-group" style="margin-bottom:0;"><select class="ic-service-supplier" style="padding:8px;min-width:120px;">' + _buildSvcSupplierOpts('') + '</select></div><div style="display:flex;align-items:center;"><button class="btn-remove-row" onclick="removeImportCostRow(this)">X</button></div></div>';
               }
               calcInvoiceTotals();
               document.getElementById('invoiceModal').classList.add('show');
@@ -955,8 +995,11 @@ container:
               var type = row.querySelector('.ic-type').value;
               var amount = parseFloat(row.querySelector('.ic-amount').value) || 0;
               var currency = (row.querySelector('.ic-currency') && row.querySelector('.ic-currency').value) || 'USD';
+              var svcSup = (row.querySelector('.ic-service-supplier') && row.querySelector('.ic-service-supplier').value) || '';
               if (amount > 0) {
-                importCosts.push({ cost_type: type, amount: amount, currency: currency });
+                var ic = { cost_type: type, amount: amount, currency: currency };
+                if (svcSup) ic.service_supplier_id = svcSup;
+                importCosts.push(ic);
               }
             });
             var exchangeRate = parseFloat(document.getElementById('fInvExchangeRate').value) || 0;
@@ -1118,6 +1161,7 @@ container:
             document.getElementById('importCostsInvoiceId').value = invoiceId || '';
             var dateEl = document.getElementById('fImportPayDate');
             if (dateEl) dateEl.value = new Date().toISOString().substring(0, 10);
+            loadServiceSuppliers();
             var bankRes = window.pyGetBankAccounts && await window.pyGetBankAccounts();
             var methodSel = document.getElementById('fImportPayMethod');
             if (bankRes && bankRes.success && bankRes.accounts && methodSel) {
@@ -1132,18 +1176,18 @@ container:
               });
             }
             document.getElementById('importCostsPayModal').classList.add('show');
-            document.getElementById('importCostsPayBody').innerHTML = '<tr><td colspan="6" style="padding:12px;text-align:center;color:#666;">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            document.getElementById('importCostsPayBody').innerHTML = '<tr><td colspan="7" style="padding:12px;text-align:center;color:#666;">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
               var res = await window.pyGetImportCostsForPayment(invoiceId);
               var tbody = document.getElementById('importCostsPayBody');
               if (!res || !res.success) {
-                tbody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#c62828;">' + (res ? res.message : 'Error') + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="padding:12px;color:#c62828;">' + (res ? res.message : 'Error') + '</td></tr>';
                 return;
               }
               var costs = res.costs || [];
               var isAr = (localStorage.getItem('hp_language') || 'en') === 'ar';
               if (costs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#666;">' + t('No import costs yet. Add one below.', 'لا توجد تكاليف استيراد بعد. أضف من الأسفل.') + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="padding:12px;color:#666;">' + t('No import costs yet. Add one below.', 'لا توجد تكاليف استيراد بعد. أضف من الأسفل.') + '</td></tr>';
                 document.getElementById('importCostsAddSection').style.display = 'block';
                 document.getElementById('importCostsPayHint').textContent = t('Add import costs below. Date and payment account above apply to new costs and to Pay.', 'أضف تكاليف الاستيراد من الأسفل. التاريخ والدفع من أعلاه ينطبقان على الإضافة والدفع.');
                 return;
@@ -1153,9 +1197,11 @@ container:
               costs.forEach(function(c) {
                 var rem = parseFloat(c.remaining_egp) || 0;
                 var desc = (c.description || '').trim() || '—';
+                var svcName = (c.service_supplier_name || '').trim() || '—';
                 var payCell = rem <= 0 ? ('<span style="color:#2e7d32;">' + (isAr ? 'مدفوعة' : 'Paid') + '</span>') : ('<input type="number" class="ic-pay-amount" step="0.01" min="0" max="' + rem + '" value="0" placeholder="' + fmt(rem) + '" style="width:100px;padding:6px;text-align:right;">');
                 html += '<tr data-ic-id="' + (c.id || '') + '" data-remaining="' + rem + '">';
                 html += '<td style="padding:8px;border:1px solid #ddd;">' + (c.cost_type || '') + '</td>';
+                html += '<td style="padding:8px;border:1px solid #ddd;color:#1565c0;">' + svcName + '</td>';
                 html += '<td style="padding:8px;border:1px solid #ddd;color:#555;">' + desc + '</td>';
                 html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.amount_egp) + egpSuffix + '</td>';
                 html += '<td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.paid_amount) + egpSuffix + '</td>';
@@ -1167,7 +1213,7 @@ container:
               document.getElementById('importCostsAddSection').style.display = 'block';
               document.getElementById('importCostsPayHint').textContent = t('Enter amount to pay per row (partial or full). You can add more costs below.', 'أدخل المبلغ المراد دفعه لكل بند. يمكنك إضافة تكاليف أخرى من الأسفل.');
             } catch (err) {
-              document.getElementById('importCostsPayBody').innerHTML = '<tr><td colspan="6" style="padding:12px;color:#c62828;">' + String(err) + '</td></tr>';
+              document.getElementById('importCostsPayBody').innerHTML = '<tr><td colspan="7" style="padding:12px;color:#c62828;">' + String(err) + '</td></tr>';
             }
           };
 
@@ -1225,12 +1271,13 @@ container:
             var exchangeRate = currency === 'EGP' ? null : (parseFloat(rateInput.value) || null);
             var payFrom = (document.getElementById('fImportPayMethod') && document.getElementById('fImportPayMethod').value) || '1000';
             var costDate = (document.getElementById('fImportPayDate') && document.getElementById('fImportPayDate').value) || new Date().toISOString().slice(0, 10);
+            var svcSupplierId = (document.getElementById('fAddIcServiceSupplier') && document.getElementById('fAddIcServiceSupplier').value) || '';
             if (!invoiceId) { if (window.showNotification) window.showNotification('error', '', t('Invoice missing', 'الفاتورة غير محددة')); return; }
             if (amount <= 0) { if (window.showNotification) window.showNotification('error', '', t('Enter amount', 'أدخل المبلغ')); return; }
             if (currency !== 'EGP' && (!exchangeRate || exchangeRate <= 0)) { if (window.showNotification) window.showNotification('error', '', t('Exchange rate required for non-EGP', 'سعر الصرف مطلوب لغير الجنيه')); return; }
             if (!costDate) { if (window.showNotification) window.showNotification('error', '', t('Select date', 'اختر التاريخ')); return; }
             try {
-              var res = await window.pyAddImportCost(invoiceId, costType, amount, description, costDate, null, null, currency, exchangeRate, payFrom);
+              var res = await window.pyAddImportCost(invoiceId, costType, amount, description, costDate, null, null, currency, exchangeRate, svcSupplierId ? null : payFrom, svcSupplierId || null);
               if (res && res.success) {
                 if (window.showNotification) window.showNotification('success', '', t('Import cost added. Enter amount and click Pay to post to ledger.', 'تمت الإضافة. أدخل المبلغ واضغط دفع لتسجيل القيد في الدفتر.'));
                 var res2 = await window.pyGetImportCostsForPayment(invoiceId);
@@ -1240,20 +1287,23 @@ container:
                 if (!res2 || !res2.success) return;
                 var costs = res2.costs || [];
                 if (costs.length === 0) {
-                  tbody.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#666;">' + t('No import costs yet. Add one below.', 'لا توجد تكاليف استيراد بعد. أضف من الأسفل.') + '</td></tr>';
+                  tbody.innerHTML = '<tr><td colspan="7" style="padding:12px;color:#666;">' + t('No import costs yet. Add one below.', 'لا توجد تكاليف استيراد بعد. أضف من الأسفل.') + '</td></tr>';
                 } else {
                   var html = '';
                   costs.forEach(function(c) {
                     var rem = parseFloat(c.remaining_egp) || 0;
                     var desc = (c.description || '').trim() || '—';
+                    var svcN = (c.service_supplier_name || '').trim() || '—';
                     var payInput = rem <= 0 ? ('<span style="color:#2e7d32;">' + (isAr ? 'مدفوعة' : 'Paid') + '</span>') : ('<input type="number" class="ic-pay-amount" step="0.01" min="0" max="' + rem + '" value="0" placeholder="' + fmt(rem) + '" style="width:100px;padding:6px;text-align:right;">');
-                    html += '<tr data-ic-id="' + (c.id || '') + '" data-remaining="' + rem + '"><td style="padding:8px;border:1px solid #ddd;">' + (c.cost_type || '') + '</td><td style="padding:8px;border:1px solid #ddd;color:#555;">' + desc + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.amount_egp) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.paid_amount) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;font-weight:600;">' + fmt(rem) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;">' + payInput + '</td></tr>';
+                    html += '<tr data-ic-id="' + (c.id || '') + '" data-remaining="' + rem + '"><td style="padding:8px;border:1px solid #ddd;">' + (c.cost_type || '') + '</td><td style="padding:8px;border:1px solid #ddd;color:#1565c0;">' + svcN + '</td><td style="padding:8px;border:1px solid #ddd;color:#555;">' + desc + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.amount_egp) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;">' + fmt(c.paid_amount) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;text-align:right;font-weight:600;">' + fmt(rem) + egpSuffix + '</td><td style="padding:8px;border:1px solid #ddd;">' + payInput + '</td></tr>';
                   });
                   tbody.innerHTML = html;
                 }
                 document.getElementById('fAddIcAmount').value = '0';
                 var descEl = document.getElementById('fAddIcDescription');
                 if (descEl) descEl.value = '';
+                var svcEl = document.getElementById('fAddIcServiceSupplier');
+                if (svcEl) svcEl.value = '';
               } else {
                 if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Error');
               }

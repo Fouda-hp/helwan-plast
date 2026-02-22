@@ -201,6 +201,7 @@ DEFAULT_ACCOUNTS = [
     ('1210', 'Inventory in Transit', 'مخزون في الطريق', 'asset',    '1200'),
     # Liabilities
     ('2000', 'Accounts Payable',   'ذمم دائنة',         'liability', None),
+    ('2010', 'Service Suppliers AP', 'ذمم دائنة - موردين خدمات', 'liability', '2000'),
     ('2100', 'VAT Payable',         'ضريبة مخرجات مستحقة', 'liability', None),   # Output VAT (sales)
     ('2110', 'VAT Input Recoverable', 'ضريبة مدخلات قابلة للاسترداد', 'asset', None),  # Input VAT (purchases)
     # Equity
@@ -1235,6 +1236,158 @@ def delete_supplier(supplier_id, token_or_email=None):
 
 
 # ===========================================================================
+# 3b. SERVICE SUPPLIERS (موردين الخدمات - شحن، نقل، تخليص جمركي)
+# ===========================================================================
+SERVICE_SUPPLIER_COLS = [
+    'id', 'name', 'company', 'phone', 'email', 'country',
+    'address', 'tax_id', 'notes', 'service_type', 'is_active', 'created_at', 'updated_at',
+]
+
+VALID_SERVICE_TYPES = ('shipping', 'transport', 'customs_clearance', 'insurance', 'other')
+
+
+@anvil.server.callable
+def get_service_suppliers(search='', service_type=None, token_or_email=None):
+    """Return list of active service suppliers, optionally filtered by search term and/or service_type."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        import anvil.tables.query as q
+        base_query = {'is_active': True}
+        if service_type and service_type in VALID_SERVICE_TYPES:
+            base_query['service_type'] = service_type
+
+        search_query = None
+        search_lower = _safe_str(search).strip().lower()
+        if search_lower:
+            search_query = q.any_of(
+                name=q.ilike(f"%{search_lower}%"),
+                company=q.ilike(f"%{search_lower}%"),
+                phone=q.ilike(f"%{search_lower}%"),
+                email=q.ilike(f"%{search_lower}%"),
+                country=q.ilike(f"%{search_lower}%")
+            )
+
+        if search_query:
+            rows = app_tables.service_suppliers.search(search_query, **base_query)
+        else:
+            rows = app_tables.service_suppliers.search(**base_query)
+
+        results = []
+        for r in rows:
+            results.append(_row_to_dict(r, SERVICE_SUPPLIER_COLS))
+        results.sort(key=lambda s: s.get('name', ''))
+        return {'success': True, 'data': results, 'count': len(results)}
+    except Exception as e:
+        logger.exception("get_service_suppliers error")
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
+
+
+@anvil.server.callable
+def add_service_supplier(data, token_or_email=None):
+    """Create a new service supplier."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+    name = _safe_str(data.get('name'))
+    if not name:
+        return {'success': False, 'message': 'Supplier name is required'}
+    stype = _safe_str(data.get('service_type', 'other')).lower()
+    if stype not in VALID_SERVICE_TYPES:
+        stype = 'other'
+    now = get_utc_now()
+    sid = _uuid()
+    try:
+        app_tables.service_suppliers.add_row(
+            id=sid,
+            name=name,
+            company=_safe_str(data.get('company')),
+            phone=_safe_str(data.get('phone')),
+            email=_safe_str(data.get('email')),
+            country=_safe_str(data.get('country')),
+            address=_safe_str(data.get('address')),
+            tax_id=_safe_str(data.get('tax_id')),
+            notes=_safe_str(data.get('notes')),
+            service_type=stype,
+            is_active=True,
+            created_at=now,
+            updated_at=now,
+        )
+        logger.info("Service supplier %s (%s) created by %s", sid, stype, user_email)
+        return {'success': True, 'id': sid}
+    except Exception as e:
+        logger.exception("add_service_supplier error")
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
+
+
+@anvil.server.callable
+def update_service_supplier(supplier_id, data, token_or_email=None):
+    """Update an existing service supplier."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'edit')
+    if not is_valid:
+        return error
+    try:
+        row = app_tables.service_suppliers.get(id=supplier_id)
+        if not row:
+            return {'success': False, 'message': 'Service supplier not found'}
+        updates = {}
+        for field in ['name', 'company', 'phone', 'email', 'country', 'address', 'tax_id', 'notes']:
+            if field in data:
+                updates[field] = _safe_str(data[field])
+        if 'service_type' in data:
+            stype = _safe_str(data['service_type']).lower()
+            updates['service_type'] = stype if stype in VALID_SERVICE_TYPES else 'other'
+        updates['updated_at'] = get_utc_now()
+        row.update(**updates)
+        logger.info("Service supplier %s updated by %s", supplier_id, user_email)
+        return {'success': True}
+    except Exception as e:
+        logger.exception("update_service_supplier error")
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
+
+
+@anvil.server.callable
+def delete_service_supplier(supplier_id, token_or_email=None):
+    """Soft-delete a service supplier (set is_active=False)."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'delete')
+    if not is_valid:
+        return error
+    try:
+        row = app_tables.service_suppliers.get(id=supplier_id)
+        if not row:
+            return {'success': False, 'message': 'Service supplier not found'}
+        row.update(is_active=False, updated_at=get_utc_now())
+        logger.info("Service supplier %s soft-deleted by %s", supplier_id, user_email)
+        return {'success': True}
+    except Exception as e:
+        logger.exception("delete_service_supplier error")
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
+
+
+@anvil.server.callable
+def get_service_suppliers_list_simple(token_or_email=None):
+    """Return a simple list of active service suppliers for dropdowns (id, name, service_type)."""
+    is_valid, _, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        rows = app_tables.service_suppliers.search(is_active=True)
+        result = []
+        for r in rows:
+            result.append({
+                'id': r.get('id', ''),
+                'name': r.get('name', ''),
+                'service_type': r.get('service_type', ''),
+            })
+        result.sort(key=lambda s: s.get('name', ''))
+        return {'success': True, 'suppliers': result}
+    except Exception as e:
+        logger.exception("get_service_suppliers_list_simple error")
+        return {'success': False, 'suppliers': []}
+
+
+# ===========================================================================
 # 4. PURCHASE INVOICES
 # ===========================================================================
 PURCHASE_INVOICE_COLS = [
@@ -1509,6 +1662,7 @@ def create_purchase_invoice(data, token_or_email=None):
             if ic_amount > 0:
                 curr = _safe_str(ic.get('currency') or 'USD').upper()[:3]
                 amount_egp = _round2(ic_amount * (float(inv_rate) if curr == 'USD' else 1))
+                ic_svc_sid = _safe_str(ic.get('service_supplier_id') or '')
                 ic_row = dict(
                     id=_uuid(),
                     purchase_invoice_id=inv_id,
@@ -1522,6 +1676,8 @@ def create_purchase_invoice(data, token_or_email=None):
                     amount_egp=amount_egp,
                     paid_amount=0.0,
                 )
+                if ic_svc_sid:
+                    ic_row['service_supplier_id'] = ic_svc_sid
                 if curr:
                     ic_row['currency'] = curr
                 try:
@@ -2317,7 +2473,8 @@ def record_supplier_payment(invoice_id, amount, payment_method, payment_date,
 # 5. IMPORT COSTS (EGP-only; attached to inventory; extensible types)
 # ===========================================================================
 IMPORT_COST_COLS = ['id', 'purchase_invoice_id', 'cost_type', 'description', 'amount', 'date',
-                    'created_by', 'created_at', 'contract_number', 'payment_account', 'currency']
+                    'created_by', 'created_at', 'contract_number', 'payment_account', 'currency',
+                    'service_supplier_id']
 
 # Extensible: use import_cost_types table when present; else this default list
 DEFAULT_IMPORT_COST_TYPES = [
@@ -2397,16 +2554,19 @@ def seed_import_cost_types(token_or_email=None):
 def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, description='',
                     cost_date=None, payment_method='cash', contract_number=None, token_or_email=None,
                     currency_code='EGP', exchange_rate=None,
-                    inventory_id=None, cost_type_id=None, original_amount=None, payment_account=None):
+                    inventory_id=None, cost_type_id=None, original_amount=None, payment_account=None,
+                    service_supplier_id=None):
     """
     Add an import cost attached to an inventory item (machine). EGP-only ledger.
     Transit model: if invoice.inventory_moved is False → DR 1210 (Inventory in Transit), CR payment_account.
     If invoice.inventory_moved is True → DR 1200 (Inventory), CR payment_account.
     Never post import cost to 2000. Recalculates landed cost on inventory row.
-    Each add posts once (DR inventory, CR bank) and sets paid_amount=amount_egp so the same cost
-    is not paid again via pay_import_cost (avoids double-counting in bank statement).
+
+    If service_supplier_id is provided: posts JE immediately (DR Inventory → CR 2010 Service AP)
+    and leaves paid_amount=0 so it can be paid later via pay_import_cost.
+
     Legacy (positional): add_import_cost(purchase_invoice_id, cost_type, amount, description=..., ...).
-    New (keywords): inventory_id, cost_type_id, description, original_amount, payment_account.
+    New (keywords): inventory_id, cost_type_id, description, original_amount, payment_account, service_supplier_id.
     """
     is_valid, user_email, error = _require_permission(token_or_email, 'create')
     if not is_valid:
@@ -2547,27 +2707,70 @@ def add_import_cost(purchase_invoice_id=None, cost_type=None, amount=None, descr
             row_data['original_amount'] = amount_in
             row_data['exchange_rate'] = _round2(exchange_rate) if exchange_rate is not None else (exchange_rate or _get_rate_to_egp(currency_code or 'EGP'))
             row_data['amount_egp'] = amount_egp
-            # No JE on add; user pays via Pay Import Costs → one JE per cost
             row_data['paid_amount'] = 0
         except Exception:
             pass
+
+        # Link to service supplier if provided
+        if service_supplier_id:
+            try:
+                ss = app_tables.service_suppliers.get(id=service_supplier_id)
+                if not ss or not ss.get('is_active', True):
+                    return {'success': False, 'message': 'Service supplier not found or inactive'}
+                row_data['service_supplier_id'] = service_supplier_id
+            except Exception:
+                row_data['service_supplier_id'] = service_supplier_id
 
         try:
             app_tables.import_costs.add_row(**row_data)
         except Exception as col_err:
             err_str = str(col_err).lower()
-            for key in ('currency', 'inventory_id', 'cost_type_id', 'original_currency', 'original_amount', 'exchange_rate', 'amount_egp', 'paid_amount'):
+            for key in ('currency', 'inventory_id', 'cost_type_id', 'original_currency', 'original_amount', 'exchange_rate', 'amount_egp', 'paid_amount', 'service_supplier_id'):
                 row_data.pop(key, None)
             try:
                 app_tables.import_costs.add_row(**row_data)
             except Exception:
                 raise
 
+        # If service supplier: post JE now (DR Inventory → CR 2010 Service AP)
+        # Cost recognized immediately, payment deferred
+        je_tid = None
+        if service_supplier_id:
+            inv_row_for_je = app_tables.purchase_invoices.get(id=pi_id) if pi_id else None
+            inventory_moved = bool(inv_row_for_je and inv_row_for_je.get('inventory_moved'))
+            debit_acct = '1200' if inventory_moved else '1210'
+            credit_acct = '2010'  # Service Suppliers AP
+            if not _validate_account_exists(credit_acct):
+                # Auto-seed account 2010 if missing
+                try:
+                    app_tables.chart_of_accounts.add_row(
+                        code='2010', name_en='Service Suppliers AP',
+                        name_ar='ذمم دائنة - موردين خدمات',
+                        account_type='liability', parent_code='2000',
+                        is_active=True, created_at=get_utc_now()
+                    )
+                except Exception:
+                    pass
+            desc_je = f"Import cost ({cost_type_name}): {desc_text} [Service: {service_supplier_id[:8]}]"
+            entries = [
+                {'account_code': debit_acct, 'debit': amount_egp, 'credit': 0},
+                {'account_code': credit_acct, 'debit': 0, 'credit': amount_egp},
+            ]
+            je_result = post_journal_entry(
+                parsed_date, entries, desc_je, 'import_cost', cost_id, user_email,
+                skip_lock_check=False
+            )
+            if not je_result.get('success'):
+                logger.warning("Service supplier JE failed for cost %s: %s", cost_id, je_result.get('message'))
+            else:
+                je_tid = je_result.get('transaction_id')
+
         _update_inventory_import_totals(inventory_id=inv_id, purchase_invoice_id=pi_id)
         _recalc_supplier_amount_egp(pi_id)  # H-01: keep invoice row in sync
 
-        logger.info("Import cost %s (%.2f EGP) added by %s; pay via Pay Import Costs to post to ledger", cost_type_name, amount_egp, user_email)
-        return {'success': True, 'id': cost_id, 'transaction_id': None, 'amount_egp': amount_egp}
+        logger.info("Import cost %s (%.2f EGP) added by %s%s", cost_type_name, amount_egp, user_email,
+                     f" [service_supplier={service_supplier_id}]" if service_supplier_id else "")
+        return {'success': True, 'id': cost_id, 'transaction_id': je_tid, 'amount_egp': amount_egp}
     except ValueError as ve:
         return {'success': False, 'message': str(ve)}
     except Exception as e:
@@ -2638,6 +2841,15 @@ def get_import_costs_for_payment(purchase_invoice_id, token_or_email=None):
                 amt_egp = _round2(amt_egp)
             paid = _round2(r.get('paid_amount') or 0)
             remaining = _round2(amt_egp - paid)
+            svc_sid = _safe_str(r.get('service_supplier_id') or '')
+            svc_name = ''
+            if svc_sid:
+                try:
+                    svc_row = app_tables.service_suppliers.get(id=svc_sid)
+                    if svc_row:
+                        svc_name = svc_row.get('name', '')
+                except Exception:
+                    pass
             result.append({
                 'id': r.get('id'),
                 'cost_type': r.get('cost_type', ''),
@@ -2646,6 +2858,8 @@ def get_import_costs_for_payment(purchase_invoice_id, token_or_email=None):
                 'paid_amount': paid,
                 'remaining_egp': remaining,
                 'payment_account': r.get('payment_account') or _resolve_payment_account('cash'),
+                'service_supplier_id': svc_sid,
+                'service_supplier_name': svc_name,
             })
         return {'success': True, 'costs': result}
     except Exception as e:
@@ -2696,23 +2910,35 @@ def pay_import_cost(import_cost_id, amount_egp, payment_method, payment_date, to
             return {'success': False, 'message': f'Payment account {credit_account} not found or inactive'}
 
         pi_id = row.get('purchase_invoice_id')
-        cost_type_raw = (row.get('cost_type') or '').lower().strip()
-        is_vat = _is_vat_cost_type(cost_type_raw)
-        if is_vat:
-            if not _validate_account_exists('2110'):
-                return {'success': False, 'message': 'Account 2110 (VAT Input Recoverable) not found'}
-            debit_account = '2110'
+        svc_sid = None
+        try:
+            svc_sid = row.get('service_supplier_id')
+        except Exception:
+            pass
+
+        # If linked to a service supplier: DR 2010 (clear AP) → CR Cash/Bank
+        if svc_sid:
+            debit_account = '2010'
+            if not _validate_account_exists(debit_account):
+                return {'success': False, 'message': 'Account 2010 (Service Suppliers AP) not found. Run seed_default_accounts.'}
         else:
-            inv_row = app_tables.purchase_invoices.get(id=pi_id) if pi_id else None
-            inventory_moved = bool(inv_row and inv_row.get('inventory_moved'))
-            if inventory_moved:
-                if not _validate_account_exists('1200'):
-                    return {'success': False, 'message': 'Account 1200 (Inventory) not found'}
-                debit_account = '1200'
+            cost_type_raw = (row.get('cost_type') or '').lower().strip()
+            is_vat = _is_vat_cost_type(cost_type_raw)
+            if is_vat:
+                if not _validate_account_exists('2110'):
+                    return {'success': False, 'message': 'Account 2110 (VAT Input Recoverable) not found'}
+                debit_account = '2110'
             else:
-                if not _validate_account_exists('1210'):
-                    return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found'}
-                debit_account = '1210'
+                inv_row = app_tables.purchase_invoices.get(id=pi_id) if pi_id else None
+                inventory_moved = bool(inv_row and inv_row.get('inventory_moved'))
+                if inventory_moved:
+                    if not _validate_account_exists('1200'):
+                        return {'success': False, 'message': 'Account 1200 (Inventory) not found'}
+                    debit_account = '1200'
+                else:
+                    if not _validate_account_exists('1210'):
+                        return {'success': False, 'message': 'Account 1210 (Inventory in Transit) not found'}
+                    debit_account = '1210'
 
         # H-03 FIX: Ledger-level duplicate check — prevent same import cost posted twice
         try:
@@ -6919,6 +7145,106 @@ def get_supplier_summary(token_or_email=None):
         }
     except Exception as e:
         logger.exception("get_supplier_summary error")
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
+
+
+@anvil.server.callable
+def get_service_supplier_summary(token_or_email=None):
+    """
+    Get AP summary for all service suppliers.
+    Uses account 2010 (Service Suppliers AP) in ledger.
+    For each service supplier: total_costs (credits) - total_payments (debits) = current_balance.
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        # 1. Build map: service_supplier_id -> info
+        suppliers = {}
+        for i, s in enumerate(app_tables.service_suppliers.search()):
+            if i >= 5000:
+                break
+            sid = s.get('id', '')
+            if sid:
+                suppliers[sid] = {
+                    'name': s.get('name', ''),
+                    'service_type': s.get('service_type', ''),
+                    'is_active': s.get('is_active', True),
+                    'phone': s.get('phone', ''),
+                    'company': s.get('company', ''),
+                }
+
+        # 2. Build map: service_supplier_id -> import_cost_ids
+        supplier_costs = {}
+        for i, ic in enumerate(app_tables.import_costs.search()):
+            if i >= 20000:
+                break
+            ssid = None
+            try:
+                ssid = ic.get('service_supplier_id')
+            except Exception:
+                continue
+            if ssid:
+                if ssid not in supplier_costs:
+                    supplier_costs[ssid] = []
+                supplier_costs[ssid].append(ic.get('id'))
+
+        # 3. Load all ledger entries for account 2010
+        ap_costs = {}    # cost_id -> total credits (payable created)
+        ap_payments = {} # cost_id -> total debits (payments)
+        for i, entry in enumerate(app_tables.ledger.search(account_code='2010')):
+            if i >= 50000:
+                break
+            ref_type = entry.get('reference_type', '')
+            ref_id = entry.get('reference_id', '')
+            d = float(entry.get('debit', 0) or 0)
+            c = float(entry.get('credit', 0) or 0)
+            if ref_type == 'import_cost':
+                ap_costs[ref_id] = ap_costs.get(ref_id, 0) + c
+            elif ref_type == 'import_cost_payment':
+                ap_payments[ref_id] = ap_payments.get(ref_id, 0) + d
+
+        # 4. Build summary per service supplier
+        result = []
+        grand_costs = 0
+        grand_payments = 0
+
+        for sid, info in sorted(suppliers.items(), key=lambda x: x[1]['name']):
+            cost_ids = supplier_costs.get(sid, [])
+            total_costs = 0
+            total_payments = 0
+            for cid in cost_ids:
+                total_costs += ap_costs.get(cid, 0)
+                total_payments += ap_payments.get(cid, 0)
+
+            current_balance = _round2(total_costs - total_payments)
+            result.append({
+                'supplier_id': sid,
+                'supplier_name': info['name'],
+                'service_type': info['service_type'],
+                'company': info['company'],
+                'phone': info['phone'],
+                'is_active': info['is_active'],
+                'cost_count': len(cost_ids),
+                'total_costs': _round2(total_costs),
+                'total_payments': _round2(total_payments),
+                'current_balance': current_balance,
+            })
+            grand_costs += total_costs
+            grand_payments += total_payments
+
+        return {
+            'success': True,
+            'data': result,
+            'totals': {
+                'costs': _round2(grand_costs),
+                'payments': _round2(grand_payments),
+                'balance': _round2(grand_costs - grand_payments),
+            },
+            'count': len(result),
+        }
+    except Exception as e:
+        logger.exception("get_service_supplier_summary error")
         return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 

@@ -122,6 +122,7 @@ class AccountantForm(AccountantFormTemplate):
 
         # JS Bridges - Navigation
         anvil.js.window.pyOpenSuppliers = self.open_suppliers
+        anvil.js.window.pyOpenServiceSuppliers = self.open_service_suppliers
         anvil.js.window.pyOpenInventory = self.open_inventory
         anvil.js.window.pyOpenPurchaseInvoices = self.open_purchase_invoices
         anvil.js.window.pyOpenCustomerSummary = self.open_customer_summary
@@ -345,6 +346,9 @@ class AccountantForm(AccountantFormTemplate):
     # --- Navigation ---
     def open_suppliers(self):
         open_form('SuppliersForm')
+
+    def open_service_suppliers(self):
+        open_form('ServiceSuppliersForm')
 
     def open_inventory(self):
         open_form('InventoryForm')

@@ -67,6 +67,9 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
         anvil.js.window.pyCreateContractPurchase = self.create_contract_purchase
         anvil.js.window.pyGetContractsList = self.get_contracts_list
 
+        # JS Bridges — Service Suppliers (for import costs)
+        anvil.js.window.pyGetServiceSuppliersList = self.get_service_suppliers_list
+
         # JS Bridge — PDF Reports
         anvil.js.window.pyGetPurchaseInvoicePdfData = self.get_purchase_invoice_pdf_data
 
@@ -127,13 +130,15 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
     # --- Import Costs ---
     def add_import_cost(self, invoice_id, cost_type, amount, description='',
                         cost_date=None, payment_method='cash', contract_number=None,
-                        currency_code='EGP', exchange_rate=None, payment_account=None):
-        """Add import cost: DR 1210/1200, CR selected bank/cash. Per cost: currency, rate, pay from."""
+                        currency_code='EGP', exchange_rate=None, payment_account=None,
+                        service_supplier_id=None):
+        """Add import cost: DR 1210/1200, CR selected bank/cash or CR 2010 (Service Supplier AP)."""
         return anvil.server.call('add_import_cost', invoice_id, cost_type, amount,
                                  description, cost_date, payment_method or None, contract_number, self._auth(),
                                  currency_code=currency_code or 'EGP',
                                  exchange_rate=exchange_rate,
-                                 payment_account=payment_account)
+                                 payment_account=payment_account,
+                                 service_supplier_id=service_supplier_id or None)
 
     def get_import_costs(self, invoice_id, inventory_id=None):
         """Get import costs for a purchase invoice or inventory item."""
@@ -180,6 +185,10 @@ class PurchaseInvoicesForm(PurchaseInvoicesFormTemplate):
     # --- Suppliers & Details ---
     def get_suppliers_list(self):
         return anvil.server.call('get_suppliers_list_simple', self._auth())
+
+    def get_service_suppliers_list(self):
+        """Get service suppliers for dropdown (import cost assignment)."""
+        return anvil.server.call('get_service_suppliers_list_simple', self._auth())
 
     def get_invoice_details(self, invoice_id):
         return anvil.server.call('get_invoice_details', invoice_id, self._auth())

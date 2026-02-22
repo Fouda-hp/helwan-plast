@@ -106,6 +106,10 @@ container:
             <div class="nav-icon">&#128666;</div>
             <div class="nav-label" id="navSuppliers">Suppliers</div>
           </div>
+          <div class="quick-nav-card" onclick="navTo('service-suppliers')">
+            <div class="nav-icon">&#128674;</div>
+            <div class="nav-label" id="navServiceSuppliers">Service Suppliers</div>
+          </div>
           <div class="quick-nav-card" onclick="navTo('inventory')">
             <div class="nav-icon">&#128230;</div>
             <div class="nav-label" id="navInventory">Inventory</div>
@@ -603,6 +607,7 @@ container:
             setText('btnBack', t('Back', 'رجوع'));
             setText('btnSeed', t('Setup Accounts', 'تهيئة الحسابات'));
             setText('navSuppliers', t('Suppliers', 'الموردين'));
+            setText('navServiceSuppliers', t('Service Suppliers', 'موردين الخدمات'));
             setText('navInventory', t('Inventory', 'المخازن'));
             setText('navInvoices', t('Purchase Invoices', 'فواتير الشراء'));
             setText('navCustomerAccounts', t('Customer Accounts', 'حسابات العملاء'));
@@ -679,6 +684,7 @@ container:
 
           window.navTo = function(page) {
             if (page === 'suppliers' && window.pyOpenSuppliers) window.pyOpenSuppliers();
+            else if (page === 'service-suppliers' && window.pyOpenServiceSuppliers) window.pyOpenServiceSuppliers();
             else if (page === 'inventory' && window.pyOpenInventory) window.pyOpenInventory();
             else if (page === 'invoices' && window.pyOpenPurchaseInvoices) window.pyOpenPurchaseInvoices();
           };

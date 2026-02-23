@@ -779,36 +779,33 @@ def post_journal_entry(entry_date, entries, description, ref_type, ref_id, user_
     transaction_id = _uuid()
     now = get_utc_now()
 
-    # FIX: Wrap ledger writes in a database transaction so that either ALL lines
-    # are written or NONE (atomic). Previously a failure mid-way could leave an
-    # unbalanced journal entry in the ledger.
+    # Write ledger rows. If called from within an existing @in_transaction,
+    # the writes join that transaction automatically.  We avoid a nested
+    # @in_transaction to prevent savepoint issues on some Anvil runtimes.
     try:
-        @anvil.tables.in_transaction
-        def _do_post():
-            for e in entries:
-                line_ref_type = _safe_str(e.get('reference_type', ref_type))
-                line_ref_id = _safe_str(e.get('reference_id', ref_id))
-                app_tables.ledger.add_row(
-                    id=_uuid(),
-                    transaction_id=transaction_id,
-                    date=parsed_date,
-                    account_code=e['account_code'],
-                    debit=_round2(e.get('debit', 0)),
-                    credit=_round2(e.get('credit', 0)),
-                    description=_safe_str(e.get('description', description)),
-                    reference_type=line_ref_type,
-                    reference_id=line_ref_id,
-                    created_by=_safe_str(user_email),
-                    created_at=now,
-                )
+        for e in entries:
+            line_ref_type = _safe_str(e.get('reference_type', ref_type))
+            line_ref_id = _safe_str(e.get('reference_id', ref_id))
+            app_tables.ledger.add_row(
+                id=_uuid(),
+                transaction_id=transaction_id,
+                date=parsed_date,
+                account_code=e['account_code'],
+                debit=_round2(e.get('debit', 0)),
+                credit=_round2(e.get('credit', 0)),
+                description=_safe_str(e.get('description', description)),
+                reference_type=line_ref_type,
+                reference_id=line_ref_id,
+                created_by=_safe_str(user_email),
+                created_at=now,
+            )
 
-        _do_post()
         _invalidate_report_cache()
         logger.info("Journal entry %s posted (%d lines) by %s", transaction_id, len(entries), user_email)
         return {'success': True, 'transaction_id': transaction_id}
     except Exception as e:
         logger.exception("post_journal_entry error")
-        return {'success': False, 'message': 'An error occurred. Please try again later.'}
+        return {'success': False, 'message': f'Journal entry failed: {e}'}
 
 
 @anvil.server.callable

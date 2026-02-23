@@ -949,7 +949,7 @@ container:
             tbody.innerHTML = html;
           }
 
-          function invCalcCylinders() {
+          window.invCalcCylinders = function() {
             var widthVal = parseInt(document.getElementById("invWidth").value) || 0;
             var colorsVal = parseInt(document.getElementById("invColors").value) || 0;
             var pricePerCM = INV_CYL_PRICES[widthVal] || 0;
@@ -985,7 +985,7 @@ container:
             var stdFob = parseFloat(document.getElementById("invFobStd").value) || 0;
             document.getElementById("invFobCyl").value = (stdFob + totalCost).toFixed(2);
             obCalcSummary();
-          }
+          };
 
           window.invBuildCode = function() {
             var cond = document.getElementById("invCondition").value;

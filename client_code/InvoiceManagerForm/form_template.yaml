@@ -18,16 +18,16 @@ container:
         .im-tab:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .im-tab.active { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
 
-        .im-tab.clients { background: #e0f2f1; color: #00695c; border-color: #80cbc4; }
-        .im-tab.clients.active { background: #009688; color: #fff; border-color: #009688; }
+        .im-tab.purchase_invoices { background: #e0f2f1; color: #00695c; border-color: #80cbc4; }
+        .im-tab.purchase_invoices.active { background: #009688; color: #fff; border-color: #009688; }
         .im-tab.suppliers { background: #fff3e0; color: #e65100; border-color: #ffcc80; }
         .im-tab.suppliers.active { background: #ff9800; color: #fff; border-color: #ff9800; }
         .im-tab.contracts { background: #e3f2fd; color: #1565c0; border-color: #90caf9; }
         .im-tab.contracts.active { background: #2196f3; color: #fff; border-color: #2196f3; }
         .im-tab.service_suppliers { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
         .im-tab.service_suppliers.active { background: #43a047; color: #fff; border-color: #43a047; }
-        .im-tab.quotations { background: #f3e5f5; color: #7b1fa2; border-color: #ce93d8; }
-        .im-tab.quotations.active { background: #9c27b0; color: #fff; border-color: #9c27b0; }
+        .im-tab.sales_invoices { background: #f3e5f5; color: #7b1fa2; border-color: #ce93d8; }
+        .im-tab.sales_invoices.active { background: #9c27b0; color: #fff; border-color: #9c27b0; }
 
         /* Search */
         .im-search-bar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }

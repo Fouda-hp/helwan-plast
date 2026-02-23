@@ -3788,15 +3788,19 @@ def add_opening_balance_inventory(data, token_or_email=None):
 # Parts & Components System
 # ---------------------------------------------------------------------------
 
-_PART_CATEGORY_PREFIX = {
-    'cylinder': 'CYL',
-    'motor': 'MOT',
-    'pump': 'PMP',
-    'blade': 'BLD',
-    'bearing': 'BRG',
-    'electrical': 'ELC',
-    'other': 'PRT',
-}
+_DEFAULT_PART_CATEGORIES = [
+    {'name': 'Cylinder', 'prefix': 'CYL', 'sort_order': 1},
+    {'name': 'Motor', 'prefix': 'MOT', 'sort_order': 2},
+    {'name': 'Pump', 'prefix': 'PMP', 'sort_order': 3},
+    {'name': 'Blade', 'prefix': 'BLD', 'sort_order': 4},
+    {'name': 'Bearing', 'prefix': 'BRG', 'sort_order': 5},
+    {'name': 'Electrical', 'prefix': 'ELC', 'sort_order': 6},
+    {'name': 'Other', 'prefix': 'PRT', 'sort_order': 99},
+]
+
+PART_CATEGORIES_COLS = [
+    'id', 'name', 'prefix', 'sort_order', 'created_at', 'created_by',
+]
 
 PARTS_CATALOG_COLS = [
     'id', 'part_code', 'name', 'category', 'description',
@@ -3810,14 +3814,49 @@ PART_SALES_COLS = [
 ]
 
 
+def _get_category_prefix(category_name):
+    """Look up prefix for a category from DB, fallback to PRT."""
+    cat_lower = _safe_str(category_name).lower()
+    try:
+        for row in app_tables.part_categories.search():
+            if _safe_str(row.get('name')).lower() == cat_lower:
+                return _safe_str(row.get('prefix')) or 'PRT'
+    except Exception:
+        pass
+    # Fallback: check defaults
+    for d in _DEFAULT_PART_CATEGORIES:
+        if d['name'].lower() == cat_lower:
+            return d['prefix']
+    return 'PRT'
+
+
+def _seed_default_categories():
+    """Seed default part categories if table is empty."""
+    try:
+        existing = list(app_tables.part_categories.search())
+        if len(existing) > 0:
+            return  # Already seeded
+        now = get_utc_now()
+        for cat in _DEFAULT_PART_CATEGORIES:
+            app_tables.part_categories.add_row(
+                id=_uuid(),
+                name=cat['name'],
+                prefix=cat['prefix'],
+                sort_order=cat['sort_order'],
+                created_at=now,
+                created_by='system',
+            )
+        logger.info("Seeded %d default part categories", len(_DEFAULT_PART_CATEGORIES))
+    except Exception as e:
+        logger.warning("Could not seed part categories: %s", e)
+
+
 def _generate_part_code(category):
     """
     Generate the next sequential part code for a given category.
     Format: {PREFIX}-{SERIAL:03d} (e.g. CYL-001, MOT-002).
     """
-    prefix = _PART_CATEGORY_PREFIX.get(
-        _safe_str(category).lower(), 'PRT'
-    )
+    prefix = _get_category_prefix(category)
     max_serial = 0
     _MAX_SCAN = 10000
     for i, row in enumerate(app_tables.parts_catalog.search()):
@@ -3832,6 +3871,75 @@ def _generate_part_code(category):
             except (ValueError, TypeError):
                 pass
     return f'{prefix}-{max_serial + 1:03d}'
+
+
+@anvil.server.callable
+def get_part_categories(token_or_email=None):
+    """Return all part categories, seeding defaults if empty."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        _seed_default_categories()
+        rows = app_tables.part_categories.search()
+        results = []
+        for r in rows:
+            results.append(_row_to_dict(r, PART_CATEGORIES_COLS))
+        results.sort(key=lambda x: x.get('sort_order', 99))
+        return {'success': True, 'data': results}
+    except Exception as e:
+        logger.exception("get_part_categories error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def add_part_category(data, token_or_email=None):
+    """Add a new part category with name and prefix."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+
+    name = _safe_str(data.get('name')).strip()
+    prefix = _safe_str(data.get('prefix')).strip().upper()
+
+    if not name:
+        return {'success': False, 'message': 'Category name is required'}
+    if not prefix or len(prefix) > 5:
+        return {'success': False, 'message': 'Prefix is required (max 5 chars)'}
+
+    try:
+        # Check duplicates
+        for row in app_tables.part_categories.search():
+            if _safe_str(row.get('name')).lower() == name.lower():
+                return {'success': False, 'message': f'Category "{name}" already exists'}
+            if _safe_str(row.get('prefix')).upper() == prefix:
+                return {'success': False, 'message': f'Prefix "{prefix}" already in use'}
+
+        # Find max sort_order
+        max_order = 0
+        for row in app_tables.part_categories.search():
+            so = row.get('sort_order') or 0
+            if so > max_order and so < 99:
+                max_order = so
+
+        now = get_utc_now()
+        cat_id = _uuid()
+        app_tables.part_categories.add_row(
+            id=cat_id,
+            name=name,
+            prefix=prefix,
+            sort_order=max_order + 1,
+            created_at=now,
+            created_by=user_email,
+        )
+        logger.info("Part category '%s' (%s) created by %s", name, prefix, user_email)
+        return {
+            'success': True,
+            'category': {'id': cat_id, 'name': name, 'prefix': prefix, 'sort_order': max_order + 1},
+        }
+    except Exception as e:
+        logger.exception("add_part_category error")
+        return {'success': False, 'message': str(e)}
 
 
 @anvil.server.callable

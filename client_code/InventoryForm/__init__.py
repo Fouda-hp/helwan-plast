@@ -55,6 +55,10 @@ class InventoryForm(InventoryFormTemplate):
         anvil.js.window.pyGetContractProfitability = self.get_contract_profitability
         anvil.js.window.pyAddOpeningBalance = self.add_opening_balance
 
+        # JS Bridges — Part categories
+        anvil.js.window.pyGetPartCategories = self.get_part_categories
+        anvil.js.window.pyAddPartCategory = self.add_part_category
+
         # JS Bridges — Parts catalog & sales
         anvil.js.window.pyGetPartsCatalog = self.get_parts_catalog
         anvil.js.window.pyAddPartCatalog = self.add_part_catalog
@@ -134,6 +138,13 @@ class InventoryForm(InventoryFormTemplate):
             logger.warning("Could not load permissions: %s", e)
             return {'success': False, 'can_view': True, 'can_create': False,
                     'can_edit': False, 'can_delete': False, 'is_admin': False, 'role': 'viewer'}
+
+    # --- Part categories ---
+    def get_part_categories(self):
+        return anvil.server.call('get_part_categories', self._auth())
+
+    def add_part_category(self, data):
+        return anvil.server.call('add_part_category', data, self._auth())
 
     # --- Parts catalog & sales ---
     def get_parts_catalog(self, search=''):

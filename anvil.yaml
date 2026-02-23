@@ -603,6 +603,29 @@ db_schema:
       type: string
     server: full
     title: PARTS_CATALOG
+  part_categories:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: id
+      type: string
+    - admin_ui: {width: 200}
+      name: name
+      type: string
+    - admin_ui: {width: 100}
+      name: prefix
+      type: string
+    - admin_ui: {width: 80}
+      name: sort_order
+      type: number
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: created_by
+      type: string
+    server: full
+    title: PART_CATEGORIES
   part_sales:
     client: none
     columns:

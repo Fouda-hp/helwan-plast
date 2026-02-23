@@ -371,15 +371,10 @@ container:
             </div>
             <div class="form-group">
               <label>Category *</label>
-              <select id="ptCategory" onchange="ptAutoCode()">
-                <option value="cylinder">Cylinder</option>
-                <option value="motor">Motor</option>
-                <option value="pump">Pump</option>
-                <option value="blade">Blade</option>
-                <option value="bearing">Bearing</option>
-                <option value="electrical">Electrical</option>
-                <option value="other">Other</option>
-              </select>
+              <div style="display:flex;gap:6px;">
+                <select id="ptCategory" onchange="ptAutoCode()" style="flex:1;"></select>
+                <button class="btn btn-secondary" onclick="openAddCategoryModal()" style="padding:6px 10px;font-size:12px;white-space:nowrap;" title="Add new category">+</button>
+              </div>
             </div>
             <div class="form-group">
               <label>Code</label>
@@ -451,6 +446,25 @@ container:
           <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closePartModal()">Cancel</button>
             <button class="btn btn-save" style="background:#7b1fa2;" onclick="withButtonLock(this, function(){ return savePart(); })" data-loading-text="...">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Category Modal -->
+      <div class="hp-modal-overlay" id="addCategoryModal" style="display:none;">
+        <div class="hp-modal" style="max-width:380px;">
+          <h2 style="color:#7b1fa2;">Add Category</h2>
+          <div class="form-group">
+            <label>Category Name *</label>
+            <input type="text" id="catName" placeholder="e.g. Gear, Sensor">
+          </div>
+          <div class="form-group">
+            <label>Code Prefix * (max 5 chars)</label>
+            <input type="text" id="catPrefix" placeholder="e.g. GER, SNS" maxlength="5" style="text-transform:uppercase;">
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeAddCategoryModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveNewCategory()" style="background:#7b1fa2;">Save</button>
           </div>
         </div>
       </div>
@@ -1265,11 +1279,31 @@ container:
           // ============================================================
           var ptImportCounter = 0;
           var ptCatalogCache = [];
+          var ptCategoriesCache = [];
+
+          // ── Load categories into dropdown ──
+          async function loadPartCategories(selectEl, selectedValue) {
+            try {
+              var res = await window.pyGetPartCategories();
+              ptCategoriesCache = (res && res.data) ? res.data : [];
+              selectEl.innerHTML = '';
+              ptCategoriesCache.forEach(function(c) {
+                var opt = document.createElement('option');
+                opt.value = c.name;
+                opt.textContent = c.name + ' (' + c.prefix + ')';
+                selectEl.appendChild(opt);
+              });
+              if (selectedValue) selectEl.value = selectedValue;
+              else if (selectEl.options.length > 0) selectEl.selectedIndex = 0;
+            } catch(e) {
+              console.error('[Categories] load error:', e);
+            }
+          }
 
           window.openAddPartModal = async function() {
             document.getElementById('addPartModal').style.display = 'flex';
-            document.getElementById('ptCategory').value = 'cylinder';
             document.getElementById('ptCode').value = '';
+            document.getElementById('ptCode').readOnly = false;
             document.getElementById('ptName').value = '';
             document.getElementById('ptDesc').value = '';
             document.getElementById('ptQty').value = '1';
@@ -1284,6 +1318,8 @@ container:
             document.getElementById('ptEntryDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('ptNotes').value = '';
             ptImportCounter = 0;
+            // Load categories
+            await loadPartCategories(document.getElementById('ptCategory'));
             // Load catalog
             try {
               var res = await window.pyGetPartsCatalog('');
@@ -1298,18 +1334,33 @@ container:
 
           window.closePartModal = function() {
             document.getElementById('addPartModal').style.display = 'none';
+            // Re-enable fields that may have been locked
+            document.getElementById('ptCategory').disabled = false;
+            document.getElementById('ptCode').readOnly = false;
+            document.getElementById('ptName').readOnly = false;
           };
 
           window.ptOnCatalogSelect = function() {
             var sel = document.getElementById('ptCatalogSelect');
             var id = sel.value;
-            if (!id) return;
+            if (!id) {
+              // New Part — code editable
+              document.getElementById('ptCode').value = '';
+              document.getElementById('ptCode').readOnly = false;
+              document.getElementById('ptCategory').disabled = false;
+              document.getElementById('ptName').readOnly = false;
+              return;
+            }
             var part = ptCatalogCache.find(function(p) { return p.id === id; });
             if (part) {
-              document.getElementById('ptCategory').value = part.category || 'other';
+              document.getElementById('ptCategory').value = part.category || '';
               document.getElementById('ptCode').value = part.part_code || '';
               document.getElementById('ptName').value = part.name || '';
               document.getElementById('ptDesc').value = part.description || '';
+              // Lock code & category & name — already saved in catalog
+              document.getElementById('ptCode').readOnly = true;
+              document.getElementById('ptCategory').disabled = true;
+              document.getElementById('ptName').readOnly = true;
               if (part.default_cost_usd) document.getElementById('ptUnitCost').value = part.default_cost_usd;
               ptCalcTotal();
             }
@@ -1319,6 +1370,39 @@ container:
             // Clear code when category changes (will auto-generate on save)
             if (!document.getElementById('ptCatalogSelect').value) {
               document.getElementById('ptCode').value = '';
+            }
+          };
+
+          // ── Add Category Modal ──
+          window.openAddCategoryModal = function() {
+            document.getElementById('addCategoryModal').style.display = 'flex';
+            document.getElementById('catName').value = '';
+            document.getElementById('catPrefix').value = '';
+          };
+
+          window.closeAddCategoryModal = function() {
+            document.getElementById('addCategoryModal').style.display = 'none';
+          };
+
+          window.saveNewCategory = async function() {
+            var name = document.getElementById('catName').value.trim();
+            var prefix = document.getElementById('catPrefix').value.trim().toUpperCase();
+            if (!name) { if (window.showNotification) window.showNotification('error','','Category name is required'); return; }
+            if (!prefix) { if (window.showNotification) window.showNotification('error','','Prefix is required'); return; }
+            try {
+              var res = await window.pyAddPartCategory({name: name, prefix: prefix});
+              console.log('[AddCategory] response:', JSON.stringify(res));
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success','','Category "' + name + '" added!');
+                closeAddCategoryModal();
+                // Reload categories and select the new one
+                await loadPartCategories(document.getElementById('ptCategory'), name);
+              } else {
+                if (window.showNotification) window.showNotification('error','', res ? res.message : 'Failed to add category');
+              }
+            } catch(e) {
+              console.error('[AddCategory] error:', e);
+              if (window.showNotification) window.showNotification('error','', String(e.message || e));
             }
           };
 

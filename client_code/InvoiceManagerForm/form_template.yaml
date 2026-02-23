@@ -368,7 +368,7 @@ container:
             var globalIdx = start + idx;
             var rowId = row.quotation_number || globalIdx;
             var isClickable = cfg.clickable && cfg.onRowClick;
-            html += '<tr' + (isClickable ? ' style="cursor:pointer;" onclick="tabConfig[activeTab].onRowClick(filtered[' + globalIdx + '])"' : '') + '>';
+            html += '<tr' + (isClickable ? ' style="cursor:pointer;" onclick="window._imRowClick(' + globalIdx + ')"' : '') + '>';
             cfg.keys.forEach(function(key) {
               if (key === '_toggle') {
                 var isOpen = expandedRows[rowId];
@@ -617,6 +617,12 @@ container:
 
 
         
+        // ── Row click handler (global scope for onclick) ──
+        window._imRowClick = function(idx) {
+          var cfg = tabConfig[activeTab];
+          if (cfg && cfg.onRowClick && filtered[idx]) cfg.onRowClick(filtered[idx]);
+        };
+
         // ── Export Invoices to Excel (CSV) ──
         window.exportInvoicesExcel = async function() {
           var btn = document.getElementById('imExportExcelBtn');

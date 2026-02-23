@@ -175,6 +175,7 @@ container:
         };
 
         async function loadInvoice() {
+          if (!document.getElementById('siContent')) return; // Form no longer active
           var parsed = parseHash();
           if (!parsed) {
             document.getElementById('siContent').innerHTML = '<div class="si-loading" style="color:#c62828;">No invoice specified</div>';

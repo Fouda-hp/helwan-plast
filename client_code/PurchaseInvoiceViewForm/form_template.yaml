@@ -558,6 +558,7 @@ container:
            Load Invoice
            ============================================================ */
         async function loadInvoice() {
+          if (!document.getElementById('piContent')) return; // Form no longer active
           var parsed = parseHash();
           if (!parsed) {
             document.getElementById('piContent').innerHTML = '<div class="pi-loading" style="color:#c62828;">No invoice specified</div>';

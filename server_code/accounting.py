@@ -3161,6 +3161,8 @@ INVENTORY_COLS = [
     'id', 'machine_code', 'description', 'purchase_invoice_id', 'contract_number',
     'purchase_cost', 'import_costs_total', 'total_cost', 'selling_price',
     'status', 'location', 'notes', 'machine_config_json', 'created_at', 'updated_at',
+    'item_type', 'quantity', 'quantity_available', 'cylinder_size',
+    'group_id', 'cost_usd', 'discount_usd',
 ]
 
 
@@ -3385,19 +3387,24 @@ def migrate_import_costs_to_inventory(token_or_email=None):
 
 
 @anvil.server.callable
-def get_inventory(status=None, search='', token_or_email=None):
-    """Return inventory items, optionally filtered by status and search term."""
+def get_inventory(status=None, search='', token_or_email=None, item_type=None):
+    """Return inventory items, optionally filtered by status, item_type, and search term."""
     is_valid, user_email, error = _require_permission(token_or_email, 'read')
     if not is_valid:
         return error
     try:
-        # Filter at DB level when status is provided, stream instead of list()
         search_kwargs = {}
         if status:
             search_kwargs['status'] = status
+        # Filter by item_type at DB level if the column exists
+        if item_type and item_type in ('machine', 'cylinder'):
+            try:
+                search_kwargs['item_type'] = item_type
+            except Exception:
+                pass
         rows = app_tables.inventory.search(**search_kwargs)
         results = []
-        _MAX_ROWS = 10000  # Safety cap — bounded inventory scan
+        _MAX_ROWS = 10000
         search_lower = _safe_str(search).lower()
         _scan_count = 0
         for r in rows:
@@ -3405,6 +3412,11 @@ def get_inventory(status=None, search='', token_or_email=None):
             if _scan_count > _MAX_ROWS:
                 logger.warning("get_inventory: inventory scan capped at %d rows", _MAX_ROWS)
                 break
+            # Client-side item_type filter fallback (if DB filter didn't apply)
+            if item_type and item_type in ('machine', 'cylinder'):
+                row_type = _safe_str(r.get('item_type')) or 'machine'
+                if row_type != item_type:
+                    continue
             if search_lower:
                 searchable = ' '.join([
                     _safe_str(r.get('machine_code')),
@@ -3420,6 +3432,18 @@ def get_inventory(status=None, search='', token_or_email=None):
                 d['machine_config'] = json.loads(d.get('machine_config_json') or '{}')
             except (json.JSONDecodeError, TypeError):
                 d['machine_config'] = {}
+            # Backward compat: default values for new columns
+            d.setdefault('item_type', 'machine')
+            d.setdefault('quantity', 1)
+            d.setdefault('quantity_available', 1)
+            d.setdefault('cylinder_size', None)
+            d.setdefault('group_id', None)
+            if d['item_type'] is None:
+                d['item_type'] = 'machine'
+            if d['quantity'] is None:
+                d['quantity'] = 1
+            if d['quantity_available'] is None:
+                d['quantity_available'] = d['quantity']
             results.append(d)
         results.sort(key=lambda x: x.get('machine_code', ''))
         return {'success': True, 'data': results, 'count': len(results)}
@@ -3526,6 +3550,240 @@ def add_inventory_item(data, token_or_email=None):
         return {'success': False, 'message': 'An error occurred. Please try again later.'}
 
 
+# ---------------------------------------------------------------------------
+# OPENING BALANCE INVENTORY
+# ---------------------------------------------------------------------------
+@anvil.server.callable
+def add_opening_balance_inventory(data, token_or_email=None):
+    """
+    Create opening balance inventory: machine + cylinder items + import costs + journal entry.
+
+    Creates:
+    - 1 machine inventory row (item_type='machine')
+    - N cylinder inventory rows (item_type='cylinder') with quantity tracking
+    - Import cost rows in import_costs table (linked via inventory_id)
+    - Journal entry: DR 1200 (Inventory) / CR 3000 (Owner's Equity)
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+
+    machine_code = _safe_str(data.get('machine_code'))
+    if not machine_code:
+        return {'success': False, 'message': 'Machine code is required'}
+
+    exchange_rate = float(data.get('exchange_rate') or 0)
+    if exchange_rate <= 0:
+        return {'success': False, 'message': 'Exchange rate must be > 0'}
+
+    fob_standard = _round2(data.get('fob_standard') or 0)
+    cylinder_total_usd = _round2(data.get('cylinder_total_usd') or 0)
+    discount_usd = _round2(data.get('discount_usd') or 0)
+    total_usd = _round2(fob_standard + cylinder_total_usd - discount_usd)
+    if total_usd < 0:
+        return {'success': False, 'message': 'Total cannot be negative'}
+
+    total_egp = _round2(total_usd * exchange_rate)
+    import_costs_list = data.get('import_costs') or []
+    import_costs_total_egp = _round2(sum(float(ic.get('amount_egp') or 0) for ic in import_costs_list))
+    grand_total_egp = _round2(total_egp + import_costs_total_egp)
+
+    if grand_total_egp <= 0:
+        return {'success': False, 'message': 'Grand total must be > 0'}
+
+    # Parse entry date
+    entry_date_str = _safe_str(data.get('entry_date'))
+    try:
+        if entry_date_str:
+            parsed_date = date.fromisoformat(entry_date_str[:10])
+        else:
+            parsed_date = date.today()
+    except (ValueError, TypeError):
+        parsed_date = date.today()
+
+    if is_period_locked(parsed_date):
+        return {'success': False, 'message': 'Cannot post: accounting period is locked.'}
+
+    cylinders = data.get('cylinders') or []
+    description = _safe_str(data.get('description'))
+    location = _safe_str(data.get('location'))
+    notes = _safe_str(data.get('notes'))
+
+    # Build machine config JSON
+    machine_config = {}
+    for field in ['condition', 'machine_type', 'colors', 'machine_width', 'material', 'winder']:
+        if data.get(field):
+            machine_config[field] = data[field]
+    if data.get('optionals'):
+        machine_config['optionals'] = data['optionals']
+    machine_config['fob_standard'] = fob_standard
+    machine_config['fob_with_cylinders'] = fob_standard + cylinder_total_usd
+    if cylinders:
+        machine_config['cylinders'] = cylinders
+
+    now = get_utc_now()
+    group_id = _uuid()
+
+    # --- Proportional discount allocation ---
+    gross_total = fob_standard + cylinder_total_usd
+    if gross_total > 0 and discount_usd > 0:
+        machine_discount = _round2(discount_usd * (fob_standard / gross_total))
+        cylinder_discount = _round2(discount_usd - machine_discount)
+    else:
+        machine_discount = 0
+        cylinder_discount = 0
+
+    machine_cost_usd = _round2(fob_standard - machine_discount)
+    machine_cost_egp = _round2(machine_cost_usd * exchange_rate)
+
+    try:
+        @anvil.tables.in_transaction
+        def _do_create():
+            # --- 1. Create machine inventory row ---
+            machine_id = _uuid()
+            machine_row_data = dict(
+                id=machine_id,
+                machine_code=machine_code,
+                description=description or f'Machine {machine_code}',
+                item_type='machine',
+                quantity=1,
+                quantity_available=1,
+                group_id=group_id,
+                cost_usd=machine_cost_usd,
+                discount_usd=machine_discount,
+                purchase_cost=machine_cost_egp,
+                import_costs_total=import_costs_total_egp,
+                total_cost=_round2(machine_cost_egp + import_costs_total_egp),
+                selling_price=0,
+                status='in_stock',
+                location=location,
+                notes=notes,
+                created_at=now,
+                updated_at=now,
+            )
+            try:
+                machine_row_data['machine_config_json'] = json.dumps(machine_config, ensure_ascii=False)
+            except Exception:
+                pass
+            try:
+                app_tables.inventory.add_row(**machine_row_data)
+            except anvil.tables.TableError:
+                # Fallback: remove columns that may not exist yet
+                for col in ['item_type', 'quantity', 'quantity_available', 'cylinder_size',
+                            'group_id', 'cost_usd', 'discount_usd', 'machine_config_json']:
+                    machine_row_data.pop(col, None)
+                app_tables.inventory.add_row(**machine_row_data)
+
+            # --- 2. Create cylinder inventory rows ---
+            cylinder_item_ids = []
+            if cylinder_total_usd > 0 and cylinders:
+                for cyl in cylinders:
+                    cyl_size = float(cyl.get('size') or 0)
+                    cyl_count = int(cyl.get('count') or 0)
+                    cyl_cost_usd = float(cyl.get('cost') or 0)
+                    if cyl_size <= 0 or cyl_count <= 0:
+                        continue
+
+                    # Proportional discount for this cylinder group
+                    if cylinder_total_usd > 0 and cylinder_discount > 0:
+                        cyl_discount = _round2(cylinder_discount * (cyl_cost_usd / cylinder_total_usd))
+                    else:
+                        cyl_discount = 0
+                    cyl_net_usd = _round2(cyl_cost_usd - cyl_discount)
+                    cyl_cost_egp = _round2(cyl_net_usd * exchange_rate)
+
+                    cyl_id = _uuid()
+                    cyl_row_data = dict(
+                        id=cyl_id,
+                        machine_code=f'{machine_code}/CYL-{int(cyl_size)}',
+                        description=f'Cylinder {int(cyl_size)}cm for {machine_code}',
+                        item_type='cylinder',
+                        quantity=cyl_count,
+                        quantity_available=cyl_count,
+                        cylinder_size=cyl_size,
+                        group_id=group_id,
+                        cost_usd=cyl_net_usd,
+                        discount_usd=cyl_discount,
+                        purchase_cost=cyl_cost_egp,
+                        import_costs_total=0,
+                        total_cost=cyl_cost_egp,
+                        selling_price=0,
+                        status='in_stock',
+                        location=location,
+                        notes=f'Opening balance - {machine_code}',
+                        created_at=now,
+                        updated_at=now,
+                    )
+                    try:
+                        app_tables.inventory.add_row(**cyl_row_data)
+                    except anvil.tables.TableError:
+                        for col in ['item_type', 'quantity', 'quantity_available', 'cylinder_size',
+                                    'group_id', 'cost_usd', 'discount_usd']:
+                            cyl_row_data.pop(col, None)
+                        app_tables.inventory.add_row(**cyl_row_data)
+                    cylinder_item_ids.append(cyl_id)
+
+            # --- 3. Store import costs ---
+            for ic in import_costs_list:
+                ic_desc = _safe_str(ic.get('description'))
+                ic_amount = _round2(ic.get('amount_egp') or 0)
+                if ic_amount <= 0:
+                    continue
+                ic_id = _uuid()
+                ic_row = dict(
+                    id=ic_id,
+                    purchase_invoice_id=None,
+                    cost_type='opening_balance_import',
+                    description=ic_desc or 'Opening balance import cost',
+                    amount=ic_amount,
+                    amount_egp=ic_amount,
+                    currency='EGP',
+                    date=parsed_date,
+                    created_by=user_email,
+                    created_at=now,
+                    payment_account=None,
+                    paid_amount=ic_amount,
+                )
+                # Add optional columns with fallback
+                try:
+                    ic_row['inventory_id'] = machine_id
+                    ic_row['original_currency'] = 'EGP'
+                    ic_row['original_amount'] = ic_amount
+                    ic_row['exchange_rate'] = 1.0
+                    app_tables.import_costs.add_row(**ic_row)
+                except anvil.tables.TableError:
+                    for col in ['inventory_id', 'original_currency', 'original_amount', 'exchange_rate']:
+                        ic_row.pop(col, None)
+                    app_tables.import_costs.add_row(**ic_row)
+
+            # --- 4. Post journal entry: DR 1200 / CR 3000 ---
+            entries = [
+                {'account_code': '1200', 'debit': grand_total_egp, 'credit': 0},
+                {'account_code': '3000', 'debit': 0, 'credit': grand_total_egp},
+            ]
+            je_result = post_journal_entry(
+                parsed_date, entries,
+                f'Opening balance: {machine_code} ({len(cylinder_item_ids)} cylinder types)',
+                'opening_balance', group_id, user_email,
+            )
+            if not je_result.get('success'):
+                raise Exception(je_result.get('message', 'Journal entry failed'))
+
+            return {
+                'success': True,
+                'group_id': group_id,
+                'machine_id': machine_id,
+                'cylinder_item_ids': cylinder_item_ids,
+                'transaction_id': je_result.get('transaction_id'),
+                'grand_total_egp': grand_total_egp,
+            }
+
+        return _do_create()
+    except Exception as e:
+        logger.exception("add_opening_balance_inventory error")
+        return {'success': False, 'message': str(e)}
+
+
 @anvil.server.callable
 def update_inventory_item(item_id, data, token_or_email=None):
     """Update an existing inventory item."""
@@ -3582,11 +3840,14 @@ def update_inventory_item(item_id, data, token_or_email=None):
 
 @anvil.server.callable
 def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
-                   token_or_email=None, vat_inclusive=True):
+                   token_or_email=None, vat_inclusive=True, quantity_to_sell=None):
     """
     Record the sale of an inventory item (mark as sold).
     Only items with status 'in_stock' can be sold.
     COGS = Landed Cost (purchase_cost + import_costs_total = total_cost).
+
+    For cylinder items (item_type='cylinder'), supports partial sales via quantity_to_sell.
+    COGS is proportional: (total_cost / quantity) * quantity_to_sell.
 
     Creates two journal entries:
     1) DR COGS (5000), CR Inventory (1200) — for total_cost (landed cost)
@@ -3643,8 +3904,27 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
                 if transit_balance > 0:
                     return {'success': False, 'message': 'Machine not yet received into inventory.'}
 
-        # Landed cost = purchase_cost + import_costs_total (both EGP)
-        total_cost = _round2(row.get('total_cost', 0))
+        # --- Partial cylinder sale support ---
+        item_type = _safe_str(row.get('item_type')) or 'machine'
+        qty_total = int(row.get('quantity') or 1) or 1
+        qty_available = int(row.get('quantity_available') or qty_total) or qty_total
+        is_partial_sale = False
+
+        if item_type == 'cylinder' and quantity_to_sell is not None:
+            quantity_to_sell = int(quantity_to_sell)
+            if quantity_to_sell <= 0:
+                return {'success': False, 'message': 'Quantity to sell must be > 0'}
+            if quantity_to_sell > qty_available:
+                return {'success': False, 'message': f'Only {qty_available} units available, cannot sell {quantity_to_sell}'}
+            is_partial_sale = (quantity_to_sell < qty_available)
+            # Proportional COGS
+            full_cost = _round2(row.get('total_cost', 0))
+            unit_cost = _round2(full_cost / qty_total) if qty_total > 0 else 0
+            total_cost = _round2(unit_cost * quantity_to_sell)
+        else:
+            # Machine or full cylinder sale
+            total_cost = _round2(row.get('total_cost', 0))
+
         sale_day = _safe_date(sale_date) or date.today()
 
         if not _validate_account_exists('5000'):
@@ -3705,14 +3985,33 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
         gross_profit = _round2(net_revenue - total_cost)
         margin = _round2((gross_profit / net_revenue * 100) if net_revenue else 0)
 
-        row.update(
+        # Update inventory row
+        update_fields = dict(
             contract_number=_safe_str(contract_number),
             selling_price=total_receivable,
-            status='sold',
             updated_at=get_utc_now(),
         )
-        logger.info("Inventory %s sold to contract %s (net_revenue %.2f, total_receivable %.2f, COGS %.2f, profit %.2f) by %s",
-                     item_id, contract_number, net_revenue, total_receivable, total_cost, gross_profit, user_email)
+        if is_partial_sale:
+            # Partial cylinder sale: decrement quantity, keep in_stock
+            new_qty_available = qty_available - quantity_to_sell
+            update_fields['quantity_available'] = new_qty_available
+            # Don't change status — still in stock
+        else:
+            update_fields['status'] = 'sold'
+            if item_type == 'cylinder':
+                update_fields['quantity_available'] = 0
+
+        try:
+            row.update(**update_fields)
+        except anvil.tables.TableError:
+            # Fallback if new columns don't exist
+            for col in ['quantity_available']:
+                update_fields.pop(col, None)
+            row.update(**update_fields)
+
+        sold_qty_label = f" (qty={quantity_to_sell})" if item_type == 'cylinder' and quantity_to_sell else ""
+        logger.info("Inventory %s%s sold to contract %s (net_revenue %.2f, total_receivable %.2f, COGS %.2f, profit %.2f) by %s",
+                     item_id, sold_qty_label, contract_number, net_revenue, total_receivable, total_cost, gross_profit, user_email)
         return {
             'success': True,
             'gross_profit': gross_profit,
@@ -3722,6 +4021,7 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
             'vat_amount': vat_amount,
             'total_receivable': total_receivable,
             'revenue': total_receivable,  # backward-compatible key
+            'is_partial_sale': is_partial_sale,
         }
     except Exception as e:
         logger.exception("sell_inventory error")
@@ -3729,12 +4029,16 @@ def sell_inventory(item_id, contract_number, selling_price, sale_date=None,
 
 
 @anvil.server.callable
-def link_inventory_to_contract(item_id, contract_number, selling_price, token_or_email=None):
+def link_inventory_to_contract(item_id, contract_number, selling_price,
+                               token_or_email=None, quantity_to_sell=None):
     """
     Backward-compatible alias for sell_inventory.
     Link an inventory item to a sales contract (mark as sold).
+    For cylinders, pass quantity_to_sell for partial sales.
     """
-    return sell_inventory(item_id, contract_number, selling_price, token_or_email=token_or_email)
+    return sell_inventory(item_id, contract_number, selling_price,
+                          token_or_email=token_or_email,
+                          quantity_to_sell=quantity_to_sell)
 
 
 # ===========================================================================

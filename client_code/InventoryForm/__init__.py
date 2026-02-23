@@ -48,11 +48,12 @@ class InventoryForm(InventoryFormTemplate):
         # JS Bridge — RBAC permissions
         anvil.js.window.pyGetPermissions = self.get_permissions
 
-        # JS Bridges — new (receive, sell, landed cost, profitability)
+        # JS Bridges — new (receive, sell, landed cost, profitability, opening balance)
         anvil.js.window.pyReceiveInventory = self.receive_inventory
         anvil.js.window.pySellInventory = self.sell_inventory
         anvil.js.window.pyGetLandedCost = self.get_landed_cost
         anvil.js.window.pyGetContractProfitability = self.get_contract_profitability
+        anvil.js.window.pyAddOpeningBalance = self.add_opening_balance
 
         register_notif_bridges()
 
@@ -60,11 +61,15 @@ class InventoryForm(InventoryFormTemplate):
         return self._token or get_auth_token()
 
     # --- Inventory CRUD ---
-    def get_inventory(self, status='', search=''):
-        return anvil.server.call('get_inventory', status, search, self._auth())
+    def get_inventory(self, status='', search='', item_type=None):
+        return anvil.server.call('get_inventory', status, search, self._auth(), item_type)
 
     def add_inventory_item(self, data):
         return anvil.server.call('add_inventory_item', data, self._auth())
+
+    def add_opening_balance(self, data):
+        """Create opening balance: machine + cylinders + import costs + journal entry."""
+        return anvil.server.call('add_opening_balance_inventory', data, self._auth())
 
     def update_inventory_item(self, item_id, data):
         return anvil.server.call('update_inventory_item', item_id, data, self._auth())
@@ -77,15 +82,21 @@ class InventoryForm(InventoryFormTemplate):
         """Mark item as received: in_transit → in_stock (no P&L impact)."""
         return anvil.server.call('receive_inventory', item_id, location, self._auth())
 
-    def sell_inventory(self, item_id, contract_number, selling_price, sale_date=None):
+    def sell_inventory(self, item_id, contract_number, selling_price, sale_date=None, quantity_to_sell=None):
         """Record sale: posts COGS (DR 5000, CR 1200) and Revenue (DR 1100, CR 4000)."""
+        kwargs = dict(token_or_email=self._auth())
+        if quantity_to_sell is not None:
+            kwargs['quantity_to_sell'] = int(quantity_to_sell)
         return anvil.server.call('sell_inventory', item_id, contract_number,
-                                 selling_price, sale_date, self._auth())
+                                 selling_price, sale_date, **kwargs)
 
-    def link_inventory_to_contract(self, item_id, contract_id, selling_price):
-        """Backward-compatible: same as sell_inventory."""
+    def link_inventory_to_contract(self, item_id, contract_id, selling_price, quantity_to_sell=None):
+        """Link to contract. For cylinders, pass quantity_to_sell for partial sales."""
+        kwargs = dict(token_or_email=self._auth())
+        if quantity_to_sell is not None:
+            kwargs['quantity_to_sell'] = int(quantity_to_sell)
         return anvil.server.call('link_inventory_to_contract', item_id, contract_id,
-                                 selling_price, self._auth())
+                                 selling_price, **kwargs)
 
     # --- Reports ---
     def get_landed_cost(self, purchase_invoice_id):

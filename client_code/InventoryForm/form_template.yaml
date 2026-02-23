@@ -22,6 +22,8 @@ container:
         .filter-row input:focus { outline: none; border-color: #667eea; }
         .filter-btn { padding: 8px 16px; border: 2px solid #667eea; background: #fff; color: #667eea; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .filter-btn.active { background: #667eea; color: #fff; }
+        .type-filter-btn { padding: 8px 16px; border: 2px solid #ff9800; background: #fff; color: #ff9800; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .type-filter-btn.active { background: #ff9800; color: #fff; }
         .table-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
         .table-wrap { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -32,6 +34,9 @@ container:
         .status-in_stock { background: #e8f5e9; color: #2e7d32; }
         .status-reserved { background: #fff3e0; color: #ef6c00; }
         .status-sold { background: #e3f2fd; color: #1565c0; }
+        .type-badge { padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .type-machine { background: #ede7f6; color: #5e35b1; }
+        .type-cylinder { background: #fff8e1; color: #f57f17; }
         .profit-positive { color: #2e7d32; font-weight: 600; }
         .profit-negative { color: #c62828; font-weight: 600; }
         .empty-msg { text-align: center; padding: 40px; color: #999; }
@@ -52,19 +57,30 @@ container:
         .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
         .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #667eea; }
         .hp-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
         .summary-card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; }
         .summary-card .num { font-size: 28px; font-weight: 700; }
         .summary-card .lbl { font-size: 12px; color: #666; margin-top: 4px; }
+        .ob-summary { background:#e8f5e9; border:1px solid #a5d6a7; border-radius:10px; padding:16px; margin:12px 0; }
+        .ob-summary h4 { margin:0 0 12px; color:#2e7d32; }
+        .ob-import { background:#e3f2fd; border:1px solid #90caf9; border-radius:10px; padding:16px; margin:12px 0; }
+        .ob-import h4 { margin:0 0 12px; color:#1565c0; display:flex; justify-content:space-between; align-items:center; }
+        .ob-grand { background:linear-gradient(135deg,#fff3e0,#ffe0b2); border:1px solid #ffcc02; border-radius:10px; padding:16px; margin:12px 0; text-align:center; }
+        .ob-grand .grand-label { font-size:13px; color:#e65100; font-weight:600; margin-bottom:4px; }
+        .ob-grand .grand-num { font-size:28px; font-weight:700; color:#e65100; }
+        .import-row { display:flex; gap:8px; margin:6px 0; align-items:center; }
+        .import-row input { flex:1; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px; }
+        .import-row .btn-remove { background:#f44336; color:#fff; border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; font-size:16px; flex-shrink:0; }
+        .btn-add-ic { background:#1565c0; color:#fff; border:none; border-radius:6px; padding:6px 14px; font-size:13px; font-weight:600; cursor:pointer; }
         @media (max-width: 768px) {
           .inv-wrapper { padding: 12px 8px; }
           .inv-header { flex-direction: column; align-items: flex-start; }
           .inv-header h1 { font-size: 20px; }
           .filter-row { flex-direction: column; }
-          .filter-row input, .filter-btn, .btn { width: 100%; }
+          .filter-row input, .filter-btn, .type-filter-btn, .btn { width: 100%; }
           .summary-cards { grid-template-columns: 1fr 1fr; }
           .table-wrap { overflow-x: auto; }
-          table { min-width: 920px; }
+          table { min-width: 1050px; }
           .hp-modal { width: 98%; padding: 14px; }
           .form-row { grid-template-columns: 1fr !important; }
           .hp-modal-actions { flex-direction: column; }
@@ -76,7 +92,7 @@ container:
         <div class="inv-header">
           <h1 id="pageTitle">Inventory</h1>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="openAddItemModal()" id="btnAdd">+ Add Item</button>
+            <button class="btn btn-primary" onclick="openAddItemModal()" id="btnAdd">+ Add Opening Balance</button>
             <button class="btn btn-back" onclick="goBack()" id="btnBack">Back</button>
           </div>
         </div>
@@ -88,6 +104,10 @@ container:
           <button class="filter-btn" data-status="in_stock" onclick="setFilter(this)" id="fStock">In Stock</button>
           <button class="filter-btn" data-status="reserved" onclick="setFilter(this)" id="fReserved">Reserved</button>
           <button class="filter-btn" data-status="sold" onclick="setFilter(this)" id="fSold">Sold</button>
+          <span style="border-left:2px solid #ddd;height:24px;margin:0 4px;"></span>
+          <button class="type-filter-btn active" data-type="" onclick="setTypeFilter(this)" id="fTypeAll">All Types</button>
+          <button class="type-filter-btn" data-type="machine" onclick="setTypeFilter(this)" id="fTypeMachine">Machines</button>
+          <button class="type-filter-btn" data-type="cylinder" onclick="setTypeFilter(this)" id="fTypeCylinder">Cylinders</button>
           <input type="text" id="searchInput" placeholder="Search by code or description..." oninput="debounceSearch()">
         </div>
 
@@ -96,8 +116,10 @@ container:
             <table>
               <thead>
                 <tr>
-                  <th id="thCode">Machine Code</th>
+                  <th id="thCode">Code</th>
+                  <th id="thType">Type</th>
                   <th id="thDesc">Description</th>
+                  <th id="thQty">Qty</th>
                   <th id="thPurchase">Purchase Cost</th>
                   <th id="thImport">Import Costs</th>
                   <th id="thTotal">Total Cost</th>
@@ -108,7 +130,7 @@ container:
                 </tr>
               </thead>
               <tbody id="invBody">
-                <tr><td colspan="9" class="empty-msg">Loading...</td></tr>
+                <tr><td colspan="11" class="empty-msg">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -118,7 +140,7 @@ container:
       <!-- Add/Edit Item Modal -->
       <div class="hp-modal-overlay" id="itemModal">
         <div class="hp-modal">
-          <h2 id="itemModalTitle">Add Inventory Item</h2>
+          <h2 id="itemModalTitle">Add Opening Balance</h2>
           <input type="hidden" id="editItemId" value="">
 
           <div class="form-row">
@@ -134,7 +156,7 @@ container:
 
           <!-- Machine Configuration Section -->
           <div id="invMachineConfig" style="background:#f0f4ff;border:1px solid #c5cae9;border-radius:10px;padding:16px;margin:12px 0;">
-            <h4 style="margin:0 0 12px;color:#3949ab;" id="lblMachConfig">⚙ Machine Configuration</h4>
+            <h4 style="margin:0 0 12px;color:#3949ab;" id="lblMachConfig">Machine Configuration</h4>
             <div class="form-row">
               <div class="form-group">
                 <label id="lblInvCondition">Condition</label>
@@ -201,14 +223,14 @@ container:
               </div>
               <div class="form-group" style="margin-bottom:0;">
                 <label id="lblInvFobCyl">FOB With Cylinders ($)</label>
-                <input type="number" id="invFobCyl" step="0.01" style="background:#e8f5e9;font-weight:700;font-size:15px;color:#1565c0;">
+                <input type="number" id="invFobCyl" step="0.01" style="background:#e8f5e9;font-weight:700;font-size:15px;color:#1565c0;" readonly>
               </div>
             </div>
           </div>
 
           <!-- Cylinders Table -->
           <div id="invCylSection" style="background:#fff8e1;border:1px solid #ffd54f;border-radius:10px;padding:16px;margin:12px 0;">
-            <h4 style="margin:0 0 10px;color:#f57f17;" id="lblInvCylinders">🔧 Cylinders</h4>
+            <h4 style="margin:0 0 10px;color:#f57f17;" id="lblInvCylinders">Cylinders</h4>
             <table class="cyl-table">
               <thead>
                 <tr>
@@ -230,10 +252,66 @@ container:
             </table>
           </div>
 
+          <!-- Financial Summary Section -->
+          <div class="ob-summary" id="obFinancialSection">
+            <h4 id="lblObFinancial">Financial Summary ($)</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label id="lblObMachineFob">Machine FOB ($)</label>
+                <input type="text" id="obMachineFob" readonly style="background:#f0f0f0;font-weight:700;">
+              </div>
+              <div class="form-group">
+                <label id="lblObCylTotal">Cylinder Total ($)</label>
+                <input type="text" id="obCylTotal" readonly style="background:#f0f0f0;font-weight:700;">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label id="lblObDiscount">Discount ($)</label>
+                <input type="number" id="obDiscountUsd" step="0.01" value="0" oninput="obCalcSummary()">
+              </div>
+              <div class="form-group">
+                <label id="lblObTotalUsd">Total ($)</label>
+                <input type="text" id="obTotalUsd" readonly style="background:#f0f0f0;font-weight:700;font-size:15px;">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label id="lblObRate">Exchange Rate (USD → EGP)</label>
+                <input type="number" id="obExchangeRate" step="0.01" value="0" oninput="obCalcSummary()">
+              </div>
+              <div class="form-group">
+                <label id="lblObTotalEgp">Total (EGP)</label>
+                <input type="text" id="obTotalEgp" readonly style="background:#e8f5e9;font-weight:700;font-size:15px;color:#2e7d32;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Import Costs Section -->
+          <div class="ob-import" id="obImportSection">
+            <h4>
+              <span id="lblObImport">Import Costs (EGP)</span>
+              <button class="btn-add-ic" onclick="obAddImportRow()" id="btnAddIc">+ Add</button>
+            </h4>
+            <div id="obImportRows"></div>
+            <div style="text-align:right;margin-top:8px;font-weight:700;font-size:14px;">
+              <span id="lblObImportTotal">Total Import:</span>
+              <span id="obImportTotal" style="color:#1565c0;font-size:16px;">0.00</span>
+              <span> EGP</span>
+            </div>
+          </div>
+
+          <!-- Grand Total -->
+          <div class="ob-grand">
+            <div class="grand-label" id="lblObGrand">Total Landed Cost (EGP)</div>
+            <div class="grand-num" id="obGrandTotal">0.00</div>
+          </div>
+
+          <!-- Entry Date + Location + Notes -->
           <div class="form-row">
             <div class="form-group">
-              <label id="lblPurchaseCost">Purchase Cost</label>
-              <input type="number" id="fPurchaseCost" step="0.01" value="0">
+              <label id="lblEntryDate">Entry Date</label>
+              <input type="date" id="obEntryDate">
             </div>
             <div class="form-group">
               <label id="lblLocation">Location</label>
@@ -256,6 +334,7 @@ container:
         <div class="hp-modal">
           <h2 id="linkModalTitle">Link to Contract</h2>
           <input type="hidden" id="linkItemId" value="">
+          <input type="hidden" id="linkItemType" value="">
           <div class="form-group">
             <label id="lblContract">Contract *</label>
             <select id="fContract"><option value="">-- Select Contract --</option></select>
@@ -263,6 +342,11 @@ container:
           <div class="form-group">
             <label id="lblSellingPrice">Selling Price *</label>
             <input type="number" id="fSellingPrice" step="0.01" value="0">
+          </div>
+          <div class="form-group" id="fQtyGroup" style="display:none;">
+            <label id="lblSellQty">Quantity to Sell</label>
+            <input type="number" id="fSellQty" min="1" value="1">
+            <small id="fQtyAvailable" style="color:#666;"></small>
           </div>
           <div class="hp-modal-actions">
             <button class="btn btn-cancel" onclick="closeLinkModal()">Cancel</button>
@@ -278,6 +362,7 @@ container:
           var lang = localStorage.getItem('hp_language') || 'en';
           var isAr = lang === 'ar';
           var currentFilter = '';
+          var currentTypeFilter = '';
           var searchTimer = null;
           var allItems = [];
 
@@ -287,15 +372,20 @@ container:
           function setText(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
           function applyI18n() {
             setText('pageTitle', t('Inventory', 'المخازن'));
-            setText('btnAdd', t('+ Add Item', '+ اضافة صنف'));
+            setText('btnAdd', t('+ Add Opening Balance', '+ اضافة رصيد افتتاحي'));
             setText('btnBack', t('Back', 'رجوع'));
             setText('fAll', t('All', 'الكل'));
             setText('fStock', t('In Stock', 'في المخزن'));
             setText('fReserved', t('Reserved', 'محجوز'));
             setText('fSold', t('Sold', 'مباع'));
+            setText('fTypeAll', t('All Types', 'كل الانواع'));
+            setText('fTypeMachine', t('Machines', 'ماكينات'));
+            setText('fTypeCylinder', t('Cylinders', 'سلندرات'));
             var searchEl = document.getElementById('searchInput'); if (searchEl) searchEl.placeholder = t('Search by code or description...', 'بحث بالكود او الوصف...');
-            setText('thCode', t('Machine Code', 'كود الماكينة'));
+            setText('thCode', t('Code', 'الكود'));
+            setText('thType', t('Type', 'النوع'));
             setText('thDesc', t('Description', 'الوصف'));
+            setText('thQty', t('Qty', 'الكمية'));
             setText('thPurchase', t('Purchase Cost', 'سعر الشراء'));
             setText('thImport', t('Import Costs', 'تكاليف الاستيراد'));
             setText('thTotal', t('Total Cost', 'التكلفة الاجمالية'));
@@ -305,11 +395,10 @@ container:
             setText('thActions', t('Actions', 'اجراءات'));
             setText('lblCode', t('Machine Code *', '* كود الماكينة'));
             setText('lblDesc', t('Description', 'الوصف'));
-            setText('lblPurchaseCost', t('Purchase Cost', 'سعر الشراء'));
             setText('lblLocation', t('Location', 'الموقع'));
             setText('lblItemNotes', t('Notes', 'ملاحظات'));
-            // Machine config i18n
-            setText('lblMachConfig', t('⚙ Machine Configuration', '⚙ إعداد الماكينة'));
+            setText('lblEntryDate', t('Entry Date', 'تاريخ القيد'));
+            setText('lblMachConfig', t('Machine Configuration', 'إعداد الماكينة'));
             setText('lblInvCondition', t('Condition', 'الحالة'));
             setText('lblInvMachType', t('Machine Type', 'نوع الماكينة'));
             setText('lblInvColors', t('Colors', 'الألوان'));
@@ -319,28 +408,48 @@ container:
             setText('lblInvOptionals', t('Optional Features', 'اضافات اختيارية'));
             setText('lblInvFobStd', t('Standard Machine FOB ($)', 'سعر FOB القياسي ($)'));
             setText('lblInvFobCyl', t('FOB With Cylinders ($)', 'FOB مع السلندرات ($)'));
-            setText('lblInvCylinders', t('🔧 Cylinders', '🔧 السلندرات'));
+            setText('lblInvCylinders', t('Cylinders', 'السلندرات'));
             setText('cylThSize', t('Size (CM)', 'المقاس (سم)'));
             setText('cylThCount', t('Count', 'العدد'));
             setText('cylThCost', t('Cost ($)', 'التكلفة ($)'));
             setText('lblCylTotal', t('Total', 'الاجمالي'));
+            setText('lblObFinancial', t('Financial Summary ($)', 'ملخص مالي ($)'));
+            setText('lblObMachineFob', t('Machine FOB ($)', 'سعر الماكينة FOB ($)'));
+            setText('lblObCylTotal', t('Cylinder Total ($)', 'اجمالي السلندرات ($)'));
+            setText('lblObDiscount', t('Discount ($)', 'خصم ($)'));
+            setText('lblObTotalUsd', t('Total ($)', 'الاجمالي ($)'));
+            setText('lblObRate', t('Exchange Rate (USD → EGP)', 'سعر التحويل (دولار → جنيه)'));
+            setText('lblObTotalEgp', t('Total (EGP)', 'الاجمالي (جنيه)'));
+            setText('lblObImport', t('Import Costs (EGP)', 'مصاريف الاستيراد (جنيه)'));
+            setText('btnAddIc', t('+ Add', '+ اضافة'));
+            setText('lblObImportTotal', t('Total Import:', 'اجمالي الاستيراد:'));
+            setText('lblObGrand', t('Total Landed Cost (EGP)', 'اجمالي تكلفة المكنه (جنيه)'));
+            setText('lblSellQty', t('Quantity to Sell', 'الكمية المباعة'));
             var wrapper = document.querySelector('.inv-wrapper'); if (isAr && wrapper) wrapper.style.direction = 'rtl';
           }
 
           function renderSummary(data) {
-            var inStock = 0, reserved = 0, sold = 0, totalValue = 0;
+            var machInStock=0, machSold=0, machValue=0;
+            var cylAvail=0, cylSold=0, cylValue=0;
             (data || []).forEach(function(item) {
+              var itype = (item.item_type || 'machine');
               var s = (item.status || '').toLowerCase();
-              if (s === 'in_stock') inStock++;
-              else if (s === 'reserved') reserved++;
-              else if (s === 'sold') sold++;
-              totalValue += parseFloat(item.total_cost || item.purchase_cost || 0);
+              if (itype === 'cylinder') {
+                cylAvail += parseInt(item.quantity_available || 0);
+                cylSold += parseInt(item.quantity || 0) - parseInt(item.quantity_available || 0);
+                cylValue += parseFloat(item.total_cost || 0);
+              } else {
+                if (s === 'in_stock') machInStock++;
+                else if (s === 'sold') machSold++;
+                machValue += parseFloat(item.total_cost || 0);
+              }
             });
             var html = '';
-            html += '<div class="summary-card"><div class="num" style="color:#667eea;">' + data.length + '</div><div class="lbl">' + t('Total Items', 'اجمالي الاصناف') + '</div></div>';
-            html += '<div class="summary-card"><div class="num" style="color:#2e7d32;">' + inStock + '</div><div class="lbl">' + t('In Stock', 'في المخزن') + '</div></div>';
-            html += '<div class="summary-card"><div class="num" style="color:#ef6c00;">' + reserved + '</div><div class="lbl">' + t('Reserved', 'محجوز') + '</div></div>';
-            html += '<div class="summary-card"><div class="num" style="color:#1565c0;">' + sold + '</div><div class="lbl">' + t('Sold', 'مباع') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#5e35b1;">' + machInStock + '</div><div class="lbl">' + t('Machines In Stock', 'ماكينات في المخزن') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#1565c0;">' + machSold + '</div><div class="lbl">' + t('Machines Sold', 'ماكينات مباعة') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#2e7d32;">' + fmt(machValue) + '</div><div class="lbl">' + t('Machine Value (EGP)', 'قيمة الماكينات') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#f57f17;">' + cylAvail + '</div><div class="lbl">' + t('Cylinders Available', 'سلندرات متاحة') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#e65100;">' + fmt(cylValue) + '</div><div class="lbl">' + t('Cylinder Value (EGP)', 'قيمة السلندرات') + '</div></div>';
             document.getElementById('summaryCards').innerHTML = html;
           }
 
@@ -348,6 +457,13 @@ container:
             document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
             el.classList.add('active');
             currentFilter = el.getAttribute('data-status');
+            loadInventory();
+          };
+
+          window.setTypeFilter = function(el) {
+            document.querySelectorAll('.type-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+            el.classList.add('active');
+            currentTypeFilter = el.getAttribute('data-type');
             loadInventory();
           };
 
@@ -359,41 +475,51 @@ container:
           async function loadInventory() {
             var search = document.getElementById('searchInput').value.trim();
             var tbody = document.getElementById('invBody');
-            tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">' + t('Loading...', 'جاري التحميل...') + '</td></tr>';
             try {
-              var res = await window.pyGetInventory(currentFilter, search);
+              var res = await window.pyGetInventory(currentFilter, search, currentTypeFilter || null);
               if (res && res.success) {
                 allItems = res.data || [];
                 renderSummary(allItems);
                 renderTable(allItems);
               } else {
-                tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">' + (res ? res.message : 'Error') + '</td></tr>';
               }
             } catch (err) {
-              tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">' + err + '</td></tr>';
+              tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">' + err + '</td></tr>';
             }
           }
 
           function renderTable(data) {
             var tbody = document.getElementById('invBody');
             if (!data || data.length === 0) {
-              tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">' + t('No items found', 'لا يوجد اصناف') + '</td></tr>';
+              tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">' + t('No items found', 'لا يوجد اصناف') + '</td></tr>';
               return;
             }
             var html = '';
             data.forEach(function(item) {
               var purchaseCost = parseFloat(item.purchase_cost || 0);
-              var importCosts = parseFloat(item.import_costs || 0);
+              var importCosts = parseFloat(item.import_costs_total || item.import_costs || 0);
               var totalCost = parseFloat(item.total_cost || (purchaseCost + importCosts));
               var sellingPrice = parseFloat(item.selling_price || 0);
               var profit = sellingPrice > 0 ? sellingPrice - totalCost : 0;
               var profitClass = profit >= 0 ? 'profit-positive' : 'profit-negative';
               var statusKey = (item.status || 'in_stock').toLowerCase();
               var statusLabel = statusKey === 'in_stock' ? t('In Stock', 'في المخزن') : statusKey === 'reserved' ? t('Reserved', 'محجوز') : t('Sold', 'مباع');
+              var itemType = item.item_type || 'machine';
+              var typeLabel = itemType === 'cylinder'
+                ? t('Cylinder', 'سلندر') + (item.cylinder_size ? ' ' + item.cylinder_size + 'cm' : '')
+                : t('Machine', 'ماكينة');
+              var typeCls = itemType === 'cylinder' ? 'type-cylinder' : 'type-machine';
+              var qty = parseInt(item.quantity || 1);
+              var qtyAvail = parseInt(item.quantity_available || qty);
+              var qtyLabel = itemType === 'cylinder' ? qtyAvail + '/' + qty : '-';
 
               html += '<tr>';
               html += '<td><strong>' + (item.machine_code || '') + '</strong></td>';
+              html += '<td><span class="type-badge ' + typeCls + '">' + typeLabel + '</span></td>';
               html += '<td>' + (item.description || '') + '</td>';
+              html += '<td>' + qtyLabel + '</td>';
               html += '<td>' + fmt(purchaseCost) + '</td>';
               html += '<td>' + fmt(importCosts) + '</td>';
               html += '<td><strong>' + fmt(totalCost) + '</strong></td>';
@@ -401,13 +527,13 @@ container:
               html += '<td class="' + profitClass + '">' + (sellingPrice > 0 ? fmt(profit) : '-') + '</td>';
               html += '<td><span class="status-badge status-' + statusKey + '">' + statusLabel + '</span></td>';
               html += '<td style="white-space:nowrap;">';
-              if (userPerms.can_edit) {
+              if (userPerms.can_edit && itemType === 'machine') {
                 html += '<button class="btn btn-edit" onclick="withButtonLock(this, function(){ return editItem(\'' + item.id + '\'); })" data-loading-text="...">' + t('Edit', 'تعديل') + '</button> ';
               }
               if (statusKey === 'in_stock' && userPerms.can_edit) {
-                html += '<button class="btn btn-link" onclick="withButtonLock(this, function(){ openLinkModal(\'' + item.id + '\'); })">' + t('Link', 'ربط') + '</button> ';
+                html += '<button class="btn btn-link" onclick="withButtonLock(this, function(){ openLinkModal(\'' + item.id + '\'); })">' + t('Sell', 'بيع') + '</button> ';
               }
-              if (userPerms.can_delete) {
+              if (userPerms.can_delete && statusKey !== 'sold') {
                 html += '<button class="btn btn-delete" onclick="withButtonLock(this, function(){ return deleteItem(\'' + item.id + '\'); })" data-loading-text="...">' + t('Delete', 'حذف') + '</button>';
               }
               html += '</td></tr>';
@@ -415,14 +541,19 @@ container:
             tbody.innerHTML = html;
           }
 
+          /* ============================================================
+             Opening Balance Modal
+             ============================================================ */
+          var importCostCounter = 0;
+
           window.openAddItemModal = function() {
-            document.getElementById('itemModalTitle').textContent = t('Add Inventory Item', 'اضافة صنف');
+            document.getElementById('itemModalTitle').textContent = t('Add Opening Balance', 'اضافة رصيد افتتاحي');
             document.getElementById('editItemId').value = '';
             document.getElementById('fCode').value = '';
             document.getElementById('fDesc').value = '';
-            document.getElementById('fPurchaseCost').value = '0';
             document.getElementById('fLocation').value = '';
             document.getElementById('fItemNotes').value = '';
+            document.getElementById('obEntryDate').value = new Date().toISOString().split('T')[0];
             // Reset machine config
             document.getElementById('invCondition').value = '';
             document.getElementById('invMachType').value = '';
@@ -440,6 +571,22 @@ container:
             document.getElementById('invFobStd').value = '';
             document.getElementById('invFobCyl').value = '';
             invInitCylTable('');
+            // Reset financial
+            document.getElementById('obMachineFob').value = '0.00';
+            document.getElementById('obCylTotal').value = '0.00';
+            document.getElementById('obDiscountUsd').value = '0';
+            document.getElementById('obTotalUsd').value = '0.00';
+            document.getElementById('obExchangeRate').value = '';
+            document.getElementById('obTotalEgp').value = '0.00';
+            document.getElementById('obImportRows').innerHTML = '';
+            document.getElementById('obImportTotal').textContent = '0.00';
+            document.getElementById('obGrandTotal').textContent = '0.00';
+            importCostCounter = 0;
+            // Show financial sections for new items
+            document.getElementById('obFinancialSection').style.display = '';
+            document.getElementById('obImportSection').style.display = '';
+            document.querySelector('.ob-grand').style.display = '';
+            document.getElementById('obEntryDate').parentElement.style.display = '';
             invLoadCalcSettings();
             document.getElementById('itemModal').classList.add('show');
           };
@@ -451,10 +598,14 @@ container:
             document.getElementById('editItemId').value = item.id;
             document.getElementById('fCode').value = item.machine_code || '';
             document.getElementById('fDesc').value = item.description || '';
-            document.getElementById('fPurchaseCost').value = item.purchase_cost || 0;
             document.getElementById('fLocation').value = item.location || '';
             document.getElementById('fItemNotes').value = item.notes || '';
-            // Restore machine config from saved data
+            // Hide financial sections for edit (non-financial fields only)
+            document.getElementById('obFinancialSection').style.display = 'none';
+            document.getElementById('obImportSection').style.display = 'none';
+            document.querySelector('.ob-grand').style.display = 'none';
+            document.getElementById('obEntryDate').parentElement.style.display = 'none';
+            // Restore machine config
             var mc = item.machine_config || {};
             invLoadCalcSettings().then(function() {
               document.getElementById('invCondition').value = mc.condition || '';
@@ -463,7 +614,6 @@ container:
               document.getElementById('invWidth').value = mc.machine_width || '';
               document.getElementById('invMaterial').value = mc.material || '';
               document.getElementById('invWinder').value = mc.winder || '';
-              // Restore optionals checkboxes
               var opts = mc.optionals || [];
               document.getElementById('invOptVideo').checked = opts.indexOf('Video inspection') >= 0;
               document.getElementById('invOptPLC').checked = opts.indexOf('PLC') >= 0;
@@ -472,10 +622,8 @@ container:
               document.getElementById('invOptHydUnwind').checked = opts.indexOf('Hydraulic Station Unwind') >= 0;
               document.getElementById('invOptPneuRewind').checked = opts.indexOf('Pneumatic Rewind') >= 0;
               document.getElementById('invOptSurfRewind').checked = opts.indexOf('Surface Rewind') >= 0;
-              // Restore FOB values
               document.getElementById('invFobStd').value = mc.fob_standard || '';
               document.getElementById('invFobCyl').value = mc.fob_with_cylinders || '';
-              // Restore cylinders table from saved data
               var savedCyls = mc.cylinders || [];
               invInitCylTable(mc.colors || '');
               if (savedCyls.length > 0) {
@@ -495,13 +643,64 @@ container:
             document.getElementById('itemModal').classList.remove('show');
           };
 
+          /* ============================================================
+             Financial Summary Calculation
+             ============================================================ */
+          window.obCalcSummary = function() {
+            var machineFob = parseFloat(document.getElementById('invFobStd').value) || 0;
+            var cylTotalRaw = document.getElementById('invCylTotalCost').textContent || '0';
+            var cylTotal = parseFloat(cylTotalRaw.replace(/[$,]/g, '')) || 0;
+            var discount = parseFloat(document.getElementById('obDiscountUsd').value) || 0;
+            var totalUsd = machineFob + cylTotal - discount;
+            if (totalUsd < 0) totalUsd = 0;
+            var rate = parseFloat(document.getElementById('obExchangeRate').value) || 0;
+            var totalEgp = totalUsd * rate;
+
+            document.getElementById('obMachineFob').value = machineFob.toFixed(2);
+            document.getElementById('obCylTotal').value = cylTotal.toFixed(2);
+            document.getElementById('obTotalUsd').value = totalUsd.toFixed(2);
+            document.getElementById('obTotalEgp').value = totalEgp.toFixed(2);
+            obCalcGrandTotal();
+          };
+
+          window.obAddImportRow = function() {
+            importCostCounter++;
+            var container = document.getElementById('obImportRows');
+            var div = document.createElement('div');
+            div.className = 'import-row';
+            div.id = 'importRow' + importCostCounter;
+            div.innerHTML = '<input type="text" placeholder="' + t('Description', 'الوصف') + '" id="icDesc' + importCostCounter + '">' +
+                            '<input type="number" step="0.01" placeholder="' + t('Amount (EGP)', 'المبلغ (جنيه)') + '" id="icAmount' + importCostCounter + '" oninput="obCalcGrandTotal()" style="max-width:180px;">' +
+                            '<button class="btn-remove" onclick="obRemoveImportRow(' + importCostCounter + ')">x</button>';
+            container.appendChild(div);
+          };
+
+          window.obRemoveImportRow = function(idx) {
+            var row = document.getElementById('importRow' + idx);
+            if (row) row.remove();
+            obCalcGrandTotal();
+          };
+
+          window.obCalcGrandTotal = function() {
+            var totalEgp = parseFloat(document.getElementById('obTotalEgp').value) || 0;
+            var importTotal = 0;
+            document.querySelectorAll('[id^="icAmount"]').forEach(function(el) {
+              importTotal += parseFloat(el.value) || 0;
+            });
+            document.getElementById('obImportTotal').textContent = fmt(importTotal);
+            var grand = totalEgp + importTotal;
+            document.getElementById('obGrandTotal').textContent = fmt(grand);
+          };
+
+          /* ============================================================
+             Save — Opening Balance (new) or Update (edit)
+             ============================================================ */
           window.saveItem = async function() {
             var code = document.getElementById('fCode').value.trim();
             if (!code) {
               if (window.showNotification) window.showNotification('error', '', t('Machine code is required', 'كود الماكينة مطلوب'));
               return;
             }
-            // Collect optionals
             var optList = [];
             if (document.getElementById('invOptVideo').checked) optList.push('Video inspection');
             if (document.getElementById('invOptPLC').checked) optList.push('PLC');
@@ -510,56 +709,116 @@ container:
             if (document.getElementById('invOptHydUnwind').checked) optList.push('Hydraulic Station Unwind');
             if (document.getElementById('invOptPneuRewind').checked) optList.push('Pneumatic Rewind');
             if (document.getElementById('invOptSurfRewind').checked) optList.push('Surface Rewind');
-            // Collect cylinders
             var cyls = [];
             for (var ci = 1; ci <= INV_CYL_ROWS; ci++) {
               var cs = document.getElementById('invCylSize' + ci);
               var cc = document.getElementById('invCylCount' + ci);
               var co = document.getElementById('invCylCost' + ci);
               if (cs && cc && cs.value && cc.value) {
-                cyls.push({ size: parseFloat(cs.value), count: parseInt(cc.value), cost: co ? co.value : '' });
+                var costVal = co ? parseFloat(String(co.value).replace(/[^0-9.]/g, '')) || 0 : 0;
+                cyls.push({ size: parseFloat(cs.value), count: parseInt(cc.value), cost: costVal });
               }
             }
-            var data = {
-              machine_code: code,
-              description: document.getElementById('fDesc').value.trim(),
-              purchase_cost: parseFloat(document.getElementById('fPurchaseCost').value) || 0,
-              location: document.getElementById('fLocation').value.trim(),
-              notes: document.getElementById('fItemNotes').value.trim(),
-              condition: document.getElementById('invCondition').value,
-              machine_type: document.getElementById('invMachType').value,
-              colors: document.getElementById('invColors').value,
-              machine_width: document.getElementById('invWidth').value,
-              material: document.getElementById('invMaterial').value,
-              winder: document.getElementById('invWinder').value,
-              optionals: optList,
-              cylinders: cyls,
-              fob_standard: parseFloat(document.getElementById('invFobStd').value) || 0,
-              fob_with_cylinders: parseFloat(document.getElementById('invFobCyl').value) || 0
-            };
+
             var editId = document.getElementById('editItemId').value;
-            try {
-              var res;
-              if (editId) {
-                res = await window.pyUpdateInventoryItem(editId, data);
-              } else {
-                res = await window.pyAddInventoryItem(data);
+
+            if (editId) {
+              // --- Edit existing item (non-financial fields only) ---
+              var data = {
+                machine_code: code,
+                description: document.getElementById('fDesc').value.trim(),
+                location: document.getElementById('fLocation').value.trim(),
+                notes: document.getElementById('fItemNotes').value.trim(),
+                condition: document.getElementById('invCondition').value,
+                machine_type: document.getElementById('invMachType').value,
+                colors: document.getElementById('invColors').value,
+                machine_width: document.getElementById('invWidth').value,
+                material: document.getElementById('invMaterial').value,
+                winder: document.getElementById('invWinder').value,
+                optionals: optList,
+                cylinders: cyls,
+                fob_standard: parseFloat(document.getElementById('invFobStd').value) || 0,
+                fob_with_cylinders: parseFloat(document.getElementById('invFobCyl').value) || 0
+              };
+              try {
+                var res = await window.pyUpdateInventoryItem(editId, data);
+                if (res && res.success) {
+                  if (window.showNotification) window.showNotification('success', '', t('Item updated', 'تم تعديل الصنف'));
+                  closeItemModal(); loadInventory();
+                } else {
+                  if (window.showNotification) window.showNotification('error', '', res ? res.message : t('Update failed', 'فشل التعديل'));
+                }
+              } catch (err) {
+                if (window.showNotification) window.showNotification('error', '', String(err));
               }
-              if (res && res.success) {
-                if (window.showNotification) window.showNotification('success', '', t('Item saved', 'تم حفظ الصنف'));
-                closeItemModal();
-                loadInventory();
-              } else {
-                if (window.showNotification) window.showNotification('error', '', res ? res.message : t('Save failed', 'فشل الحفظ'));
+            } else {
+              // --- New Opening Balance ---
+              var rate = parseFloat(document.getElementById('obExchangeRate').value) || 0;
+              if (rate <= 0) {
+                if (window.showNotification) window.showNotification('error', '', t('Exchange rate is required', 'سعر التحويل مطلوب'));
+                return;
               }
-            } catch (err) {
-              if (window.showNotification) window.showNotification('error', '', String(err));
+              var importCosts = [];
+              document.querySelectorAll('.import-row').forEach(function(row) {
+                var descEl = row.querySelector('[id^="icDesc"]');
+                var amtEl = row.querySelector('[id^="icAmount"]');
+                if (amtEl && parseFloat(amtEl.value) > 0) {
+                  importCosts.push({description: descEl ? descEl.value : '', amount_egp: parseFloat(amtEl.value) || 0});
+                }
+              });
+              var cylTotalStr = document.getElementById('obCylTotal').value || '0';
+              var data = {
+                machine_code: code,
+                description: document.getElementById('fDesc').value.trim(),
+                condition: document.getElementById('invCondition').value,
+                machine_type: document.getElementById('invMachType').value,
+                colors: document.getElementById('invColors').value,
+                machine_width: document.getElementById('invWidth').value,
+                material: document.getElementById('invMaterial').value,
+                winder: document.getElementById('invWinder').value,
+                optionals: optList,
+                cylinders: cyls,
+                fob_standard: parseFloat(document.getElementById('invFobStd').value) || 0,
+                cylinder_total_usd: parseFloat(cylTotalStr) || 0,
+                discount_usd: parseFloat(document.getElementById('obDiscountUsd').value) || 0,
+                exchange_rate: rate,
+                import_costs: importCosts,
+                entry_date: document.getElementById('obEntryDate').value,
+                location: document.getElementById('fLocation').value.trim(),
+                notes: document.getElementById('fItemNotes').value.trim(),
+              };
+              try {
+                var res = await window.pyAddOpeningBalance(data);
+                if (res && res.success) {
+                  if (window.showNotification) window.showNotification('success', '', t('Opening balance saved', 'تم حفظ الرصيد الافتتاحي') + ' (EGP ' + fmt(res.grand_total_egp) + ')');
+                  closeItemModal(); loadInventory();
+                } else {
+                  if (window.showNotification) window.showNotification('error', '', res ? res.message : t('Save failed', 'فشل الحفظ'));
+                }
+              } catch (err) {
+                if (window.showNotification) window.showNotification('error', '', String(err));
+              }
             }
           };
 
+          /* ============================================================
+             Link / Sell Modal
+             ============================================================ */
           window.openLinkModal = async function(id) {
+            var item = allItems.find(function(x) { return String(x.id) === String(id); });
             document.getElementById('linkItemId').value = id;
+            document.getElementById('linkItemType').value = item ? (item.item_type || 'machine') : 'machine';
             document.getElementById('fSellingPrice').value = '0';
+            // Show quantity field for cylinders
+            var qtyGroup = document.getElementById('fQtyGroup');
+            if (item && item.item_type === 'cylinder') {
+              qtyGroup.style.display = 'block';
+              document.getElementById('fSellQty').max = item.quantity_available || 1;
+              document.getElementById('fSellQty').value = item.quantity_available || 1;
+              document.getElementById('fQtyAvailable').textContent = t('Available: ', 'المتاح: ') + (item.quantity_available || 0);
+            } else {
+              qtyGroup.style.display = 'none';
+            }
             var sel = document.getElementById('fContract');
             sel.innerHTML = '<option value="">' + t('-- Loading contracts --', '-- جاري تحميل العقود --') + '</option>';
             document.getElementById('linkModal').classList.add('show');
@@ -593,10 +852,16 @@ container:
               if (window.showNotification) window.showNotification('error', '', t('Enter selling price', 'ادخل سعر البيع'));
               return;
             }
+            var qtyToSell = null;
+            if (document.getElementById('fQtyGroup').style.display !== 'none') {
+              qtyToSell = parseInt(document.getElementById('fSellQty').value) || null;
+            }
             try {
-              var res = await window.pyLinkToContract(itemId, contractId, sellingPrice);
+              var res = await window.pyLinkToContract(itemId, contractId, sellingPrice, qtyToSell);
               if (res && res.success) {
-                if (window.showNotification) window.showNotification('success', '', t('Linked to contract', 'تم الربط بالعقد'));
+                var msg = t('Sold successfully', 'تم البيع بنجاح');
+                if (res.is_partial_sale) msg += t(' (partial)', ' (جزئي)');
+                if (window.showNotification) window.showNotification('success', '', msg);
                 closeLinkModal();
                 loadInventory();
               } else {
@@ -668,7 +933,6 @@ container:
             return u + r;
           }
 
-          // Initialize cylinder table rows
           function invInitCylTable(colorsVal) {
             var tbody = document.getElementById("invCylBody");
             var html = "";
@@ -685,7 +949,6 @@ container:
             tbody.innerHTML = html;
           }
 
-          // Calculate cylinder costs
           function invCalcCylinders() {
             var widthVal = parseInt(document.getElementById("invWidth").value) || 0;
             var colorsVal = parseInt(document.getElementById("invColors").value) || 0;
@@ -719,9 +982,9 @@ container:
             }
             document.getElementById("invCylTotalCount").textContent = totalCount || "0";
             document.getElementById("invCylTotalCost").textContent = "$" + totalCost.toLocaleString("en-US");
-            // Update FOB With Cylinders
             var stdFob = parseFloat(document.getElementById("invFobStd").value) || 0;
-            document.getElementById("invFobCyl").value = stdFob + totalCost;
+            document.getElementById("invFobCyl").value = (stdFob + totalCost).toFixed(2);
+            obCalcSummary();
           }
 
           window.invBuildCode = function() {
@@ -734,14 +997,12 @@ container:
             if (!cond || !mType || !cols || !wid || !mat || !wind) {
               return;
             }
-            // Code
             var prefix = cond === "used" ? "U" : "S";
             var an = invAniloxCode(mType);
             var mw = invMatWindCode(mat, wind);
             var ex = invUnwindRewindCode();
             var suffix = ex.length === 2 ? ex : mw + ex;
             document.getElementById("fCode").value = prefix + "H" + cols + "-" + (parseInt(wid) * 10) + an + "/" + suffix;
-            // FOB
             var base = 0;
             if (INV_PRICES[mType] && INV_PRICES[mType][cols] && INV_PRICES[mType][cols][wid] !== undefined) {
               base = parseFloat(INV_PRICES[mType][cols][wid]);
@@ -758,7 +1019,6 @@ container:
             if (document.getElementById("invOptSurfRewind").checked) optAdj += (INV_OPT_ADJ["Surface Rewind"] || 0);
             var stdFob = base + matAdj + windAdj + optAdj;
             document.getElementById("invFobStd").value = stdFob;
-            // Only reinitialize cylinders if user is actively building (not during edit restore)
             if (!document.getElementById('editItemId').value) {
               invInitCylTable(cols);
             }
@@ -766,10 +1026,9 @@ container:
           };
 
           window.invOnFobEdit = function() {
-            invCalcCylinders(); // recalc FOB with Cyl
+            invCalcCylinders();
           };
 
-          // Load settings from server
           async function invLoadCalcSettings() {
             try {
               if (!window.pyGetCalculatorSettings) return;
@@ -801,11 +1060,14 @@ container:
                   });
                   if (cur) sel.value = cur;
                 }
+                // Auto-fill exchange rate if available
+                if (d.exchangeRate && !document.getElementById('obExchangeRate').value) {
+                  document.getElementById('obExchangeRate').value = d.exchangeRate;
+                }
               }
             } catch (err) { /* use defaults */ }
           }
 
-          // RBAC permissions
           var userPerms = {can_view:true, can_create:true, can_edit:true, can_delete:true, can_export:true, is_admin:true};
 
           async function applyPermissions() {

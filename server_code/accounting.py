@@ -6498,7 +6498,7 @@ def fetch_exchange_rates_from_api(token_or_email=None):
     """Auto-fetch exchange rates from open.er-api.com and update the table."""
     is_valid, user_email, error = _require_authenticated(token_or_email)
     if not is_valid:
-        return {'success': False, 'message': error}
+        return error
     try:
         import anvil.http
         resp = anvil.http.request('https://open.er-api.com/v6/latest/USD', json=True)
@@ -6591,7 +6591,7 @@ def run_daily_notification_check(token_or_email=None):
     """Check for due/overdue purchase invoices and create notifications."""
     is_valid, user_email, error = _require_authenticated(token_or_email)
     if not is_valid:
-        return {'success': False, 'message': error}
+        return error
     try:
         now = datetime.now()
         seven_days = now + timedelta(days=7)
@@ -6665,7 +6665,7 @@ def get_purchase_invoice_pdf_data(invoice_id, token_or_email=None):
     """Get PDF-ready data for a purchase invoice (official document with currency, rate, payments, summary)."""
     is_valid, user_email, error = _require_authenticated(token_or_email)
     if not is_valid:
-        return {'success': False, 'message': error}
+        return error
     try:
         inv = app_tables.purchase_invoices.get(id=invoice_id)
         if not inv:
@@ -6710,7 +6710,7 @@ def get_pnl_report_pdf_data(date_from=None, date_to=None, token_or_email=None):
     """Get P&L report PDF data."""
     is_valid, user_email, error = _require_authenticated(token_or_email)
     if not is_valid:
-        return {'success': False, 'message': error}
+        return error
     try:
         _MAX_ROWS = 20000  # Safety cap for P&L report scans
         items = []
@@ -6737,7 +6737,7 @@ def get_supplier_statement_pdf_data(supplier_id, date_from=None, date_to=None, t
     """Get supplier account statement PDF data."""
     is_valid, user_email, error = _require_authenticated(token_or_email)
     if not is_valid:
-        return {'success': False, 'message': error}
+        return error
     try:
         supplier = app_tables.suppliers.get(id=supplier_id)
         if not supplier:
@@ -8069,7 +8069,9 @@ def set_opening_balance(name, entity_type, amount, token_or_email=None):
 @anvil.server.callable
 def delete_opening_balance(name, entity_type, token_or_email=None):
     """Delete an opening balance row from the opening_balances table."""
-    user_email = _require_permission(token_or_email, 'manage_opening_balances', fallback_action='admin')
+    is_valid, user_email, error = _require_permission(token_or_email, 'manage_opening_balances', fallback_action='admin')
+    if not is_valid:
+        return error
     try:
         deleted = False
         for r in app_tables.opening_balances.search(name=name, type=entity_type):
@@ -8080,10 +8082,11 @@ def delete_opening_balance(name, entity_type, token_or_email=None):
             return {'success': False, 'message': 'Opening balance not found'}
 
         try:
-            _audit(
-                user_email, 'delete_opening_balance',
+            AuthManager.log_audit(
+                'delete_opening_balance',
                 'opening_balances', name,
-                None, {'type': entity_type}
+                None, {'type': entity_type},
+                user_email
             )
         except Exception:
             pass

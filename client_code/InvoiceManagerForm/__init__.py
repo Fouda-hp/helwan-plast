@@ -10,10 +10,14 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
         self.init_components(**properties)
 
         # JS bridges — data tabs
-        anvil.js.window.pyGetClients = self.get_clients
+        anvil.js.window.pyGetPurchaseInvoices = self.get_purchase_invoices
         anvil.js.window.pyGetSuppliers = self.get_suppliers
         anvil.js.window.pyGetContracts = self.get_contracts
-        anvil.js.window.pyGetQuotations = self.get_quotations
+        anvil.js.window.pyGetSalesInvoices = self.get_sales_invoices
+
+        # JS bridges — export
+        anvil.js.window.pyExportPurchaseInvoices = self.export_purchase_invoices
+        anvil.js.window.pyExportSalesInvoices = self.export_sales_invoices
 
         # JS bridges — contract detail & payments
         anvil.js.window.pyGetContractDetail = self.get_contract_detail
@@ -38,11 +42,11 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
 
     # ── Data tab loaders ──
 
-    def get_clients(self, search=''):
+    def get_purchase_invoices(self, search=''):
         auth = self._auth()
         if not auth:
             return {'success': False, 'message': 'Not authenticated'}
-        return anvil.server.call('get_all_clients', 1, 500, search, False, auth)
+        return anvil.server.call('get_purchase_invoices', None, search, auth)
 
     def get_suppliers(self, search=''):
         auth = self._auth()
@@ -56,11 +60,25 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
             return {'success': False, 'message': 'Not authenticated'}
         return anvil.server.call('get_contracts_list', search, auth)
 
-    def get_quotations(self, search=''):
+    def get_sales_invoices(self, search=''):
         auth = self._auth()
         if not auth:
             return {'success': False, 'message': 'Not authenticated'}
-        return anvil.server.call('get_all_quotations', 1, 500, search, False, auth)
+        return anvil.server.call('get_sales_invoices_list', search, auth)
+
+    # ── Export ──
+
+    def export_purchase_invoices(self):
+        auth = self._auth()
+        if not auth:
+            return []
+        return anvil.server.call('export_purchase_invoices_data', auth)
+
+    def export_sales_invoices(self):
+        auth = self._auth()
+        if not auth:
+            return []
+        return anvil.server.call('export_sales_invoices_data', auth)
 
     # ── Contract detail & payments ──
 

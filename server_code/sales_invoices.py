@@ -398,6 +398,32 @@ def get_sales_invoices_list(search='', token_or_email=None):
 
 
 @anvil.server.callable
+def export_sales_invoices_data(token_or_email=None):
+    """Export all sales invoices for Excel/CSV."""
+    is_valid, _, error = _require_permission(token_or_email, 'export')
+    if not is_valid:
+        return []
+    if not _has_sales_invoices_table():
+        return []
+    try:
+        data = []
+        for row in app_tables.sales_invoices.search():
+            data.append({
+                'Invoice Number': row.get('invoice_number', ''),
+                'Contract Number': row.get('contract_number', ''),
+                'Client Name': row.get('client_name', ''),
+                'Model': row.get('model', ''),
+                'Total Price': row.get('total_price', 0),
+                'Created At': row.get('created_at', ''),
+            })
+        data.sort(key=lambda x: x.get('Invoice Number', ''), reverse=True)
+        return data
+    except Exception as e:
+        logger.error("export_sales_invoices_data error: %s", e)
+        return []
+
+
+@anvil.server.callable
 def get_contract_invoices(quotation_number, token_or_email=None):
     """Get all invoices for a specific contract."""
     is_valid, _, error = _require_permission(token_or_email, 'view')

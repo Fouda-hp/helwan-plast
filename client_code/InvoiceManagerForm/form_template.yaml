@@ -144,14 +144,15 @@ container:
           <button class="im-tab contracts active" data-tab="contracts" onclick="switchTab('contracts')"><span>Contracts</span></button>
           <button class="im-tab suppliers" data-tab="suppliers" onclick="switchTab('suppliers')"><span>Suppliers</span></button>
           <button class="im-tab service_suppliers" data-tab="service_suppliers" onclick="switchTab('service_suppliers')"><span>Service Suppliers</span></button>
-          <button class="im-tab clients" data-tab="clients" onclick="switchTab('clients')"><span>Clients</span></button>
-          <button class="im-tab quotations" data-tab="quotations" onclick="switchTab('quotations')"><span>Quotations</span></button>
+          <button class="im-tab purchase_invoices" data-tab="purchase_invoices" onclick="switchTab('purchase_invoices')"><span>Purchase Invoices</span></button>
+          <button class="im-tab sales_invoices" data-tab="sales_invoices" onclick="switchTab('sales_invoices')"><span>Sales Invoices</span></button>
         </div>
 
         <div class="im-panel">
           <div class="im-search-bar">
             <input type="text" class="im-search-input" id="imSearchInput" placeholder="Search..." oninput="onSearch(this.value)">
             <span class="im-count" id="imCount"></span>
+            <button class="im-invoice-btn" id="imExportExcelBtn" style="display:none;margin:0;padding:8px 18px;font-size:13px;background:#2e7d32;color:#fff;" onclick="exportInvoicesExcel()">Export Excel</button>
             <button class="im-invoice-btn" id="imAddSupBtn" style="display:none;margin:0;padding:8px 18px;font-size:13px;background:#ff9800;" onclick="openAddSupplierModal()">+ Add Supplier</button>
             <button class="im-invoice-btn" id="imAddSvcSupBtn" style="display:none;margin:0;padding:8px 18px;font-size:13px;background:#43a047;" onclick="openAddSvcSupplierModal()">+ Add Service Supplier</button>
           </div>
@@ -212,17 +213,35 @@ container:
         var allData = [];
         var filtered = [];
         var page = 1;
-        var perPage = 10;
+        var perPage = 25;
         var searchQuery = '';
         var expandedRows = {};
         var expandedSuppliers = {};
         var expandedSvcSuppliers = {};
 
         var tabConfig = {
-          clients: {
-            columns: ['Client Code', 'Client Name', 'Company', 'Phone', 'Country'],
-            keys: ['Client Code', 'Client Name', 'Company', 'Phone', 'Country'],
-            loader: 'pyGetClients'
+          purchase_invoices: {
+            columns: ['Invoice #', 'Supplier', 'Date', 'Total (EGP)', 'Paid', 'Status'],
+            keys: ['invoice_number', 'supplier_name', 'date', 'total_egp', 'paid_amount', 'status'],
+            loader: 'pyGetPurchaseInvoices',
+            clickable: true,
+            onRowClick: function(row) { location.hash = '#purchase-invoice-' + encodeURIComponent(row.invoice_number); },
+            formatters: {
+              'status': function(v) {
+                var cls = (v || 'draft').toLowerCase();
+                return '<span class="im-status ' + cls + '">' + (v || 'draft') + '</span>';
+              },
+              'total_egp': function(v) {
+                if (!v && v !== 0) return '';
+                var n = parseFloat(v);
+                return isNaN(n) ? v : n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+              },
+              'paid_amount': function(v) {
+                if (!v && v !== 0) return '';
+                var n = parseFloat(v);
+                return isNaN(n) ? v : n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+              }
+            }
           },
           suppliers: {
             columns: ['', 'Name', 'Company', 'Phone', 'Country', ''],
@@ -251,10 +270,19 @@ container:
               }
             }
           },
-          quotations: {
-            columns: ['Quotation #', 'Client Name', 'Company', 'Model', 'Date', 'Country'],
-            keys: ['Quotation#', 'Client Name', 'Company', 'Model', 'Date', 'Country'],
-            loader: 'pyGetQuotations'
+          sales_invoices: {
+            columns: ['Invoice #', 'Contract #', 'Client', 'Model', 'Total Price', 'Date'],
+            keys: ['invoice_number', 'contract_number', 'client_name', 'model', 'total_price', 'created_at'],
+            loader: 'pyGetSalesInvoices',
+            clickable: true,
+            onRowClick: function(row) { location.hash = '#sales-invoice-' + encodeURIComponent(row.invoice_number); },
+            formatters: {
+              'total_price': function(v) {
+                if (!v && v !== 0) return '';
+                var n = parseFloat(v);
+                return isNaN(n) ? v : n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+              }
+            }
           }
         };
 
@@ -282,6 +310,8 @@ container:
           if (addSupBtn) addSupBtn.style.display = (tab === 'suppliers') ? 'inline-flex' : 'none';
           var addBtn = document.getElementById('imAddSvcSupBtn');
           if (addBtn) addBtn.style.display = (tab === 'service_suppliers') ? 'inline-flex' : 'none';
+          var exportBtn = document.getElementById('imExportExcelBtn');
+          if (exportBtn) exportBtn.style.display = (tab === 'purchase_invoices' || tab === 'sales_invoices') ? 'inline-flex' : 'none';
           loadTabData();
         };
 
@@ -337,7 +367,8 @@ container:
           pageData.forEach(function(row, idx) {
             var globalIdx = start + idx;
             var rowId = row.quotation_number || globalIdx;
-            html += '<tr>';
+            var isClickable = cfg.clickable && cfg.onRowClick;
+            html += '<tr' + (isClickable ? ' style="cursor:pointer;" onclick="tabConfig[activeTab].onRowClick(filtered[' + globalIdx + '])"' : '') + '>';
             cfg.keys.forEach(function(key) {
               if (key === '_toggle') {
                 var isOpen = expandedRows[rowId];
@@ -585,6 +616,41 @@ container:
         };
 
 
+        
+        // ── Export Invoices to Excel (CSV) ──
+        window.exportInvoicesExcel = async function() {
+          var btn = document.getElementById('imExportExcelBtn');
+          btn.disabled = true; btn.textContent = 'Exporting...';
+          try {
+            var data;
+            if (activeTab === 'purchase_invoices') {
+              data = await window.pyExportPurchaseInvoices();
+            } else if (activeTab === 'sales_invoices') {
+              data = await window.pyExportSalesInvoices();
+            } else { return; }
+            if (!data || !data.length) { alert('No data to export'); return; }
+            var headers = Object.keys(data[0]);
+            var csv = '\uFEFF' + headers.join(',') + '\n';
+            data.forEach(function(row) {
+              csv += headers.map(function(h) {
+                var v = (row[h] != null ? row[h] : '').toString().replace(/"/g, '""');
+                return '"' + v + '"';
+              }).join(',') + '\n';
+            });
+            var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = activeTab + '_' + new Date().toISOString().slice(0,10) + '.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+          } catch(e) {
+            alert('Export error: ' + (e.message || e));
+          } finally {
+            btn.disabled = false; btn.textContent = 'Export Excel';
+          }
+        };
+
         // ── Create sales invoice (opens draft preview — no DB save yet) ──
         window.createSalesInvoice = function(qNum) {
           // Navigate to draft mode — invoice not saved until user clicks Save
@@ -772,6 +838,12 @@ container:
             var result = await loaderFn();
             if (result && result.success !== false) {
               allData = result.data || result || [];
+              // Sort invoice tabs by date (newest first)
+              var dateKey = (activeTab === 'purchase_invoices') ? 'date' :
+                            (activeTab === 'sales_invoices') ? 'created_at' : null;
+              if (dateKey) {
+                allData.sort(function(a, b) { return (b[dateKey] || '').localeCompare(a[dateKey] || ''); });
+              }
             } else {
               allData = [];
               if (result && result.message) {

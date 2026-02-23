@@ -63,6 +63,7 @@ def verify_backup_code_impl(user_email, code):
 _totp_attempt_tracker = {}  # {ip:email: {'count': int, 'window_start': float}}
 _TOTP_MAX_ATTEMPTS = 5
 _TOTP_WINDOW_SECONDS = 60
+_TOTP_MAX_TRACKER_SIZE = 1000  # prevent unbounded memory growth
 
 
 def _totp_rate_key(user_email, ip_address=None):
@@ -71,11 +72,26 @@ def _totp_rate_key(user_email, ip_address=None):
     return f"{ip}:{user_email}"
 
 
+def _totp_cleanup_tracker():
+    """Remove expired entries to prevent unbounded memory growth."""
+    import time
+    now = time.time()
+    if len(_totp_attempt_tracker) <= _TOTP_MAX_TRACKER_SIZE:
+        return
+    expired_keys = [
+        k for k, v in _totp_attempt_tracker.items()
+        if now - v.get('window_start', 0) > _TOTP_WINDOW_SECONDS * 2
+    ]
+    for k in expired_keys:
+        _totp_attempt_tracker.pop(k, None)
+
+
 def verify_totp_for_user(user_email, token, ip_address=None):
     """التحقق من كود TOTP من تطبيق المصادقة، أو كود احتياطي. مع حماية من brute force (IP+user)."""
     import time
     try:
         # --- Rate limiting on TOTP attempts (keyed by IP:email) ---
+        _totp_cleanup_tracker()
         now = time.time()
         rate_key = _totp_rate_key(user_email, ip_address)
         tracker = _totp_attempt_tracker.get(rate_key)

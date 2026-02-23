@@ -16,6 +16,7 @@ sales_invoices.py - إنشاء وعرض فواتير البيع
 """
 
 import anvil.server
+import anvil.tables
 from anvil.tables import app_tables
 import json
 import uuid
@@ -60,16 +61,22 @@ def _has_sales_invoices_table():
         return False
 
 
+@anvil.tables.in_transaction
 def _get_next_invoice_number():
-    """Generate next invoice number: INV-YYYY-NNN"""
+    """Generate next invoice number: INV-YYYY-NNN using atomic counter.
+    Uses the counters table with @in_transaction to prevent race conditions
+    (same pattern as quotation_numbers.py).
+    """
     from datetime import datetime
     year = datetime.now().year
     prefix = f'INV-{year}-'
-    max_num = 0
+    counter_key = f'sales_invoice_{year}'
 
     if not _has_sales_invoices_table():
         return f'{prefix}001'
 
+    # Get max existing number from table (safety net)
+    max_num = 0
     try:
         for row in app_tables.sales_invoices.search():
             inv_num = row.get('invoice_number', '') or ''
@@ -83,7 +90,25 @@ def _get_next_invoice_number():
     except Exception:
         pass
 
-    return f'{prefix}{(max_num + 1):03d}'
+    # Atomic counter from counters table
+    try:
+        counter_row = app_tables.counters.get(key=counter_key)
+        if counter_row is None:
+            next_val = max_num + 1
+            app_tables.counters.add_row(key=counter_key, value=next_val)
+        else:
+            current = counter_row['value'] or 0
+            try:
+                current = int(current)
+            except (ValueError, TypeError):
+                current = 0
+            next_val = max(current, max_num) + 1
+            counter_row['value'] = next_val
+    except Exception:
+        # Fallback if counters table doesn't exist
+        next_val = max_num + 1
+
+    return f'{prefix}{next_val:03d}'
 
 
 def _get_company_settings():

@@ -19,14 +19,6 @@ def _get_token():
     return auth_helpers.get_auth_token()
 
 
-def _is_admin():
-    try:
-        role = anvil.js.window.sessionStorage.getItem('user_role')
-        return role == 'admin'
-    except Exception:
-        return False
-
-
 def _get_all_notifications():
     """Fetch notifications — every user (including admin) sees ONLY their own."""
     token = _get_token()

@@ -175,7 +175,9 @@ def get_system_metrics(token_or_email=None):
     """
     is_valid, user_email, error = _check_monitoring_auth(token_or_email)
     if not is_valid:
-        # Fall back to admin session check
+        return error
+    # If authenticated via session token (not monitoring API key), require admin permission
+    if user_email != 'monitoring@system':
         is_valid, user_email, error = _require_permission(token_or_email, 'admin')
         if not is_valid:
             return error

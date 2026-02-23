@@ -38,8 +38,8 @@ if(hasSpinner()||pendingRequests>0){show();}else{hide();}}catch(err){hide();}}
 var _tickTimer=0;var DEBOUNCE_MS=80;function debouncedTick(){if(_tickTimer)return;var delay=slowConnection?50:DEBOUNCE_MS;_tickTimer=setTimeout(function(){_tickTimer=0;tick();},delay);}
 function start(){try{if(!document.body){setTimeout(start,100);return;}
 checkSlowConnection();if(navigator.connection||navigator.mozConnection||navigator.webkitConnection){var conn=navigator.connection||navigator.mozConnection||navigator.webkitConnection;conn.addEventListener('change',checkSlowConnection);}
-initNetworkMonitoring();if(typeof MutationObserver!=='undefined'){var observer=new MutationObserver(debouncedTick);observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden']});}
-var fallbackInterval=slowConnection?1000:2000;setInterval(tick,fallbackInterval);tick();}catch(err){}}
+initNetworkMonitoring();if(typeof MutationObserver!=='undefined'){var observer=new MutationObserver(debouncedTick);observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden']});window.__hpLoadingObserver=observer;}
+var fallbackInterval=slowConnection?1000:2000;window.__hpLoadingIntervalId=setInterval(tick,fallbackInterval);window.addEventListener('beforeunload',function(){if(window.__hpLoadingObserver){try{window.__hpLoadingObserver.disconnect();}catch(e){}}if(window.__hpLoadingIntervalId){try{clearInterval(window.__hpLoadingIntervalId);}catch(e){}}});tick();}catch(err){}}
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',function(){setTimeout(start,200);});}else{setTimeout(start,200);}
 window.showLoadingOverlay=show;window.hideLoadingOverlay=hide;window.setLoaderType=function(type){if(type!=='hand'&&type!=='spinner'&&type!=='code')return;try{localStorage.setItem('hp_loader_type',type);}catch(e){}
 var el=document.getElementById(OVERLAY_ID);if(el)el.removeAttribute('data-loader');};window.getLoaderType=getLoaderType;window.isSlowConnection=function(){return slowConnection;};window.getPendingRequests=function(){return pendingRequests;};})();

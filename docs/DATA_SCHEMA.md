@@ -4,9 +4,7 @@
 
 ---
 
-## جدول ناقص (يجب إنشاؤه يدوياً)
-
-### `accounting_period_locks`
+## `accounting_period_locks` (موجود في anvil.yaml)
 
 **الغرض:** تأمين الفترات المحاسبية (شهر/سنة). لو الفترة مقفولة، الترحيل والدفع ممنوع.
 
@@ -68,7 +66,8 @@
 | **scheduled_backups** | ... |
 | **sessions** | session_token, user_email, expires_at, is_active, ... |
 | **settings** | setting_key, setting_value, setting_type, ... |
-| **suppliers** | id, name, is_active, ... |
+| **suppliers** | id, name, company, phone, email, country, address, tax_id, notes, is_active, created_at, updated_at |
+| **service_suppliers** | id, name, company, phone, email, country, address, tax_id, notes, service_type, is_active, created_at, updated_at |
 | **users** | email, full_name, role, is_approved, is_active, ... |
 
 ---

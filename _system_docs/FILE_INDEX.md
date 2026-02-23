@@ -26,16 +26,24 @@ Helwan_Plast/
 │   ├── auth_webauthn.py                 # WebAuthn/Passkey support (9 callables)
 │   │
 │   ├── QuotationManager.py              # Quotation/Contract CRUD (65+ callables)
-│   ├── accounting.py                    # Full accounting module (85+ callables)
+│   ├── accounting.py                    # Full accounting module (100+ callables)
+│   ├── accounting_suppliers.py          # Suppliers & Service Suppliers CRUD (extracted)
 │   ├── quotation_pdf.py                 # PDF data builder for quotations
 │   ├── quotation_numbers.py             # Auto-numbering (client codes, quotation#)
 │   ├── quotation_backup.py              # Backup/restore to Google Drive
 │   ├── pdf_reports.py                   # ReportLab PDF generation
+│   ├── purchase_invoices_view.py        # Purchase invoice view callables
+│   ├── sales_invoices.py               # Sales invoice management
 │   │
 │   ├── notifications.py                 # Notification system (9 callables)
 │   ├── client_notes.py                  # Client notes & tags (6 callables)
 │   ├── client_timeline.py               # Client timeline (2 callables)
 │   ├── followup_reminders.py            # Follow-up reminders (6 callables)
+│   ├── monitoring.py                    # Health check & metrics endpoints
+│   │
+│   ├── shared_utils.py                  # Shared utilities (bounded_search, contracts_search)
+│   ├── cache_manager.py                 # Thread-safe TTL cache manager
+│   ├── structured_logging.py            # Structured logging & request timing
 │   │
 │   ├── fonts/dejavu-sans/               # DejaVuSans fonts for PDF rendering
 │   └── tests/                           # Test suite (7 test files)
@@ -62,9 +70,13 @@ Helwan_Plast/
 │   ├── DatabaseForm/                    # Database browser
 │   ├── DataImportForm/                  # CSV data import
 │   ├── FollowUpDashboardForm/           # Follow-up reminders dashboard
+│   ├── InvoiceManagerForm/              # Invoice manager (sales + service suppliers)
 │   ├── InventoryForm/                   # Inventory management
 │   ├── PaymentDashboardForm/            # Payment tracking dashboard
-│   └── PurchaseInvoicesForm/            # Purchase invoice management
+│   ├── PurchaseInvoicesForm/            # Purchase invoice management
+│   ├── PurchaseInvoiceViewForm/         # Purchase invoice detail view
+│   ├── SalesInvoiceForm/               # Sales invoice management
+│   └── ServiceSuppliersForm/           # Service suppliers CRUD
 │
 ├── theme/
 │   ├── parameters.yaml                  # Theme variables
@@ -130,10 +142,15 @@ QuotationManager.py
   ├── quotation_backup (Google Drive backup)
   └── accounting (contract save triggers accounting)
         ├── AuthManager (permission checks)
+        ├── accounting_suppliers (Suppliers & Service Suppliers CRUD)
+        ├── cache_manager (thread-safe TTL caches)
         └── pdf_reports (PDF generation)
 
 quotation_pdf.py (standalone, called from client)
 quotation_numbers.py (standalone, called from client)
+purchase_invoices_view.py → accounting (journal entries)
+sales_invoices.py → accounting (journal entries)
+monitoring.py → auth_permissions, cache_manager
 ```
 
 ### Feature Modules (standalone)

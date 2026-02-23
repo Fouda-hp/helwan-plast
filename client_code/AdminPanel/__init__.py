@@ -76,6 +76,7 @@ class AdminPanel(AdminPanelTemplate):
 
         # Lightweight in-form cache to reduce repeated heavy dashboard calls
         self._dash_cache = {'stats': None, 'acct': None, 'stats_ts': 0, 'acct_ts': 0}
+        self._DASH_CACHE_TTL = 45  # seconds
 
         # التحقق من الجلسة وتحميل بيانات المستخدم
         self._load_user_info()
@@ -2565,10 +2566,18 @@ class AdminPanel(AdminPanelTemplate):
     # =========================================================
     # Dashboard
     # =========================================================
+    def _invalidate_dash_cache(self):
+        """Clear the in-form dashboard cache so next fetch gets fresh data."""
+        self._dash_cache['stats'] = None
+        self._dash_cache['acct'] = None
+        self._dash_cache['stats_ts'] = 0
+        self._dash_cache['acct_ts'] = 0
+
     def get_dashboard_stats(self):
         import time
         now = time.time()
-        if self._dash_cache.get('stats') is not None and (now - self._dash_cache.get('stats_ts', 0)) < 45:
+        ttl = getattr(self, '_DASH_CACHE_TTL', 45)
+        if self._dash_cache.get('stats') is not None and (now - self._dash_cache.get('stats_ts', 0)) < ttl:
             return self._dash_cache['stats']
         result = anvil.server.call('get_dashboard_stats', self.get_auth())
         self._dash_cache['stats'] = result
@@ -2580,7 +2589,8 @@ class AdminPanel(AdminPanelTemplate):
         import time
         try:
             now = time.time()
-            if self._dash_cache.get('acct') is not None and (now - self._dash_cache.get('acct_ts', 0)) < 45:
+            ttl = getattr(self, '_DASH_CACHE_TTL', 45)
+            if self._dash_cache.get('acct') is not None and (now - self._dash_cache.get('acct_ts', 0)) < ttl:
                 return self._dash_cache['acct']
             result = anvil.server.call('get_accounting_dashboard_stats', self.get_auth())
             self._dash_cache['acct'] = result
@@ -2614,14 +2624,20 @@ class AdminPanel(AdminPanelTemplate):
         return anvil.server.call('get_available_permissions')
 
     def approve_user(self, user_id, role):
-        return anvil.server.call('approve_user', self.get_auth(), user_id, role)
+        result = anvil.server.call('approve_user', self.get_auth(), user_id, role)
+        self._invalidate_dash_cache()
+        return result
 
     def approve_user_with_permissions(self, user_id, role, permissions):
         """الموافقة على مستخدم مع صلاحيات مخصصة"""
-        return anvil.server.call('approve_user', self.get_auth(), user_id, role, permissions)
+        result = anvil.server.call('approve_user', self.get_auth(), user_id, role, permissions)
+        self._invalidate_dash_cache()
+        return result
 
     def reject_user(self, user_id):
-        return anvil.server.call('reject_user', self.get_auth(), user_id)
+        result = anvil.server.call('reject_user', self.get_auth(), user_id)
+        self._invalidate_dash_cache()
+        return result
 
     def update_user_role(self, user_id, new_role):
         return anvil.server.call('update_user_role', self.get_auth(), user_id, new_role)
@@ -2681,19 +2697,29 @@ class AdminPanel(AdminPanelTemplate):
 
     def delete_contract_admin(self, quotation_number):
         """حذف العقد بالكامل من جدول العقود (يتطلب صلاحية delete)."""
-        return anvil.server.call('delete_contract', quotation_number, self.get_auth())
+        result = anvil.server.call('delete_contract', quotation_number, self.get_auth())
+        self._invalidate_dash_cache()
+        return result
 
     def soft_delete_client(self, client_code):
-        return anvil.server.call('soft_delete_client', client_code, self.get_auth())
+        result = anvil.server.call('soft_delete_client', client_code, self.get_auth())
+        self._invalidate_dash_cache()
+        return result
 
     def soft_delete_quotation(self, quotation_number):
-        return anvil.server.call('soft_delete_quotation', quotation_number, self.get_auth())
+        result = anvil.server.call('soft_delete_quotation', quotation_number, self.get_auth())
+        self._invalidate_dash_cache()
+        return result
 
     def restore_client(self, client_code):
-        return anvil.server.call('restore_client', client_code, self.get_auth())
+        result = anvil.server.call('restore_client', client_code, self.get_auth())
+        self._invalidate_dash_cache()
+        return result
 
     def restore_quotation(self, quotation_number):
-        return anvil.server.call('restore_quotation', quotation_number, self.get_auth())
+        result = anvil.server.call('restore_quotation', quotation_number, self.get_auth())
+        self._invalidate_dash_cache()
+        return result
 
     # =========================================================
     # Export
@@ -2832,7 +2858,9 @@ class AdminPanel(AdminPanelTemplate):
 
     def update_setting(self, key, value):
         """تحديث إعداد معين"""
-        return anvil.server.call('update_setting', self.get_auth(), key, value)
+        result = anvil.server.call('update_setting', self.get_auth(), key, value)
+        self._invalidate_dash_cache()
+        return result
 
     def get_setting(self, key):
         """الحصول على قيمة إعداد معين"""

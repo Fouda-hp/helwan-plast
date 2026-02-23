@@ -10,7 +10,7 @@ import time
 
 # In-memory cache for validate_token result (avoids repeated server calls)
 _token_cache = {'result': None, 'ts': 0, 'token': None}
-_CACHE_TTL = 30  # seconds
+_CACHE_TTL = 10  # seconds (reduced from 30 for tighter role/permission checks)
 
 # توكن يُمرَّر قبل فتح لوحة المحاسب (نفس عملية البايثون) — يقرأه AccountantForm
 _accountant_token = None

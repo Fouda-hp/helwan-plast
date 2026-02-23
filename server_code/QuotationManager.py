@@ -2378,6 +2378,7 @@ def save_contract(contract_data, user_email='system', token_or_email=None):
                 supplier_id=None,
                 purchase_invoice_id=None,
                 currency=None,
+                lifecycle_status='negotiation',
                 created_at=get_utc_now(),
                 updated_at=get_utc_now(),
                 **payment_cols
@@ -2526,6 +2527,7 @@ def get_contract(quotation_number, token_or_email=None):
                 'num_payments': row['num_payments'],
                 'payments': payments,
                 'delivery_date': row['delivery_date'],
+                'lifecycle_status': (row.get('lifecycle_status') or 'negotiation').strip().lower(),
                 'created_at': row['created_at'].isoformat() if row['created_at'] else ''
             }}
         else:
@@ -2744,7 +2746,7 @@ def get_contracts_list(search='', token_or_email=None, page=1, page_size=50):
                 'delivery_date': r.get('delivery_date'),
                 'created_at': r.get('created_at').isoformat() if r.get('created_at') and hasattr(r.get('created_at'), 'isoformat') else '',
                 'payments': payments_display,
-                'lifecycle_status': (r.get('lifecycle_status') or 'draft').strip().lower()
+                'lifecycle_status': (r.get('lifecycle_status') or 'negotiation').strip().lower()
             })
             collected += 1
 
@@ -3588,15 +3590,12 @@ def restore_backup_from_drive(token_or_email, filename):
 # ===========================================================================
 # Feature 7: Contract Lifecycle — States + Timeline
 # ===========================================================================
-CONTRACT_LIFECYCLE_STATES = ['draft', 'negotiation', 'signed', 'in_progress', 'delivered', 'closed', 'cancelled']
+CONTRACT_LIFECYCLE_STATES = ['negotiation', 'signed', 'in_progress', 'delivered']
 CONTRACT_VALID_TRANSITIONS = {
-    'draft': ['negotiation', 'signed', 'cancelled'],
-    'negotiation': ['draft', 'signed', 'cancelled'],
-    'signed': ['in_progress', 'cancelled'],
-    'in_progress': ['delivered', 'cancelled'],
-    'delivered': ['closed'],
-    'closed': [],
-    'cancelled': ['draft'],
+    'negotiation': ['signed'],
+    'signed': ['in_progress'],
+    'in_progress': ['delivered'],
+    'delivered': [],
 }
 
 
@@ -3614,11 +3613,16 @@ def update_contract_status(quotation_number, new_status, notes='', token_or_emai
         if new_status not in CONTRACT_LIFECYCLE_STATES:
             return {'success': False, 'message': f'Invalid status: {new_status}'}
 
-        contract = _contracts_get_active(contract_number=quotation_number)
+        # Try lookup by quotation_number first, then by contract_number
+        try:
+            q_num = int(quotation_number)
+            contract = _contracts_get_active(quotation_number=q_num)
+        except (TypeError, ValueError):
+            contract = _contracts_get_active(contract_number=quotation_number)
         if not contract:
             return {'success': False, 'message': 'Contract not found'}
 
-        current_status = (contract.get('lifecycle_status') or 'draft').strip().lower()
+        current_status = (contract.get('lifecycle_status') or 'negotiation').strip().lower()
         allowed = CONTRACT_VALID_TRANSITIONS.get(current_status, [])
         if new_status not in allowed:
             return {'success': False,
@@ -3671,7 +3675,7 @@ def get_contract_timeline(quotation_number, token_or_email=None):
             history = json.loads(history_raw) if isinstance(history_raw, str) else (history_raw or [])
         except Exception:
             history = []
-        current = (contract.get('lifecycle_status') or 'draft').strip().lower()
+        current = (contract.get('lifecycle_status') or 'negotiation').strip().lower()
         return {'success': True, 'data': history, 'current_status': current,
                 'all_states': CONTRACT_LIFECYCLE_STATES,
                 'valid_transitions': CONTRACT_VALID_TRANSITIONS.get(current, [])}

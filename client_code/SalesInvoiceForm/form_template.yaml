@@ -174,11 +174,13 @@ container:
           }
         };
 
+        function _siSafe() { return document.getElementById('siContent'); }
+
         async function loadInvoice() {
-          if (!document.getElementById('siContent')) return; // Form no longer active
+          if (!_siSafe()) return; // Form no longer active
           var parsed = parseHash();
           if (!parsed) {
-            document.getElementById('siContent').innerHTML = '<div class="si-loading" style="color:#c62828;">No invoice specified</div>';
+            var _el = _siSafe(); if (_el) _el.innerHTML = '<div class="si-loading" style="color:#c62828;">No invoice specified</div>';
             return;
           }
 
@@ -187,26 +189,25 @@ container:
             if (parsed.mode === 'draft') {
               isDraft = true;
               draftQNum = parsed.quotationNumber;
-              // Show save button
-              document.getElementById('siSaveBtn').style.display = '';
+              var _sb = document.getElementById('siSaveBtn'); if (_sb) _sb.style.display = '';
               result = await window.pyGetDraftInvoiceData(parsed.quotationNumber);
             } else {
               isDraft = false;
               draftQNum = null;
-              // Hide save button for saved invoices
-              document.getElementById('siSaveBtn').style.display = 'none';
+              var _sb = document.getElementById('siSaveBtn'); if (_sb) _sb.style.display = 'none';
               result = await window.pyGetInvoicePdfData(parsed.invoiceNumber);
             }
 
+            if (!_siSafe()) return; // Form navigated away during await
             if (!result || !result.success) {
-              document.getElementById('siContent').innerHTML = '<div class="si-loading" style="color:#c62828;">' + (result && result.message ? result.message : 'Failed to load invoice') + '</div>';
+              var _el = _siSafe(); if (_el) _el.innerHTML = '<div class="si-loading" style="color:#c62828;">' + (result && result.message ? result.message : 'Failed to load invoice') + '</div>';
               return;
             }
             invoiceData = result.data;
             companyData = result.company;
             renderInvoice();
           } catch(e) {
-            document.getElementById('siContent').innerHTML = '<div class="si-loading" style="color:#c62828;">Error: ' + (e.message || e) + '</div>';
+            var _el = _siSafe(); if (_el) _el.innerHTML = '<div class="si-loading" style="color:#c62828;">Error: ' + (e.message || e) + '</div>';
           }
         }
 
@@ -381,7 +382,7 @@ container:
 
           html += '</div>'; // end si-page
 
-          document.getElementById('siContent').innerHTML = html;
+          var _siEl = _siSafe(); if (!_siEl) return; _siEl.innerHTML = html;
         }
 
         function infoRow(label, value) {

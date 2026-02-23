@@ -105,6 +105,9 @@ def record_contract_payment(quotation_number, amount, payment_date,
             created_at=now.isoformat(),
         )
 
+        # Auto-update contract lifecycle status based on payments
+        _auto_update_lifecycle(contract, q_num)
+
         # Return updated summary
         return _build_payment_summary(q_num, contract)
 
@@ -159,6 +162,57 @@ def delete_contract_payment(payment_id, token_or_email=None):
     except Exception as e:
         logger.error("delete_contract_payment error: %s", e)
         return {'success': False, 'message': 'Failed to delete payment'}
+
+
+def _auto_update_lifecycle(contract, quotation_number):
+    """Auto-update contract lifecycle based on payment status.
+    - First payment → in_progress
+    - Fully paid (remaining ≤ 0) → delivered
+    """
+    try:
+        current_status = (contract.get('lifecycle_status') or 'negotiation').strip().lower()
+
+        # Calculate total price
+        tp = contract.get('total_price') or 0
+        try:
+            total_price = float(str(tp).replace(',', '').replace('،', '').strip()) if tp else 0
+        except (TypeError, ValueError):
+            total_price = 0
+
+        # Calculate total paid
+        total_paid = 0
+        if _has_contract_payments_table():
+            for row in app_tables.contract_payments.search(quotation_number=int(quotation_number)):
+                total_paid += row['amount'] or 0
+
+        remaining = total_price - total_paid
+
+        # Determine new status
+        new_status = None
+        if remaining <= 0 and total_paid > 0 and current_status in ('negotiation', 'signed', 'in_progress'):
+            new_status = 'delivered'
+        elif total_paid > 0 and current_status in ('negotiation', 'signed'):
+            new_status = 'in_progress'
+
+        if new_status and new_status != current_status:
+            import json
+            history_raw = contract.get('status_history_json') or '[]'
+            try:
+                history = json.loads(history_raw) if isinstance(history_raw, str) else (history_raw or [])
+            except Exception:
+                history = []
+            history.append({
+                'from': current_status,
+                'to': new_status,
+                'date': get_utc_now().isoformat(),
+                'user': 'system',
+                'notes': 'Auto-updated by payment'
+            })
+            contract['lifecycle_status'] = new_status
+            contract['status_history_json'] = json.dumps(history)
+            logger.info("Contract %s auto-updated: %s → %s", contract.get('contract_number'), current_status, new_status)
+    except Exception as e:
+        logger.error("_auto_update_lifecycle error: %s", e)
 
 
 def _build_payment_summary(quotation_number, contract):

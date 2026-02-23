@@ -557,11 +557,13 @@ container:
         /* ============================================================
            Load Invoice
            ============================================================ */
+        function _piSafe() { return document.getElementById('piContent'); }
+
         async function loadInvoice() {
-          if (!document.getElementById('piContent')) return; // Form no longer active
+          if (!_piSafe()) return; // Form no longer active
           var parsed = parseHash();
           if (!parsed) {
-            document.getElementById('piContent').innerHTML = '<div class="pi-loading" style="color:#c62828;">No invoice specified</div>';
+            var _el = _piSafe(); if (_el) _el.innerHTML = '<div class="pi-loading" style="color:#c62828;">No invoice specified</div>';
             return;
           }
 
@@ -569,11 +571,12 @@ container:
             if (parsed.mode === 'new') {
               isProforma = true;
               supplierId = parsed.supplierId;
-              document.getElementById('piSaveBtn').style.display = '';
+              var _sb = document.getElementById('piSaveBtn'); if (_sb) _sb.style.display = '';
 
               var result = await window.pyGetNewPurchaseInvoiceData(supplierId);
+              if (!_piSafe()) return; // Form navigated away during await
               if (!result || !result.success) {
-                document.getElementById('piContent').innerHTML = '<div class="pi-loading" style="color:#c62828;">' + (result && result.message ? result.message : 'Failed to load data') + '</div>';
+                var _el = _piSafe(); if (_el) _el.innerHTML = '<div class="pi-loading" style="color:#c62828;">' + (result && result.message ? result.message : 'Failed to load data') + '</div>';
                 return;
               }
               supplierData = result.supplier;
@@ -597,11 +600,12 @@ container:
             } else {
               isProforma = false;
               supplierId = null;
-              document.getElementById('piSaveBtn').style.display = 'none';
+              var _sb2 = document.getElementById('piSaveBtn'); if (_sb2) _sb2.style.display = 'none';
 
               var result = await window.pyGetPurchaseInvoiceViewData(parsed.invoiceNumber);
+              if (!_piSafe()) return; // Form navigated away during await
               if (!result || !result.success) {
-                document.getElementById('piContent').innerHTML = '<div class="pi-loading" style="color:#c62828;">' + (result && result.message ? result.message : 'Failed to load invoice') + '</div>';
+                var _el = _piSafe(); if (_el) _el.innerHTML = '<div class="pi-loading" style="color:#c62828;">' + (result && result.message ? result.message : 'Failed to load invoice') + '</div>';
                 return;
               }
               invoiceData = result.data;
@@ -614,16 +618,13 @@ container:
               };
 
               // Show Convert button if this is a proforma (not yet converted)
-              if (invoiceData.status === 'proforma') {
-                document.getElementById('piConvertBtn').style.display = '';
-              } else {
-                document.getElementById('piConvertBtn').style.display = 'none';
-              }
+              var _cb = document.getElementById('piConvertBtn');
+              if (_cb) _cb.style.display = (invoiceData.status === 'proforma') ? '' : 'none';
 
               renderInvoice();
             }
           } catch(e) {
-            document.getElementById('piContent').innerHTML = '<div class="pi-loading" style="color:#c62828;">Error: ' + (e.message || e) + '</div>';
+            var _el = _piSafe(); if (_el) _el.innerHTML = '<div class="pi-loading" style="color:#c62828;">Error: ' + (e.message || e) + '</div>';
           }
         }
 
@@ -1282,7 +1283,7 @@ container:
 
           html += '</div>'; // end pi-page
 
-          document.getElementById('piContent').innerHTML = html;
+          var _piEl = _piSafe(); if (!_piEl) return; _piEl.innerHTML = html;
 
           // After rendering, init cylinders if in free proforma mode
           if (isProforma && !contractLinked) {

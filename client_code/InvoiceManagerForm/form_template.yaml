@@ -60,10 +60,11 @@ container:
 
         /* Status badge */
         .im-status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .im-status.negotiation { background: #fff3e0; color: #e65100; }
+        .im-status.signed { background: #e8f5e9; color: #2e7d32; }
+        .im-status.in_progress { background: #e3f2fd; color: #1565c0; }
+        .im-status.delivered { background: #f3e5f5; color: #6a1b9a; }
         .im-status.draft { background: #fff3e0; color: #e65100; }
-        .im-status.active { background: #e8f5e9; color: #2e7d32; }
-        .im-status.completed { background: #e3f2fd; color: #1565c0; }
-        .im-status.cancelled { background: #ffebee; color: #c62828; }
 
         /* Toggle button */
         .im-toggle-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #2196f3; background: #fff; color: #2196f3; font-size: 18px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; line-height: 1; }
@@ -249,8 +250,8 @@ container:
             loader: 'pyGetSuppliers'
           },
           service_suppliers: {
-            columns: ['', 'Name', 'Company', 'Service Type', 'Phone', 'Country'],
-            keys: ['_svc_supplier_toggle', 'name', 'company', '_svc_type_badge', 'phone', 'country'],
+            columns: ['', 'Name', 'Company', 'Service Type', 'Phone', 'Country', ''],
+            keys: ['_svc_supplier_toggle', 'name', 'company', '_svc_type_badge', 'phone', 'country', '_svc_supplier_action'],
             loader: 'pyGetServiceSuppliers'
           },
           contracts: {
@@ -260,8 +261,9 @@ container:
             expandable: true,
             formatters: {
               'lifecycle_status': function(v) {
-                var cls = (v || 'draft').toLowerCase();
-                return '<span class="im-status ' + cls + '">' + (v || 'draft') + '</span>';
+                var cls = (v || 'negotiation').toLowerCase();
+                var labels = {'negotiation':'Negotiation','signed':'Signed','in_progress':'In Progress','delivered':'Delivered'};
+                return '<span class="im-status ' + cls + '">' + (labels[cls] || cls) + '</span>';
               },
               'total_price': function(v) {
                 if (!v && v !== 0) return '';
@@ -384,6 +386,9 @@ container:
                 var ssid = row.id || '';
                 var isSvcExp = expandedSvcSuppliers[ssid];
                 html += '<td style="width:40px;text-align:center;"><button class="im-toggle-btn' + (isSvcExp ? ' open' : '') + '" onclick="toggleSvcSupplier(\'' + ssid + '\')">+</button></td>';
+              } else if (key === '_svc_supplier_action') {
+                var ssid = row.id || '';
+                html += '<td style="text-align:center;"><button class="im-invoice-btn" style="margin:0;padding:6px 12px;font-size:12px;" onclick="newServiceInvoice(\'' + ssid + '\')">+ New Invoice</button></td>';
               } else if (key === '_svc_type_badge') {
                 var st = (row.service_type || 'other').toLowerCase();
                 var badgeColors = { shipping: '#1e88e5', transport: '#8e24aa', customs_clearance: '#f4511e', insurance: '#00897b', other: '#757575' };
@@ -455,6 +460,25 @@ container:
           renderTable();
         };
 
+        window._signContract = async function(qNum) {
+          if (!confirm('Are you sure you want to sign this contract?')) return;
+          var btn = document.getElementById('signBtn-' + qNum);
+          if (btn) { btn.disabled = true; btn.textContent = 'Signing...'; }
+          try {
+            var result = await window.pySignContract(qNum);
+            if (result && result.success) {
+              loadContractDetail(qNum);
+              loadTabData(); // refresh table to show new status
+            } else {
+              alert(result && result.message ? result.message : 'Failed to sign contract');
+              if (btn) { btn.disabled = false; btn.textContent = '✍ Sign Contract'; }
+            }
+          } catch(e) {
+            alert('Error: ' + (e.message || e));
+            if (btn) { btn.disabled = false; btn.textContent = '✍ Sign Contract'; }
+          }
+        };
+
         async function loadContractDetail(qNum) {
           var panel = document.getElementById('detail-' + qNum);
           if (!panel) return;
@@ -485,6 +509,16 @@ container:
             html += infoItem('Delivery Date', d.delivery_date);
             html += infoItem('Phone', d.phone);
             html += infoItem('Country', d.country);
+            html += '</div>';
+
+            // Status bar with Sign button
+            var cStatus = (d.lifecycle_status || 'negotiation').toLowerCase();
+            var statusLabels = {'negotiation':'Negotiation','signed':'Signed','in_progress':'In Progress','delivered':'Delivered'};
+            html += '<div style="display:flex;align-items:center;gap:12px;margin:12px 0;padding:10px 16px;background:#f8f9fa;border-radius:8px;">';
+            html += '<span style="font-weight:600;color:#555;">Status:</span> <span class="im-status ' + cStatus + '">' + (statusLabels[cStatus] || cStatus) + '</span>';
+            if (cStatus === 'negotiation') {
+              html += '<button id="signBtn-' + qNum + '" onclick="window._signContract(' + qNum + ')" style="margin-left:auto;padding:6px 18px;background:#2e7d32;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px;">✍ Sign Contract</button>';
+            }
             html += '</div>';
 
             // Section B: Planned installments
@@ -669,6 +703,11 @@ container:
           location.hash = '#purchase-invoice-new-' + encodeURIComponent(supplierId);
         };
 
+        window.newServiceInvoice = function(serviceSupplierID) {
+          if (!serviceSupplierID) { alert('Service Supplier ID missing'); return; }
+          location.hash = '#service-invoice-new-' + encodeURIComponent(serviceSupplierID);
+        };
+
         // ── Supplier expand/collapse (purchase invoices history) ──
         window.toggleSupplier = function(supplierId) {
           if (expandedSuppliers[supplierId]) {
@@ -815,13 +854,19 @@ container:
           try {
             var result = await window.pyGetContractInvoices(qNum);
             if (result && result.success && result.data && result.data.length > 0) {
-              var links = result.data.map(function(inv) {
-                return '<a href="#sales-invoice-' + encodeURIComponent(inv.invoice_number) + '" style="color:#7b1fa2;font-weight:600;text-decoration:underline;margin:0 4px;">' + inv.invoice_number + '</a>';
-              });
-              span.innerHTML = 'Existing: ' + links.join(' | ');
-              // Disable create button — only one invoice per contract
+              var invNumber = result.data[0].invoice_number;
+              span.innerHTML = '';
+              // Replace create button with Show Invoice
               var btn = document.getElementById('createInvBtn-' + qNum);
-              if (btn) { btn.disabled = true; btn.textContent = 'Invoice Exists'; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; }
+              if (btn) {
+                btn.textContent = '📄 Show Invoice';
+                btn.style.background = '#7b1fa2';
+                btn.style.color = '#fff';
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+                btn.disabled = false;
+                btn.onclick = function() { window.location.hash = '#sales-invoice-' + encodeURIComponent(invNumber); };
+              }
             }
           } catch(e) { /* ignore */ }
         }

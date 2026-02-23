@@ -24,6 +24,9 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
         anvil.js.window.pyGetContractPayments = self.get_contract_payments
         anvil.js.window.pyRecordPayment = self.record_payment
 
+        # JS bridges — contract lifecycle
+        anvil.js.window.pySignContract = self.sign_contract
+
         # JS bridges — sales invoices
         anvil.js.window.pyCreateSalesInvoice = self.create_sales_invoice
         anvil.js.window.pyGetContractInvoices = self.get_contract_invoices
@@ -102,6 +105,14 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
         return anvil.server.call('record_contract_payment',
                                  quotation_number, amount, payment_date,
                                  payment_method, installment_index, notes, auth)
+
+    # ── Contract lifecycle ──
+
+    def sign_contract(self, quotation_number):
+        auth = self._auth()
+        if not auth:
+            return {'success': False, 'message': 'Not authenticated'}
+        return anvil.server.call('update_contract_status', quotation_number, 'signed', 'Signed by user', auth)
 
     # ── Sales invoices ──
 

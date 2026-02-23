@@ -19,7 +19,6 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
         anvil.js.window.pyGetContractDetail = self.get_contract_detail
         anvil.js.window.pyGetContractPayments = self.get_contract_payments
         anvil.js.window.pyRecordPayment = self.record_payment
-        anvil.js.window.pyDeletePayment = self.delete_payment
 
         # JS bridges — sales invoices
         anvil.js.window.pyCreateSalesInvoice = self.create_sales_invoice
@@ -85,12 +84,6 @@ class InvoiceManagerForm(InvoiceManagerFormTemplate):
         return anvil.server.call('record_contract_payment',
                                  quotation_number, amount, payment_date,
                                  payment_method, installment_index, notes, auth)
-
-    def delete_payment(self, payment_id):
-        auth = self._auth()
-        if not auth:
-            return {'success': False, 'message': 'Not authenticated'}
-        return anvil.server.call('delete_contract_payment', payment_id, auth)
 
     # ── Sales invoices ──
 

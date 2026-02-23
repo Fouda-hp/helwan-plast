@@ -94,8 +94,8 @@ container:
         .im-pay-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; }
         .im-pay-table th { padding: 10px 12px; background: #e3f2fd; font-weight: 700; color: #333; text-align: left; font-size: 12px; }
         .im-pay-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
-        .im-pay-del { background: none; border: none; color: #c62828; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
-        .im-pay-del:hover { background: #ffebee; }
+        
+        
 
         /* Payment form */
         .im-pay-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; padding: 16px; background: #fff; border-radius: 10px; border: 2px dashed #90caf9; margin-top: 12px; }
@@ -479,7 +479,7 @@ container:
             html += '<div class="im-section-title">Recorded Payments</div>';
             if (payments.length > 0) {
               html += '<table class="im-pay-table"><thead><tr>';
-              html += '<th>#</th><th>Amount</th><th>Date</th><th>Method</th><th>Notes</th><th></th>';
+              html += '<th>#</th><th>Amount</th><th>Date</th><th>Method</th><th>Notes</th>';
               html += '</tr></thead><tbody>';
               payments.forEach(function(p, i) {
                 var methodLabel = {'cash': 'Cash', 'bank_transfer': 'Bank Transfer', 'check': 'Check'};
@@ -489,7 +489,7 @@ container:
                 html += '<td>' + (p.payment_date || '') + '</td>';
                 html += '<td>' + (methodLabel[p.payment_method] || p.payment_method || '') + '</td>';
                 html += '<td>' + (p.notes || '') + '</td>';
-                html += '<td><button class="im-pay-del" onclick="deletePayment(\'' + p.id + '\',' + qNum + ')" title="Delete">&#10005;</button></td>';
+                
                 html += '</tr>';
               });
               html += '</tbody></table>';
@@ -584,20 +584,6 @@ container:
           }
         };
 
-        // ── Delete payment ──
-        window.deletePayment = async function(paymentId, qNum) {
-          if (!confirm('Delete this payment?')) return;
-          try {
-            var result = await window.pyDeletePayment(paymentId);
-            if (result && result.success) {
-              loadContractDetail(qNum);
-            } else {
-              alert(result.message || 'Failed to delete');
-            }
-          } catch(e) {
-            alert('Error: ' + (e.message || e));
-          }
-        };
 
         // ── Create sales invoice (opens draft preview — no DB save yet) ──
         window.createSalesInvoice = function(qNum) {

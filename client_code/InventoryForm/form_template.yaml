@@ -37,6 +37,7 @@ container:
         .type-badge { padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
         .type-machine { background: #ede7f6; color: #5e35b1; }
         .type-cylinder { background: #fff8e1; color: #f57f17; }
+        .type-part { background: #e8f5e9; color: #2e7d32; }
         .profit-positive { color: #2e7d32; font-weight: 600; }
         .profit-negative { color: #c62828; font-weight: 600; }
         .empty-msg { text-align: center; padding: 40px; color: #999; }
@@ -93,6 +94,7 @@ container:
           <h1 id="pageTitle">Inventory</h1>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <button class="btn btn-primary" onclick="openAddItemModal()" id="btnAdd">+ Add Opening Balance</button>
+            <button class="btn btn-primary" onclick="openAddPartModal()" id="btnAddPart" style="background:#7b1fa2;">+ Add Part</button>
             <button class="btn btn-back" onclick="goBack()" id="btnBack">Back</button>
           </div>
         </div>
@@ -108,6 +110,7 @@ container:
           <button class="type-filter-btn active" data-type="" onclick="setTypeFilter(this)" id="fTypeAll">All Types</button>
           <button class="type-filter-btn" data-type="machine" onclick="setTypeFilter(this)" id="fTypeMachine">Machines</button>
           <button class="type-filter-btn" data-type="cylinder" onclick="setTypeFilter(this)" id="fTypeCylinder">Cylinders</button>
+          <button class="type-filter-btn" data-type="part" onclick="setTypeFilter(this)" id="fTypePart">Parts</button>
           <input type="text" id="searchInput" placeholder="Search by code or description..." oninput="debounceSearch()">
         </div>
 
@@ -355,6 +358,148 @@ container:
         </div>
       </div>
 
+      <!-- Add Part Modal -->
+      <div class="hp-modal-overlay" id="addPartModal" style="display:none;">
+        <div class="hp-modal" style="max-width:580px;">
+          <h2 style="color:#7b1fa2;">Add Part to Inventory</h2>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Part from Catalog</label>
+              <select id="ptCatalogSelect" onchange="ptOnCatalogSelect()">
+                <option value="">-- New Part --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Category *</label>
+              <select id="ptCategory" onchange="ptAutoCode()">
+                <option value="cylinder">Cylinder</option>
+                <option value="motor">Motor</option>
+                <option value="pump">Pump</option>
+                <option value="blade">Blade</option>
+                <option value="bearing">Bearing</option>
+                <option value="electrical">Electrical</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Code</label>
+              <input type="text" id="ptCode" placeholder="Auto-generated">
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Name *</label>
+              <input type="text" id="ptName" placeholder="Part name">
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label>Description</label>
+              <input type="text" id="ptDesc" placeholder="Optional description">
+            </div>
+          </div>
+          <div style="border-top:1px solid #eee;margin:14px 0;padding-top:14px;">
+            <h3 style="font-size:14px;color:#555;margin-bottom:10px;">Stock Details</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+              <div class="form-group">
+                <label>Quantity *</label>
+                <input type="number" id="ptQty" min="1" value="1" oninput="ptCalcTotal()">
+              </div>
+              <div class="form-group">
+                <label>Unit Cost ($) *</label>
+                <input type="number" id="ptUnitCost" step="0.01" value="0" oninput="ptCalcTotal()">
+              </div>
+              <div class="form-group">
+                <label>Exchange Rate *</label>
+                <input type="number" id="ptRate" step="0.01" value="0" oninput="ptCalcTotal()">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="form-group">
+                <label>Total ($)</label>
+                <input type="text" id="ptTotalUsd" readonly style="background:#f0f0f0;font-weight:700;">
+              </div>
+              <div class="form-group">
+                <label>Total (EGP)</label>
+                <input type="text" id="ptTotalEgp" readonly style="background:#e8f5e9;font-weight:700;color:#2e7d32;">
+              </div>
+            </div>
+          </div>
+          <div style="border-top:1px solid #eee;margin:14px 0;padding-top:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <h3 style="font-size:14px;color:#555;margin:0;">Import Costs (EGP)</h3>
+              <button class="btn-add-ic" onclick="ptAddImportRow()" style="font-size:12px;padding:4px 10px;background:#7b1fa2;color:#fff;border:none;border-radius:4px;cursor:pointer;">+ Add</button>
+            </div>
+            <div id="ptImportRows" style="margin-top:8px;"></div>
+            <div style="text-align:right;margin-top:8px;font-weight:700;color:#555;">
+              Import Total: <span id="ptImportTotal">0</span> EGP
+            </div>
+            <div style="text-align:right;margin-top:4px;font-size:18px;font-weight:700;color:#7b1fa2;">
+              Grand Total: <span id="ptGrandTotal">0</span> EGP
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+            <div class="form-group">
+              <label>Location</label>
+              <input type="text" id="ptLocation" placeholder="Optional">
+            </div>
+            <div class="form-group">
+              <label>Entry Date</label>
+              <input type="date" id="ptEntryDate">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <input type="text" id="ptNotes" placeholder="Optional">
+          </div>
+          <div class="hp-modal-actions">
+            <button class="btn btn-cancel" onclick="closePartModal()">Cancel</button>
+            <button class="btn btn-save" style="background:#7b1fa2;" onclick="withButtonLock(this, function(){ return savePart(); })" data-loading-text="...">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sell Part Modal -->
+      <div class="hp-modal-overlay" id="sellPartModal" style="display:none;">
+        <div class="hp-modal" style="max-width:480px;">
+          <h2 style="color:#2e7d32;">Sell Part / Cylinder</h2>
+          <input type="hidden" id="spItemId" value="">
+          <div style="background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:14px;">
+            <div style="font-weight:700;" id="spItemInfo"></div>
+            <div style="color:#666;font-size:13px;" id="spAvailInfo"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label>Quantity to Sell *</label>
+              <input type="number" id="spQty" min="1" value="1">
+            </div>
+            <div class="form-group">
+              <label>Selling Price (EGP) *</label>
+              <input type="number" id="spPrice" step="0.01" value="0">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Sale Type</label>
+            <select id="spSaleType" onchange="ptToggleSaleType()">
+              <option value="direct">Direct Sale (no contract)</option>
+              <option value="contract">Link to Contract</option>
+            </select>
+          </div>
+          <div class="form-group" id="spContractGroup" style="display:none;">
+            <label>Contract</label>
+            <select id="spContract"><option value="">-- Select --</option></select>
+          </div>
+          <div class="form-group" id="spBuyerGroup">
+            <label>Buyer Name</label>
+            <input type="text" id="spBuyer" placeholder="Optional">
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <input type="text" id="spNotes" placeholder="Optional">
+          </div>
+          <div class="hp-modal-actions">
+            <button class="btn btn-cancel" onclick="closeSellPartModal()">Cancel</button>
+            <button class="btn btn-save" style="background:#2e7d32;" onclick="withButtonLock(this, function(){ return doSellPart(); })" data-loading-text="...">Sell</button>
+          </div>
+        </div>
+      </div>
+
       <script src="_/theme/i18n.js"></script>
       <script>
         (function() {
@@ -431,6 +576,7 @@ container:
           function renderSummary(data) {
             var machInStock=0, machSold=0, machValue=0;
             var cylAvail=0, cylSold=0, cylValue=0;
+            var partAvail=0, partSold=0, partValue=0;
             (data || []).forEach(function(item) {
               var itype = (item.item_type || 'machine');
               var s = (item.status || '').toLowerCase();
@@ -438,6 +584,10 @@ container:
                 cylAvail += parseInt(item.quantity_available || 0);
                 cylSold += parseInt(item.quantity || 0) - parseInt(item.quantity_available || 0);
                 cylValue += parseFloat(item.total_cost || 0);
+              } else if (itype === 'part') {
+                partAvail += parseInt(item.quantity_available || 0);
+                partSold += parseInt(item.quantity || 0) - parseInt(item.quantity_available || 0);
+                partValue += parseFloat(item.total_cost || 0);
               } else {
                 if (s === 'in_stock') machInStock++;
                 else if (s === 'sold') machSold++;
@@ -450,6 +600,8 @@ container:
             html += '<div class="summary-card"><div class="num" style="color:#2e7d32;">' + fmt(machValue) + '</div><div class="lbl">' + t('Machine Value (EGP)', 'قيمة الماكينات') + '</div></div>';
             html += '<div class="summary-card"><div class="num" style="color:#f57f17;">' + cylAvail + '</div><div class="lbl">' + t('Cylinders Available', 'سلندرات متاحة') + '</div></div>';
             html += '<div class="summary-card"><div class="num" style="color:#e65100;">' + fmt(cylValue) + '</div><div class="lbl">' + t('Cylinder Value (EGP)', 'قيمة السلندرات') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#2e7d32;">' + partAvail + '</div><div class="lbl">' + t('Parts Available', 'قطع متاحة') + '</div></div>';
+            html += '<div class="summary-card"><div class="num" style="color:#1b5e20;">' + fmt(partValue) + '</div><div class="lbl">' + t('Parts Value (EGP)', 'قيمة القطع') + '</div></div>';
             document.getElementById('summaryCards').innerHTML = html;
           }
 
@@ -507,13 +659,20 @@ container:
               var statusKey = (item.status || 'in_stock').toLowerCase();
               var statusLabel = statusKey === 'in_stock' ? t('In Stock', 'في المخزن') : statusKey === 'reserved' ? t('Reserved', 'محجوز') : t('Sold', 'مباع');
               var itemType = item.item_type || 'machine';
-              var typeLabel = itemType === 'cylinder'
-                ? t('Cylinder', 'سلندر') + (item.cylinder_size ? ' ' + item.cylinder_size + 'cm' : '')
-                : t('Machine', 'ماكينة');
-              var typeCls = itemType === 'cylinder' ? 'type-cylinder' : 'type-machine';
+              var typeLabel, typeCls;
+              if (itemType === 'cylinder') {
+                typeLabel = t('Cylinder', 'سلندر') + (item.cylinder_size ? ' ' + item.cylinder_size + 'cm' : '');
+                typeCls = 'type-cylinder';
+              } else if (itemType === 'part') {
+                typeLabel = t('Part', 'قطعة');
+                typeCls = 'type-part';
+              } else {
+                typeLabel = t('Machine', 'ماكينة');
+                typeCls = 'type-machine';
+              }
               var qty = parseInt(item.quantity || 1);
               var qtyAvail = parseInt(item.quantity_available || qty);
-              var qtyLabel = itemType === 'cylinder' ? qtyAvail + '/' + qty : '-';
+              var qtyLabel = (itemType === 'cylinder' || itemType === 'part') ? qtyAvail + '/' + qty : '-';
 
               html += '<tr>';
               html += '<td><strong>' + (item.machine_code || '') + '</strong></td>';
@@ -527,11 +686,16 @@ container:
               html += '<td class="' + profitClass + '">' + (sellingPrice > 0 ? fmt(profit) : '-') + '</td>';
               html += '<td><span class="status-badge status-' + statusKey + '">' + statusLabel + '</span></td>';
               html += '<td style="white-space:nowrap;">';
-              if (userPerms.can_edit && itemType === 'machine') {
+              if (userPerms.can_edit && (itemType === 'machine' || itemType === 'part')) {
                 html += '<button class="btn btn-edit" onclick="withButtonLock(this, function(){ return editItem(\'' + item.id + '\'); })" data-loading-text="...">' + t('Edit', 'تعديل') + '</button> ';
               }
               if (statusKey === 'in_stock' && userPerms.can_edit) {
-                html += '<button class="btn btn-link" onclick="withButtonLock(this, function(){ openLinkModal(\'' + item.id + '\'); })">' + t('Sell', 'بيع') + '</button> ';
+                if (itemType === 'part' || itemType === 'cylinder') {
+                  var escName = (item.description || item.machine_code || '').replace(/'/g, "\\'");
+                  html += '<button class="btn btn-link" onclick="openSellPartModal(\'' + item.id + '\',\'' + (item.machine_code || '').replace(/'/g, "\\'") + '\',\'' + escName + '\',' + qtyAvail + ')">' + t('Sell', 'بيع') + '</button> ';
+                } else {
+                  html += '<button class="btn btn-link" onclick="withButtonLock(this, function(){ openLinkModal(\'' + item.id + '\'); })">' + t('Sell', 'بيع') + '</button> ';
+                }
               }
               if (userPerms.can_delete && statusKey !== 'sold') {
                 html += '<button class="btn btn-delete" onclick="withButtonLock(this, function(){ return deleteItem(\'' + item.id + '\'); })" data-loading-text="...">' + t('Delete', 'حذف') + '</button>';
@@ -789,14 +953,18 @@ container:
               };
               try {
                 var res = await window.pyAddOpeningBalance(data);
+                console.log('[OB Save] response:', JSON.stringify(res));
                 if (res && res.success) {
                   if (window.showNotification) window.showNotification('success', '', t('Opening balance saved', 'تم حفظ الرصيد الافتتاحي') + ' (EGP ' + fmt(res.grand_total_egp) + ')');
                   closeItemModal(); loadInventory();
                 } else {
-                  if (window.showNotification) window.showNotification('error', '', res ? res.message : t('Save failed', 'فشل الحفظ'));
+                  var errMsg = (res && res.message) ? res.message : t('Save failed', 'فشل الحفظ');
+                  console.error('[OB Save] error:', errMsg, res);
+                  if (window.showNotification) window.showNotification('error', '', errMsg);
                 }
               } catch (err) {
-                if (window.showNotification) window.showNotification('error', '', String(err));
+                console.error('[OB Save] exception:', err);
+                if (window.showNotification) window.showNotification('error', '', String(err.message || err));
               }
             }
           };
@@ -1091,6 +1259,246 @@ container:
             }
           }
           setTimeout(waitForBridge, 300);
+
+          // ============================================================
+          // Parts Catalog & Sales
+          // ============================================================
+          var ptImportCounter = 0;
+          var ptCatalogCache = [];
+
+          window.openAddPartModal = async function() {
+            document.getElementById('addPartModal').style.display = 'flex';
+            document.getElementById('ptCategory').value = 'cylinder';
+            document.getElementById('ptCode').value = '';
+            document.getElementById('ptName').value = '';
+            document.getElementById('ptDesc').value = '';
+            document.getElementById('ptQty').value = '1';
+            document.getElementById('ptUnitCost').value = '0';
+            document.getElementById('ptRate').value = document.getElementById('obExchangeRate') ? document.getElementById('obExchangeRate').value || '' : '';
+            document.getElementById('ptTotalUsd').value = '';
+            document.getElementById('ptTotalEgp').value = '';
+            document.getElementById('ptImportRows').innerHTML = '';
+            document.getElementById('ptImportTotal').textContent = '0';
+            document.getElementById('ptGrandTotal').textContent = '0';
+            document.getElementById('ptLocation').value = '';
+            document.getElementById('ptEntryDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('ptNotes').value = '';
+            ptImportCounter = 0;
+            // Load catalog
+            try {
+              var res = await window.pyGetPartsCatalog('');
+              ptCatalogCache = (res && res.data) ? res.data : [];
+              var sel = document.getElementById('ptCatalogSelect');
+              sel.innerHTML = '<option value="">-- New Part --</option>';
+              ptCatalogCache.forEach(function(p) {
+                sel.innerHTML += '<option value="' + p.id + '">' + p.part_code + ' — ' + p.name + '</option>';
+              });
+            } catch(e) { ptCatalogCache = []; }
+          };
+
+          window.closePartModal = function() {
+            document.getElementById('addPartModal').style.display = 'none';
+          };
+
+          window.ptOnCatalogSelect = function() {
+            var sel = document.getElementById('ptCatalogSelect');
+            var id = sel.value;
+            if (!id) return;
+            var part = ptCatalogCache.find(function(p) { return p.id === id; });
+            if (part) {
+              document.getElementById('ptCategory').value = part.category || 'other';
+              document.getElementById('ptCode').value = part.part_code || '';
+              document.getElementById('ptName').value = part.name || '';
+              document.getElementById('ptDesc').value = part.description || '';
+              if (part.default_cost_usd) document.getElementById('ptUnitCost').value = part.default_cost_usd;
+              ptCalcTotal();
+            }
+          };
+
+          window.ptAutoCode = function() {
+            // Clear code when category changes (will auto-generate on save)
+            if (!document.getElementById('ptCatalogSelect').value) {
+              document.getElementById('ptCode').value = '';
+            }
+          };
+
+          window.ptCalcTotal = function() {
+            var qty = parseInt(document.getElementById('ptQty').value) || 0;
+            var unit = parseFloat(document.getElementById('ptUnitCost').value) || 0;
+            var rate = parseFloat(document.getElementById('ptRate').value) || 0;
+            var totalUsd = qty * unit;
+            var totalEgp = totalUsd * rate;
+            document.getElementById('ptTotalUsd').value = totalUsd.toFixed(2);
+            document.getElementById('ptTotalEgp').value = totalEgp.toFixed(2);
+            ptCalcGrandTotal();
+          };
+
+          window.ptAddImportRow = function() {
+            ptImportCounter++;
+            var container = document.getElementById('ptImportRows');
+            var div = document.createElement('div');
+            div.className = 'import-row';
+            div.id = 'ptIcRow' + ptImportCounter;
+            div.innerHTML = '<input type="text" placeholder="Description" id="ptIcDesc' + ptImportCounter + '">' +
+              '<input type="number" step="0.01" placeholder="Amount (EGP)" id="ptIcAmt' + ptImportCounter + '" oninput="ptCalcGrandTotal()" style="max-width:180px;">' +
+              '<button class="btn-remove" onclick="ptRemoveImportRow(' + ptImportCounter + ')">x</button>';
+            container.appendChild(div);
+          };
+
+          window.ptRemoveImportRow = function(idx) {
+            var row = document.getElementById('ptIcRow' + idx);
+            if (row) row.remove();
+            ptCalcGrandTotal();
+          };
+
+          window.ptCalcGrandTotal = function() {
+            var totalEgp = parseFloat(document.getElementById('ptTotalEgp').value) || 0;
+            var importTotal = 0;
+            document.querySelectorAll('[id^="ptIcAmt"]').forEach(function(el) {
+              importTotal += parseFloat(el.value) || 0;
+            });
+            document.getElementById('ptImportTotal').textContent = fmt(importTotal);
+            document.getElementById('ptGrandTotal').textContent = fmt(totalEgp + importTotal);
+          };
+
+          window.savePart = async function() {
+            var name = document.getElementById('ptName').value.trim();
+            if (!name) {
+              if (window.showNotification) window.showNotification('error', '', 'Part name is required');
+              return;
+            }
+            var rate = parseFloat(document.getElementById('ptRate').value) || 0;
+            if (rate <= 0) {
+              if (window.showNotification) window.showNotification('error', '', 'Exchange rate is required');
+              return;
+            }
+            var catalogId = document.getElementById('ptCatalogSelect').value;
+            // If new part, create catalog entry first
+            if (!catalogId) {
+              try {
+                var catRes = await window.pyAddPartCatalog({
+                  name: name,
+                  category: document.getElementById('ptCategory').value,
+                  description: document.getElementById('ptDesc').value.trim(),
+                  part_code: document.getElementById('ptCode').value.trim() || '',
+                  default_cost_usd: parseFloat(document.getElementById('ptUnitCost').value) || 0
+                });
+                if (!catRes || !catRes.success) {
+                  if (window.showNotification) window.showNotification('error', '', catRes ? catRes.message : 'Failed to create part');
+                  return;
+                }
+                catalogId = catRes.part.id;
+              } catch(e) {
+                if (window.showNotification) window.showNotification('error', '', String(e.message || e));
+                return;
+              }
+            }
+            // Collect import costs
+            var importCosts = [];
+            document.querySelectorAll('[id^="ptIcRow"]').forEach(function(row) {
+              var descEl = row.querySelector('[id^="ptIcDesc"]');
+              var amtEl = row.querySelector('[id^="ptIcAmt"]');
+              if (amtEl && parseFloat(amtEl.value) > 0) {
+                importCosts.push({description: descEl ? descEl.value : '', amount_egp: parseFloat(amtEl.value) || 0});
+              }
+            });
+            try {
+              var res = await window.pyAddPartToInventory({
+                part_catalog_id: catalogId,
+                quantity: parseInt(document.getElementById('ptQty').value) || 1,
+                unit_cost_usd: parseFloat(document.getElementById('ptUnitCost').value) || 0,
+                exchange_rate: rate,
+                import_costs: importCosts,
+                location: document.getElementById('ptLocation').value.trim(),
+                notes: document.getElementById('ptNotes').value.trim(),
+                entry_date: document.getElementById('ptEntryDate').value
+              });
+              console.log('[Part Save] response:', JSON.stringify(res));
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', 'Part added (EGP ' + fmt(res.grand_total_egp) + ')');
+                closePartModal(); loadInventory();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Save failed');
+              }
+            } catch(e) {
+              console.error('[Part Save] exception:', e);
+              if (window.showNotification) window.showNotification('error', '', String(e.message || e));
+            }
+          };
+
+          // ── Sell Part Modal ──
+          window.openSellPartModal = async function(itemId, itemCode, itemName, qtyAvail) {
+            document.getElementById('sellPartModal').style.display = 'flex';
+            document.getElementById('spItemId').value = itemId;
+            document.getElementById('spItemInfo').textContent = itemCode + ' — ' + itemName;
+            document.getElementById('spAvailInfo').textContent = t('Available: ', 'المتاح: ') + qtyAvail;
+            document.getElementById('spQty').value = '1';
+            document.getElementById('spQty').max = qtyAvail;
+            document.getElementById('spPrice').value = '0';
+            document.getElementById('spSaleType').value = 'direct';
+            document.getElementById('spContractGroup').style.display = 'none';
+            document.getElementById('spBuyerGroup').style.display = '';
+            document.getElementById('spBuyer').value = '';
+            document.getElementById('spNotes').value = '';
+            // Load contracts
+            try {
+              var contracts = await window.pyGetContractsList();
+              var sel = document.getElementById('spContract');
+              sel.innerHTML = '<option value="">-- Select --</option>';
+              if (contracts && Array.isArray(contracts)) {
+                contracts.forEach(function(c) {
+                  sel.innerHTML += '<option value="' + (c.contract_number || c.quotation_number) + '">' + (c.contract_number || '') + ' - ' + (c.client_name || '') + '</option>';
+                });
+              }
+            } catch(e) {}
+          };
+
+          window.closeSellPartModal = function() {
+            document.getElementById('sellPartModal').style.display = 'none';
+          };
+
+          window.ptToggleSaleType = function() {
+            var v = document.getElementById('spSaleType').value;
+            document.getElementById('spContractGroup').style.display = (v === 'contract') ? '' : 'none';
+            document.getElementById('spBuyerGroup').style.display = (v === 'direct') ? '' : 'none';
+          };
+
+          window.doSellPart = async function() {
+            var itemId = document.getElementById('spItemId').value;
+            var qty = parseInt(document.getElementById('spQty').value) || 0;
+            var price = parseFloat(document.getElementById('spPrice').value) || 0;
+            if (qty <= 0) {
+              if (window.showNotification) window.showNotification('error', '', 'Quantity must be > 0');
+              return;
+            }
+            if (price <= 0) {
+              if (window.showNotification) window.showNotification('error', '', 'Selling price is required');
+              return;
+            }
+            var saleType = document.getElementById('spSaleType').value;
+            var data = {
+              inventory_id: itemId,
+              quantity_to_sell: qty,
+              selling_price_egp: price,
+              contract_number: saleType === 'contract' ? document.getElementById('spContract').value : '',
+              buyer_name: saleType === 'direct' ? document.getElementById('spBuyer').value.trim() : '',
+              notes: document.getElementById('spNotes').value.trim()
+            };
+            try {
+              var res = await window.pySellPart(data);
+              console.log('[Sell Part] response:', JSON.stringify(res));
+              if (res && res.success) {
+                if (window.showNotification) window.showNotification('success', '', 'Sold! Sale #' + res.sale_number);
+                closeSellPartModal(); loadInventory();
+              } else {
+                if (window.showNotification) window.showNotification('error', '', res ? res.message : 'Sale failed');
+              }
+            } catch(e) {
+              console.error('[Sell Part] exception:', e);
+              if (window.showNotification) window.showNotification('error', '', String(e.message || e));
+            }
+          };
+
         })();
       </script>
   type: HtmlTemplate

@@ -566,8 +566,87 @@ db_schema:
     - admin_ui: {width: 400}
       name: machine_config_json
       type: string
+    - admin_ui: {width: 200}
+      name: part_catalog_id
+      type: string
     server: full
     title: INVENTORY
+  parts_catalog:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: id
+      type: string
+    - admin_ui: {width: 150}
+      name: part_code
+      type: string
+    - admin_ui: {width: 200}
+      name: name
+      type: string
+    - admin_ui: {width: 150}
+      name: category
+      type: string
+    - admin_ui: {width: 250}
+      name: description
+      type: string
+    - admin_ui: {width: 100}
+      name: default_unit
+      type: string
+    - admin_ui: {width: 120}
+      name: default_cost_usd
+      type: number
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: created_by
+      type: string
+    server: full
+    title: PARTS_CATALOG
+  part_sales:
+    client: none
+    columns:
+    - admin_ui: {width: 200}
+      name: id
+      type: string
+    - admin_ui: {width: 150}
+      name: sale_number
+      type: string
+    - admin_ui: {width: 200}
+      name: inventory_id
+      type: string
+    - admin_ui: {width: 150}
+      name: part_code
+      type: string
+    - admin_ui: {width: 200}
+      name: part_name
+      type: string
+    - admin_ui: {width: 100}
+      name: quantity
+      type: number
+    - admin_ui: {width: 120}
+      name: unit_cost
+      type: number
+    - admin_ui: {width: 120}
+      name: selling_price
+      type: number
+    - admin_ui: {width: 200}
+      name: buyer_name
+      type: string
+    - admin_ui: {width: 200}
+      name: contract_number
+      type: string
+    - admin_ui: {width: 250}
+      name: notes
+      type: string
+    - admin_ui: {width: 200}
+      name: created_at
+      type: datetime
+    - admin_ui: {width: 200}
+      name: created_by
+      type: string
+    server: full
+    title: PART_SALES
   ledger:
     client: none
     columns:

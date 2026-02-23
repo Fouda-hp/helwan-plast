@@ -3784,6 +3784,487 @@ def add_opening_balance_inventory(data, token_or_email=None):
         return {'success': False, 'message': str(e)}
 
 
+# ---------------------------------------------------------------------------
+# Parts & Components System
+# ---------------------------------------------------------------------------
+
+_PART_CATEGORY_PREFIX = {
+    'cylinder': 'CYL',
+    'motor': 'MOT',
+    'pump': 'PMP',
+    'blade': 'BLD',
+    'bearing': 'BRG',
+    'electrical': 'ELC',
+    'other': 'PRT',
+}
+
+PARTS_CATALOG_COLS = [
+    'id', 'part_code', 'name', 'category', 'description',
+    'default_unit', 'default_cost_usd', 'created_at', 'created_by',
+]
+
+PART_SALES_COLS = [
+    'id', 'sale_number', 'inventory_id', 'part_code', 'part_name',
+    'quantity', 'unit_cost', 'selling_price', 'buyer_name',
+    'contract_number', 'notes', 'created_at', 'created_by',
+]
+
+
+def _generate_part_code(category):
+    """
+    Generate the next sequential part code for a given category.
+    Format: {PREFIX}-{SERIAL:03d} (e.g. CYL-001, MOT-002).
+    """
+    prefix = _PART_CATEGORY_PREFIX.get(
+        _safe_str(category).lower(), 'PRT'
+    )
+    max_serial = 0
+    _MAX_SCAN = 10000
+    for i, row in enumerate(app_tables.parts_catalog.search()):
+        if i >= _MAX_SCAN:
+            break
+        code = _safe_str(row.get('part_code'))
+        if code.startswith(prefix + '-'):
+            try:
+                serial = int(code[len(prefix) + 1:])
+                if serial > max_serial:
+                    max_serial = serial
+            except (ValueError, TypeError):
+                pass
+    return f'{prefix}-{max_serial + 1:03d}'
+
+
+@anvil.server.callable
+def get_parts_catalog(search='', token_or_email=None):
+    """Return the parts catalog, optionally filtered by search term."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        rows = app_tables.parts_catalog.search()
+        results = []
+        search_lower = _safe_str(search).lower()
+        _MAX_ROWS = 10000
+        for i, r in enumerate(rows):
+            if i >= _MAX_ROWS:
+                logger.warning("get_parts_catalog: scan capped at %d rows", _MAX_ROWS)
+                break
+            if search_lower:
+                searchable = ' '.join([
+                    _safe_str(r.get('name')),
+                    _safe_str(r.get('part_code')),
+                    _safe_str(r.get('category')),
+                ]).lower()
+                if search_lower not in searchable:
+                    continue
+            results.append(_row_to_dict(r, PARTS_CATALOG_COLS))
+        results.sort(key=lambda x: x.get('part_code', ''))
+        return {'success': True, 'data': results}
+    except Exception as e:
+        logger.exception("get_parts_catalog error")
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
+
+
+@anvil.server.callable
+def add_part_catalog(data, token_or_email=None):
+    """Add a new part to the parts catalog."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+
+    name = _safe_str(data.get('name'))
+    if not name:
+        return {'success': False, 'message': 'Part name is required'}
+
+    category = _safe_str(data.get('category')) or 'other'
+    description = _safe_str(data.get('description'))
+    default_unit = _safe_str(data.get('default_unit'))
+    default_cost_usd = _round2(data.get('default_cost_usd') or 0)
+
+    # Use provided part_code or auto-generate
+    part_code = _safe_str(data.get('part_code'))
+    if not part_code:
+        part_code = _generate_part_code(category)
+
+    try:
+        # Check for duplicate part_code
+        existing = app_tables.parts_catalog.get(part_code=part_code)
+        if existing:
+            return {'success': False, 'message': f'Part code {part_code} already exists'}
+
+        now = get_utc_now()
+        part_id = _uuid()
+        app_tables.parts_catalog.add_row(
+            id=part_id,
+            part_code=part_code,
+            name=name,
+            category=category,
+            description=description,
+            default_unit=default_unit,
+            default_cost_usd=default_cost_usd,
+            created_at=now,
+            created_by=user_email,
+        )
+        logger.info("Part %s (%s) created by %s", part_code, name, user_email)
+        return {
+            'success': True,
+            'part': {
+                'id': part_id,
+                'part_code': part_code,
+                'name': name,
+                'category': category,
+                'description': description,
+                'default_unit': default_unit,
+                'default_cost_usd': default_cost_usd,
+            },
+        }
+    except Exception as e:
+        logger.exception("add_part_catalog error")
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
+
+
+@anvil.server.callable
+def add_part_to_inventory(data, token_or_email=None):
+    """
+    Add a catalogued part to inventory with cost calculation and journal entry.
+
+    Creates an inventory row (item_type='part') and posts:
+    DR 1200 (Inventory) / CR 3000 (Owner's Equity).
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+
+    part_catalog_id = _safe_str(data.get('part_catalog_id'))
+    if not part_catalog_id:
+        return {'success': False, 'message': 'Part catalog ID is required'}
+
+    quantity = int(data.get('quantity') or 0)
+    if quantity <= 0:
+        return {'success': False, 'message': 'Quantity must be greater than zero'}
+
+    unit_cost_usd = _round2(data.get('unit_cost_usd') or 0)
+    if unit_cost_usd <= 0:
+        return {'success': False, 'message': 'Unit cost (USD) must be greater than zero'}
+
+    exchange_rate = float(data.get('exchange_rate') or 0)
+    if exchange_rate <= 0:
+        return {'success': False, 'message': 'Exchange rate must be greater than zero'}
+
+    import_costs_list = data.get('import_costs') or []
+    location = _safe_str(data.get('location'))
+    notes = _safe_str(data.get('notes'))
+
+    # Parse entry date
+    entry_date_str = _safe_str(data.get('entry_date'))
+    try:
+        if entry_date_str:
+            parsed_date = date.fromisoformat(entry_date_str[:10])
+        else:
+            parsed_date = date.today()
+    except (ValueError, TypeError):
+        parsed_date = date.today()
+
+    if is_period_locked(parsed_date):
+        return {'success': False, 'message': 'Cannot post: accounting period is locked.'}
+
+    try:
+        # Look up part from catalog
+        part_row = app_tables.parts_catalog.get(id=part_catalog_id)
+        if not part_row:
+            return {'success': False, 'message': 'Part not found in catalog'}
+
+        part_code = _safe_str(part_row.get('part_code'))
+        part_name = _safe_str(part_row.get('name'))
+
+        # Cost calculations
+        purchase_cost_egp = _round2(quantity * unit_cost_usd * exchange_rate)
+        import_costs_total_egp = _round2(
+            sum(float(ic.get('amount_egp') or 0) for ic in import_costs_list)
+        )
+        grand_total_egp = _round2(purchase_cost_egp + import_costs_total_egp)
+
+        if grand_total_egp <= 0:
+            return {'success': False, 'message': 'Grand total must be greater than zero'}
+
+        now = get_utc_now()
+        inv_id = _uuid()
+
+        @anvil.tables.in_transaction
+        def _do_add():
+            # Create inventory row
+            inv_row_data = dict(
+                id=inv_id,
+                machine_code=part_code,
+                description=part_name,
+                item_type='part',
+                quantity=quantity,
+                quantity_available=quantity,
+                part_catalog_id=part_catalog_id,
+                cost_usd=_round2(quantity * unit_cost_usd),
+                purchase_cost=purchase_cost_egp,
+                import_costs_total=import_costs_total_egp,
+                total_cost=grand_total_egp,
+                selling_price=0,
+                status='in_stock',
+                location=location,
+                notes=notes,
+                created_at=now,
+                updated_at=now,
+            )
+            try:
+                app_tables.inventory.add_row(**inv_row_data)
+            except anvil.tables.TableError:
+                # Fallback: remove newer columns that may not exist
+                for col in ['item_type', 'quantity', 'quantity_available',
+                            'part_catalog_id', 'cost_usd']:
+                    inv_row_data.pop(col, None)
+                app_tables.inventory.add_row(**inv_row_data)
+
+            # Store import costs
+            for ic in import_costs_list:
+                ic_desc = _safe_str(ic.get('description'))
+                ic_amount = _round2(ic.get('amount_egp') or 0)
+                if ic_amount <= 0:
+                    continue
+                ic_id = _uuid()
+                ic_row = dict(
+                    id=ic_id,
+                    purchase_invoice_id=None,
+                    cost_type='part_import',
+                    description=ic_desc or 'Part import cost',
+                    amount=ic_amount,
+                    amount_egp=ic_amount,
+                    currency='EGP',
+                    date=parsed_date,
+                    created_by=user_email,
+                    created_at=now,
+                    payment_account=None,
+                    paid_amount=ic_amount,
+                )
+                try:
+                    ic_row['inventory_id'] = inv_id
+                    ic_row['original_currency'] = 'EGP'
+                    ic_row['original_amount'] = ic_amount
+                    ic_row['exchange_rate'] = 1.0
+                    app_tables.import_costs.add_row(**ic_row)
+                except anvil.tables.TableError:
+                    for col in ['inventory_id', 'original_currency',
+                                'original_amount', 'exchange_rate']:
+                        ic_row.pop(col, None)
+                    app_tables.import_costs.add_row(**ic_row)
+
+            # Post journal entry: DR 1200 (Inventory) / CR 3000 (Owner's Equity)
+            entries = [
+                {'account_code': '1200', 'debit': grand_total_egp, 'credit': 0},
+                {'account_code': '3000', 'debit': 0, 'credit': grand_total_egp},
+            ]
+            je_result = post_journal_entry(
+                parsed_date, entries,
+                f'Part to inventory: {part_code} - {part_name} (qty {quantity})',
+                'opening_balance', inv_id, user_email,
+            )
+            if not je_result.get('success'):
+                raise Exception(je_result.get('message', 'Journal entry failed'))
+
+            return {
+                'success': True,
+                'inventory_id': inv_id,
+                'grand_total_egp': grand_total_egp,
+                'transaction_id': je_result.get('transaction_id'),
+            }
+
+        return _do_add()
+    except Exception as e:
+        logger.exception("add_part_to_inventory error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def sell_part(data, token_or_email=None):
+    """
+    Sell a part/cylinder from inventory.
+
+    Validates stock availability, deducts quantity, posts journal entries:
+    1) DR 1100 (Accounts Receivable) / CR 4100 (Other Revenue)
+    2) DR 5100 (COGS - Import Costs) / CR 1200 (Inventory)
+    Creates a part_sales record with auto-generated sale number (PS-001, etc.).
+    """
+    is_valid, user_email, error = _require_permission(token_or_email, 'create')
+    if not is_valid:
+        return error
+
+    inventory_id = _safe_str(data.get('inventory_id'))
+    if not inventory_id:
+        return {'success': False, 'message': 'Inventory ID is required'}
+
+    quantity_to_sell = int(data.get('quantity_to_sell') or 0)
+    if quantity_to_sell <= 0:
+        return {'success': False, 'message': 'Quantity to sell must be greater than zero'}
+
+    selling_price_egp = _round2(data.get('selling_price_egp') or 0)
+    if selling_price_egp <= 0:
+        return {'success': False, 'message': 'Selling price must be greater than zero'}
+
+    contract_number = _safe_str(data.get('contract_number'))
+    buyer_name = _safe_str(data.get('buyer_name'))
+    notes = _safe_str(data.get('notes'))
+
+    try:
+        row = app_tables.inventory.get(id=inventory_id)
+        if not row:
+            return {'success': False, 'message': 'Inventory item not found'}
+
+        item_type = _safe_str(row.get('item_type')) or 'machine'
+        if item_type not in ('part', 'cylinder'):
+            return {'success': False, 'message': 'Only part or cylinder items can be sold via sell_part'}
+
+        qty_total = int(row.get('quantity') or 1) or 1
+        qty_available = int(row.get('quantity_available') or qty_total) or qty_total
+
+        if quantity_to_sell > qty_available:
+            return {
+                'success': False,
+                'message': f'Only {qty_available} units available, cannot sell {quantity_to_sell}',
+            }
+
+        # Proportional unit cost
+        full_cost = _round2(row.get('total_cost', 0))
+        unit_cost = _round2(full_cost / qty_total) if qty_total > 0 else 0
+        cogs_amount = _round2(unit_cost * quantity_to_sell)
+
+        part_code = _safe_str(row.get('machine_code'))
+        part_name = _safe_str(row.get('description'))
+        sale_date = date.today()
+
+        if is_period_locked(sale_date):
+            return {'success': False, 'message': 'Cannot post: accounting period is locked.'}
+
+        @anvil.tables.in_transaction
+        def _do_sell():
+            # --- 1. Post journal: DR 1100 / CR 4100 (Revenue) ---
+            revenue_entries = [
+                {'account_code': '1100', 'debit': selling_price_egp, 'credit': 0},
+                {'account_code': '4100', 'debit': 0, 'credit': selling_price_egp},
+            ]
+            rev_result = post_journal_entry(
+                sale_date, revenue_entries,
+                f'Part sale revenue: {part_code} (qty {quantity_to_sell}) — {buyer_name or "N/A"}',
+                'part_sale', inventory_id, user_email,
+            )
+            if not rev_result.get('success'):
+                raise Exception(rev_result.get('message', 'Revenue journal entry failed'))
+
+            # --- 2. Post journal: DR 5100 / CR 1200 (COGS) ---
+            if cogs_amount > 0:
+                cogs_entries = [
+                    {'account_code': '5100', 'debit': cogs_amount, 'credit': 0},
+                    {'account_code': '1200', 'debit': 0, 'credit': cogs_amount},
+                ]
+                cogs_result = post_journal_entry(
+                    sale_date, cogs_entries,
+                    f'Part sale COGS: {part_code} (qty {quantity_to_sell})',
+                    'part_sale', inventory_id, user_email,
+                )
+                if not cogs_result.get('success'):
+                    raise Exception(cogs_result.get('message', 'COGS journal entry failed'))
+
+            # --- 3. Deduct inventory quantity ---
+            new_qty_available = qty_available - quantity_to_sell
+            update_fields = dict(
+                quantity_available=new_qty_available,
+                updated_at=get_utc_now(),
+            )
+            if new_qty_available <= 0:
+                update_fields['status'] = 'sold'
+            try:
+                row.update(**update_fields)
+            except anvil.tables.TableError:
+                for col in ['quantity_available']:
+                    update_fields.pop(col, None)
+                row.update(**update_fields)
+
+            # --- 4. Generate sale number (PS-001, PS-002, ...) ---
+            max_serial = 0
+            _MAX_SCAN = 10000
+            for i, sr in enumerate(app_tables.part_sales.search()):
+                if i >= _MAX_SCAN:
+                    break
+                sn = _safe_str(sr.get('sale_number'))
+                if sn.startswith('PS-'):
+                    try:
+                        serial = int(sn[3:])
+                        if serial > max_serial:
+                            max_serial = serial
+                    except (ValueError, TypeError):
+                        pass
+            sale_number = f'PS-{max_serial + 1:03d}'
+
+            # --- 5. Create part_sales record ---
+            now = get_utc_now()
+            sale_id = _uuid()
+            app_tables.part_sales.add_row(
+                id=sale_id,
+                sale_number=sale_number,
+                inventory_id=inventory_id,
+                part_code=part_code,
+                part_name=part_name,
+                quantity=quantity_to_sell,
+                unit_cost=unit_cost,
+                selling_price=selling_price_egp,
+                buyer_name=buyer_name,
+                contract_number=contract_number,
+                notes=notes,
+                created_at=now,
+                created_by=user_email,
+            )
+
+            logger.info(
+                "Part sale %s: %s qty=%d price=%.2f cogs=%.2f by %s",
+                sale_number, part_code, quantity_to_sell,
+                selling_price_egp, cogs_amount, user_email,
+            )
+            return {'success': True, 'sale_number': sale_number}
+
+        return _do_sell()
+    except Exception as e:
+        logger.exception("sell_part error")
+        return {'success': False, 'message': str(e)}
+
+
+@anvil.server.callable
+def get_part_sales(search='', token_or_email=None):
+    """Return part sales records, optionally filtered by search term, sorted by date desc."""
+    is_valid, user_email, error = _require_permission(token_or_email, 'read')
+    if not is_valid:
+        return error
+    try:
+        rows = app_tables.part_sales.search()
+        results = []
+        search_lower = _safe_str(search).lower()
+        _MAX_ROWS = 10000
+        for i, r in enumerate(rows):
+            if i >= _MAX_ROWS:
+                logger.warning("get_part_sales: scan capped at %d rows", _MAX_ROWS)
+                break
+            if search_lower:
+                searchable = ' '.join([
+                    _safe_str(r.get('sale_number')),
+                    _safe_str(r.get('part_code')),
+                    _safe_str(r.get('part_name')),
+                    _safe_str(r.get('buyer_name')),
+                    _safe_str(r.get('contract_number')),
+                ]).lower()
+                if search_lower not in searchable:
+                    continue
+            results.append(_row_to_dict(r, PART_SALES_COLS))
+        results.sort(key=lambda x: x.get('created_at') or '', reverse=True)
+        return {'success': True, 'data': results}
+    except Exception as e:
+        logger.exception("get_part_sales error")
+        return {'success': False, 'message': 'An error occurred. Please try again later.'}
+
+
 @anvil.server.callable
 def update_inventory_item(item_id, data, token_or_email=None):
     """Update an existing inventory item."""

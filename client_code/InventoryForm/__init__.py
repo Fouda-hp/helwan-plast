@@ -55,6 +55,13 @@ class InventoryForm(InventoryFormTemplate):
         anvil.js.window.pyGetContractProfitability = self.get_contract_profitability
         anvil.js.window.pyAddOpeningBalance = self.add_opening_balance
 
+        # JS Bridges — Parts catalog & sales
+        anvil.js.window.pyGetPartsCatalog = self.get_parts_catalog
+        anvil.js.window.pyAddPartCatalog = self.add_part_catalog
+        anvil.js.window.pyAddPartToInventory = self.add_part_to_inventory
+        anvil.js.window.pySellPart = self.sell_part
+        anvil.js.window.pyGetPartSales = self.get_part_sales
+
         register_notif_bridges()
 
     def _auth(self):
@@ -127,6 +134,22 @@ class InventoryForm(InventoryFormTemplate):
             logger.warning("Could not load permissions: %s", e)
             return {'success': False, 'can_view': True, 'can_create': False,
                     'can_edit': False, 'can_delete': False, 'is_admin': False, 'role': 'viewer'}
+
+    # --- Parts catalog & sales ---
+    def get_parts_catalog(self, search=''):
+        return anvil.server.call('get_parts_catalog', search, self._auth())
+
+    def add_part_catalog(self, data):
+        return anvil.server.call('add_part_catalog', data, self._auth())
+
+    def add_part_to_inventory(self, data):
+        return anvil.server.call('add_part_to_inventory', data, self._auth())
+
+    def sell_part(self, data):
+        return anvil.server.call('sell_part', data, self._auth())
+
+    def get_part_sales(self, search=''):
+        return anvil.server.call('get_part_sales', search, self._auth())
 
     def go_back(self):
         try:

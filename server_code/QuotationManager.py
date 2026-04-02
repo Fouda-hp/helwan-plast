@@ -398,16 +398,13 @@ def save_quotation(form_data, user_email='system', token_or_email=None):
                 }
 
             # Allow agreed < mode price when user confirmed in UI (low-price confirmation modal).
-            # Only enforce: In Stock/New Order prices present; New Order agreed must not exceed In Stock.
+            # Only enforce: In Stock/New Order prices present; agreed >= new_order_price (minimum).
+            # No upper-bound cap — user may sell above In Stock price freely.
             if pricing_mode == "In Stock":
                 pass  # agreed may be lower than in_stock_price (user confirmed)
 
             elif pricing_mode == "New Order":
-                if agreed > in_stock_price:
-                    return {
-                        "success": False,
-                        "message": f"For New Order mode, Agreed Price ({agreed:,.0f}) cannot exceed In Stock price ({in_stock_price:,.0f})"
-                    }
+                pass  # no upper cap — user can price above In Stock
 
     # الترقيم التلقائي من السيرفر فقط (ذرّي، يمنع الدوبليكيت والفجوات)
     # get_next_number_atomic يحسب max(counter, max_table) + 1 فلا يمكن أن يكرر أو يفقد رقم

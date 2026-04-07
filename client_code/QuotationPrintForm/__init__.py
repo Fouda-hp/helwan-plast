@@ -323,7 +323,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
                 'نقل الحركه من الموتور الرئيسي إلى مكونات الماكينة عبر التروس لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Gear drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
       else:
         return ('نقل الحركه من الموتور الرئيسي لأجزاء الماكينة عن طريق السيور' if is_ar else 'Belt drive',
-                'نقل الحركه من الموتور الرئيسي إلى مكونات الماكينة عبر السيور لضمان عمر أطول، تقليل الأعطال، وتمكين التشغيل بسرعة عالية وهدوء مع تصميم غير معقد' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure longer service life, reduce breakdowns, and enable high-speed, quiet operation with a non-complex gear design')
+                'نقل الحركه من الموتور الرئيسي إلى مكونات الماكينة عبر السيور لضمان سرعه اعلي ونعومه في التشغيل وضبط الطباعه ادق' if is_ar else 'Power transmission from the main motor to machine components via Belt drive to ensure higher speed, smoother operation, and more precise print registration')
 
     # Helper function for item 7 (color registration)
     def get_color_registration():

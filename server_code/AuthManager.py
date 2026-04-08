@@ -2574,6 +2574,8 @@ def _options_from_machine_prices(prices):
             type_color_widths[derived_type] = {
                 c: ws[:] for c, ws in type_color_widths.get(metal_key, {}).items()
             }
+    # Plus has its own prices stored in DB — already picked up above.
+    # Ensure it appears in the types list if present.
     return {'types': types, 'typeColors': type_colors, 'typeColorWidths': type_color_widths}
 
 
@@ -2592,6 +2594,9 @@ def get_machine_prices(token_or_email=None):
             "4": {"80": 15000, "100": 16000, "120": 17500},
             "6": {"80": 25000, "100": 26000, "120": 29000},
             "8": {"80": 29000, "100": 32000, "120": 33000}
+        },
+        "Plus": {
+            "6": {"100": 47300, "120": 48500}
         }
     }
     try:
@@ -2679,7 +2684,7 @@ def save_machine_prices(token_or_email, prices):
     try:
         ip_address = get_client_ip()
         admin_email = token_or_email if '@' in str(token_or_email) else 'admin'
-        # Strip Ceramic types — only Metal anilox base prices are stored;
+        # Strip Ceramic types — only Metal anilox and Plus base prices are stored;
         # Ceramic Single and Chamber are computed from settings.
         if isinstance(prices, dict):
             for ck in ['Ceramic anilox Single Doctor Blade', 'Ceramic anilox Chamber Doctor Blade']:

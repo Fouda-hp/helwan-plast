@@ -1131,7 +1131,7 @@ class AdminPanel(AdminPanelTemplate):
                 "Metal anilox": {"4": {"80": 15000, "100": 16000, "120": 17500}, "6": {"80": 25000, "100": 26000, "120": 29000}, "8": {"80": 29000, "100": 32000, "120": 33000}}
               };
             }
-            // Filter: only show Metal anilox table (Ceramic prices are computed from settings)
+            // Filter: show Metal anilox + Plus tables (Ceramic prices are computed from settings)
             var filteredPrices = {};
             if (prices['Metal anilox']) {
               filteredPrices['Metal anilox'] = prices['Metal anilox'];
@@ -1139,6 +1139,9 @@ class AdminPanel(AdminPanelTemplate):
               // Fallback: show first type if Metal anilox key is different
               var firstKey = Object.keys(prices)[0];
               if (firstKey) filteredPrices[firstKey] = prices[firstKey];
+            }
+            if (prices['Plus']) {
+              filteredPrices['Plus'] = prices['Plus'];
             }
             prices = filteredPrices;
             var firstGrid = container.querySelector('div[style*="grid-template-columns"]');

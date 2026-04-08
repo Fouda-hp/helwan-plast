@@ -211,6 +211,7 @@ class QuotationPrintForm(QuotationPrintFormTemplate):
     plc_value = str(data.get('plc', '')).upper()
     # Gear only when machine_type is Metal Anilox and material is NOT Nonwoven; else Belt
     is_metal_anilox = 'METAL' in machine_type_str
+    is_plus = machine_type_str == 'PLUS'
     is_nonwoven = 'NONWOVEN' in material
 
     # Determine machine type prefix - use machine_type field not model

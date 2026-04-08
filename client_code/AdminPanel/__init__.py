@@ -1827,7 +1827,7 @@ class AdminPanel(AdminPanelTemplate):
 
             // Load current values from settings
             var matAdj = null, winAdj = null, optAdj = null;
-            var mkOverseas = null, mkInstock4 = null, mkInstockOther = null, mkNew4 = null, mkNewOther = null;
+            var mkOverseas = null, mkInstock4 = null, mkInstockOther = null, mkNew4 = null, mkNewOther = null, mkPlus = null;
             var ceramicPremium = null, ceramicChamberPerMeter = null;
             try {
               if (window.getSetting) {
@@ -1839,6 +1839,7 @@ class AdminPanel(AdminPanelTemplate):
                 mkInstockOther = await window.getSetting('markup_local_instock_other');
                 mkNew4 = await window.getSetting('markup_local_neworder_4color');
                 mkNewOther = await window.getSetting('markup_local_neworder_other');
+                mkPlus = await window.getSetting('markup_plus');
                 ceramicPremium = await window.getSetting('ceramic_anilox_premium');
                 ceramicChamberPerMeter = await window.getSetting('ceramic_chamber_per_meter');
               }
@@ -1855,6 +1856,7 @@ class AdminPanel(AdminPanelTemplate):
             if (mkInstockOther == null) mkInstockOther = 1.25;
             if (mkNew4 == null) mkNew4 = 1.22;
             if (mkNewOther == null) mkNewOther = 1.20;
+            if (mkPlus == null) mkPlus = 1.15;
 
             var html = '<div id="pricingAdjustmentsSection" style="background:#fce4ec;padding:20px;border-radius:12px;margin-top:20px;border:2px solid #e91e63;">';
 
@@ -1928,7 +1930,8 @@ class AdminPanel(AdminPanelTemplate):
               {id: 'markup_local_instock_4color', label: 'Local In-Stock (4 Colors)', labelAr: 'محلي متوفر (4 ألوان)', val: mkInstock4},
               {id: 'markup_local_instock_other', label: 'Local In-Stock (Other)', labelAr: 'محلي متوفر (غير 4 ألوان)', val: mkInstockOther},
               {id: 'markup_local_neworder_4color', label: 'Local New Order (4 Colors)', labelAr: 'محلي أوردر جديد (4 ألوان)', val: mkNew4},
-              {id: 'markup_local_neworder_other', label: 'Local New Order (Other)', labelAr: 'محلي أوردر جديد (غير 4 ألوان)', val: mkNewOther}
+              {id: 'markup_local_neworder_other', label: 'Local New Order (Other)', labelAr: 'محلي أوردر جديد (غير 4 ألوان)', val: mkNewOther},
+              {id: 'markup_plus', label: 'Plus Machine Markup', labelAr: 'نسبة ربح ماكينة Plus', val: mkPlus}
             ];
 
             markupFields.forEach(function(f) {
@@ -2078,7 +2081,7 @@ class AdminPanel(AdminPanelTemplate):
 
           window.saveMarkupPercentages = async function() {
             var keys = ['markup_overseas', 'markup_local_instock_4color', 'markup_local_instock_other',
-                        'markup_local_neworder_4color', 'markup_local_neworder_other'];
+                        'markup_local_neworder_4color', 'markup_local_neworder_other', 'markup_plus'];
             var allOk = true;
             for (var i = 0; i < keys.length; i++) {
               var inp = document.getElementById('adj_' + keys[i]);

@@ -2397,7 +2397,7 @@ def get_calculator_settings(token_or_email=None):
             result['optionalAdjustments'] = oa_dict
         # نسب الربح (أرقام فردية)
         for mk in ['markup_overseas', 'markup_local_instock_4color', 'markup_local_instock_other',
-                    'markup_local_neworder_4color', 'markup_local_neworder_other']:
+                    'markup_local_neworder_4color', 'markup_local_neworder_other', 'markup_plus']:
             val = get_setting(mk)
             logger.info("get_calculator_settings: %s raw type=%s, val=%s", mk, type(val).__name__, val)
             if val is not None:
@@ -2414,6 +2414,9 @@ def get_calculator_settings(token_or_email=None):
                     result[ck] = float(val)
                 except (ValueError, TypeError):
                     logger.warning("get_calculator_settings: %s cannot convert to float: %s", ck, val)
+        # Default markup_plus if not in DB
+        if result.get('markup_plus') is None:
+            result['markup_plus'] = 1.15
         cfg = get_machine_config()
         if cfg and cfg.get('success') and cfg.get('config'):
             result['config'] = cfg['config']

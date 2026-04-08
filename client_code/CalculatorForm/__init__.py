@@ -382,7 +382,7 @@ class CalculatorForm(CalculatorFormTemplate):
       # نسب الربح (Markups)
       markups = {}
       for mk in ["markup_overseas", "markup_local_instock_4color", "markup_local_instock_other",
-                  "markup_local_neworder_4color", "markup_local_neworder_other"]:
+                  "markup_local_neworder_4color", "markup_local_neworder_other", "markup_plus"]:
         val = data.get(mk)
         if val is not None:
           try:

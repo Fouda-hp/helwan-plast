@@ -2612,6 +2612,9 @@ def get_machine_prices(token_or_email=None):
             logger.info("get_machine_prices: no DB setting found (setting=%s), using defaults with 80/100/120/140/160",
                        'exists but empty' if setting else 'does not exist')
             prices = default_prices
+        # Inject Plus defaults if missing from DB
+        if isinstance(prices, dict) and 'Plus' not in prices:
+            prices['Plus'] = default_prices.get('Plus', {"6": {"100": 47300, "120": 48500}})
         prices = _normalize_prices_keys(prices)
         options = _options_from_machine_prices(prices)
         return {'success': True, 'prices': prices, 'options': options}
